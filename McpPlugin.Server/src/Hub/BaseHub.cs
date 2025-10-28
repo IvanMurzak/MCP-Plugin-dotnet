@@ -20,7 +20,7 @@ using R3;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
-    public class BaseHub<T> : Hub, IDisposable where T : Hub
+    public class BaseHub<T> : Hub<T>, IDisposable where T : Hub
     {
         protected readonly ILogger _logger;
         protected readonly IHubContext<T> _hubContext;

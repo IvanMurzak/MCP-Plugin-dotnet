@@ -37,7 +37,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             return target;
         }
 
-        public static ResourceContents ToResourceContents(this IResponseResourceContent response)
+        public static ResourceContents ToResourceContents(this ResponseResourceContent response)
         {
             if (response!.text != null)
                 return new TextResourceContents()

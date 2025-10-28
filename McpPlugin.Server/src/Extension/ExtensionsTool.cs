@@ -54,7 +54,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             return target;
         }
 
-        public static Tool ToTool(this IResponseListTool response)
+        public static Tool ToTool(this ResponseListTool response)
         {
             if (_logger.IsTraceEnabled)
             {
@@ -74,7 +74,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             };
         }
 
-        public static CallToolResult ToCallToolResult(this IResponseCallTool response) => new CallToolResult()
+        public static CallToolResult ToCallToolResult(this ResponseCallTool response) => new CallToolResult()
         {
             IsError = response.Status == ResponseStatus.Error,
             Content = response.Content

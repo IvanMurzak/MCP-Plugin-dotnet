@@ -37,7 +37,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
             _loggerProvider = new XunitTestOutputLoggerProvider(output);
         }
 
-        async Task ValidateListToolResponse(RequestListTool request, Task<IResponseData<ResponseListTool[]>>? listToolTask, string expectedToolName, string expectedToolTitle)
+        async Task ValidateListToolResponse(RequestListTool request, Task<ResponseData<ResponseListTool[]>>? listToolTask, string expectedToolName, string expectedToolTitle)
         {
             listToolTask.Should().NotBeNull();
 
@@ -142,7 +142,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
             }
         }
 
-        private static async Task ValidateListToolSchema(Task<IResponseData<ResponseListTool[]>>? listToolTask, JsonElement? expectedInputSchema = null, JsonElement? expectedOutputSchema = null)
+        private static async Task ValidateListToolSchema(Task<ResponseData<ResponseListTool[]>>? listToolTask, JsonElement? expectedInputSchema = null, JsonElement? expectedOutputSchema = null)
         {
             listToolTask.Should().NotBeNull();
 

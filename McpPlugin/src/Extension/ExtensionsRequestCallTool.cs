@@ -16,12 +16,12 @@ namespace com.IvanMurzak.McpPlugin.Common
 {
     public static class ExtensionsRequestCallTool
     {
-        public static IRequestCallTool SetName(this IRequestCallTool data, string name)
+        public static RequestCallTool SetName(this RequestCallTool data, string name)
         {
             data.Name = name;
             return data;
         }
-        public static IRequestCallTool SetOrAddParameter(this IRequestCallTool data, string name, object? value)
+        public static RequestCallTool SetOrAddParameter(this RequestCallTool data, string name, object? value)
         {
             data.Arguments ??= value == null
                 ? new Dictionary<string, JsonElement>()

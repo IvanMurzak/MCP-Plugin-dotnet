@@ -12,7 +12,7 @@
 using System;
 using com.IvanMurzak.McpPlugin.Common.Model;
 
-namespace com.IvanMurzak.McpPlugin.Common
+namespace com.IvanMurzak.McpPlugin
 {
     [AttributeUsage(AttributeTargets.Method)]
     public sealed class McpPluginPromptAttribute : Attribute

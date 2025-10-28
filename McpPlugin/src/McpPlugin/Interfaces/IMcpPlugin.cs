@@ -8,10 +8,10 @@
 └──────────────────────────────────────────────────────────────────┘
 */
 
-#nullable enable
+using com.IvanMurzak.McpPlugin.Common;
 using Microsoft.Extensions.Logging;
 
-namespace com.IvanMurzak.McpPlugin.Common
+namespace com.IvanMurzak.McpPlugin
 {
     public interface IMcpPlugin : IConnection, IDisposableAsync
     {

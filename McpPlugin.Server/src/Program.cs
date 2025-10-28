@@ -12,7 +12,7 @@ using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
-using com.IvanMurzak.McpPlugin.Common.Json;
+using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -62,7 +62,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                 consoleWriteLine("Location: " + Environment.CurrentDirectory);
                 consoleWriteLine($"Launch arguments: {string.Join(" ", args)}");
-                consoleWriteLine($"Parsed arguments: {JsonSerializer.Serialize(dataArguments, JsonOptions.Pretty)}");
+                consoleWriteLine($"Parsed arguments: {dataArguments.ToPrettyJson()}");
 
                 var builder = WebApplication.CreateBuilder(args);
 

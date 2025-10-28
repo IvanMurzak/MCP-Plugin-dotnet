@@ -10,7 +10,7 @@
 using System;
 using Microsoft.AspNetCore.SignalR.Client;
 
-namespace com.IvanMurzak.McpPlugin.Common
+namespace com.IvanMurzak.McpPlugin
 {
     public class FixedRetryPolicy : IRetryPolicy
     {

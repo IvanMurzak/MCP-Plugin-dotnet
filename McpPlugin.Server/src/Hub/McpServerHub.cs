@@ -10,7 +10,6 @@
 
 using System;
 using System.Threading.Tasks;
-using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
@@ -42,7 +41,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
         }
 
-        public Task<IResponseData> OnListToolsUpdated(string data)
+        public Task<ResponseData> OnListToolsUpdated(string data)
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
                 nameof(IMcpServerHub.OnListToolsUpdated), _guid, data);
@@ -52,10 +51,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                 ConnectionId = Context.ConnectionId,
                 Data = data
             });
-            return ResponseData.Success(data, string.Empty).TaskFromResult<IResponseData>();
+            return ResponseData.Success(data, string.Empty).TaskFromResult<ResponseData>();
         }
 
-        public Task<IResponseData> OnListPromptsUpdated(string data)
+        public Task<ResponseData> OnListPromptsUpdated(string data)
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
                 nameof(IMcpServerHub.OnListPromptsUpdated), _guid, data);
@@ -66,10 +65,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                 Data = data
             });
 
-            return ResponseData.Success(data, string.Empty).TaskFromResult<IResponseData>();
+            return ResponseData.Success(data, string.Empty).TaskFromResult<ResponseData>();
         }
 
-        public Task<IResponseData> OnListResourcesUpdated(string data)
+        public Task<ResponseData> OnListResourcesUpdated(string data)
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
                 nameof(IMcpServerHub.OnListResourcesUpdated), _guid, data);
@@ -80,10 +79,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                 Data = data
             });
 
-            return ResponseData.Success(data, string.Empty).TaskFromResult<IResponseData>();
+            return ResponseData.Success(data, string.Empty).TaskFromResult<ResponseData>();
         }
 
-        public Task<IResponseData> OnToolRequestCompleted(ToolRequestCompletedData data)
+        public Task<ResponseData> OnToolRequestCompleted(ToolRequestCompletedData data)
         {
             _logger.LogTrace("{method}. {guid}. RequestId: {requestId}",
                 nameof(IMcpServerHub.OnToolRequestCompleted), _guid, data.RequestId);
@@ -97,7 +96,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 _logger.LogError(ex, "Error deserializing tool response for RequestId: {requestId}", data.RequestId);
             }
 
-            return ResponseData.Success(string.Empty, string.Empty).TaskFromResult<IResponseData>();
+            return ResponseData.Success(string.Empty, string.Empty).TaskFromResult<ResponseData>();
         }
 
         public Task<VersionHandshakeResponse> OnVersionHandshake(VersionHandshakeRequest request)

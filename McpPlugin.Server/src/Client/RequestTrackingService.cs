@@ -99,7 +99,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 else
                 {
                     _logger.LogWarning("Type mismatch when completing request {RequestID}. Expected {ExpectedType}, got {ActualType}",
-                        response.RequestID, nameof(IResponseData), pendingRequest.GetType().Name);
+                        response.RequestID, nameof(ResponseData), pendingRequest.GetType().Name);
                 }
             }
             else

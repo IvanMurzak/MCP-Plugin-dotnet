@@ -1,6 +1,6 @@
 using com.IvanMurzak.ReflectorNet;
 
-namespace com.IvanMurzak.McpPlugin.Common
+namespace com.IvanMurzak.McpPlugin
 {
     public static class RpcJsonConfiguration
     {

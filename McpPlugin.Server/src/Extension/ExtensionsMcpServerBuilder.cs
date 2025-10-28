@@ -9,6 +9,7 @@
 */
 
 using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace com.IvanMurzak.McpPlugin.Server
@@ -25,9 +26,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             builder.Services.AddSingleton<HubEventPromptsChange>();
             builder.Services.AddSingleton<HubEventResourcesChange>();
             builder.Services.AddSingleton<IRequestTrackingService, RequestTrackingService>();
-            builder.Services.AddSingleton<IToolRunner, RemoteToolRunner>();
-            builder.Services.AddSingleton<IPromptRunner, RemotePromptRunner>();
-            builder.Services.AddSingleton<IResourceRunner, RemoteResourceRunner>();
+            builder.Services.AddSingleton<IToolClientHub, RemoteToolRunner>();
+            builder.Services.AddSingleton<IPromptClientHub, RemotePromptRunner>();
+            builder.Services.AddSingleton<IResourceClientHub, RemoteResourceRunner>();
 
             builder.AddMcpRunner();
 

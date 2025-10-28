@@ -16,13 +16,14 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.ReflectorNet;
 using com.IvanMurzak.ReflectorNet.Utils;
 using Microsoft.Extensions.Logging;
 using R3;
 
-namespace com.IvanMurzak.McpPlugin.Common
+namespace com.IvanMurzak.McpPlugin
 {
     public class McpRunner : IMcpRunner
     {
@@ -120,10 +121,10 @@ namespace com.IvanMurzak.McpPlugin.Common
             return true;
         }
 
-        public async Task<IResponseData<ResponseCallTool>> RunCallTool(IRequestCallTool data, CancellationToken cancellationToken = default)
+        public async Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool data, CancellationToken cancellationToken = default)
         {
             if (data == null)
-                return ResponseData<ResponseCallTool>.Error(Consts.Guid.Zero, "Tool data is null.")
+                return ResponseData<ResponseCallTool>.Error(Common.Consts.Guid.Zero, "Tool data is null.")
                     .Log(_logger);
 
             if (string.IsNullOrEmpty(data.Name))
@@ -160,7 +161,7 @@ namespace com.IvanMurzak.McpPlugin.Common
             }
         }
 
-        public Task<IResponseData<ResponseListTool[]>> RunListTool(IRequestListTool data, CancellationToken cancellationToken = default)
+        public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool data, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -265,7 +266,7 @@ namespace com.IvanMurzak.McpPlugin.Common
             _onResourcesUpdated.OnNext(Unit.Default);
             return true;
         }
-        public async Task<IResponseData<ResponseResourceContent[]>> RunResourceContent(IRequestResourceContent data, CancellationToken cancellationToken = default)
+        public async Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(RequestResourceContent data, CancellationToken cancellationToken = default)
         {
             if (data == null)
                 throw new ArgumentException("Resource data is null.");
@@ -286,7 +287,7 @@ namespace com.IvanMurzak.McpPlugin.Common
             var result = await runner.Run(parameters);
             return result.Pack(data.RequestID);
         }
-        public async Task<IResponseData<ResponseListResource[]>> RunListResources(IRequestListResources data, CancellationToken cancellationToken = default)
+        public async Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources data, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Listing resources. [{Count}]", _resources.Count);
             var tasks = _resources.Values
@@ -299,7 +300,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                 .ToArray()
                 .Pack(data.RequestID);
         }
-        public Task<IResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(IRequestListResourceTemplates data, CancellationToken cancellationToken = default)
+        public Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(RequestListResourceTemplates data, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Listing resource templates. [{Count}]", _resources.Count);
             return _resources.Values
@@ -381,7 +382,7 @@ namespace com.IvanMurzak.McpPlugin.Common
 
             return true;
         }
-        public async Task<IResponseData<ResponseGetPrompt>> RunGetPrompt(IRequestGetPrompt request, CancellationToken cancellationToken = default)
+        public async Task<ResponseData<ResponseGetPrompt>> RunGetPrompt(RequestGetPrompt request, CancellationToken cancellationToken = default)
         {
             if (!_prompts.TryGetValue(request.Name, out var runner))
             {
@@ -397,7 +398,7 @@ namespace com.IvanMurzak.McpPlugin.Common
             return result.Pack(request.RequestID);
         }
 
-        public Task<IResponseData<ResponseListPrompts>> RunListPrompts(IRequestListPrompts request, CancellationToken cancellationToken = default)
+        public Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request, CancellationToken cancellationToken = default)
         {
             try
             {

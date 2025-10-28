@@ -21,7 +21,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             throw new Exception(message);
         }
 
-        public static Resource ToResource(this IResponseListResource response)
+        public static Resource ToResource(this ResponseListResource response)
         {
             return new Resource()
             {

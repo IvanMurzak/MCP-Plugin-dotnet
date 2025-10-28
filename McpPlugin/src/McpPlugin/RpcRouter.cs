@@ -11,8 +11,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using com.IvanMurzak.McpPlugin.Common.Json;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Common.Utils;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using R3;
@@ -74,14 +74,14 @@ namespace com.IvanMurzak.McpPlugin.Common
 
             // Tool events -------------------------------------------------------------
 
-            hubConnection.On<RequestCallTool, IResponseData<ResponseCallTool>>(Consts.RPC.Client.RunCallTool, async data =>
+            hubConnection.On<RequestCallTool, ResponseData<ResponseCallTool>>(Consts.RPC.Client.RunCallTool, async data =>
                 {
                     _logger.LogDebug("{class}.{method}", nameof(RpcRouter), Consts.RPC.Client.RunCallTool);
                     return await _mcpRunner.RunCallTool(data);
                 })
                 .AddTo(_serverEventsDisposables);
 
-            hubConnection.On<RequestListTool, IResponseData<ResponseListTool[]>>(Consts.RPC.Client.RunListTool, async data =>
+            hubConnection.On<RequestListTool, ResponseData<ResponseListTool[]>>(Consts.RPC.Client.RunListTool, async data =>
                 {
                     _logger.LogDebug("{class}.{method}", nameof(RpcRouter), Consts.RPC.Client.RunListTool);
                     return await _mcpRunner.RunListTool(data);
@@ -90,14 +90,14 @@ namespace com.IvanMurzak.McpPlugin.Common
 
             // Prompt events -----------------------------------------------------------
 
-            hubConnection.On<RequestGetPrompt, IResponseData<ResponseGetPrompt>>(Consts.RPC.Client.RunGetPrompt, async data =>
+            hubConnection.On<RequestGetPrompt, ResponseData<ResponseGetPrompt>>(Consts.RPC.Client.RunGetPrompt, async data =>
                 {
                     _logger.LogDebug("{class}.{method}", nameof(RpcRouter), Consts.RPC.Client.RunGetPrompt);
                     return await _mcpRunner.RunGetPrompt(data);
                 })
                 .AddTo(_serverEventsDisposables);
 
-            hubConnection.On<RequestListPrompts, IResponseData<ResponseListPrompts>>(Consts.RPC.Client.RunListPrompts, async data =>
+            hubConnection.On<RequestListPrompts, ResponseData<ResponseListPrompts>>(Consts.RPC.Client.RunListPrompts, async data =>
                 {
                     _logger.LogDebug("{class}.{method}", nameof(RpcRouter), Consts.RPC.Client.RunListPrompts);
                     return await _mcpRunner.RunListPrompts(data);
@@ -106,21 +106,21 @@ namespace com.IvanMurzak.McpPlugin.Common
 
             // Resource events ---------------------------------------------------------
 
-            hubConnection.On<RequestResourceContent, IResponseData<ResponseResourceContent[]>>(Consts.RPC.Client.RunResourceContent, async data =>
+            hubConnection.On<RequestResourceContent, ResponseData<ResponseResourceContent[]>>(Consts.RPC.Client.RunResourceContent, async data =>
                 {
                     _logger.LogDebug("{class}.{method}", nameof(RpcRouter), Consts.RPC.Client.RunResourceContent);
                     return await _mcpRunner.RunResourceContent(data);
                 })
                 .AddTo(_serverEventsDisposables);
 
-            hubConnection.On<RequestListResources, IResponseData<ResponseListResource[]>>(Consts.RPC.Client.RunListResources, async data =>
+            hubConnection.On<RequestListResources, ResponseData<ResponseListResource[]>>(Consts.RPC.Client.RunListResources, async data =>
                 {
                     _logger.LogDebug("{class}.{method}", nameof(RpcRouter), Consts.RPC.Client.RunListResources);
                     return await _mcpRunner.RunListResources(data);
                 })
                 .AddTo(_serverEventsDisposables);
 
-            hubConnection.On<RequestListResourceTemplates, IResponseData<ResponseResourceTemplate[]>>(Consts.RPC.Client.RunListResourceTemplates, async data =>
+            hubConnection.On<RequestListResourceTemplates, ResponseData<ResponseResourceTemplate[]>>(Consts.RPC.Client.RunListResourceTemplates, async data =>
                 {
                     _logger.LogDebug("{class}.{method}", nameof(RpcRouter), Consts.RPC.Client.RunListResourceTemplates);
                     return await _mcpRunner.RunResourceTemplates(data);
@@ -153,7 +153,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                 _logger.LogTrace("{class} Notify tool request completed for request: {RequestID}\n{Json}",
                     nameof(RpcRouter),
                     response.RequestID,
-                    System.Text.Json.JsonSerializer.Serialize(response, JsonOptions.Pretty)
+                    response.ToPrettyJson()
                 );
             }
             var data = new ToolRequestCompletedData

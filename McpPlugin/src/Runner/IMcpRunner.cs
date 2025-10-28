@@ -10,9 +10,9 @@
 using System;
 using com.IvanMurzak.ReflectorNet;
 
-namespace com.IvanMurzak.McpPlugin.Common
+namespace com.IvanMurzak.McpPlugin
 {
-    public interface IMcpRunner : IToolRunner, IResourceRunner, IPromptRunner, IDisposable
+    public interface IMcpRunner : IToolManager, IResourceManager, IPromptManager, IDisposable
     {
         Reflector Reflector { get; }
     }

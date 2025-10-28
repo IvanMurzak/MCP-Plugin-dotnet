@@ -26,7 +26,7 @@ namespace com.IvanMurzak.McpPlugin.Common
             data.Parameters[name] = value;
             return data;
         }
-        // public static IRequestCallTool Build(this IRequestNotification data)
+        // public static RequestCallTool Build(this IRequestNotification data)
         //     => new RequestData(data as RequestNotification ?? throw new System.InvalidOperationException("NotificationData is null"));
     }
 }

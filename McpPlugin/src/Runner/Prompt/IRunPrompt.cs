@@ -8,7 +8,6 @@
 └──────────────────────────────────────────────────────────────────┘
 */
 
-#nullable enable
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -16,7 +15,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 
-namespace com.IvanMurzak.McpPlugin.Common
+namespace com.IvanMurzak.McpPlugin
 {
     public interface IRunPrompt : IEnabled
     {

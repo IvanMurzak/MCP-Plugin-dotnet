@@ -8,14 +8,13 @@
 └──────────────────────────────────────────────────────────────────┘
 */
 
-#nullable enable
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.Logging;
 
-namespace com.IvanMurzak.McpPlugin.Common
+namespace com.IvanMurzak.McpPlugin
 {
     public class PromptRunnerCollection : Dictionary<string, IRunPrompt>
     {

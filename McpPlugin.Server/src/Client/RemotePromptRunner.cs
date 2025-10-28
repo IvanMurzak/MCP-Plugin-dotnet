@@ -19,7 +19,7 @@ using R3;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
-    public class RemotePromptRunner : IPromptRunner, IDisposable
+    public class RemotePromptRunner : IPromptManager, IDisposable
     {
         readonly ILogger _logger;
         readonly IHubContext<McpServerHub> _remoteAppContext;
@@ -35,7 +35,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
         }
 
-        public async Task<IResponseData<ResponseCallTool>> RunCallTool(IRequestCallTool request, CancellationToken cancellationToken = default)
+        public async Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request, CancellationToken cancellationToken = default)
         {
             var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
 
@@ -43,7 +43,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 request.RequestID,
                 async () =>
                 {
-                    var responseData = await ClientUtils.InvokeAsync<IRequestCallTool, ResponseCallTool, McpServerHub>(
+                    var responseData = await ClientUtils.InvokeAsync<RequestCallTool, ResponseCallTool, McpServerHub>(
                         logger: _logger,
                         hubContext: _remoteAppContext,
                         methodName: Consts.RPC.Client.RunCallTool,
@@ -55,12 +55,12 @@ namespace com.IvanMurzak.McpPlugin.Server
                 TimeSpan.FromMinutes(5),
                 linkedCts.Token);
 
-            // Wrap the ResponseCallTool back into IResponseData<ResponseCallTool>
+            // Wrap the ResponseCallTool back into ResponseData<ResponseCallTool>
             return response.Pack(request.RequestID);
         }
 
-        public Task<IResponseData<ResponseListTool[]>> RunListTool(IRequestListTool request, CancellationToken cancellationToken = default)
-            => ClientUtils.InvokeAsync<IRequestListTool, ResponseListTool[], McpServerHub>(
+        public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request, CancellationToken cancellationToken = default)
+            => ClientUtils.InvokeAsync<RequestListTool, ResponseListTool[], McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,
                 methodName: Consts.RPC.Client.RunListTool,
@@ -86,7 +86,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             cts.Dispose();
         }
 
-        public async Task<IResponseData<ResponseGetPrompt>> RunGetPrompt(IRequestGetPrompt request, CancellationToken cancellationToken = default)
+        public async Task<ResponseData<ResponseGetPrompt>> RunGetPrompt(IRequestGetPrompt request, CancellationToken cancellationToken = default)
         {
             var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
 
@@ -103,7 +103,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             return ResponseGetPrompt.Error("Response data is null").Pack(request.RequestID);
         }
 
-        public Task<IResponseData<ResponseListPrompts>> RunListPrompts(IRequestListPrompts request, CancellationToken cancellationToken = default)
+        public Task<ResponseData<ResponseListPrompts>> RunListPrompts(IRequestListPrompts request, CancellationToken cancellationToken = default)
             => ClientUtils.InvokeAsync<IRequestListPrompts, ResponseListPrompts, McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,

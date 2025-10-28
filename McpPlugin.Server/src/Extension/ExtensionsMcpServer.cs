@@ -72,9 +72,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                                 server.Services!.GetRequiredService<ILogger<McpServerService>>(),
                                 server,
                                 server.Services!.GetRequiredService<IMcpRunner>(),
-                                server.Services!.GetRequiredService<IToolRunner>(),
-                                server.Services!.GetRequiredService<IPromptRunner>(),
-                                server.Services!.GetRequiredService<IResourceRunner>(),
+                                server.Services!.GetRequiredService<IToolManager>(),
+                                server.Services!.GetRequiredService<IPromptManager>(),
+                                server.Services!.GetRequiredService<IResourceManager>(),
                                 server.Services!.GetRequiredService<HubEventToolsChange>(),
                                 server.Services!.GetRequiredService<HubEventPromptsChange>(),
                                 server.Services!.GetRequiredService<HubEventResourcesChange>()

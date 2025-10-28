@@ -19,7 +19,7 @@ using R3;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
-    public class RemoteResourceRunner : IResourceRunner, IDisposable
+    public class RemoteResourceRunner : IResourceManager, IDisposable
     {
         readonly ILogger _logger;
         readonly IHubContext<McpServerHub> _remoteAppContext;
@@ -35,7 +35,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
         }
 
-        public Task<IResponseData<ResponseResourceContent[]>> RunResourceContent(IRequestResourceContent requestData, CancellationToken cancellationToken = default)
+        public Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(IRequestResourceContent requestData, CancellationToken cancellationToken = default)
         {
             return ClientUtils.InvokeAsync<IRequestResourceContent, ResponseResourceContent[], McpServerHub>(
                 logger: _logger,
@@ -45,7 +45,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 cancellationToken: cancellationToken);
         }
 
-        public Task<IResponseData<ResponseListResource[]>> RunListResources(IRequestListResources requestData, CancellationToken cancellationToken = default)
+        public Task<ResponseData<ResponseListResource[]>> RunListResources(IRequestListResources requestData, CancellationToken cancellationToken = default)
         {
             return ClientUtils.InvokeAsync<IRequestListResources, ResponseListResource[], McpServerHub>(
                 logger: _logger,
@@ -55,7 +55,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 cancellationToken: cancellationToken);
         }
 
-        public Task<IResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(IRequestListResourceTemplates requestData, CancellationToken cancellationToken = default)
+        public Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(IRequestListResourceTemplates requestData, CancellationToken cancellationToken = default)
         {
             return ClientUtils.InvokeAsync<IRequestListResourceTemplates, ResponseResourceTemplate[], McpServerHub>(
                 logger: _logger,

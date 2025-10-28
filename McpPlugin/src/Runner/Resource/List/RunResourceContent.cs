@@ -17,7 +17,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.Logging;
 
-namespace com.IvanMurzak.McpPlugin.Common
+namespace com.IvanMurzak.McpPlugin
 {
     /// <summary>
     /// Provides functionality to execute methods dynamically, supporting both static and instance methods.

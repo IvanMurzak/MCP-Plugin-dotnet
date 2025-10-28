@@ -16,23 +16,23 @@ namespace com.IvanMurzak.McpPlugin.Server
 {
     public interface IMcpServerHub : IToolResponseReceiver, IResourceResponseReceiver, IDisposable
     {
-        Task<IResponseData> OnListToolsUpdated(string data);
-        Task<IResponseData> OnListPromptsUpdated(string data);
-        Task<IResponseData> OnListResourcesUpdated(string data);
-        Task<IResponseData> OnToolRequestCompleted(ToolRequestCompletedData data);
+        Task<ResponseData> OnListToolsUpdated(string data);
+        Task<ResponseData> OnListPromptsUpdated(string data);
+        Task<ResponseData> OnListResourcesUpdated(string data);
+        Task<ResponseData> OnToolRequestCompleted(ToolRequestCompletedData data);
         Task<VersionHandshakeResponse> OnVersionHandshake(VersionHandshakeRequest request);
     }
 
     public interface IToolResponseReceiver
     {
-        // Task RespondOnCallTool(IResponseData<IResponseCallTool> data, CancellationToken cancellationToken = default);
-        // Task RespondOnListTool(IResponseData<List<IResponseListTool>> data, CancellationToken cancellationToken = default);
+        // Task RespondOnCallTool(ResponseData<IResponseCallTool> data, CancellationToken cancellationToken = default);
+        // Task RespondOnListTool(ResponseData<List<IResponseListTool>> data, CancellationToken cancellationToken = default);
     }
 
     public interface IResourceResponseReceiver
     {
-        // Task RespondOnResourceContent(IResponseData<List<IResponseResourceContent>> data, CancellationToken cancellationToken = default);
-        // Task RespondOnListResources(IResponseData<List<IResponseListResource>> data, CancellationToken cancellationToken = default);
-        // Task RespondOnListResourceTemplates(IResponseData<List<IResponseResourceTemplate>> data, CancellationToken cancellationToken = default);
+        // Task RespondOnResourceContent(ResponseData<List<IResponseResourceContent>> data, CancellationToken cancellationToken = default);
+        // Task RespondOnListResources(ResponseData<List<ResponseListResource>> data, CancellationToken cancellationToken = default);
+        // Task RespondOnListResourceTemplates(ResponseData<List<IResponseResourceTemplate>> data, CancellationToken cancellationToken = default);
     }
 }

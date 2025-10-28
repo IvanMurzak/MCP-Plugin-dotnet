@@ -8,13 +8,13 @@
 └──────────────────────────────────────────────────────────────────┘
 */
 
-#nullable enable
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using Microsoft.AspNetCore.SignalR.Client;
 using R3;
 
-namespace com.IvanMurzak.McpPlugin.Common
+namespace com.IvanMurzak.McpPlugin
 {
     public interface IConnection : IDisposableAsync
     {

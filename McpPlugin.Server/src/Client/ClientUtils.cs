@@ -93,7 +93,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
         }
 
-        public static async Task<IResponseData<TResponse>> InvokeAsync<TRequest, TResponse, THub>(
+        public static async Task<ResponseData<TResponse>> InvokeAsync<TRequest, TResponse, THub>(
             ILogger logger,
             IHubContext<THub> hubContext,
             string methodName,

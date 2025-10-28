@@ -11,7 +11,7 @@
 #nullable enable
 using System;
 
-namespace com.IvanMurzak.McpPlugin.Common
+namespace com.IvanMurzak.McpPlugin
 {
     [AttributeUsage(AttributeTargets.Method)]
     public sealed class McpPluginResourceAttribute : Attribute

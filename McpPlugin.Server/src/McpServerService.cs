@@ -27,9 +27,9 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly ILogger<McpServerService> _logger;
         readonly IMcpServer _mcpServer;
         readonly IMcpRunner _mcpRunner;
-        readonly IToolRunner _toolRunner;
-        readonly IPromptRunner _promptRunner;
-        readonly IResourceRunner _resourceRunner;
+        readonly IToolManager _toolRunner;
+        readonly IPromptManager _promptRunner;
+        readonly IResourceManager _resourceRunner;
         readonly HubEventToolsChange _eventAppToolsChange;
         readonly HubEventPromptsChange _eventAppPromptsChange;
         readonly HubEventResourcesChange _eventAppResourcesChange;
@@ -37,9 +37,9 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public IMcpServer McpServer => _mcpServer;
         public IMcpRunner McpRunner => _mcpRunner;
-        public IToolRunner ToolRunner => _toolRunner;
-        public IPromptRunner PromptRunner => _promptRunner;
-        public IResourceRunner ResourceRunner => _resourceRunner;
+        public IToolManager ToolRunner => _toolRunner;
+        public IPromptManager PromptRunner => _promptRunner;
+        public IResourceManager ResourceRunner => _resourceRunner;
 
         public static McpServerService? Instance { get; private set; }
 
@@ -47,9 +47,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             ILogger<McpServerService> logger,
             IMcpServer mcpServer,
             IMcpRunner mcpRunner,
-            IToolRunner toolRunner,
-            IPromptRunner promptRunner,
-            IResourceRunner resourceRunner,
+            IToolManager toolRunner,
+            IPromptManager promptRunner,
+            IResourceManager resourceRunner,
             HubEventToolsChange eventAppToolsChange,
             HubEventPromptsChange eventAppPromptsChange,
             HubEventResourcesChange eventAppResourcesChange)

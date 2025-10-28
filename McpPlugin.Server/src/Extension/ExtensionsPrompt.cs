@@ -72,7 +72,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             Required = promptArgument.Required,
         };
 
-        public static GetPromptResult ToGetPromptResult(this Common.Model.IResponseGetPrompt response) => new GetPromptResult()
+        public static GetPromptResult ToGetPromptResult(this Common.Model.ResponseGetPrompt response) => new GetPromptResult()
         {
             Description = response.Description,
             Messages = response.Messages

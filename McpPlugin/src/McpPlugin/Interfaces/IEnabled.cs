@@ -8,9 +8,7 @@
 └──────────────────────────────────────────────────────────────────┘
 */
 
-#nullable enable
-
-namespace com.IvanMurzak.McpPlugin.Common
+namespace com.IvanMurzak.McpPlugin
 {
     public interface IEnabled
     {

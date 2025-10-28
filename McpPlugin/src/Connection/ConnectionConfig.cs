@@ -7,7 +7,9 @@
 │  See the LICENSE file in the project root for more information.  │
 └──────────────────────────────────────────────────────────────────┘
 */
-namespace com.IvanMurzak.McpPlugin.Common
+using com.IvanMurzak.McpPlugin.Common;
+
+namespace com.IvanMurzak.McpPlugin
 {
     public class ConnectionConfig
     {
