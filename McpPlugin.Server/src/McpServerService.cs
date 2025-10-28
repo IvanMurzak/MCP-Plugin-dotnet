@@ -11,7 +11,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -26,30 +26,27 @@ namespace com.IvanMurzak.McpPlugin.Server
     {
         readonly ILogger<McpServerService> _logger;
         readonly IMcpServer _mcpServer;
-        readonly IMcpRunner _mcpRunner;
-        readonly IToolManager _toolRunner;
-        readonly IPromptManager _promptRunner;
-        readonly IResourceManager _resourceRunner;
+        readonly IToolClientHub _toolRunner;
+        readonly IPromptClientHub _promptRunner;
+        readonly IResourceClientHub _resourceRunner;
         readonly HubEventToolsChange _eventAppToolsChange;
         readonly HubEventPromptsChange _eventAppPromptsChange;
         readonly HubEventResourcesChange _eventAppResourcesChange;
         readonly CompositeDisposable _disposables = new();
 
         public IMcpServer McpServer => _mcpServer;
-        public IMcpRunner McpRunner => _mcpRunner;
-        public IToolManager ToolRunner => _toolRunner;
-        public IPromptManager PromptRunner => _promptRunner;
-        public IResourceManager ResourceRunner => _resourceRunner;
+        public IToolClientHub ToolRunner => _toolRunner;
+        public IPromptClientHub PromptRunner => _promptRunner;
+        public IResourceClientHub ResourceRunner => _resourceRunner;
 
         public static McpServerService? Instance { get; private set; }
 
         public McpServerService(
             ILogger<McpServerService> logger,
             IMcpServer mcpServer,
-            IMcpRunner mcpRunner,
-            IToolManager toolRunner,
-            IPromptManager promptRunner,
-            IResourceManager resourceRunner,
+            IToolClientHub toolRunner,
+            IPromptClientHub promptRunner,
+            IResourceClientHub resourceRunner,
             HubEventToolsChange eventAppToolsChange,
             HubEventPromptsChange eventAppPromptsChange,
             HubEventResourcesChange eventAppResourcesChange)
@@ -57,7 +54,6 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("{0} Ctor.", GetType().GetTypeShortName());
             _mcpServer = mcpServer ?? throw new ArgumentNullException(nameof(mcpServer));
-            _mcpRunner = mcpRunner ?? throw new ArgumentNullException(nameof(mcpRunner));
             _toolRunner = toolRunner ?? throw new ArgumentNullException(nameof(toolRunner));
             _promptRunner = promptRunner ?? throw new ArgumentNullException(nameof(promptRunner));
             _resourceRunner = resourceRunner ?? throw new ArgumentNullException(nameof(resourceRunner));

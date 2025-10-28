@@ -12,6 +12,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
@@ -19,7 +20,7 @@ using R3;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
-    public class RemotePromptRunner : IPromptManager, IDisposable
+    public class RemotePromptRunner : IPromptClientHub, IDisposable
     {
         readonly ILogger _logger;
         readonly IHubContext<McpServerHub> _remoteAppContext;
@@ -86,11 +87,11 @@ namespace com.IvanMurzak.McpPlugin.Server
             cts.Dispose();
         }
 
-        public async Task<ResponseData<ResponseGetPrompt>> RunGetPrompt(IRequestGetPrompt request, CancellationToken cancellationToken = default)
+        public async Task<ResponseData<ResponseGetPrompt>> RunGetPrompt(RequestGetPrompt request, CancellationToken cancellationToken = default)
         {
             var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
 
-            var responseData = await ClientUtils.InvokeAsync<IRequestGetPrompt, ResponseGetPrompt, McpServerHub>(
+            var responseData = await ClientUtils.InvokeAsync<RequestGetPrompt, ResponseGetPrompt, McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,
                 methodName: Consts.RPC.Client.RunGetPrompt,
@@ -103,8 +104,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             return ResponseGetPrompt.Error("Response data is null").Pack(request.RequestID);
         }
 
-        public Task<ResponseData<ResponseListPrompts>> RunListPrompts(IRequestListPrompts request, CancellationToken cancellationToken = default)
-            => ClientUtils.InvokeAsync<IRequestListPrompts, ResponseListPrompts, McpServerHub>(
+        public Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request, CancellationToken cancellationToken = default)
+            => ClientUtils.InvokeAsync<RequestListPrompts, ResponseListPrompts, McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,
                 methodName: Consts.RPC.Client.RunListPrompts,

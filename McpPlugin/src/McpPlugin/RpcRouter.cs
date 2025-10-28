@@ -11,6 +11,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common.Hub.Server;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -19,7 +20,7 @@ using R3;
 
 namespace com.IvanMurzak.McpPlugin.Common
 {
-    public class RpcRouter : IRpcRouter
+    public class RpcRouter : IRpcRouter, IServerHub
     {
         readonly ILogger<RpcRouter> _logger;
         readonly IMcpRunner _mcpRunner;
@@ -203,7 +204,6 @@ namespace com.IvanMurzak.McpPlugin.Common
         {
             DisposeAsync().Wait();
         }
-
         public Task DisposeAsync()
         {
             _logger.LogTrace("{class} DisposeAsync.", nameof(RpcRouter));

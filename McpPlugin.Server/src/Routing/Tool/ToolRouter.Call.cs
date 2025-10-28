@@ -15,6 +15,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.ReflectorNet;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -42,9 +43,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (mcpServerService == null)
                 return new CallToolResult().SetError($"[Error] '{nameof(mcpServerService)}' instance is null");
 
-            var toolRunner = mcpServerService.McpRunner.HasTool(request.Params.Name)
-                ? mcpServerService.McpRunner
-                : mcpServerService.ToolRunner;
+            var toolRunner = mcpServerService.ToolRunner; // if has local tool
 
             logger.Trace("Using ToolRunner: {0}", toolRunner?.GetType().GetTypeShortName());
 
@@ -53,14 +52,14 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             var requestData = new RequestCallTool(request.Params.Name, request.Params.Arguments);
             if (logger.IsTraceEnabled)
-                logger.Trace("Call remote tool '{0}':\n{1}", request.Params.Name, requestData.ToJsonOrEmptyJsonObject(McpPlugin.Instance?.McpRunner.Reflector));
+                logger.Trace("Call remote tool '{0}':\n{1}", request.Params.Name, requestData.ToPrettyJson());
 
             var response = await toolRunner.RunCallTool(requestData, cancellationToken: cancellationToken);
             if (response == null)
                 return new CallToolResult().SetError($"[Error] '{nameof(response)}' is null");
 
             if (logger.IsTraceEnabled)
-                logger.Trace("Call tool response:\n{0}", response.ToJsonOrEmptyJsonObject(McpPlugin.Instance?.McpRunner.Reflector));
+                logger.Trace("Call tool response:\n{0}", response.ToPrettyJson());
 
             if (response.Status == ResponseStatus.Error)
                 return new CallToolResult().SetError(response.Message ?? "[Error] Got an error during running tool");

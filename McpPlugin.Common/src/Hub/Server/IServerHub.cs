@@ -8,6 +8,7 @@
 └──────────────────────────────────────────────────────────────────┘
 */
 
+using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 
@@ -15,8 +16,14 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Server
 {
     public interface IServerHub
     {
-        Task<ResponseData> OnListToolsUpdated(string data);
-        Task<ResponseData> OnListResourcesUpdated(string data);
-        Task<ResponseData> OnToolRequestCompleted(ToolRequestCompletedData data);
+        Task<ResponseData> NotifyAboutUpdatedTools(CancellationToken cancellationToken = default);
+        Task<ResponseData> NotifyAboutUpdatedPrompts(CancellationToken cancellationToken = default);
+        Task<ResponseData> NotifyAboutUpdatedResources(CancellationToken cancellationToken = default);
+        Task<ResponseData> NotifyToolRequestCompleted(ResponseCallTool response, CancellationToken cancellationToken = default);
+        Task<VersionHandshakeResponse?> PerformVersionHandshake(CancellationToken cancellationToken = default);
+
+        // Task<ResponseData> OnListToolsUpdated(string data);
+        // Task<ResponseData> OnListResourcesUpdated(string data);
+        // Task<ResponseData> OnToolRequestCompleted(ToolRequestCompletedData data);
     }
 }

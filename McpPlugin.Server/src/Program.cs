@@ -81,7 +81,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                     configure.KeepAliveInterval = TimeSpan.FromSeconds(30);
                     configure.HandshakeTimeout = TimeSpan.FromMinutes(2);
                 })
-                .AddJsonProtocol(options => RpcJsonConfiguration.ConfigureJsonSerializer(reflector, options));
+                .AddJsonProtocol(options => SignalR_JsonConfiguration.ConfigureJsonSerializer(reflector, options));
 
                 // Setup MCP Plugin ---------------------------------------------------------------
                 var version = new Common.Version

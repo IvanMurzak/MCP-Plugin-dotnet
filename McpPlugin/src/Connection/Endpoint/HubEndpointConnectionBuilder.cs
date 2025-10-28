@@ -45,7 +45,7 @@ namespace com.IvanMurzak.McpPlugin
                     .WithAutomaticReconnect(new FixedRetryPolicy(TimeSpan.FromSeconds(10)))
                     .WithKeepAliveInterval(TimeSpan.FromSeconds(30))
                     .WithServerTimeout(TimeSpan.FromMinutes(5))
-                    .AddJsonProtocol(options => RpcJsonConfiguration.ConfigureJsonSerializer(_reflector, options))
+                    .AddJsonProtocol(options => SignalR_JsonConfiguration.ConfigureJsonSerializer(_reflector, options))
                     .ConfigureLogging(logging =>
                     {
                         logging.ClearProviders();

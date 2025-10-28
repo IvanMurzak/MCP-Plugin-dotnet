@@ -12,8 +12,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
-using com.IvanMurzak.McpPlugin.Common.Json;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Common.Utils;
 using Microsoft.Extensions.Logging;
 using R3;
 
@@ -85,7 +85,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (string.IsNullOrEmpty(response?.RequestID))
             {
                 _logger.LogError("Attempted to complete request with null or empty RequestID\n{Json}",
-                    System.Text.Json.JsonSerializer.Serialize(response, JsonOptions.Pretty));
+                    response.ToPrettyJson());
                 return;
             }
 

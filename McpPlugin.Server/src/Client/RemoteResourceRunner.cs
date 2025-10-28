@@ -12,6 +12,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
@@ -19,7 +20,7 @@ using R3;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
-    public class RemoteResourceRunner : IResourceManager, IDisposable
+    public class RemoteResourceRunner : IResourceClientHub, IDisposable
     {
         readonly ILogger _logger;
         readonly IHubContext<McpServerHub> _remoteAppContext;
@@ -35,9 +36,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
         }
 
-        public Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(IRequestResourceContent requestData, CancellationToken cancellationToken = default)
+        public Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(RequestResourceContent requestData, CancellationToken cancellationToken = default)
         {
-            return ClientUtils.InvokeAsync<IRequestResourceContent, ResponseResourceContent[], McpServerHub>(
+            return ClientUtils.InvokeAsync<RequestResourceContent, ResponseResourceContent[], McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,
                 methodName: Consts.RPC.Client.RunResourceContent,
@@ -45,9 +46,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                 cancellationToken: cancellationToken);
         }
 
-        public Task<ResponseData<ResponseListResource[]>> RunListResources(IRequestListResources requestData, CancellationToken cancellationToken = default)
+        public Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources requestData, CancellationToken cancellationToken = default)
         {
-            return ClientUtils.InvokeAsync<IRequestListResources, ResponseListResource[], McpServerHub>(
+            return ClientUtils.InvokeAsync<RequestListResources, ResponseListResource[], McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,
                 methodName: Consts.RPC.Client.RunListResources,
@@ -55,9 +56,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                 cancellationToken: cancellationToken);
         }
 
-        public Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(IRequestListResourceTemplates requestData, CancellationToken cancellationToken = default)
+        public Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(RequestListResourceTemplates requestData, CancellationToken cancellationToken = default)
         {
-            return ClientUtils.InvokeAsync<IRequestListResourceTemplates, ResponseResourceTemplate[], McpServerHub>(
+            return ClientUtils.InvokeAsync<RequestListResourceTemplates, ResponseResourceTemplate[], McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,
                 methodName: Consts.RPC.Client.RunListResourceTemplates,

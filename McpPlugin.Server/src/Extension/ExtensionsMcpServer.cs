@@ -10,6 +10,7 @@
 
 using System;
 using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
@@ -71,10 +72,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                             var service = new McpServerService(
                                 server.Services!.GetRequiredService<ILogger<McpServerService>>(),
                                 server,
-                                server.Services!.GetRequiredService<IMcpRunner>(),
-                                server.Services!.GetRequiredService<IToolManager>(),
-                                server.Services!.GetRequiredService<IPromptManager>(),
-                                server.Services!.GetRequiredService<IResourceManager>(),
+                                server.Services!.GetRequiredService<IToolClientHub>(),
+                                server.Services!.GetRequiredService<IPromptClientHub>(),
+                                server.Services!.GetRequiredService<IResourceClientHub>(),
                                 server.Services!.GetRequiredService<HubEventToolsChange>(),
                                 server.Services!.GetRequiredService<HubEventPromptsChange>(),
                                 server.Services!.GetRequiredService<HubEventResourcesChange>()

@@ -2,7 +2,7 @@ using com.IvanMurzak.ReflectorNet;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public static class RpcJsonConfiguration
+    public static class SignalR_JsonConfiguration
     {
         public static void ConfigureJsonSerializer(Reflector reflector, Microsoft.AspNetCore.SignalR.JsonHubProtocolOptions options)
         {

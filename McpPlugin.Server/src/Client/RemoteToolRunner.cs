@@ -12,6 +12,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
@@ -19,7 +20,7 @@ using R3;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
-    public class RemoteToolRunner : IToolManager, IDisposable
+    public class RemoteToolRunner : IToolClientHub, IDisposable
     {
         readonly ILogger _logger;
         readonly IHubContext<McpServerHub> _remoteAppContext;
