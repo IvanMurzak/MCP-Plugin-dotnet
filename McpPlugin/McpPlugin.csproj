@@ -1,0 +1,38 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.1</TargetFrameworks>
+    <RootNamespace>com.IvanMurzak.McpPlugin</RootNamespace>
+    <LangVersion>9.0</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RuntimeIdentifiers>win-x64;win-x86;win-arm64;linux-x64;linux-arm64;osx-x64;osx-arm64</RuntimeIdentifiers>
+
+    <!-- NuGet Package Information -->
+    <PackageId>com.IvanMurzak.McpPlugin</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Ivan Murzak</Authors>
+    <Copyright>Copyright © Ivan Murzak 2025</Copyright>
+    <Description>McpPlugin is a .NET Library project for integration MCP server features into any dotnet application. It connects automatically with MCP server and exposes it's API over TCP connection in runtime. When MCP server interacts with AI. This library maintains a local application.</Description>
+    <PackageTags>AI;MCP;Plugin;Networking</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/IvanMurzak/MCP-Plugin-dotnet</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/IvanMurzak/MCP-Plugin-dotnet</PackageProjectUrl>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="./../README.md" Pack="true" PackagePath="/" />
+    <None Include="./../LICENSE" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="com.IvanMurzak.ReflectorNet" Version="2.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
+    <PackageReference Include="ModelContextProtocol" Version="0.3.0-preview.4" />
+    <PackageReference Include="R3" Version="1.3.0" />
+  </ItemGroup>
+
+</Project>

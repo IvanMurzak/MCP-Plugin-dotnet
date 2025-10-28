@@ -1,0 +1,67 @@
+name: deploy
+
+on:
+  release:
+    types: [released]
+
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Deploy to NuGet and Docker Hub version (e.g., 1.0.0).'
+        required: true
+        type: string
+
+  workflow_call:
+    inputs:
+      version: { required: true, type: string }
+    secrets:
+      NUGET_API_KEY:    { required: true }
+      DOCKER_USERNAME:  { required: true }
+      DOCKER_PASSWORD:  { required: true }
+
+jobs:
+  deploy-to-nuget:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          version=${{ inputs.version || github.event.release.tag_name }}
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "Extracted version: $version"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        working-directory: ./McpPlugin
+        run: dotnet restore
+
+      - name: Build
+        working-directory: ./McpPlugin
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Test
+        working-directory: ./McpPlugin
+        run: dotnet test --no-build --verbosity normal --configuration Release
+
+      - name: Pack NuGet package
+        working-directory: ./McpPlugin
+        run: dotnet pack com.IvanMurzak.McpPlugin.csproj --no-build --configuration Release --output ./nupkg
+
+      - name: Deploy MCP Server NuGet package
+        working-directory: ./McpPlugin
+        run: |
+          # Construct the expected .nupkg filename using the version
+          nupkg_file="./nupkg/com.IvanMurzak.McpPlugin.${{ steps.version.outputs.version }}.nupkg"
+          if [ ! -f "$nupkg_file" ]; then
+            echo "Error: Expected .nupkg file not found: $nupkg_file"
+            exit 1
+          fi
+          echo "Deploying NuGet package: $nupkg_file (version: ${{ steps.version.outputs.version }})"
+          dotnet nuget push "$nupkg_file" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
