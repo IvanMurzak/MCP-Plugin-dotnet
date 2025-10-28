@@ -1,6 +1,20 @@
 {
     "cSpell.words": [
         "netstandard",
-        "xunit"
-    ]
+        "xunit",
+        "signalr"
+    ],
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+        "source.organizeImports": "explicit",
+        "source.fixAll": "explicit"
+    },
+    "[csharp]": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit",
+            "source.fixAll": "explicit"
+        }
+    },
+    "dotnet.formatting.organizeImportsOnFormat": true
 }

@@ -10,7 +10,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace com.IvanMurzak.Unity.MCP.Common.Model
+namespace com.IvanMurzak.McpPlugin.Common.Model
 {
     public interface IRequestNotification : IRequestID, IDisposable
     {

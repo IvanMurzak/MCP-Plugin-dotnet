@@ -2,7 +2,7 @@ using System;
 using Microsoft.Extensions.Logging;
 using Xunit.Abstractions;
 
-namespace com.IvanMurzak.Unity.MCP.Common.Tests.Infrastructure
+namespace com.IvanMurzak.McpPlugin.Common.Tests.Infrastructure
 {
     /// <summary>
     /// ILogger implementation that writes to xUnit's ITestOutputHelper.

@@ -10,7 +10,7 @@
 using System.Threading;
 using R3;
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     public static class ExtensionsCompositeDisposable
     {

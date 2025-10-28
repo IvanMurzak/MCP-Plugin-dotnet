@@ -8,4 +8,4 @@ This folder contains intentionally small, single-purpose classes used by tests a
 
 Each class represents one case to keep discovery simple and unambiguous.
 
-Namespace: `com.IvanMurzak.Unity.MCP.Common.Tests.SampleData`.
+Namespace: `com.IvanMurzak.McpPlugin.Common.Tests.SampleData`.

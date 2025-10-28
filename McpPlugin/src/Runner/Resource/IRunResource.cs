@@ -11,7 +11,7 @@
 #nullable enable
 using System.Text.Json.Serialization;
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     public interface IRunResource : IEnabled
     {

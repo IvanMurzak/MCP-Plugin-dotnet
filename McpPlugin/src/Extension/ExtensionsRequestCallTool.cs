@@ -9,10 +9,10 @@
 */
 using System.Collections.Generic;
 using System.Text.Json;
+using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.ReflectorNet;
-using com.IvanMurzak.Unity.MCP.Common.Model;
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     public static class ExtensionsRequestCallTool
     {

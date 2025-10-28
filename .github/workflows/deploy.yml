@@ -39,26 +39,38 @@ jobs:
           dotnet-version: '9.0.x'
 
       - name: Restore dependencies
-        working-directory: ./McpPlugin
+        working-directory: ./
         run: dotnet restore
 
       - name: Build
-        working-directory: ./McpPlugin
+        working-directory: ./
         run: dotnet build --no-restore --configuration Release
 
       - name: Test
-        working-directory: ./McpPlugin
+        working-directory: ./
         run: dotnet test --no-build --verbosity normal --configuration Release
 
-      - name: Pack NuGet package
+      - name: Pack McpPlugin NuGet package
         working-directory: ./McpPlugin
-        run: dotnet pack com.IvanMurzak.McpPlugin.csproj --no-build --configuration Release --output ./nupkg
+        run: dotnet pack McpPlugin.csproj --no-build --configuration Release --output ../nupkg
 
-      - name: Deploy MCP Server NuGet package
-        working-directory: ./McpPlugin
+      - name: Pack McpPlugin.Server NuGet package
+        working-directory: ./McpPlugin.Server
+        run: dotnet pack McpPlugin.Server.csproj --no-build --configuration Release --output ../nupkg
+
+      - name: Deploy McpPlugin NuGet package
         run: |
-          # Construct the expected .nupkg filename using the version
           nupkg_file="./nupkg/com.IvanMurzak.McpPlugin.${{ steps.version.outputs.version }}.nupkg"
+          if [ ! -f "$nupkg_file" ]; then
+            echo "Error: Expected .nupkg file not found: $nupkg_file"
+            exit 1
+          fi
+          echo "Deploying NuGet package: $nupkg_file (version: ${{ steps.version.outputs.version }})"
+          dotnet nuget push "$nupkg_file" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+
+      - name: Deploy McpPlugin.Server NuGet package
+        run: |
+          nupkg_file="./nupkg/com.IvanMurzak.McpPlugin.Server.${{ steps.version.outputs.version }}.nupkg"
           if [ ! -f "$nupkg_file" ]; then
             echo "Error: Expected .nupkg file not found: $nupkg_file"
             exit 1

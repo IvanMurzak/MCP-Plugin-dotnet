@@ -8,11 +8,11 @@
 └──────────────────────────────────────────────────────────────────┘
 */
 using System;
-using Xunit;
+using com.IvanMurzak.McpPlugin.Common.Model;
 using FluentAssertions;
-using com.IvanMurzak.Unity.MCP.Common.Model;
+using Xunit;
 
-namespace com.IvanMurzak.Unity.MCP.Common.Tests.Data
+namespace com.IvanMurzak.McpPlugin.Common.Tests.Data
 {
     public class ResponseDataTests
     {

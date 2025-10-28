@@ -10,7 +10,7 @@
 #nullable enable
 using System;
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     [AttributeUsage(AttributeTargets.Parameter)]
     public sealed class RequestIDAttribute : Attribute

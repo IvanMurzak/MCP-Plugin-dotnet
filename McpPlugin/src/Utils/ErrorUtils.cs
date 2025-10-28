@@ -9,7 +9,7 @@
 */
 using System.Text.RegularExpressions;
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     public static partial class ErrorUtils
     {

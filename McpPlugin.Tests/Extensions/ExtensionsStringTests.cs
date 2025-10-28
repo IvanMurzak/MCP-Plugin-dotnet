@@ -9,10 +9,10 @@
 */
 using System;
 using System.Collections.Generic;
-using Xunit;
 using FluentAssertions;
+using Xunit;
 
-namespace com.IvanMurzak.Unity.MCP.Common.Tests.Extensions
+namespace com.IvanMurzak.McpPlugin.Common.Tests.Extensions
 {
     public class ExtensionsStringTests
     {

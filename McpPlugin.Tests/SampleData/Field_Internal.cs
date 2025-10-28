@@ -1,6 +1,6 @@
 // Internal field
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
-namespace com.IvanMurzak.Unity.MCP.Common.Tests.SampleData
+namespace com.IvanMurzak.McpPlugin.Common.Tests.SampleData
 {
     internal class Field_Internal
     {

@@ -10,7 +10,7 @@
 using System;
 using com.IvanMurzak.ReflectorNet;
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     public interface IMcpRunner : IToolRunner, IResourceRunner, IPromptRunner, IDisposable
     {

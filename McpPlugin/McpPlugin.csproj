@@ -28,6 +28,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="./../McpPlugin.Common/McpPlugin.Common.csproj" />
+    <!-- <PackageReference Include="com.IvanMurzak.McpPlugin.Common" Version="1.0.0" /> -->
     <PackageReference Include="com.IvanMurzak.ReflectorNet" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.10" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.10" />

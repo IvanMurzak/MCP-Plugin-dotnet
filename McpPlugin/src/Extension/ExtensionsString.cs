@@ -10,7 +10,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     public static class ExtensionsString
     {

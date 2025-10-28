@@ -12,7 +12,7 @@
 using System;
 using Microsoft.Extensions.Logging;
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     public class ForwardLoggerProvider : ILoggerProvider
     {

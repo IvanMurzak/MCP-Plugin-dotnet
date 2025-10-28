@@ -7,7 +7,7 @@
 │  See the LICENSE file in the project root for more information.  │
 └──────────────────────────────────────────────────────────────────┘
 */
-namespace com.IvanMurzak.Unity.MCP.Common.Model.Unity
+namespace com.IvanMurzak.McpPlugin.Common.Model.Unity
 {
     [System.Serializable]
     public class ComponentDataLight

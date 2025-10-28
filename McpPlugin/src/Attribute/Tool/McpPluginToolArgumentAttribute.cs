@@ -11,7 +11,7 @@
 #nullable enable
 using System;
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public sealed class McpPluginToolArgumentAttribute : Attribute

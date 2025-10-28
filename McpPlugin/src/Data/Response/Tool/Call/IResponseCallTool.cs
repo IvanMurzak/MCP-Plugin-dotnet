@@ -12,7 +12,7 @@
 using System.Collections.Generic;
 using System.Text.Json.Nodes;
 
-namespace com.IvanMurzak.Unity.MCP.Common.Model
+namespace com.IvanMurzak.McpPlugin.Common.Model
 {
     public interface IResponseCallTool : IRequestID
     {

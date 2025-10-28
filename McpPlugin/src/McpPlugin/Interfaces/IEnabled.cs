@@ -10,7 +10,7 @@
 
 #nullable enable
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     public interface IEnabled
     {

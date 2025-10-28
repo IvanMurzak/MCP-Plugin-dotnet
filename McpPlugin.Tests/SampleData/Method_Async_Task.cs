@@ -1,7 +1,7 @@
 // Async method returning Task
 using System.Threading.Tasks;
 
-namespace com.IvanMurzak.Unity.MCP.Common.Tests.SampleData
+namespace com.IvanMurzak.McpPlugin.Common.Tests.SampleData
 {
     public class Method_Async_Task
     {

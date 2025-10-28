@@ -11,11 +11,11 @@
 #nullable enable
 using System.Threading;
 using System.Threading.Tasks;
-using com.IvanMurzak.Unity.MCP.Common.Model;
+using com.IvanMurzak.McpPlugin.Common.Model;
 using Microsoft.AspNetCore.SignalR.Client;
 using R3;
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     public interface IRpcRouter : IDisposableAsync
     {

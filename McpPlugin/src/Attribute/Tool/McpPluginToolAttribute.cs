@@ -10,7 +10,7 @@
 #nullable enable
 using System;
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     [AttributeUsage(AttributeTargets.Method)]
     public sealed class McpPluginToolAttribute : Attribute

@@ -14,9 +14,9 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
-using com.IvanMurzak.Unity.MCP.Common.Model;
+using com.IvanMurzak.McpPlugin.Common.Model;
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     public interface IRunTool : IEnabled
     {

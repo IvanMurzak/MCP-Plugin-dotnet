@@ -1,7 +1,7 @@
 // Cases: value tuples and nullable reference types
 using System;
 
-namespace com.IvanMurzak.Unity.MCP.Common.Tests.SampleData
+namespace com.IvanMurzak.McpPlugin.Common.Tests.SampleData
 {
     public class TupleAndNullable
     {

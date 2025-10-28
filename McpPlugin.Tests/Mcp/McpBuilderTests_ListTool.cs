@@ -14,16 +14,16 @@ using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Common.Tests.Infrastructure;
+using com.IvanMurzak.McpPlugin.Common.Tests.Utils;
 using com.IvanMurzak.ReflectorNet;
 using com.IvanMurzak.ReflectorNet.Utils;
-using com.IvanMurzak.Unity.MCP.Common.Model;
-using com.IvanMurzak.Unity.MCP.Common.Tests.Infrastructure;
-using com.IvanMurzak.Unity.MCP.Common.Tests.Utils;
 using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace com.IvanMurzak.Unity.MCP.Common.Tests.Mcp
+namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
 {
     public class McpBuilderTests_ListTool
     {

@@ -4,7 +4,7 @@ using System.Text.Json.Nodes;
 using com.IvanMurzak.ReflectorNet;
 using com.IvanMurzak.ReflectorNet.Utils;
 
-namespace com.IvanMurzak.Unity.MCP.Common.Tests.Utils
+namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
 {
     internal class JsonObjectBuilder
     {

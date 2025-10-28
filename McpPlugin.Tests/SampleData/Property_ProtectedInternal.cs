@@ -1,5 +1,5 @@
 // Protected internal property
-namespace com.IvanMurzak.Unity.MCP.Common.Tests.SampleData
+namespace com.IvanMurzak.McpPlugin.Common.Tests.SampleData
 {
     public class Property_ProtectedInternal
     {

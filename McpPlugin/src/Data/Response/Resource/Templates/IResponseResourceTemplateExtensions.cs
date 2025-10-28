@@ -11,7 +11,7 @@
 using System;
 using Microsoft.Extensions.Logging;
 
-namespace com.IvanMurzak.Unity.MCP.Common.Model
+namespace com.IvanMurzak.McpPlugin.Common.Model
 {
     public static class IResponseResourceTemplateExtensions
     {

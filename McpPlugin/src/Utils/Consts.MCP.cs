@@ -9,7 +9,7 @@
 */
 using System.Text.Json.Nodes;
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     public static partial class Consts
     {

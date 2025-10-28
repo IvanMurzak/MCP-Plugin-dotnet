@@ -11,9 +11,9 @@
 using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using com.IvanMurzak.Unity.MCP.Common.Model.Unity;
+using com.IvanMurzak.McpPlugin.Common.Model.Unity;
 
-namespace com.IvanMurzak.Unity.MCP.Common.Json
+namespace com.IvanMurzak.McpPlugin.Common.Json
 {
     public class ComponentRefConverter : JsonConverter<ComponentRef>
     {

@@ -1,5 +1,5 @@
 // Method with two arguments returning string
-namespace com.IvanMurzak.Unity.MCP.Common.Tests.SampleData
+namespace com.IvanMurzak.McpPlugin.Common.Tests.SampleData
 {
     public class Method_TwoArgs_StringReturn
     {

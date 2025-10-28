@@ -10,9 +10,9 @@
 
 #nullable enable
 using System.Threading.Tasks;
-using com.IvanMurzak.Unity.MCP.Common.Model;
+using com.IvanMurzak.McpPlugin.Common.Model;
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     public interface IServerHub
     {

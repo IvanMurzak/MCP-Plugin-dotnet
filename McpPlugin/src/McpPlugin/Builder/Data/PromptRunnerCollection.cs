@@ -15,7 +15,7 @@ using System.Linq;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.Logging;
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     public class PromptRunnerCollection : Dictionary<string, IRunPrompt>
     {

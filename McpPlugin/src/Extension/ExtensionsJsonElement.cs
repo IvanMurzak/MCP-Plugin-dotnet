@@ -10,8 +10,8 @@
 #nullable enable
 using System.Text;
 using System.Text.Json;
+using com.IvanMurzak.McpPlugin.Common.Model.Unity;
 using com.IvanMurzak.ReflectorNet;
-using com.IvanMurzak.Unity.MCP.Common.Model.Unity;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.Unity.MCP.Utils

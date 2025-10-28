@@ -11,7 +11,7 @@
 #nullable enable
 using System.Collections.Generic;
 
-namespace com.IvanMurzak.Unity.MCP.Common.Model
+namespace com.IvanMurzak.McpPlugin.Common.Model
 {
     public class ResponseListPrompts : IResponseListPrompt
     {

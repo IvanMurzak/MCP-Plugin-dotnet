@@ -10,7 +10,7 @@
 using System;
 using System.Reflection;
 
-namespace com.IvanMurzak.Unity.MCP.Common
+namespace com.IvanMurzak.McpPlugin.Common
 {
     public class ResourceMethodData
     {

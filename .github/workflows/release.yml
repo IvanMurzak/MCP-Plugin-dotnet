@@ -19,11 +19,12 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Get version from package.json
+      - name: Get version from csproj
         id: get_version
-        uses: martinbeentjes/npm-get-version-action@v1.3.1
-        with:
-          path: Unity-MCP-Plugin/Assets/root
+        run: |
+          version=$(grep -oPm1 "(?<=<Version>)[^<]+" McpPlugin/McpPlugin.csproj)
+          echo "current-version=$version" >> $GITHUB_OUTPUT
+          echo "Version: $version"
 
       - name: Find previous version tag
         id: prev_tag

@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Text.Json.Nodes;
 using com.IvanMurzak.ReflectorNet.Utils;
 
-namespace com.IvanMurzak.Unity.MCP.Common.Tests.Utils
+namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
 {
     internal static class JsonObjectBuilderConstructExtensions
     {
@@ -34,8 +34,8 @@ namespace com.IvanMurzak.Unity.MCP.Common.Tests.Utils
 
                 // Person[] array definition
                 .AddArrayDefinitionRef(
-                    name: "com.IvanMurzak.Unity.MCP.Common.Tests.SampleData.Person_Array",
-                    itemType: "com.IvanMurzak.Unity.MCP.Common.Tests.SampleData.Person")
+                    name: "com.IvanMurzak.McpPlugin.Common.Tests.SampleData.Person_Array",
+                    itemType: "com.IvanMurzak.McpPlugin.Common.Tests.SampleData.Person")
 
                 // Person definition
                 .AddDefinition(

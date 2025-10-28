@@ -1,0 +1,6 @@
+@McpServer_HostAddress = http://localhost:5173
+
+GET {{McpServer_HostAddress}}/mcp/
+Accept: application/json
+
+###

@@ -1,5 +1,5 @@
 // Cases: properties/fields as instances of another class (including generics and self-reference)
-namespace com.IvanMurzak.Unity.MCP.Common.Tests.SampleData
+namespace com.IvanMurzak.McpPlugin.Common.Tests.SampleData
 {
     public class Node
     {

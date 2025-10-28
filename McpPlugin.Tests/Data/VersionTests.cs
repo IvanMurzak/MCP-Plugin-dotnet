@@ -7,10 +7,10 @@
 │  See the LICENSE file in the project root for more information.  │
 └──────────────────────────────────────────────────────────────────┘
 */
-using Xunit;
 using FluentAssertions;
+using Xunit;
 
-namespace com.IvanMurzak.Unity.MCP.Common.Tests.Data
+namespace com.IvanMurzak.McpPlugin.Common.Tests.Data
 {
     public class VersionTests
     {
