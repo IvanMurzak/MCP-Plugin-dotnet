@@ -155,5 +155,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             // to support semantic versioning compatibility rules
             return pluginApiVersion.Equals(serverApiVersion, StringComparison.OrdinalIgnoreCase);
         }
+
+        public Task<ResponseData> NotifyToolRequestCompleted(ResponseCallTool response, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -78,7 +78,16 @@ namespace com.IvanMurzak.McpPlugin.Common
             // Perform version handshake first
 
             var cancellationToken = _serverEventsDisposables.ToCancellationToken();
-            var handshakeResponse = await PerformVersionHandshake(cancellationToken);
+            var handshakeResponse = await PerformVersionHandshake(
+                request: new VersionHandshakeRequest
+                {
+                    RequestID = Guid.NewGuid().ToString(),
+                    ApiVersion = _apiVersion.Api,
+                    PluginVersion = _apiVersion.Plugin,
+                    UnityVersion = _apiVersion.UnityVersion
+                },
+                cancellationToken: cancellationToken);
+
             if (handshakeResponse != null && !handshakeResponse.Compatible)
             {
                 LogVersionMismatchError(handshakeResponse);
@@ -94,7 +103,7 @@ namespace com.IvanMurzak.McpPlugin.Common
 
         private void LogVersionMismatchError(VersionHandshakeResponse handshakeResponse)
         {
-            var errorMessage = $"[Unity-MCP] API VERSION MISMATCH: {handshakeResponse.Message}";
+            var errorMessage = $"[MCP-Plugin] API VERSION MISMATCH: {handshakeResponse.Message}";
 
             // Log using ILogger which will be connected to Unity's logging system from the outside
             _logger.LogError(errorMessage);
@@ -102,17 +111,9 @@ namespace com.IvanMurzak.McpPlugin.Common
 
         protected abstract void SubscribeOnServerEvents(HubConnection hubConnection, CompositeDisposable disposables);
 
-        public async Task<VersionHandshakeResponse?> PerformVersionHandshake(CancellationToken cancellationToken = default)
+        public async Task<VersionHandshakeResponse?> PerformVersionHandshake(VersionHandshakeRequest request, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{class} Performing version handshake.", GetType().Name);
-
-            var request = new VersionHandshakeRequest
-            {
-                RequestID = Guid.NewGuid().ToString(),
-                ApiVersion = _apiVersion.Api,
-                PluginVersion = _apiVersion.Plugin,
-                UnityVersion = _apiVersion.UnityVersion
-            };
 
             try
             {
