@@ -1,18 +1,18 @@
 /*
-┌──────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)             │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)    │
-│  Copyright (c) 2025 Ivan Murzak                                  │
-│  Licensed under the Apache License, Version 2.0.                 │
-│  See the LICENSE file in the project root for more information.  │
-└──────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
+│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
+│  Copyright (c) 2025 Ivan Murzak                                        │
+│  Licensed under the Apache License, Version 2.0.                       │
+│  See the LICENSE file in the project root for more information.        │
+└────────────────────────────────────────────────────────────────────────┘
 */
 
-#nullable enable
 using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common.Hub.Server;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
@@ -23,18 +23,27 @@ namespace com.IvanMurzak.McpPlugin.Common
     public partial class McpPlugin : IMcpPlugin
     {
         readonly ILogger<McpPlugin> _logger;
-        readonly IRpcRouter? _rpcRouter;
+        readonly IRemoteToolServerHub? _remoteToolServerHub;
+        readonly IRemotePromptServerHub? _remotePromptServerHub;
+        readonly IRemoteResourceServerHub? _remoteResourceServerHub;
         readonly CompositeDisposable _disposables = new();
 
         public ILogger Logger => _logger;
-        public IMcpRunner McpRunner { get; private set; }
-        public IRpcRouter? RpcRouter => _rpcRouter;
-        public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _rpcRouter?.ConnectionState
+        public IMcpManager McpRunner { get; private set; }
+        public IRemoteToolServerHub? RemoteToolServerHub => _remoteToolServerHub;
+        public IRemotePromptServerHub? RemotePromptServerHub => _remotePromptServerHub;
+        public IRemoteResourceServerHub? RemoteResourceServerHub => _remoteResourceServerHub;
+        public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _remoteToolServerHub?.ConnectionState
             ?? new ReactiveProperty<HubConnectionState>(HubConnectionState.Disconnected);
-        public ReadOnlyReactiveProperty<bool> KeepConnected => _rpcRouter?.KeepConnected
+        public ReadOnlyReactiveProperty<bool> KeepConnected => _remoteToolServerHub?.KeepConnected
             ?? new ReactiveProperty<bool>(false);
 
-        public McpPlugin(ILogger<McpPlugin> logger, IMcpRunner mcpRunner, IRpcRouter? rpcRouter = null)
+        public McpPlugin(
+            ILogger<McpPlugin> logger,
+            IMcpManager mcpRunner,
+            IRemoteToolServerHub? remoteServerHub = null,
+            IRemotePromptServerHub? remotePromptServerHub = null,
+            IRemoteResourceServerHub? remoteResourceServerHub = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("{0} Ctor.", typeof(McpPlugin).Name);
@@ -43,8 +52,11 @@ namespace com.IvanMurzak.McpPlugin.Common
 
             var cancellationToken = _disposables.ToCancellationToken();
 
-            _rpcRouter = rpcRouter;
-            _rpcRouter?.ConnectionState
+            _remoteToolServerHub = remoteServerHub;
+            _remotePromptServerHub = remotePromptServerHub;
+            _remoteResourceServerHub = remoteResourceServerHub;
+
+            _remoteToolServerHub?.ConnectionState
                 .Where(state => state == HubConnectionState.Connected)
                 .Where(state => !cancellationToken.IsCancellationRequested)
                 .Subscribe(async state =>
@@ -55,7 +67,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                         state);
 
                     // Perform version handshake first
-                    var handshakeResponse = await _rpcRouter.PerformVersionHandshake(cancellationToken);
+                    var handshakeResponse = await _remoteToolServerHub.PerformVersionHandshake(cancellationToken);
                     if (handshakeResponse != null && !handshakeResponse.Compatible)
                     {
                         LogVersionMismatchError(handshakeResponse);
@@ -67,16 +79,65 @@ namespace com.IvanMurzak.McpPlugin.Common
 
                     var tasks = Enumerable.Empty<Task>();
 
-                    if (mcpRunner.EnabledToolsCount > 0)
-                        tasks.Append(_rpcRouter.NotifyAboutUpdatedTools(cancellationToken));
+                    await _remoteToolServerHub.NotifyAboutUpdatedTools(cancellationToken);
 
-                    if (mcpRunner.EnabledPromptsCount > 0)
-                        tasks.Append(_rpcRouter.NotifyAboutUpdatedPrompts(cancellationToken));
+                    _logger.LogDebug("{class}.{method}, initial notifications sent.",
+                        nameof(McpPlugin),
+                        nameof(ConnectionState));
+                })
+                .AddTo(_disposables);
 
-                    if (mcpRunner.EnabledResourcesCount > 0)
-                        tasks.Append(_rpcRouter.NotifyAboutUpdatedResources(cancellationToken));
+            _remotePromptServerHub?.ConnectionState
+                .Where(state => state == HubConnectionState.Connected)
+                .Where(state => !cancellationToken.IsCancellationRequested)
+                .Subscribe(async state =>
+                {
+                    _logger.LogDebug("{class}.{method}, connection state: {2}",
+                        nameof(McpPlugin),
+                        nameof(ConnectionState),
+                        state);
 
-                    await Task.WhenAll(tasks);
+                    // Perform version handshake first
+                    var handshakeResponse = await _remotePromptServerHub.PerformVersionHandshake(cancellationToken);
+                    if (handshakeResponse != null && !handshakeResponse.Compatible)
+                    {
+                        LogVersionMismatchError(handshakeResponse);
+                        // Still proceed with tool notification for now, but user will see the error
+                    }
+
+                    if (cancellationToken.IsCancellationRequested)
+                        return;
+
+                    await _remotePromptServerHub.NotifyAboutUpdatedPrompts(cancellationToken);
+
+                    _logger.LogDebug("{class}.{method}, initial notifications sent.",
+                        nameof(McpPlugin),
+                        nameof(ConnectionState));
+                })
+                .AddTo(_disposables);
+
+            _remoteResourceServerHub?.ConnectionState
+                .Where(state => state == HubConnectionState.Connected)
+                .Where(state => !cancellationToken.IsCancellationRequested)
+                .Subscribe(async state =>
+                {
+                    _logger.LogDebug("{class}.{method}, connection state: {2}",
+                        nameof(McpPlugin),
+                        nameof(ConnectionState),
+                        state);
+
+                    // Perform version handshake first
+                    var handshakeResponse = await _remoteResourceServerHub.PerformVersionHandshake(cancellationToken);
+                    if (handshakeResponse != null && !handshakeResponse.Compatible)
+                    {
+                        LogVersionMismatchError(handshakeResponse);
+                        // Still proceed with tool notification for now, but user will see the error
+                    }
+
+                    if (cancellationToken.IsCancellationRequested)
+                        return;
+
+                    await _remoteResourceServerHub.NotifyAboutUpdatedResources(cancellationToken);
 
                     _logger.LogDebug("{class}.{method}, initial notifications sent.",
                         nameof(McpPlugin),
@@ -94,7 +155,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                     if (cancellationToken.IsCancellationRequested)
                         return;
 
-                    if (_rpcRouter == null)
+                    if (_remoteToolServerHub == null)
                     {
                         _logger.LogWarning("{class}.{method}, RPC Router is not initialized, cannot notify about updated tools.",
                             nameof(McpPlugin),
@@ -102,7 +163,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                         return;
                     }
 
-                    await _rpcRouter.NotifyAboutUpdatedTools(cancellationToken);
+                    await _remoteToolServerHub.NotifyAboutUpdatedTools(cancellationToken);
                 })
                 .AddTo(_disposables);
 
@@ -116,15 +177,15 @@ namespace com.IvanMurzak.McpPlugin.Common
                     if (cancellationToken.IsCancellationRequested)
                         return;
 
-                    if (_rpcRouter == null)
+                    if (_remotePromptServerHub == null)
                     {
-                        _logger.LogWarning("{class}.{method}, RPC Router is not initialized, cannot notify about updated tools.",
+                        _logger.LogWarning("{class}.{method}, RPC Router is not initialized, cannot notify about updated prompts.",
                             nameof(McpPlugin),
-                            nameof(McpRunner.OnToolsUpdated));
+                            nameof(McpRunner.OnPromptsUpdated));
                         return;
                     }
 
-                    await _rpcRouter.NotifyAboutUpdatedPrompts(cancellationToken);
+                    await _remotePromptServerHub.NotifyAboutUpdatedPrompts(cancellationToken);
                 })
                 .AddTo(_disposables);
 
@@ -138,15 +199,15 @@ namespace com.IvanMurzak.McpPlugin.Common
                     if (cancellationToken.IsCancellationRequested)
                         return;
 
-                    if (_rpcRouter == null)
+                    if (_remoteResourceServerHub == null)
                     {
-                        _logger.LogWarning("{class}.{method}, RPC Router is not initialized, cannot notify about updated tools.",
+                        _logger.LogWarning("{class}.{method}, RPC Router is not initialized, cannot notify about updated resources.",
                             nameof(McpPlugin),
-                            nameof(McpRunner.OnToolsUpdated));
+                            nameof(McpRunner.OnResourcesUpdated));
                         return;
                     }
 
-                    await _rpcRouter.NotifyAboutUpdatedResources(cancellationToken);
+                    await _remoteResourceServerHub.NotifyAboutUpdatedResources(cancellationToken);
                 })
                 .AddTo(_disposables);
 
@@ -168,17 +229,17 @@ namespace com.IvanMurzak.McpPlugin.Common
         public Task<bool> Connect(CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("{class}.{method} called.", nameof(McpPlugin), nameof(Connect));
-            if (_rpcRouter == null)
+            if (_remoteToolServerHub == null)
                 return Task.FromResult(false);
-            return _rpcRouter.Connect(cancellationToken);
+            return _remoteToolServerHub.Connect(cancellationToken);
         }
 
         public Task Disconnect(CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("{class}.{method} called.", nameof(McpPlugin), nameof(Disconnect));
-            if (_rpcRouter == null)
+            if (_remoteToolServerHub == null)
                 return Task.CompletedTask;
-            return _rpcRouter.Disconnect(cancellationToken);
+            return _remoteToolServerHub.Disconnect(cancellationToken);
         }
 
         private void LogVersionMismatchError(VersionHandshakeResponse handshakeResponse)
@@ -211,8 +272,8 @@ namespace com.IvanMurzak.McpPlugin.Common
 
             try
             {
-                if (_rpcRouter != null)
-                    await _rpcRouter.Disconnect();
+                if (_remoteToolServerHub != null)
+                    await _remoteToolServerHub.Disconnect();
             }
             catch (Exception ex)
             {
@@ -221,8 +282,8 @@ namespace com.IvanMurzak.McpPlugin.Common
 
             try
             {
-                if (_rpcRouter != null)
-                    await _rpcRouter.DisposeAsync();
+                if (_remoteToolServerHub != null)
+                    await _remoteToolServerHub.DisposeAsync();
             }
             catch (Exception ex)
             {

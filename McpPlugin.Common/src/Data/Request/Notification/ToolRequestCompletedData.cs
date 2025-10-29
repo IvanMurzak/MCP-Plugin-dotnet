@@ -1,4 +1,4 @@
-#nullable enable
+
 
 namespace com.IvanMurzak.McpPlugin.Common.Model
 {

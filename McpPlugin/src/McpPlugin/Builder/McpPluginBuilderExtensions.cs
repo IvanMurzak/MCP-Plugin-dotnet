@@ -1,14 +1,13 @@
 /*
-┌──────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)             │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)    │
-│  Copyright (c) 2025 Ivan Murzak                                  │
-│  Licensed under the Apache License, Version 2.0.                 │
-│  See the LICENSE file in the project root for more information.  │
-└──────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
+│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
+│  Copyright (c) 2025 Ivan Murzak                                        │
+│  Licensed under the Apache License, Version 2.0.                       │
+│  See the LICENSE file in the project root for more information.        │
+└────────────────────────────────────────────────────────────────────────┘
 */
 
-#nullable enable
 using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -31,7 +30,7 @@ namespace com.IvanMurzak.McpPlugin.Common
         public static IMcpPluginBuilder AddMcpPlugin(this IMcpPluginBuilder builder)
         {
             builder.AddMcpRunner();
-            builder.Services.AddTransient<IRpcRouter, RpcRouter>();
+            builder.Services.AddTransient<IConnectServerHub, RemoteServerHub>();
 
             // // TODO: Uncomment if any tools or prompts are needed from this assembly
             // // var assembly = typeof(McpAppBuilderExtensions).Assembly;
@@ -45,7 +44,7 @@ namespace com.IvanMurzak.McpPlugin.Common
 
         public static IMcpPluginBuilder AddMcpRunner(this IMcpPluginBuilder builder)
         {
-            builder.Services.TryAddSingleton<IMcpRunner, McpRunner>();
+            builder.Services.TryAddSingleton<IMcpManager, McpManager>();
             return builder;
         }
     }

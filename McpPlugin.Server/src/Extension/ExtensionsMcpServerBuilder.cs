@@ -1,11 +1,11 @@
 /*
-┌──────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)             │
-│  Repository: GitHub (https://github.com/IvanMurzak/Unity-MCP)    │
-│  Copyright (c) 2025 Ivan Murzak                                  │
-│  Licensed under the Apache License, Version 2.0.                 │
-│  See the LICENSE file in the project root for more information.  │
-└──────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
+│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
+│  Copyright (c) 2025 Ivan Murzak                                        │
+│  Licensed under the Apache License, Version 2.0.                       │
+│  See the LICENSE file in the project root for more information.        │
+└────────────────────────────────────────────────────────────────────────┘
 */
 
 using com.IvanMurzak.McpPlugin.Common;
@@ -16,23 +16,23 @@ namespace com.IvanMurzak.McpPlugin.Server
 {
     public static class ExtensionsMcpServerBuilder
     {
-        public static IMcpPluginBuilder WithServerFeatures(this IMcpPluginBuilder builder, DataArguments dataArguments)
+        public static IServiceCollection WithServerFeatures(this IServiceCollection services, DataArguments dataArguments)
         {
-            builder.Services.AddRouting();
+            services.AddRouting();
             if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.stdio)
-                builder.Services.AddHostedService<McpServerService>();
+                services.AddHostedService<McpServerService>();
 
-            builder.Services.AddSingleton<HubEventToolsChange>();
-            builder.Services.AddSingleton<HubEventPromptsChange>();
-            builder.Services.AddSingleton<HubEventResourcesChange>();
-            builder.Services.AddSingleton<IRequestTrackingService, RequestTrackingService>();
-            builder.Services.AddSingleton<IToolClientHub, RemoteToolRunner>();
-            builder.Services.AddSingleton<IPromptClientHub, RemotePromptRunner>();
-            builder.Services.AddSingleton<IResourceClientHub, RemoteResourceRunner>();
+            services.AddSingleton<HubEventToolsChange>();
+            services.AddSingleton<HubEventPromptsChange>();
+            services.AddSingleton<HubEventResourcesChange>();
+            services.AddSingleton<IRequestTrackingService, RequestTrackingService>();
+            services.AddSingleton<IClientToolHub, RemoteToolRunner>();
+            services.AddSingleton<IClientPromptHub, RemotePromptRunner>();
+            services.AddSingleton<IClientResourceHub, RemoteResourceRunner>();
 
-            builder.AddMcpRunner();
+            // builder.AddMcpRunner();
 
-            return builder;
+            return services;
         }
     }
 }

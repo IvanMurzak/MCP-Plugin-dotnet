@@ -1,11 +1,11 @@
 /*
-┌──────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)             │
-│  Repository: GitHub (https://github.com/IvanMurzak/Unity-MCP)    │
-│  Copyright (c) 2025 Ivan Murzak                                  │
-│  Licensed under the Apache License, Version 2.0.                 │
-│  See the LICENSE file in the project root for more information.  │
-└──────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
+│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
+│  Copyright (c) 2025 Ivan Murzak                                        │
+│  Licensed under the Apache License, Version 2.0.                       │
+│  See the LICENSE file in the project root for more information.        │
+└────────────────────────────────────────────────────────────────────────┘
 */
 
 using System;
@@ -26,27 +26,27 @@ namespace com.IvanMurzak.McpPlugin.Server
     {
         readonly ILogger<McpServerService> _logger;
         readonly IMcpServer _mcpServer;
-        readonly IToolClientHub _toolRunner;
-        readonly IPromptClientHub _promptRunner;
-        readonly IResourceClientHub _resourceRunner;
+        readonly IClientToolHub _toolRunner;
+        readonly IClientPromptHub _promptRunner;
+        readonly IClientResourceHub _resourceRunner;
         readonly HubEventToolsChange _eventAppToolsChange;
         readonly HubEventPromptsChange _eventAppPromptsChange;
         readonly HubEventResourcesChange _eventAppResourcesChange;
         readonly CompositeDisposable _disposables = new();
 
         public IMcpServer McpServer => _mcpServer;
-        public IToolClientHub ToolRunner => _toolRunner;
-        public IPromptClientHub PromptRunner => _promptRunner;
-        public IResourceClientHub ResourceRunner => _resourceRunner;
+        public IClientToolHub ToolRunner => _toolRunner;
+        public IClientPromptHub PromptRunner => _promptRunner;
+        public IClientResourceHub ResourceRunner => _resourceRunner;
 
         public static McpServerService? Instance { get; private set; }
 
         public McpServerService(
             ILogger<McpServerService> logger,
             IMcpServer mcpServer,
-            IToolClientHub toolRunner,
-            IPromptClientHub promptRunner,
-            IResourceClientHub resourceRunner,
+            IClientToolHub toolRunner,
+            IClientPromptHub promptRunner,
+            IClientResourceHub resourceRunner,
             HubEventToolsChange eventAppToolsChange,
             HubEventPromptsChange eventAppPromptsChange,
             HubEventResourcesChange eventAppResourcesChange)
