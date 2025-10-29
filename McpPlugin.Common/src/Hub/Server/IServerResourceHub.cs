@@ -16,6 +16,6 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Server
 {
     public interface IServerResourceHub
     {
-        Task<ResponseData> NotifyAboutUpdatedResources(CancellationToken cancellationToken = default);
+        Task<ResponseData> NotifyAboutUpdatedResources(string data, CancellationToken cancellationToken = default);
     }
 }

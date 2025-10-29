@@ -110,22 +110,22 @@ namespace com.IvanMurzak.McpPlugin.Common
 
         #region Server Calls
 
-        public Task<ResponseData> NotifyAboutUpdatedTools(CancellationToken cancellationToken = default)
+        public Task<ResponseData> NotifyAboutUpdatedTools(string data, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{class}.{method}", nameof(IServerMcpManager), nameof(IServerMcpManager.NotifyAboutUpdatedTools));
-            return _connectionManager.InvokeAsync<string, ResponseData>(nameof(IServerMcpManager.NotifyAboutUpdatedTools), string.Empty, cancellationToken);
+            return _connectionManager.InvokeAsync<string, ResponseData>(nameof(IServerMcpManager.NotifyAboutUpdatedTools), data, cancellationToken);
         }
 
-        public Task<ResponseData> NotifyAboutUpdatedPrompts(CancellationToken cancellationToken = default)
+        public Task<ResponseData> NotifyAboutUpdatedPrompts(string data, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{class}.{method}", nameof(IServerMcpManager), nameof(IServerMcpManager.NotifyAboutUpdatedPrompts));
-            return _connectionManager.InvokeAsync<string, ResponseData>(nameof(IServerMcpManager.NotifyAboutUpdatedPrompts), string.Empty, cancellationToken);
+            return _connectionManager.InvokeAsync<string, ResponseData>(nameof(IServerMcpManager.NotifyAboutUpdatedPrompts), data, cancellationToken);
         }
 
-        public Task<ResponseData> NotifyAboutUpdatedResources(CancellationToken cancellationToken = default)
+        public Task<ResponseData> NotifyAboutUpdatedResources(string data, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{class}.{method}", nameof(IServerMcpManager), nameof(IServerMcpManager.NotifyAboutUpdatedResources));
-            return _connectionManager.InvokeAsync<string, ResponseData>(nameof(IServerMcpManager.NotifyAboutUpdatedResources), string.Empty, cancellationToken);
+            return _connectionManager.InvokeAsync<string, ResponseData>(nameof(IServerMcpManager.NotifyAboutUpdatedResources), data, cancellationToken);
         }
 
         public Task<ResponseData> NotifyToolRequestCompleted(ResponseCallTool response, CancellationToken cancellationToken = default)

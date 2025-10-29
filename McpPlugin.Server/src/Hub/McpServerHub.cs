@@ -9,14 +9,16 @@
 */
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
+using com.IvanMurzak.McpPlugin.Common.Hub.Server;
 using com.IvanMurzak.McpPlugin.Common.Model;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
-    public class McpServerHub : BaseHub<McpServerHub>, IMcpServerHub
+    public class McpServerHub : BaseHub<IClientMcpManager>, IServerMcpManager
     {
         readonly Common.Version _version;
         readonly HubEventToolsChange _eventAppToolsChange;
@@ -27,12 +29,11 @@ namespace com.IvanMurzak.McpPlugin.Server
         public McpServerHub(
             ILogger<McpServerHub> logger,
             Common.Version version,
-            IHubContext<McpServerHub> hubContext,
             HubEventToolsChange eventAppToolsChange,
             HubEventPromptsChange eventAppPromptsChange,
             HubEventResourcesChange eventAppResourcesChange,
             IRequestTrackingService requestTrackingService)
-            : base(logger, hubContext)
+            : base(logger)
         {
             _version = version ?? throw new ArgumentNullException(nameof(version));
             _eventAppToolsChange = eventAppToolsChange ?? throw new ArgumentNullException(nameof(eventAppToolsChange));
@@ -41,23 +42,23 @@ namespace com.IvanMurzak.McpPlugin.Server
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
         }
 
-        public Task<ResponseData> OnListToolsUpdated(string data)
+        public Task<ResponseData> NotifyAboutUpdatedTools(string data, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
-                nameof(IMcpServerHub.OnListToolsUpdated), _guid, data);
+                nameof(IServerMcpManager.NotifyAboutUpdatedTools), _guid, data);
 
             _eventAppToolsChange.OnNext(new HubEventToolsChange.EventData
             {
                 ConnectionId = Context.ConnectionId,
                 Data = data
             });
-            return ResponseData.Success(data, string.Empty).TaskFromResult<ResponseData>();
+            return ResponseData.Success(data, string.Empty).TaskFromResult();
         }
 
-        public Task<ResponseData> OnListPromptsUpdated(string data)
+        public Task<ResponseData> NotifyAboutUpdatedPrompts(string data, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
-                nameof(IMcpServerHub.OnListPromptsUpdated), _guid, data);
+                nameof(IServerMcpManager.NotifyAboutUpdatedPrompts), _guid, data);
 
             _eventAppPromptsChange.OnNext(new HubEventPromptsChange.EventData
             {
@@ -65,13 +66,13 @@ namespace com.IvanMurzak.McpPlugin.Server
                 Data = data
             });
 
-            return ResponseData.Success(data, string.Empty).TaskFromResult<ResponseData>();
+            return ResponseData.Success(data, string.Empty).TaskFromResult();
         }
 
-        public Task<ResponseData> OnListResourcesUpdated(string data)
+        public Task<ResponseData> NotifyAboutUpdatedResources(string data, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
-                nameof(IMcpServerHub.OnListResourcesUpdated), _guid, data);
+                nameof(IServerMcpManager.NotifyAboutUpdatedResources), _guid, data);
 
             _eventAppResourcesChange.OnNext(new HubEventResourcesChange.EventData
             {
@@ -79,13 +80,13 @@ namespace com.IvanMurzak.McpPlugin.Server
                 Data = data
             });
 
-            return ResponseData.Success(data, string.Empty).TaskFromResult<ResponseData>();
+            return ResponseData.Success(data, string.Empty).TaskFromResult();
         }
 
-        public Task<ResponseData> OnToolRequestCompleted(ToolRequestCompletedData data)
+        public Task<ResponseData> NotifyToolRequestCompleted(ToolRequestCompletedData data, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{method}. {guid}. RequestId: {requestId}",
-                nameof(IMcpServerHub.OnToolRequestCompleted), _guid, data.RequestId);
+                nameof(IServerMcpManager.NotifyToolRequestCompleted), _guid, data.RequestId);
 
             try
             {
@@ -96,15 +97,15 @@ namespace com.IvanMurzak.McpPlugin.Server
                 _logger.LogError(ex, "Error deserializing tool response for RequestId: {requestId}", data.RequestId);
             }
 
-            return ResponseData.Success(string.Empty, string.Empty).TaskFromResult<ResponseData>();
+            return ResponseData.Success(string.Empty, string.Empty).TaskFromResult();
         }
 
-        public Task<VersionHandshakeResponse> OnVersionHandshake(VersionHandshakeRequest request)
+        public Task<VersionHandshakeResponse> PerformVersionHandshake(VersionHandshakeRequest request, CancellationToken cancellationToken = default)
         {
             try
             {
                 _logger.LogTrace("{method}. {guid}. PluginVersion: {pluginVersion}, ApiVersion: {apiVersion}, UnityVersion: {unityVersion}",
-                    nameof(IMcpServerHub.OnVersionHandshake), _guid, request.PluginVersion, request.ApiVersion, request.UnityVersion);
+                    nameof(IServerMcpManager.PerformVersionHandshake), _guid, request.PluginVersion, request.ApiVersion, request.UnityVersion);
 
                 var serverApiVersion = _version.Api;
                 var isApiVersionCompatible = IsApiVersionCompatible(request.ApiVersion, serverApiVersion);

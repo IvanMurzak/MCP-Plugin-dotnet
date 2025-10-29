@@ -8,15 +8,10 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Threading;
-using System.Threading.Tasks;
-using com.IvanMurzak.McpPlugin.Common.Model;
-
-namespace com.IvanMurzak.McpPlugin.Common.Hub.Server
+namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
 {
-    public interface IServerToolHub
+    public interface IClientDisconnectable
     {
-        Task<ResponseData> NotifyAboutUpdatedTools(string data, CancellationToken cancellationToken = default);
-        Task<ResponseData> NotifyToolRequestCompleted(ResponseCallTool response, CancellationToken cancellationToken = default);
+        void ForceDisconnect();
     }
 }

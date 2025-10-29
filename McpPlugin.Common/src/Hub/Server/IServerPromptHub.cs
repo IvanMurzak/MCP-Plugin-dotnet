@@ -16,6 +16,6 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Server
 {
     public interface IServerPromptHub
     {
-        Task<ResponseData> NotifyAboutUpdatedPrompts(CancellationToken cancellationToken = default);
+        Task<ResponseData> NotifyAboutUpdatedPrompts(string data, CancellationToken cancellationToken = default);
     }
 }

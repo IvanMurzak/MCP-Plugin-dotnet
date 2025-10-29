@@ -12,7 +12,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
-using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
@@ -20,18 +20,19 @@ using R3;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
-    public class BaseHub<T> : Hub<T>, IDisposable where T : Hub
+    public class BaseHub<T> : Hub<T>, IDisposable
+        where T : class, IClientDisconnectable
     {
         protected readonly ILogger _logger;
-        protected readonly IHubContext<T> _hubContext;
+        // protected readonly IHubContext<T> _hubContext;
         protected readonly CompositeDisposable _disposables = new();
         protected readonly string _guid = Guid.NewGuid().ToString();
 
-        protected BaseHub(ILogger logger, IHubContext<T> hubContext)
+        protected BaseHub(ILogger logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("Ctor. {guid}", _guid);
-            _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
+            // _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
         }
 
         public override Task OnConnectedAsync()
@@ -57,7 +58,12 @@ namespace com.IvanMurzak.McpPlugin.Server
                 {
                     _logger.LogInformation("{0} Client '{1}' removed from connected clients for {2}.", _guid, connectionId, GetType().GetTypeShortName());
                     var client = Clients.Client(connectionId);
-                    client.SendAsync(Consts.RPC.Client.ForceDisconnect);
+                    if (client == null)
+                    {
+                        _logger.LogWarning("{0} Client '{1}' not found in connected clients for {2}.", _guid, connectionId, GetType().GetTypeShortName());
+                        continue;
+                    }
+                    client.ForceDisconnect();
                 }
                 else
                 {

@@ -80,5 +80,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
 
         public static Task<ResponseData<T>> TaskFromResult<T>(this ResponseData<T> response)
             => Task.FromResult(response);
+        public static Task<ResponseData> TaskFromResult(this ResponseData response)
+            => Task.FromResult(response);
     }
 }

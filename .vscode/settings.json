@@ -1,8 +1,9 @@
 {
     "cSpell.words": [
+        "Disconnectable",
         "netstandard",
-        "xunit",
-        "signalr"
+        "signalr",
+        "xunit"
     ],
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {

@@ -57,7 +57,7 @@ namespace com.IvanMurzak.McpPlugin.Common
 
                     var tasks = Enumerable.Empty<Task>();
 
-                    await _remoteMcpManagerHub.NotifyAboutUpdatedTools(cancellationToken);
+                    await _remoteMcpManagerHub.NotifyAboutUpdatedTools(string.Empty, cancellationToken);
 
                     _logger.LogDebug("{class}.{method}, initial notifications sent.",
                         nameof(McpPlugin),
@@ -83,7 +83,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                         return;
                     }
 
-                    await _remoteMcpManagerHub.NotifyAboutUpdatedTools(cancellationToken);
+                    await _remoteMcpManagerHub.NotifyAboutUpdatedTools(string.Empty, cancellationToken);
                 })
                 .AddTo(_disposables);
 
@@ -105,7 +105,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                         return;
                     }
 
-                    await _remoteMcpManagerHub.NotifyAboutUpdatedPrompts(cancellationToken);
+                    await _remoteMcpManagerHub.NotifyAboutUpdatedPrompts(string.Empty, cancellationToken);
                 })
                 .AddTo(_disposables);
 
@@ -127,7 +127,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                         return;
                     }
 
-                    await _remoteMcpManagerHub.NotifyAboutUpdatedResources(cancellationToken);
+                    await _remoteMcpManagerHub.NotifyAboutUpdatedResources(string.Empty, cancellationToken);
                 })
                 .AddTo(_disposables);
 

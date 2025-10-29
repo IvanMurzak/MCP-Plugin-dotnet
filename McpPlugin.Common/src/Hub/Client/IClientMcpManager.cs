@@ -10,11 +10,10 @@
 
 namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
 {
-    public interface IClientMcpManager
+    public interface IClientMcpManager : IClientDisconnectable
     {
         IClientToolHub ToolHub { get; }
         IClientPromptHub PromptHub { get; }
         IClientResourceHub ResourceHub { get; }
-        void ForceDisconnect();
     }
 }
