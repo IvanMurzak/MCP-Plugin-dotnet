@@ -14,7 +14,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 
 namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
 {
-    public interface IClientToolHub : IClientHub
+    public interface IClientToolHub
     {
         Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request, CancellationToken cancellationToken = default);
         Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request, CancellationToken cancellationToken = default);

@@ -8,14 +8,13 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Threading;
-using System.Threading.Tasks;
-using com.IvanMurzak.McpPlugin.Common.Model;
-
-namespace com.IvanMurzak.McpPlugin.Common.Hub.Server
+namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
 {
-    public interface IServerHub
+    public interface IClientMcpManager
     {
-        Task<VersionHandshakeResponse?> PerformVersionHandshake(CancellationToken cancellationToken = default);
+        IClientToolHub ToolHub { get; }
+        IClientPromptHub PromptHub { get; }
+        IClientResourceHub ResourceHub { get; }
+        void ForceDisconnect();
     }
 }

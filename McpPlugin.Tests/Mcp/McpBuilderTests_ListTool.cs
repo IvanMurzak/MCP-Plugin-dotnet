@@ -163,7 +163,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
             var reflector = new Reflector();
             var mcpPluginBuilder = new McpPluginBuilder(version, _loggerProvider)
                 .AddLogging(b => b.AddXunitTestOutput(_output))
-                .AddMcpRunner();
+                .AddMcpManager();
 
             // Act
             mcpPluginBuilder.WithTool(
@@ -183,7 +183,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
             var reflector = new Reflector();
             var mcpPluginBuilder = new McpPluginBuilder(version, _loggerProvider)
                 .AddLogging(b => b.AddXunitTestOutput(_output))
-                .AddMcpRunner();
+                .AddMcpManager();
 
             // Act
             mcpPluginBuilder.WithTool(

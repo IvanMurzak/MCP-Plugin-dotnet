@@ -40,7 +40,7 @@ namespace com.IvanMurzak.McpPlugin.Common
 
         public McpPlugin(
             ILogger<McpPlugin> logger,
-            IMcpManager mcpRunner,
+            IMcpManager mcpManager,
             IRemoteToolServerHub? remoteServerHub = null,
             IRemotePromptServerHub? remotePromptServerHub = null,
             IRemoteResourceServerHub? remoteResourceServerHub = null)
@@ -48,7 +48,7 @@ namespace com.IvanMurzak.McpPlugin.Common
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("{0} Ctor.", typeof(McpPlugin).Name);
 
-            McpRunner = mcpRunner ?? throw new ArgumentNullException(nameof(mcpRunner));
+            McpRunner = mcpManager ?? throw new ArgumentNullException(nameof(mcpManager));
 
             var cancellationToken = _disposables.ToCancellationToken();
 
@@ -125,17 +125,6 @@ namespace com.IvanMurzak.McpPlugin.Common
                         nameof(McpPlugin),
                         nameof(ConnectionState),
                         state);
-
-                    // Perform version handshake first
-                    var handshakeResponse = await _remoteResourceServerHub.PerformVersionHandshake(cancellationToken);
-                    if (handshakeResponse != null && !handshakeResponse.Compatible)
-                    {
-                        LogVersionMismatchError(handshakeResponse);
-                        // Still proceed with tool notification for now, but user will see the error
-                    }
-
-                    if (cancellationToken.IsCancellationRequested)
-                        return;
 
                     await _remoteResourceServerHub.NotifyAboutUpdatedResources(cancellationToken);
 
@@ -240,14 +229,6 @@ namespace com.IvanMurzak.McpPlugin.Common
             if (_remoteToolServerHub == null)
                 return Task.CompletedTask;
             return _remoteToolServerHub.Disconnect(cancellationToken);
-        }
-
-        private void LogVersionMismatchError(VersionHandshakeResponse handshakeResponse)
-        {
-            var errorMessage = $"[Unity-MCP] API VERSION MISMATCH: {handshakeResponse.Message}";
-
-            // Log using ILogger which will be connected to Unity's logging system from the outside
-            _logger.LogError(errorMessage);
         }
 
         public void Dispose()

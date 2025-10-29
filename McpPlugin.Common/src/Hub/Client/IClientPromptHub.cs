@@ -14,7 +14,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 
 namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
 {
-    public interface IClientPromptHub : IClientHub
+    public interface IClientPromptHub
     {
         Task<ResponseData<ResponseGetPrompt>> RunGetPrompt(RequestGetPrompt request, CancellationToken cancellationToken = default);
         Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request, CancellationToken cancellationToken = default);

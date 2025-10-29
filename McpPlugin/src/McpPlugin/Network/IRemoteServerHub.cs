@@ -12,7 +12,7 @@ using com.IvanMurzak.McpPlugin.Common.Hub.Server;
 
 namespace com.IvanMurzak.McpPlugin.Common
 {
-    public interface IRemoteServerHub : IConnectServerHub, IServerHub
+    public interface IRemoteServerHub : IConnectServerHub, IServerMcpManager
     {
 
     }

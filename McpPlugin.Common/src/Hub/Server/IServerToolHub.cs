@@ -14,7 +14,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 
 namespace com.IvanMurzak.McpPlugin.Common.Hub.Server
 {
-    public interface IServerToolHub : IServerHub
+    public interface IServerToolHub
     {
         Task<ResponseData> NotifyAboutUpdatedTools(CancellationToken cancellationToken = default);
         Task<ResponseData> NotifyToolRequestCompleted(ResponseCallTool response, CancellationToken cancellationToken = default);

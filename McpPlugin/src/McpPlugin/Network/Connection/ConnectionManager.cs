@@ -14,34 +14,42 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using R3;
+using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
 namespace com.IvanMurzak.McpPlugin
 {
     public class ConnectionManager : IConnectionManager
     {
-        readonly string _guid = Guid.NewGuid().ToString();
-        readonly ILogger<ConnectionManager> _logger;
-        readonly ReactiveProperty<HubConnection?> _hubConnection = new();
-        readonly IHubEndpointConnectionBuilder _hubConnectionBuilder;
-        readonly ReactiveProperty<HubConnectionState> _connectionState = new(HubConnectionState.Disconnected);
-        readonly ReactiveProperty<bool> _continueToReconnect = new(false);
-        readonly CompositeDisposable _disposables = new();
+        protected readonly string _guid = Guid.NewGuid().ToString();
+        protected readonly ILogger _logger;
+        protected readonly Version _apiVersion;
+        protected readonly string _endpoint;
+        protected readonly IHubConnectionProvider _hubConnectionBuilder;
+        protected readonly ReactiveProperty<bool> _continueToReconnect = new(false);
+        protected readonly ReactiveProperty<HubConnection?> _hubConnection = new();
+        protected readonly ReactiveProperty<HubConnectionState> _connectionState = new(HubConnectionState.Disconnected);
+        protected readonly CompositeDisposable _disposables = new();
 
-        volatile Task<bool>? connectionTask;
-        HubConnectionLogger? hubConnectionLogger;
-        HubConnectionObservable? hubConnectionObservable;
-        CancellationTokenSource? internalCts;
+        private volatile Task<bool>? connectionTask;
+        private HubConnectionLogger? hubConnectionLogger;
+        private HubConnectionObservable? hubConnectionObservable;
+        private CancellationTokenSource? internalCts;
+
         public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _connectionState.ToReadOnlyReactiveProperty();
         public ReadOnlyReactiveProperty<HubConnection?> HubConnection => _hubConnection.ToReadOnlyReactiveProperty();
         public ReadOnlyReactiveProperty<bool> KeepConnected => _continueToReconnect.ToReadOnlyReactiveProperty();
-        public string Endpoint { get; set; } = string.Empty;
+        public string Endpoint => _endpoint;
+        public CancellationToken ConnectionCancellationToken => internalCts?.Token ?? CancellationToken.None;
 
-        public ConnectionManager(ILogger<ConnectionManager> logger, IHubEndpointConnectionBuilder hubConnectionBuilder)
+        public ConnectionManager(ILogger logger, Version apiVersion, string endpoint, IHubConnectionProvider hubConnectionBuilder)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("{0} Ctor.", _guid);
 
+            _apiVersion = apiVersion ?? throw new ArgumentNullException(nameof(apiVersion));
+            _endpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
             _hubConnectionBuilder = hubConnectionBuilder ?? throw new ArgumentNullException(nameof(hubConnectionBuilder));
+
             _hubConnection
                 .Subscribe(hubConnection =>
                 {

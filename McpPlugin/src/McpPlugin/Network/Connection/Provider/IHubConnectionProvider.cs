@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public interface IHubEndpointConnectionBuilder
+    public interface IHubConnectionProvider
     {
         Task<HubConnection> CreateConnectionAsync(string endpoint);
     }

@@ -18,17 +18,17 @@ using Microsoft.Extensions.Options;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public class HubEndpointConnectionBuilder : IHubEndpointConnectionBuilder
+    public class HubConnectionProvider : IHubConnectionProvider
     {
-        private readonly IServiceProvider _serviceProvider;
-        private readonly Reflector _reflector;
         private readonly ILogger _logger;
+        private readonly Reflector _reflector;
+        private readonly IServiceProvider _serviceProvider;
 
-        public HubEndpointConnectionBuilder(IServiceProvider serviceProvider, Reflector reflector, ILogger<HubConnection> logger)
+        public HubConnectionProvider(ILogger<HubConnection> logger, Reflector reflector, IServiceProvider serviceProvider)
         {
-            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-            _reflector = reflector ?? throw new ArgumentNullException(nameof(reflector));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _reflector = reflector ?? throw new ArgumentNullException(nameof(reflector));
+            _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         }
 
         public Task<HubConnection> CreateConnectionAsync(string endpoint)
@@ -40,7 +40,7 @@ namespace com.IvanMurzak.McpPlugin
                 var connectionConfig = _serviceProvider.GetRequiredService<IOptions<ConnectionConfig>>().Value;
 
                 var hubConnectionBuilder = new HubConnectionBuilder()
-                    .WithUrl(connectionConfig.Endpoint + endpoint)
+                    .WithUrl(connectionConfig.ServerUrl + endpoint)
                     .WithAutomaticReconnect(new FixedRetryPolicy(TimeSpan.FromSeconds(10)))
                     .WithKeepAliveInterval(TimeSpan.FromSeconds(30))
                     .WithServerTimeout(TimeSpan.FromMinutes(5))

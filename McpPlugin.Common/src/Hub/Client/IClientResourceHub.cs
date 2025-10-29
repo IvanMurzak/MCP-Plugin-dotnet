@@ -14,7 +14,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 
 namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
 {
-    public interface IClientResourceHub : IClientHub
+    public interface IClientResourceHub
     {
         Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(RequestResourceContent request, CancellationToken cancellationToken = default);
         Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources request, CancellationToken cancellationToken = default);

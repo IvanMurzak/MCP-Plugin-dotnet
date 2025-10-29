@@ -29,8 +29,8 @@ namespace com.IvanMurzak.McpPlugin.Common
         }
         public static IMcpPluginBuilder AddMcpPlugin(this IMcpPluginBuilder builder)
         {
-            builder.AddMcpRunner();
-            builder.Services.AddTransient<IConnectServerHub, RemoteServerHub>();
+            builder.AddMcpManager();
+            builder.Services.AddTransient<IServer, RemoteServerHub>();
 
             // // TODO: Uncomment if any tools or prompts are needed from this assembly
             // // var assembly = typeof(McpAppBuilderExtensions).Assembly;
@@ -42,7 +42,7 @@ namespace com.IvanMurzak.McpPlugin.Common
             return builder;
         }
 
-        public static IMcpPluginBuilder AddMcpRunner(this IMcpPluginBuilder builder)
+        public static IMcpPluginBuilder AddMcpManager(this IMcpPluginBuilder builder)
         {
             builder.Services.TryAddSingleton<IMcpManager, McpManager>();
             return builder;

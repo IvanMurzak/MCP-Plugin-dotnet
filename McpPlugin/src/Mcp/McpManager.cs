@@ -38,6 +38,7 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogTrace("Ctor");
 
             _reflector = reflector ?? throw new ArgumentNullException(nameof(reflector));
+
             _tools = tools;
             _prompts = prompts;
             _resources = resources;
