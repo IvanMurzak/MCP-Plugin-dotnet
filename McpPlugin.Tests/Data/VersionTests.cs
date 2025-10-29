@@ -23,7 +23,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Data
             // Assert
             version.Api.Should().Be("1.0.0");
             version.Plugin.Should().Be("1.0.0");
-            version.UnityVersion.Should().BeEmpty();
+            version.Environment.Should().BeEmpty();
         }
 
         [Fact]
@@ -59,10 +59,10 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Data
             var version = new Version();
 
             // Act
-            version.UnityVersion = "2022.3.10f1";
+            version.Environment = "2022.3.10f1";
 
             // Assert
-            version.UnityVersion.Should().Be("2022.3.10f1");
+            version.Environment.Should().Be("2022.3.10f1");
         }
 
         [Fact]
@@ -73,13 +73,13 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Data
             {
                 Api = "2.1.0",
                 Plugin = "4.3.2",
-                UnityVersion = "2023.1.5f1"
+                Environment = "2023.1.5f1"
             };
 
             // Assert
             version.Api.Should().Be("2.1.0");
             version.Plugin.Should().Be("4.3.2");
-            version.UnityVersion.Should().Be("2023.1.5f1");
+            version.Environment.Should().Be("2023.1.5f1");
         }
     }
 }

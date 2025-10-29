@@ -14,6 +14,6 @@ namespace com.IvanMurzak.McpPlugin.Common
     {
         public string Api { get; set; } = "1.0.0";
         public string Plugin { get; set; } = "1.0.0";
-        public string UnityVersion { get; set; } = string.Empty;
+        public string Environment { get; set; } = string.Empty;
     }
 }

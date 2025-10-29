@@ -48,10 +48,6 @@ namespace com.IvanMurzak.McpPlugin.Server
             var logger = LogManager.GetCurrentClassLogger();
             try
             {
-                // TODO: remove usage of static ConnectionConfig, replace it with instance with DI injection.
-                // Set the runtime configurable timeout
-                ConnectionConfig.TimeoutMs = dataArguments.PluginTimeoutMs;
-
                 var consoleWriteLine = dataArguments.ClientTransport switch
                 {
                     Consts.MCP.Server.TransportMethod.stdio => (Action<string>)(message => Console.Error.WriteLine(message)),

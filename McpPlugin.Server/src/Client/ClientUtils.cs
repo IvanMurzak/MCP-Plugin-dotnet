@@ -97,6 +97,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             IHubContext<THub> hubContext,
             string methodName,
             TRequest request,
+            DataArguments dataArguments,
             CancellationToken cancellationToken = default)
             where TRequest : IRequestID
             where THub : Hub
@@ -138,7 +139,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                         logger.LogTrace("Invoke '{0}', ConnectionId ='{1}'. RequestData:\n{2}\n{3}", methodName, connectionId, request, allConnections);
                     }
                     var invokeTask = client.InvokeAsync<ResponseData<TResponse>>(methodName, request, cancellationToken);
-                    var completed = await invokeTask.WaitWithTimeout(ConnectionConfig.TimeoutMs, cancellationToken);
+                    var completed = await invokeTask.WaitWithTimeout(dataArguments.PluginTimeoutMs, cancellationToken);
                     if (completed)
                     {
                         try
@@ -161,7 +162,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                     }
 
                     // Timeout occurred
-                    logger.LogWarning($"Timeout: Client '{connectionId}' did not respond in {ConnectionConfig.TimeoutMs} ms. Removing from ConnectedClients.");
+                    logger.LogWarning($"Timeout: Client '{connectionId}' did not respond in {dataArguments.PluginTimeoutMs} ms. Removing from ConnectedClients.");
                     // RemoveCurrentClient(client);
                     await Task.Delay(retryDelayMs, cancellationToken); // Wait before retrying
                     // Restart the loop to try again with a new client

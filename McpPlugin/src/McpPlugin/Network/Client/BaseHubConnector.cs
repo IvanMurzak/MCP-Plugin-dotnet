@@ -84,7 +84,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                     RequestID = Guid.NewGuid().ToString(),
                     ApiVersion = _apiVersion.Api,
                     PluginVersion = _apiVersion.Plugin,
-                    UnityVersion = _apiVersion.UnityVersion
+                    UnityVersion = _apiVersion.Environment
                 },
                 cancellationToken: cancellationToken);
 

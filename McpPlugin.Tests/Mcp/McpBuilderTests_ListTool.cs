@@ -195,7 +195,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
             var mcpPlugin = mcpPluginBuilder.Build(reflector);
 
             var request = new RequestListTool();
-            var listToolTask = mcpPlugin.McpRunner.RunListTool(request);
+            var listToolTask = mcpPlugin.McpManager.ToolManager!.RunListTool(request);
 
             // Assert
             await ValidateListToolResponse(request, listToolTask, toolName, toolTitle);
