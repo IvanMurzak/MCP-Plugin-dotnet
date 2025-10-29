@@ -30,7 +30,7 @@ namespace com.IvanMurzak.McpPlugin.Common
         public static IMcpPluginBuilder AddMcpPlugin(this IMcpPluginBuilder builder)
         {
             builder.AddMcpManager();
-            builder.Services.AddTransient<IServer, RemoteServerHub>();
+            builder.Services.AddTransient<IRemoteMcpManagerHub, McpManagerClientHub>();
 
             // // TODO: Uncomment if any tools or prompts are needed from this assembly
             // // var assembly = typeof(McpAppBuilderExtensions).Assembly;

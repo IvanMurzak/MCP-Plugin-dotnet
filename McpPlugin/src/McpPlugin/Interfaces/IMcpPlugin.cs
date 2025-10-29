@@ -16,9 +16,7 @@ namespace com.IvanMurzak.McpPlugin
     public interface IMcpPlugin : IConnection, IDisposableAsync
     {
         ILogger Logger { get; }
-        IMcpManager McpRunner { get; }
-        IRemoteToolServerHub? RemoteToolServerHub { get; }
-        IRemotePromptServerHub? RemotePromptServerHub { get; }
-        IRemoteResourceServerHub? RemoteResourceServerHub { get; }
+        IMcpManager McpManager { get; }
+        IRemoteMcpManagerHub? RemoteMcpManagerHub { get; }
     }
 }

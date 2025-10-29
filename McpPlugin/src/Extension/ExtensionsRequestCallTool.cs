@@ -21,14 +21,12 @@ namespace com.IvanMurzak.McpPlugin.Common
             data.Name = name;
             return data;
         }
-        public static RequestCallTool SetOrAddParameter(this RequestCallTool data, string name, object? value)
-        {
-            data.Arguments ??= value == null
-                ? new Dictionary<string, JsonElement>()
-                : new Dictionary<string, JsonElement>() { [name] = value.ToJsonElement(McpPlugin.Instance?.McpRunner.Reflector) };
-            return data;
-        }
-        // public static IRequestData BuildRequest(this IRequestTool data)
-        //     => new RequestData(data as RequestTool ?? throw new System.InvalidOperationException("CommandData is null"));
+        // public static RequestCallTool SetOrAddParameter(this RequestCallTool data, string name, object? value)
+        // {
+        //     data.Arguments ??= value == null
+        //         ? new Dictionary<string, JsonElement>()
+        //         : new Dictionary<string, JsonElement>() { [name] = value.ToJsonElement(McpPlugin.Instance?.McpRunner.Reflector) };
+        //     return data;
+        // }
     }
 }

@@ -21,7 +21,7 @@ using R3;
 
 namespace com.IvanMurzak.McpPlugin.Common
 {
-    public class McpManagerClientHub : BaseHubConnector, IRemoteServerHub
+    public class McpManagerClientHub : BaseHubConnector, IRemoteMcpManagerHub
     {
         readonly IClientMcpManager _mcpManager;
 
