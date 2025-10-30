@@ -21,6 +21,7 @@ using com.IvanMurzak.ReflectorNet.Utils;
 using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
+using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
 namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 {
@@ -88,7 +89,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                         var actualProp = actualProps.FirstOrDefault(p => p.Name == expectedProp.Name);
                         actualProp.Should().NotBeNull($"{path}: Missing property '{expectedProp.Name}'");
 
-                        CompareJsonElementsRecursive($"{path}.{expectedProp.Name}", actualProp.Value, expectedProp.Value);
+                        CompareJsonElementsRecursive($"{path}/{expectedProp.Name}", actualProp.Value, expectedProp.Value);
                     }
                     break;
 

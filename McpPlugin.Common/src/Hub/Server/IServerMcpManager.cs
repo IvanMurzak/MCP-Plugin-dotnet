@@ -16,6 +16,6 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Server
 {
     public interface IServerMcpManager : IServerToolHub, IServerPromptHub, IServerResourceHub
     {
-        Task<VersionHandshakeResponse?> PerformVersionHandshake(VersionHandshakeRequest request, CancellationToken cancellationToken = default);
+        Task<VersionHandshakeResponse> PerformVersionHandshake(VersionHandshakeRequest request, CancellationToken cancellationToken = default);
     }
 }

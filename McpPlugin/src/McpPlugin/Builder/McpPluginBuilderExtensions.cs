@@ -9,9 +9,11 @@
 */
 
 using System;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
 namespace com.IvanMurzak.McpPlugin
 {
@@ -30,7 +32,6 @@ namespace com.IvanMurzak.McpPlugin
         public static IMcpPluginBuilder AddMcpPlugin(this IMcpPluginBuilder builder)
         {
             builder.AddMcpManager();
-            builder.Services.AddTransient<IRemoteMcpManagerHub, McpManagerClientHub>();
 
             // // TODO: Uncomment if any tools or prompts are needed from this assembly
             // // var assembly = typeof(McpAppBuilderExtensions).Assembly;
@@ -44,7 +45,12 @@ namespace com.IvanMurzak.McpPlugin
 
         public static IMcpPluginBuilder AddMcpManager(this IMcpPluginBuilder builder)
         {
+            builder.Services.TryAddSingleton<IToolManager, McpToolManager>();
+            builder.Services.TryAddSingleton<IPromptManager, McpPromptManager>();
+            builder.Services.TryAddSingleton<IResourceManager, McpResourceManager>();
             builder.Services.TryAddSingleton<IMcpManager, McpManager>();
+            builder.Services.TryAddSingleton<IClientMcpManager, ClientMcpManagerAdapter>();
+            builder.Services.TryAddSingleton<IRemoteMcpManagerHub, McpManagerClientHub>();
             return builder;
         }
     }

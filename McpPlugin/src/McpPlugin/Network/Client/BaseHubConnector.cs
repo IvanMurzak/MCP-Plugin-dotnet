@@ -112,7 +112,7 @@ namespace com.IvanMurzak.McpPlugin
 
         protected abstract void SubscribeOnServerEvents(HubConnection hubConnection, CompositeDisposable disposables);
 
-        public async Task<VersionHandshakeResponse?> PerformVersionHandshake(VersionHandshakeRequest request, CancellationToken cancellationToken = default)
+        public async Task<VersionHandshakeResponse> PerformVersionHandshake(VersionHandshakeRequest request, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{class} Performing version handshake.", GetType().Name);
 
@@ -124,13 +124,25 @@ namespace com.IvanMurzak.McpPlugin
                 if (cancellationToken.IsCancellationRequested)
                 {
                     _logger.LogWarning("{class} Version handshake cancelled.", GetType().Name);
-                    return null;
+                    return new VersionHandshakeResponse
+                    {
+                        ApiVersion = "Unknown",
+                        ServerVersion = "Unknown",
+                        Compatible = false,
+                        Message = "Version handshake was cancelled."
+                    };
                 }
 
                 if (response == null)
                 {
                     _logger.LogError("{class} Version handshake failed: No response from server.", GetType().Name);
-                    return null;
+                    return new VersionHandshakeResponse
+                    {
+                        ApiVersion = "Unknown",
+                        ServerVersion = "Unknown",
+                        Compatible = false,
+                        Message = "Version handshake failed with null response."
+                    };
                 }
 
                 _logger.LogInformation("{class} Version handshake completed. Compatible: {Compatible}, Message: {Message}",
@@ -141,7 +153,13 @@ namespace com.IvanMurzak.McpPlugin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "{class} Version handshake failed: {Error}", GetType().Name, ex.Message);
-                return null;
+                return new VersionHandshakeResponse
+                {
+                    ApiVersion = "Unknown",
+                    ServerVersion = "Unknown",
+                    Compatible = false,
+                    Message = "Version handshake failed with exception: " + ex.Message
+                };
             }
         }
 
