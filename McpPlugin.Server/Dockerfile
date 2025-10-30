@@ -29,4 +29,4 @@ LABEL io.modelcontextprotocol.server.name="io.github.IvanMurzak/Unity-MCP"
 # (like Smithery) and platform port mappings can reach the server.
 EXPOSE 8080
 
-ENTRYPOINT ["dotnet", "unity-mcp-server.dll"]
+ENTRYPOINT ["dotnet", "mcp-plugin-server.dll"]

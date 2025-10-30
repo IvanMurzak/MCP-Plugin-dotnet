@@ -30,13 +30,13 @@ namespace com.IvanMurzak.McpPlugin.Common
 
                 public static class Env
                 {
-                    public const string Port = "UNITY_MCP_PORT";
-                    public const string PluginTimeout = "UNITY_MCP_PLUGIN_TIMEOUT";
-                    public const string ClientTransportMethod = "UNITY_MCP_CLIENT_TRANSPORT";
+                    public const string Port = "MCP_PLUGIN_PORT";
+                    public const string PluginTimeout = "MCP_PLUGIN_CLIENT_TIMEOUT";
+                    public const string ClientTransportMethod = "MCP_PLUGIN_CLIENT_TRANSPORT";
                 }
 
                 public const string DefaultBodyPath = "mcpServers";
-                public const string DefaultServerName = "Unity-MCP";
+                public const string DefaultServerName = "McpPlugin";
                 public const string BodyPathDelimiter = "->";
 
                 public static string[] BodyPathSegments(string bodyPath)
