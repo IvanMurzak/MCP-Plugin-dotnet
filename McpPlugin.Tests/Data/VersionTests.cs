@@ -54,7 +54,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
         }
 
         [Fact]
-        public void Version_CanSetUnityVersion()
+        public void Version_CanSetEnvironment()
         {
             // Arrange
             var version = new Version();

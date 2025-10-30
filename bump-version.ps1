@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Automated version bumping script for Unity-MCP project
+    Automated version bumping script for the project
 
 .DESCRIPTION
     Updates version numbers across all project files automatically to prevent human errors.

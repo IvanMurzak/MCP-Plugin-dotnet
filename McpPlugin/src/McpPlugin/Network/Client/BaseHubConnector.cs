@@ -85,7 +85,7 @@ namespace com.IvanMurzak.McpPlugin
                     RequestID = Guid.NewGuid().ToString(),
                     ApiVersion = _apiVersion.Api,
                     PluginVersion = _apiVersion.Plugin,
-                    UnityVersion = _apiVersion.Environment
+                    Environment = _apiVersion.Environment
                 },
                 cancellationToken: cancellationToken);
 
@@ -105,8 +105,6 @@ namespace com.IvanMurzak.McpPlugin
         private void LogVersionMismatchError(VersionHandshakeResponse handshakeResponse)
         {
             var errorMessage = $"[MCP-Plugin] API VERSION MISMATCH: {handshakeResponse.Message}";
-
-            // Log using ILogger which will be connected to Unity's logging system from the outside
             _logger.LogError(errorMessage);
         }
 

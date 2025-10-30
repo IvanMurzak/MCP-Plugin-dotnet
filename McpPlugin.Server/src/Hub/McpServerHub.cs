@@ -104,8 +104,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             try
             {
-                _logger.LogTrace("{method}. {guid}. PluginVersion: {pluginVersion}, ApiVersion: {apiVersion}, UnityVersion: {unityVersion}",
-                    nameof(IServerMcpManager.PerformVersionHandshake), _guid, request.PluginVersion, request.ApiVersion, request.UnityVersion);
+                _logger.LogTrace("{method}. {guid}. PluginVersion: {pluginVersion}, ApiVersion: {apiVersion}, Environment: {environment}",
+                    nameof(IServerMcpManager.PerformVersionHandshake), _guid, request.PluginVersion, request.ApiVersion, request.Environment);
 
                 var serverApiVersion = _version.Api;
                 var isApiVersionCompatible = IsApiVersionCompatible(request.ApiVersion, serverApiVersion);
@@ -127,8 +127,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                 }
                 else
                 {
-                    _logger.LogInformation("Version handshake successful. Plugin: {pluginVersion}, API: {apiVersion}, Unity Version: {unityVersion}",
-                        request.PluginVersion, request.ApiVersion, request.UnityVersion);
+                    _logger.LogInformation("Version handshake successful. Plugin: {pluginVersion}, API: {apiVersion}, Environment: {environment}",
+                        request.PluginVersion, request.ApiVersion, request.Environment);
                 }
 
                 return Task.FromResult(response);

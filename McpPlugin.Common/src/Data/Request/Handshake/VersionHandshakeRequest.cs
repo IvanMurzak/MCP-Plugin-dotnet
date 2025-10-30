@@ -22,7 +22,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         [JsonPropertyName("pluginVersion")]
         public string PluginVersion { get; set; } = string.Empty;
 
-        [JsonPropertyName("unityVersion")]
-        public string UnityVersion { get; set; } = string.Empty;
+        [JsonPropertyName("environment")]
+        public string Environment { get; set; } = string.Empty;
     }
 }

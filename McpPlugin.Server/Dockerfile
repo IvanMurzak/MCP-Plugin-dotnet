@@ -23,7 +23,7 @@ WORKDIR /app
 COPY --from=build /app/publish .
 
 # MCP server metadata
-LABEL io.modelcontextprotocol.server.name="io.github.IvanMurzak/Unity-MCP"
+LABEL io.modelcontextprotocol.server.name="io.github.IvanMurzak/MCP-Plugin-dotnet"
 
 # Expose the default plugin port and the HTTP client port so external scanners
 # (like Smithery) and platform port mappings can reach the server.

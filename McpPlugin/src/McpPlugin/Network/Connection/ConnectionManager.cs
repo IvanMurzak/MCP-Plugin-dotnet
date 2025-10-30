@@ -207,8 +207,6 @@ namespace com.IvanMurzak.McpPlugin
         {
 #pragma warning disable CS4014
             DisposeAsync();
-            // DisposeAsync().Wait();
-            // Unity won't reload Domain if we call DisposeAsync().Wait() here.
 #pragma warning restore CS4014
         }
 

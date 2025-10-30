@@ -3,6 +3,6 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data.Other
 {
     public class Field_StaticReadonly
     {
-        public static readonly string AppName = "Unity-MCP";
+        public static readonly string AppName = "My App Name";
     }
 }

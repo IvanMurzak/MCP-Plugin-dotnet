@@ -11,7 +11,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace com.IvanMurzak.Unity.MCP
+namespace com.IvanMurzak.McpPlugin.Utils
 {
     public static class DirectoryUtils
     {
@@ -36,13 +36,9 @@ namespace com.IvanMurzak.Unity.MCP
             foreach (var file in Directory.GetFiles(sourceDir))
             {
                 if (IsIgnored(file))
-                {
-                    // UnityEngine.Debug.LogWarning($"Ignored file: {file}");
                     continue;
-                }
 
                 var destFile = Path.Combine(destinationDir, Path.GetFileName(file));
-                // UnityEngine.Debug.Log($"Copying file: {file}\n{destFile}");
                 File.Copy(file, destFile, overwrite: true);
             }
 
@@ -50,10 +46,7 @@ namespace com.IvanMurzak.Unity.MCP
             foreach (var subDir in Directory.GetDirectories(sourceDir))
             {
                 if (IsIgnored(subDir))
-                {
-                    // UnityEngine.Debug.LogWarning($"Ignored dir: {subDir}");
                     continue;
-                }
 
                 var destSubDir = Path.Combine(destinationDir, Path.GetFileName(subDir));
                 Copy(subDir, destSubDir);

@@ -11,7 +11,7 @@
 using System.Text;
 using System.Text.Json;
 
-namespace com.IvanMurzak.Unity.MCP.Utils
+namespace com.IvanMurzak.McpPlugin
 {
     public static class ExtensionsJsonElement
     {

@@ -131,7 +131,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                     {
                         var header =
                             "Author: Ivan Murzak (https://github.com/IvanMurzak)\n" +
-                            "Repository: GitHub (https://github.com/IvanMurzak/Unity-MCP)\n" +
+                            "Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)\n" +
                             "Copyright (c) 2025 Ivan Murzak\n" +
                             "Licensed under the Apache License, Version 2.0.\n" +
                             "See the LICENSE file in the project root for more information.\n" +
