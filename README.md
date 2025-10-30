@@ -132,3 +132,176 @@ The plugin supports bidirectional communication:
 netstandard2.1 - Compatible with .NET Core 3.0+, .NET 5+, and .NET Framework 4.8+
 
 ## MCP Server
+
+**McpPlugin.Server** is a standalone .NET server application that acts as a bridge between Model Context Protocol (MCP) clients and .NET applications integrated with the McpPlugin library. It enables AI assistants to interact with .NET applications through the MCP standard.
+
+### Key Features
+
+- **Dual Transport Support**: Supports both STDIO and HTTP transport methods for MCP communication
+- **SignalR Bridge**: Real-time bidirectional communication with .NET applications via SignalR
+- **.NET Tool Package**: Installable as a global .NET tool for easy deployment
+- **Automatic Routing**: Routes MCP requests (tools, prompts, resources) to connected .NET applications
+- **Event-Driven Architecture**: Reactive notifications for dynamic tool/prompt/resource updates
+- **Session Management**: Per-session execution context for HTTP transport mode
+- **Robust Logging**: Comprehensive NLog-based logging with file rotation
+
+### Installation
+
+Install as a global .NET tool:
+
+```bash
+dotnet tool install --global com.IvanMurzak.McpPlugin.Server
+```
+
+Or run directly:
+
+```bash
+dotnet run --project McpPlugin.Server
+```
+
+### Usage
+
+The server can be configured via command-line arguments:
+
+```bash
+mcp-plugin-server --port=8080 --client-transport=stdio --plugin-timeout=10000
+```
+
+**Configuration Options:**
+
+- `--port` - Server port for SignalR connections (default: 8080)
+- `--client-transport` - MCP client transport: `stdio` or `http` (default: `stdio`)
+- `--plugin-timeout` - Plugin connection timeout in milliseconds (default: 10000)
+
+### Architecture
+
+```text
+MCP Client (AI Assistant)
+        ↓
+    STDIO/HTTP
+        ↓
+McpPlugin.Server (Bridge)
+        ↓
+    SignalR/ASP.NET Core
+        ↓
+.NET Application + McpPlugin
+```
+
+### Core Components
+
+#### McpServerService
+
+Hosted service ([McpServerService.cs](McpPlugin.Server/src/McpServerService.cs)) that manages the MCP server lifecycle and coordinates events between the MCP client and connected .NET applications.
+
+#### Routers
+
+Request routers forward MCP operations to connected applications:
+
+- **ToolRouter** - Routes `tools/call` and `tools/list` requests
+- **PromptRouter** - Routes `prompts/get` and `prompts/list` requests
+- **ResourceRouter** - Routes `resources/read`, `resources/list`, and `resources/templates` requests
+
+#### McpServerHub
+
+SignalR hub ([McpServerHub.cs](McpPlugin.Server/src/Hub/McpServerHub.cs)) that manages connections from .NET applications and handles:
+
+- Version handshake validation
+- Tool/prompt/resource update notifications
+- Request completion tracking
+
+### Transport Modes
+
+#### STDIO Transport
+
+Standard input/output communication for MCP clients:
+
+```bash
+mcp-plugin-server --client-transport stdio
+```
+
+- Console logs redirected to stderr to avoid polluting stdout
+- Ideal for Claude Desktop and similar MCP clients
+
+#### HTTP Transport
+
+HTTP-based communication with stateful sessions:
+
+```bash
+mcp-plugin-server --client-transport http --port 8080
+```
+
+- Per-session execution context
+- Stateless mode disabled for persistent connections
+- Accessible at `http://localhost:8080/` or `http://localhost:8080/mcp`
+
+### Configuration Files
+
+#### appsettings.json
+
+Basic ASP.NET Core configuration for logging and allowed hosts.
+
+#### NLog.config
+
+Comprehensive logging configuration:
+
+- File logging with automatic rotation (10 MB max per file)
+- Console logging with color-coded levels
+- Separate error log file for Error/Fatal levels
+- Microsoft-style log formatting
+
+#### server.json
+
+MCP server metadata configuration compatible with Model Context Protocol registry schema.
+
+### Technology Stack
+
+- **.NET 9.0** - Latest .NET framework with native AOT support potential
+- **ASP.NET Core** - Web framework for HTTP endpoints
+- **SignalR** - Real-time bidirectional communication
+- **ModelContextProtocol** (v0.3.0-preview.4) - Official MCP SDK
+- **ModelContextProtocol.AspNetCore** - ASP.NET Core integration for MCP
+- **R3** - Reactive extensions for event handling
+- **NLog** - Structured logging framework
+- **ReflectorNet** - Reflection utilities
+
+### Deployment
+
+The server is packaged as a .NET tool and can be:
+
+- Installed globally: `dotnet tool install -g com.IvanMurzak.McpPlugin.Server`
+- Run as executable: `mcp-plugin-server`
+- Containerized using the included Dockerfile
+- Integrated into CI/CD pipelines
+
+### Version Compatibility
+
+The server performs API version handshaking with connected plugins to ensure compatibility:
+
+- API Version: `1.0.0` (defined in `Consts.ApiVersion`)
+- Exact version match required for successful connection
+- Version mismatch errors logged and rejected
+
+### Endpoints
+
+**SignalR Hub:** `/mcp-remote-app` - Main SignalR endpoint for plugin connections
+
+**HTTP Transport Mode:**
+
+- `/` - Primary MCP endpoint
+- `/mcp` - Alternative MCP endpoint
+- `/help` - Informational endpoint with usage details
+
+### Example: Claude Desktop Integration
+
+Add to Claude Desktop configuration (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "dotnet-app": {
+      "command": "mcp-plugin-server",
+      "args": ["client-transport=stdio", "port=8080"]
+    }
+  }
+}
+```
