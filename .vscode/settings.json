@@ -3,6 +3,7 @@
         "Disconnectable",
         "netstandard",
         "Reconfig",
+        "Scriptable",
         "signalr",
         "xunit"
     ],

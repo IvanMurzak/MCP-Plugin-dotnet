@@ -16,7 +16,7 @@ using System.Text;
 using System.Text.Json.Serialization;
 using com.IvanMurzak.ReflectorNet.Utils;
 
-namespace com.IvanMurzak.McpPlugin.Common.Model.Unity
+namespace com.IvanMurzak.McpPlugin.Tests.Data.Unity
 {
     [Serializable]
     [Description("Reference to UnityEngine.Object asset instance. It could be Material, ScriptableObject, Prefab, and any other Asset. Anything located in the Assets folder.")]

@@ -11,7 +11,7 @@
 using System.Collections.Generic;
 using com.IvanMurzak.McpPlugin.Common.Model;
 
-namespace com.IvanMurzak.McpPlugin.Common
+namespace com.IvanMurzak.McpPlugin
 {
     public static class ExtensionsNotificationData
     {

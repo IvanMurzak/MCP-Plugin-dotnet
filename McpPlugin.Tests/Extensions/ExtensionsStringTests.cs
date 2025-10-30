@@ -7,12 +7,12 @@
 │  See the LICENSE file in the project root for more information.        │
 └────────────────────────────────────────────────────────────────────────┘
 */
-using System;
+
 using System.Collections.Generic;
 using FluentAssertions;
 using Xunit;
 
-namespace com.IvanMurzak.McpPlugin.Common.Tests.Extensions
+namespace com.IvanMurzak.McpPlugin.Tests.Extensions
 {
     public class ExtensionsStringTests
     {

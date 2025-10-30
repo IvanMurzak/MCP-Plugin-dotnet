@@ -12,7 +12,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Text.Json.Serialization;
 
-namespace com.IvanMurzak.McpPlugin.Common.Model.Unity
+namespace com.IvanMurzak.McpPlugin.Tests.Data.Unity
 {
     [System.Serializable]
     [Description("Reference to UnityEngine.Object instance. It could be GameObject, Component, Asset, etc. Anything extended from UnityEngine.Object.")]

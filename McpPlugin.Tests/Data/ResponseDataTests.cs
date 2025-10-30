@@ -12,7 +12,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 using FluentAssertions;
 using Xunit;
 
-namespace com.IvanMurzak.McpPlugin.Common.Tests.Data
+namespace com.IvanMurzak.McpPlugin.Tests.Data
 {
     public class ResponseDataTests
     {

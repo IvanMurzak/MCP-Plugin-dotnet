@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Xunit.Abstractions;
 
-namespace com.IvanMurzak.McpPlugin.Common.Tests.Infrastructure
+namespace com.IvanMurzak.McpPlugin.Tests.Infrastructure
 {
     public static class TestLoggerFactory
     {

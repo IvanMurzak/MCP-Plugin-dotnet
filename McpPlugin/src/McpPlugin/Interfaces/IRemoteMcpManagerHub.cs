@@ -10,7 +10,7 @@
 
 using com.IvanMurzak.McpPlugin.Common.Hub.Server;
 
-namespace com.IvanMurzak.McpPlugin.Common
+namespace com.IvanMurzak.McpPlugin
 {
     public interface IRemoteMcpManagerHub : IConnectServerHub, IServerMcpManager
     {

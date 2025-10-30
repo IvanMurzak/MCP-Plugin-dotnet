@@ -13,7 +13,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text.Json.Serialization;
 
-namespace com.IvanMurzak.McpPlugin.Common.Model.Unity
+namespace com.IvanMurzak.McpPlugin.Tests.Data.Unity
 {
     [Description(@"Component reference. Used to find a Component at GameObject.")]
     public class ComponentRef : ObjectRef

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text.Json.Nodes;
+using com.IvanMurzak.McpPlugin.Tests.Data.Other;
 using com.IvanMurzak.ReflectorNet.Utils;
 
 namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
@@ -11,46 +12,46 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
             // Company definition
             return builder
                 .AddDefinition(
-                    TypeUtils.GetSchemaTypeId<SampleData.Company>(),
+                    TypeUtils.GetSchemaTypeId<Company>(),
                     new JsonObjectBuilder()
                         .SetTypeObject()
-                        .AddSimpleProperty(nameof(SampleData.Company.Name), JsonSchema.String, required: false)
-                        .AddRefProperty<SampleData.Address>(nameof(SampleData.Company.Headquarters), required: false)
-                        .AddRefProperty<SampleData.Person[]>(nameof(SampleData.Company.Employees), required: false)
-                        .AddRefProperty<Dictionary<string, SampleData.Person[]>>(nameof(SampleData.Company.Teams), required: false)
-                        .AddRefProperty<Dictionary<string, Dictionary<string, SampleData.Person>>>(nameof(SampleData.Company.Directory), required: false)
+                        .AddSimpleProperty(nameof(Company.Name), JsonSchema.String, required: false)
+                        .AddRefProperty<Address>(nameof(Company.Headquarters), required: false)
+                        .AddRefProperty<Person[]>(nameof(Company.Employees), required: false)
+                        .AddRefProperty<Dictionary<string, Person[]>>(nameof(Company.Teams), required: false)
+                        .AddRefProperty<Dictionary<string, Dictionary<string, Person>>>(nameof(Company.Directory), required: false)
                         .BuildJsonObject())
 
                 // Address definition
                 .AddDefinition(
-                    TypeUtils.GetSchemaTypeId<SampleData.Address>(),
+                    TypeUtils.GetSchemaTypeId<Address>(),
                     new JsonObjectBuilder()
                         .SetTypeObject()
-                        .AddSimpleProperty(nameof(SampleData.Address.Street), JsonSchema.String, required: false)
-                        .AddSimpleProperty(nameof(SampleData.Address.City), JsonSchema.String, required: false)
-                        .AddSimpleProperty(nameof(SampleData.Address.Zip), JsonSchema.String, required: false)
-                        .AddSimpleProperty(nameof(SampleData.Address.Country), JsonSchema.String, required: false)
+                        .AddSimpleProperty(nameof(Address.Street), JsonSchema.String, required: false)
+                        .AddSimpleProperty(nameof(Address.City), JsonSchema.String, required: false)
+                        .AddSimpleProperty(nameof(Address.Zip), JsonSchema.String, required: false)
+                        .AddSimpleProperty(nameof(Address.Country), JsonSchema.String, required: false)
                         .BuildJsonObject())
 
                 // Person[] array definition
                 .AddArrayDefinitionRef(
-                    name: "com.IvanMurzak.McpPlugin.Common.Tests.SampleData.Person_Array",
-                    itemType: "com.IvanMurzak.McpPlugin.Common.Tests.SampleData.Person")
+                    name: "com.IvanMurzak.McpPlugin.Tests.Person_Array",
+                    itemType: "com.IvanMurzak.McpPlugin.Tests.Person")
 
                 // Person definition
                 .AddDefinition(
-                    TypeUtils.GetSchemaTypeId<SampleData.Person>(),
+                    TypeUtils.GetSchemaTypeId<Person>(),
                     new JsonObjectBuilder()
                         .SetTypeObject()
-                        .AddSimpleProperty(nameof(SampleData.Person.FirstName), JsonSchema.String, required: false)
-                        .AddSimpleProperty(nameof(SampleData.Person.LastName), JsonSchema.String, required: false)
-                        .AddSimpleProperty(nameof(SampleData.Person.Age), JsonSchema.Integer, required: true)
-                        .AddRefProperty<SampleData.Address>(nameof(SampleData.Person.Address), required: false)
-                        .AddRefProperty<string[]>(nameof(SampleData.Person.Tags), required: false)
-                        .AddRefProperty<Dictionary<string, int>>(nameof(SampleData.Person.Scores), required: false)
-                        .AddRefProperty<int[]>(nameof(SampleData.Person.Numbers), required: false)
-                        .AddRefProperty<string[][]>(nameof(SampleData.Person.JaggedAliases), required: false)
-                        .AddRefProperty<int[]>(nameof(SampleData.Person.Matrix2x2), required: false)
+                        .AddSimpleProperty(nameof(Person.FirstName), JsonSchema.String, required: false)
+                        .AddSimpleProperty(nameof(Person.LastName), JsonSchema.String, required: false)
+                        .AddSimpleProperty(nameof(Person.Age), JsonSchema.Integer, required: true)
+                        .AddRefProperty<Address>(nameof(Person.Address), required: false)
+                        .AddRefProperty<string[]>(nameof(Person.Tags), required: false)
+                        .AddRefProperty<Dictionary<string, int>>(nameof(Person.Scores), required: false)
+                        .AddRefProperty<int[]>(nameof(Person.Numbers), required: false)
+                        .AddRefProperty<string[][]>(nameof(Person.JaggedAliases), required: false)
+                        .AddRefProperty<int[]>(nameof(Person.Matrix2x2), required: false)
                         .BuildJsonObject())
 
                 // string[] array definition
@@ -82,7 +83,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
 
                 // Dictionary<string, Person[]> definition
                 .AddDefinition(
-                    TypeUtils.GetSchemaTypeId<Dictionary<string, SampleData.Person[]>>(),
+                    TypeUtils.GetSchemaTypeId<Dictionary<string, Person[]>>(),
                     new JsonObject
                     {
                         [JsonSchema.Type] = JsonSchema.Object,
@@ -91,14 +92,14 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
                             [JsonSchema.Type] = JsonSchema.Array,
                             [JsonSchema.Items] = new JsonObject
                             {
-                                [JsonSchema.Ref] = JsonSchema.RefValue + TypeUtils.GetSchemaTypeId<SampleData.Person>()
+                                [JsonSchema.Ref] = JsonSchema.RefValue + TypeUtils.GetSchemaTypeId<Person>()
                             }
                         }
                     })
 
                 // Dictionary<string, Dictionary<string, Person>> definition
                 .AddDefinition(
-                    TypeUtils.GetSchemaTypeId<Dictionary<string, Dictionary<string, SampleData.Person>>>(),
+                    TypeUtils.GetSchemaTypeId<Dictionary<string, Dictionary<string, Person>>>(),
                     new JsonObject
                     {
                         [JsonSchema.Type] = JsonSchema.Object,
@@ -107,36 +108,36 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
                             [JsonSchema.Type] = JsonSchema.Object,
                             [JsonSchema.AdditionalProperties] = new JsonObjectBuilder()
                                 .SetTypeObject()
-                                .AddSimpleProperty(nameof(SampleData.Person.FirstName), JsonSchema.String, required: false)
-                                .AddSimpleProperty(nameof(SampleData.Person.LastName), JsonSchema.String, required: false)
-                                .AddSimpleProperty(nameof(SampleData.Person.Age), JsonSchema.Integer, required: true)
-                                .AddRefProperty<SampleData.Address>(nameof(SampleData.Person.Address), required: false)
-                                .AddRefProperty<string[]>(nameof(SampleData.Person.Tags), required: false)
-                                .AddRefProperty<Dictionary<string, int>>(nameof(SampleData.Person.Scores), required: false)
-                                .AddRefProperty<int[]>(nameof(SampleData.Person.Numbers), required: false)
-                                .AddRefProperty<string[][]>(nameof(SampleData.Person.JaggedAliases), required: false)
-                                .AddRefProperty<int[]>(nameof(SampleData.Person.Matrix2x2), required: false)
+                                .AddSimpleProperty(nameof(Person.FirstName), JsonSchema.String, required: false)
+                                .AddSimpleProperty(nameof(Person.LastName), JsonSchema.String, required: false)
+                                .AddSimpleProperty(nameof(Person.Age), JsonSchema.Integer, required: true)
+                                .AddRefProperty<Address>(nameof(Person.Address), required: false)
+                                .AddRefProperty<string[]>(nameof(Person.Tags), required: false)
+                                .AddRefProperty<Dictionary<string, int>>(nameof(Person.Scores), required: false)
+                                .AddRefProperty<int[]>(nameof(Person.Numbers), required: false)
+                                .AddRefProperty<string[][]>(nameof(Person.JaggedAliases), required: false)
+                                .AddRefProperty<int[]>(nameof(Person.Matrix2x2), required: false)
                                 .BuildJsonObject()
                         }
                     })
 
                 // Dictionary<string, Person> definition
                 .AddDefinition(
-                    TypeUtils.GetSchemaTypeId<Dictionary<string, SampleData.Person>>(),
+                    TypeUtils.GetSchemaTypeId<Dictionary<string, Person>>(),
                     new JsonObject
                     {
                         [JsonSchema.Type] = JsonSchema.Object,
                         [JsonSchema.AdditionalProperties] = new JsonObjectBuilder()
                             .SetTypeObject()
-                            .AddSimpleProperty(nameof(SampleData.Person.FirstName), JsonSchema.String, required: false)
-                            .AddSimpleProperty(nameof(SampleData.Person.LastName), JsonSchema.String, required: false)
-                            .AddSimpleProperty(nameof(SampleData.Person.Age), JsonSchema.Integer, required: true)
-                            .AddRefProperty<SampleData.Address>(nameof(SampleData.Person.Address), required: false)
-                            .AddRefProperty<string[]>(nameof(SampleData.Person.Tags), required: false)
-                            .AddRefProperty<Dictionary<string, int>>(nameof(SampleData.Person.Scores), required: false)
-                            .AddRefProperty<int[]>(nameof(SampleData.Person.Numbers), required: false)
-                            .AddRefProperty<string[][]>(nameof(SampleData.Person.JaggedAliases), required: false)
-                            .AddRefProperty<int[]>(nameof(SampleData.Person.Matrix2x2), required: false)
+                            .AddSimpleProperty(nameof(Person.FirstName), JsonSchema.String, required: false)
+                            .AddSimpleProperty(nameof(Person.LastName), JsonSchema.String, required: false)
+                            .AddSimpleProperty(nameof(Person.Age), JsonSchema.Integer, required: true)
+                            .AddRefProperty<Address>(nameof(Person.Address), required: false)
+                            .AddRefProperty<string[]>(nameof(Person.Tags), required: false)
+                            .AddRefProperty<Dictionary<string, int>>(nameof(Person.Scores), required: false)
+                            .AddRefProperty<int[]>(nameof(Person.Numbers), required: false)
+                            .AddRefProperty<string[][]>(nameof(Person.JaggedAliases), required: false)
+                            .AddRefProperty<int[]>(nameof(Person.Matrix2x2), required: false)
                             .BuildJsonObject()
                     });
         }

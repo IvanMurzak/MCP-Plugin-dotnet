@@ -8,22 +8,21 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
-using com.IvanMurzak.McpPlugin.Common.Tests.Infrastructure;
 using com.IvanMurzak.McpPlugin.Common.Tests.Utils;
+using com.IvanMurzak.McpPlugin.Tests.Data.Other;
+using com.IvanMurzak.McpPlugin.Tests.Infrastructure;
 using com.IvanMurzak.ReflectorNet;
 using com.IvanMurzak.ReflectorNet.Utils;
 using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
+namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 {
     public class McpBuilderTests_ListTool
     {
@@ -158,8 +157,8 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
         IMcpPlugin? BuildMcpPluginWithTool(string toolName, string toolTitle)
         {
             // Arrange
-            var classType = typeof(SampleData.Method_NoArgs_Void);
-            var method = typeof(SampleData.Method_NoArgs_Void).GetMethod(nameof(SampleData.Method_NoArgs_Void.Do))!;
+            var classType = typeof(Method_NoArgs_Void);
+            var method = typeof(Method_NoArgs_Void).GetMethod(nameof(Method_NoArgs_Void.Do))!;
             var reflector = new Reflector();
             var mcpPluginBuilder = new McpPluginBuilder(version, _loggerProvider)
                 .AddLogging(b => b.AddXunitTestOutput(_output))
@@ -209,8 +208,8 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
         public async Task ListTool_NoArgsVoidMethod_ShouldReturnEmptyInputSchema_AndNullOutputSchema()
         {
             await BuildAndValidateTool(
-                classType: typeof(SampleData.Method_NoArgs_Void),
-                method: typeof(SampleData.Method_NoArgs_Void).GetMethod(nameof(SampleData.Method_NoArgs_Void.Do))!,
+                classType: typeof(Method_NoArgs_Void),
+                method: typeof(Method_NoArgs_Void).GetMethod(nameof(Method_NoArgs_Void.Do))!,
                 expectedInputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
                     .BuildJsonElement(),
@@ -221,8 +220,8 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
         public async Task ListTool_OneArgIntReturnMethod_ShouldBeListed()
         {
             await BuildAndValidateTool(
-                classType: typeof(SampleData.Method_OneArg_IntReturn),
-                method: typeof(SampleData.Method_OneArg_IntReturn).GetMethod(nameof(SampleData.Method_OneArg_IntReturn.AddOne))!,
+                classType: typeof(Method_OneArg_IntReturn),
+                method: typeof(Method_OneArg_IntReturn).GetMethod(nameof(Method_OneArg_IntReturn.AddOne))!,
                 expectedInputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
                     .AddSimpleProperty("value", JsonSchema.Integer, required: true)
@@ -237,8 +236,8 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
         public async Task ListTool_TwoArgsStringReturnMethod_ShouldBeListed()
         {
             await BuildAndValidateTool(
-                classType: typeof(SampleData.Method_TwoArgs_StringReturn),
-                method: typeof(SampleData.Method_TwoArgs_StringReturn).GetMethod(nameof(SampleData.Method_TwoArgs_StringReturn.Concat))!,
+                classType: typeof(Method_TwoArgs_StringReturn),
+                method: typeof(Method_TwoArgs_StringReturn).GetMethod(nameof(Method_TwoArgs_StringReturn.Concat))!,
                 expectedInputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
                     .AddSimpleProperty("left", JsonSchema.String, required: true)
@@ -253,8 +252,8 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
         [Fact]
         public async Task ListTool_GenericMethod_ShouldBeListed()
         {
-            var classType = typeof(SampleData.Method_Generic_T_Return<int>);
-            var genericMethod = classType.GetMethod(nameof(SampleData.Method_Generic_T_Return<int>.Echo))!;
+            var classType = typeof(Method_Generic_T_Return<int>);
+            var genericMethod = classType.GetMethod(nameof(Method_Generic_T_Return<int>.Echo))!;
             var constructed = genericMethod.IsGenericMethodDefinition
                 ? genericMethod.MakeGenericMethod(typeof(int))
                 : genericMethod;
@@ -275,10 +274,10 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
         [Fact]
         public async Task ListTool_GenericMethodWithComplexType_ShouldBeListed()
         {
-            var classType = typeof(SampleData.Method_Generic_T_Return<SampleData.Company>);
-            var genericMethod = classType.GetMethod(nameof(SampleData.Method_Generic_T_Return<SampleData.Company>.Echo))!;
+            var classType = typeof(Method_Generic_T_Return<Company>);
+            var genericMethod = classType.GetMethod(nameof(Method_Generic_T_Return<Company>.Echo))!;
             var constructed = genericMethod.IsGenericMethodDefinition
-                ? genericMethod.MakeGenericMethod(typeof(SampleData.Company))
+                ? genericMethod.MakeGenericMethod(typeof(Company))
                 : genericMethod;
 
             await BuildAndValidateTool(
@@ -286,12 +285,12 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
                 method: constructed,
                 expectedInputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
-                    .AddRefProperty<SampleData.Company>("value", required: true)
+                    .AddRefProperty<Company>("value", required: true)
                     .AddCompanyDefine()
                     .BuildJsonElement(),
                 expectedOutputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
-                    .AddRefProperty<SampleData.Company>(JsonSchema.Result, required: false) // TODO: `required` should be true for .NET 5.0+
+                    .AddRefProperty<Company>(JsonSchema.Result, required: false) // TODO: `required` should be true for .NET 5.0+
                     .AddCompanyDefine()
                     .BuildJsonElement());
         }
@@ -300,8 +299,8 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
         public async Task ListTool_AsyncTaskMethod_ShouldBeListed()
         {
             await BuildAndValidateTool(
-                classType: typeof(SampleData.Method_Async_Task),
-                method: typeof(SampleData.Method_Async_Task).GetMethod(nameof(SampleData.Method_Async_Task.DoAsync))!,
+                classType: typeof(Method_Async_Task),
+                method: typeof(Method_Async_Task).GetMethod(nameof(Method_Async_Task.DoAsync))!,
                 expectedInputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
                     .BuildJsonElement(),
@@ -312,8 +311,8 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
         public async Task ListTool_AsyncTaskOfIntMethod_ShouldBeListed()
         {
             await BuildAndValidateTool(
-                classType: typeof(SampleData.Method_Async_TaskOfInt),
-                method: typeof(SampleData.Method_Async_TaskOfInt).GetMethod(nameof(SampleData.Method_Async_TaskOfInt.ComputeAsync))!,
+                classType: typeof(Method_Async_TaskOfInt),
+                method: typeof(Method_Async_TaskOfInt).GetMethod(nameof(Method_Async_TaskOfInt.ComputeAsync))!,
                 expectedInputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
                     .AddSimpleProperty("a", JsonSchema.Integer, required: true)
@@ -329,8 +328,8 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
         public async Task ListTool_NoArgsListOfIntReturnMethod_ShouldBeListed()
         {
             await BuildAndValidateTool(
-                classType: typeof(SampleData.Method_NoArgs_ListOfIntReturn),
-                method: typeof(SampleData.Method_NoArgs_ListOfIntReturn).GetMethod(nameof(SampleData.Method_NoArgs_ListOfIntReturn.Do))!,
+                classType: typeof(Method_NoArgs_ListOfIntReturn),
+                method: typeof(Method_NoArgs_ListOfIntReturn).GetMethod(nameof(Method_NoArgs_ListOfIntReturn.Do))!,
                 expectedInputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
                     .BuildJsonElement(),
@@ -344,8 +343,8 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Mcp
         [Fact]
         public async Task ListTool_NoArgsListOfGenericReturnMethod_ShouldBeListed()
         {
-            var classType = typeof(SampleData.Method_NoArgs_ListOfGenericReturn<string>);
-            var method = classType.GetMethod(nameof(SampleData.Method_NoArgs_ListOfGenericReturn<string>.Do))!;
+            var classType = typeof(Method_NoArgs_ListOfGenericReturn<string>);
+            var method = classType.GetMethod(nameof(Method_NoArgs_ListOfGenericReturn<string>.Do))!;
 
             await BuildAndValidateTool(
                 classType: classType,

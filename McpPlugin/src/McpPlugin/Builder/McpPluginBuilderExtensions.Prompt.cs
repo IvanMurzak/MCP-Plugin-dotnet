@@ -16,7 +16,7 @@ using System.Text.Json.Nodes;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.ReflectorNet.Utils;
 
-namespace com.IvanMurzak.McpPlugin.Common
+namespace com.IvanMurzak.McpPlugin
 {
     public static partial class McpPluginBuilderExtensions
     {
