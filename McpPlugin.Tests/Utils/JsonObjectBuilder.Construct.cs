@@ -35,8 +35,8 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
 
                 // Person[] array definition
                 .AddArrayDefinitionRef(
-                    name: "com.IvanMurzak.McpPlugin.Tests.Person_Array",
-                    itemType: "com.IvanMurzak.McpPlugin.Tests.Person")
+                    name: "com.IvanMurzak.McpPlugin.Tests.Data.Other.Person_Array",
+                    itemType: "com.IvanMurzak.McpPlugin.Tests.Data.Other.Person")
 
                 // Person definition
                 .AddDefinition(
