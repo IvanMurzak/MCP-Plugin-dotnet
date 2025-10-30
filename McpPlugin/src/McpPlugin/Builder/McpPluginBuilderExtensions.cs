@@ -49,7 +49,7 @@ namespace com.IvanMurzak.McpPlugin
             builder.Services.TryAddSingleton<IPromptManager, McpPromptManager>();
             builder.Services.TryAddSingleton<IResourceManager, McpResourceManager>();
             builder.Services.TryAddSingleton<IMcpManager, McpManager>();
-            builder.Services.TryAddSingleton<IClientMcpManager, ClientMcpManagerAdapter>();
+            builder.Services.TryAddSingleton<IClientMcpManager, McpManager>();
             builder.Services.TryAddSingleton<IRemoteMcpManagerHub, McpManagerClientHub>();
             return builder;
         }

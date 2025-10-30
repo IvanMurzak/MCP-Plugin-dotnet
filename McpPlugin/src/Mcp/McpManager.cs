@@ -9,12 +9,13 @@
 */
 
 using System;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public class McpManager : IMcpManager
+    public class McpManager : IMcpManager, IClientMcpManager
     {
         protected readonly ILogger _logger;
         protected readonly Reflector _reflector;
@@ -26,6 +27,10 @@ namespace com.IvanMurzak.McpPlugin
         public IToolManager? ToolManager => _tools;
         public IPromptManager? PromptManager => _prompts;
         public IResourceManager? ResourceManager => _resources;
+
+        public IClientToolHub ToolHub => ToolManager;
+        public IClientPromptHub PromptHub => PromptManager;
+        public IClientResourceHub ResourceHub => ResourceManager;
 
         public McpManager(
             ILogger<McpManager> logger,
@@ -49,6 +54,11 @@ namespace com.IvanMurzak.McpPlugin
             _tools?.Dispose();
             _prompts?.Dispose();
             _resources?.Dispose();
+        }
+
+        public void ForceDisconnect()
+        {
+            throw new NotImplementedException();
         }
     }
 }
