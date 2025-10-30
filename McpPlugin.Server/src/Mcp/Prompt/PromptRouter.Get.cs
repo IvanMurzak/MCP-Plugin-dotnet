@@ -15,6 +15,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.ReflectorNet;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -53,14 +54,14 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             var requestData = new RequestGetPrompt(request.Params.Name, request.Params.Arguments);
             if (logger.IsTraceEnabled)
-                logger.Trace("Get remote prompt '{0}':\n{1}", request.Params.Name, requestData.ToJsonOrEmptyJsonObject(McpPlugin.Instance?.McpRunner.Reflector));
+                logger.Trace("Get remote prompt '{0}':\n{1}", request.Params.Name, requestData.ToPrettyJson());
 
             var response = await promptRunner.RunGetPrompt(requestData, cancellationToken: cancellationToken);
             if (response == null)
                 return new GetPromptResult().SetError($"[Error] '{nameof(response)}' is null");
 
             if (logger.IsTraceEnabled)
-                logger.Trace("Get prompt response:\n{0}", response.ToJsonOrEmptyJsonObject(McpPlugin.Instance?.McpRunner.Reflector));
+                logger.Trace("Get prompt response:\n{0}", response.ToPrettyJson());
 
             if (response.Status == ResponseStatus.Error)
                 return new GetPromptResult().SetError(response.Message ?? "[Error] Got an error during running tool");
@@ -69,38 +70,6 @@ namespace com.IvanMurzak.McpPlugin.Server
                 return new GetPromptResult().SetError("[Error] Prompt returned null value");
 
             return response.Value.ToGetPromptResult();
-        }
-
-        public static ValueTask<GetPromptResult> Get(string name, Action<Dictionary<string, object>>? configureArguments = null)
-        {
-            var arguments = new Dictionary<string, object>();
-            configureArguments?.Invoke(arguments);
-
-            return GetWithJson(name, args =>
-            {
-                foreach (var kvp in arguments)
-                    args[kvp.Key] = kvp.Value.ToJsonElement(McpPlugin.Instance?.McpRunner.Reflector);
-            });
-        }
-
-        public static ValueTask<GetPromptResult> GetWithJson(string name, Action<Dictionary<string, JsonElement>>? configureArguments = null)
-        {
-            var mcpServer = McpServerService.Instance?.McpServer;
-            if (mcpServer == null)
-                throw new InvalidOperationException("[Error] 'McpServer' is null");
-
-            var arguments = new Dictionary<string, JsonElement>();
-            configureArguments?.Invoke(arguments);
-
-            var request = new RequestContext<GetPromptRequestParams>(mcpServer)
-            {
-                Params = new GetPromptRequestParams()
-                {
-                    Name = name,
-                    Arguments = arguments
-                }
-            };
-            return Get(request, default);
         }
     }
 }

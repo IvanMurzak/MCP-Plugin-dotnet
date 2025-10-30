@@ -11,10 +11,17 @@
 using System;
 using System.Collections.Generic;
 using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Server.Utils;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
-    public class DataArguments
+    public interface IDataArguments
+    {
+        int Port { get; }
+        int PluginTimeoutMs { get; }
+        Consts.MCP.Server.TransportMethod ClientTransport { get; }
+    }
+    public class DataArguments : IDataArguments
     {
         public int Port { get; private set; } = 8080;
         public int PluginTimeoutMs { get; private set; }

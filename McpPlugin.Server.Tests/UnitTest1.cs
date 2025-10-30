@@ -1,4 +1,6 @@
-﻿namespace McpServer.Tests;
+﻿using Xunit;
+
+namespace McpServer.Tests;
 
 public class UnitTest1
 {

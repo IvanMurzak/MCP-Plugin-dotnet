@@ -69,37 +69,5 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             return response.Value.ToCallToolResult();
         }
-
-        public static ValueTask<CallToolResult> Call(string name, Action<Dictionary<string, object>>? configureArguments = null)
-        {
-            var arguments = new Dictionary<string, object>();
-            configureArguments?.Invoke(arguments);
-
-            return CallWithJson(name, args =>
-            {
-                foreach (var kvp in arguments)
-                    args[kvp.Key] = kvp.Value.ToJsonElement(McpPlugin.Instance?.McpRunner.Reflector);
-            });
-        }
-
-        public static ValueTask<CallToolResult> CallWithJson(string name, Action<Dictionary<string, JsonElement>>? configureArguments = null)
-        {
-            var mcpServer = McpServerService.Instance?.McpServer;
-            if (mcpServer == null)
-                throw new InvalidOperationException("[Error] 'McpServer' is null");
-
-            var arguments = new Dictionary<string, JsonElement>();
-            configureArguments?.Invoke(arguments);
-
-            var request = new RequestContext<CallToolRequestParams>(mcpServer)
-            {
-                Params = new CallToolRequestParams()
-                {
-                    Name = name,
-                    Arguments = arguments
-                }
-            };
-            return Call(request, default);
-        }
     }
 }

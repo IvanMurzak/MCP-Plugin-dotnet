@@ -104,7 +104,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _disposables.Clear();
             if (Instance == this)
                 Instance = null;
-            return McpPlugin.StaticDisposeAsync();
+            return Task.CompletedTask;
         }
 
         async void OnListToolUpdated(HubEventToolsChange.EventData eventData, CancellationToken cancellationToken)

@@ -97,7 +97,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             IHubContext<THub> hubContext,
             string methodName,
             TRequest request,
-            DataArguments dataArguments,
+            IDataArguments dataArguments,
             CancellationToken cancellationToken = default)
             where TRequest : IRequestID
             where THub : Hub

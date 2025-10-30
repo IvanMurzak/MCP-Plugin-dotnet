@@ -23,16 +23,18 @@ namespace com.IvanMurzak.McpPlugin.Server
     public class RemotePromptRunner : IClientPromptHub, IDisposable
     {
         readonly ILogger _logger;
+        readonly IDataArguments _dataArguments;
         readonly IHubContext<McpServerHub> _remoteAppContext;
         readonly IRequestTrackingService _requestTrackingService;
         readonly CancellationTokenSource cts = new();
         readonly CompositeDisposable _disposables = new();
 
-        public RemotePromptRunner(ILogger<RemotePromptRunner> logger, IHubContext<McpServerHub> remoteAppContext, IRequestTrackingService requestTrackingService)
+        public RemotePromptRunner(ILogger<RemotePromptRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IRequestTrackingService requestTrackingService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("Ctor.");
             _remoteAppContext = remoteAppContext ?? throw new ArgumentNullException(nameof(remoteAppContext));
+            _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
         }
 
@@ -49,6 +51,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                         hubContext: _remoteAppContext,
                         methodName: Consts.RPC.Client.RunCallTool,
                         request: request,
+                        dataArguments: _dataArguments,
                         cancellationToken: linkedCts.Token);
 
                     return responseData.Value ?? ResponseCallTool.Error("Response data is null");
@@ -66,6 +69,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 hubContext: _remoteAppContext,
                 methodName: Consts.RPC.Client.RunListTool,
                 request: request,
+                dataArguments: _dataArguments,
                 cancellationToken: CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken).Token)
                 .ContinueWith(task =>
             {
@@ -96,6 +100,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 hubContext: _remoteAppContext,
                 methodName: Consts.RPC.Client.RunGetPrompt,
                 request: request,
+                dataArguments: _dataArguments,
                 cancellationToken: linkedCts.Token);
 
             if (responseData.Value != null)
@@ -110,6 +115,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 hubContext: _remoteAppContext,
                 methodName: Consts.RPC.Client.RunListPrompts,
                 request: request,
+                dataArguments: _dataArguments,
                 cancellationToken: CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken).Token)
                 .ContinueWith(task =>
             {

@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.ReflectorNet;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -57,7 +58,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             };
 
             if (logger.IsTraceEnabled)
-                logger.Trace("ListAll, result: {0}", result.ToJson(McpPlugin.Instance?.McpRunner.Reflector));
+                logger.Trace("ListAll, result: {0}", result.ToPrettyJson());
 
             return result;
         }

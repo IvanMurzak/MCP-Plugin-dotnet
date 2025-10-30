@@ -24,15 +24,17 @@ namespace com.IvanMurzak.McpPlugin.Server
     {
         readonly ILogger _logger;
         readonly IHubContext<McpServerHub> _remoteAppContext;
+        readonly IDataArguments _dataArguments;
         readonly IRequestTrackingService _requestTrackingService;
         readonly CancellationTokenSource cts = new();
         readonly CompositeDisposable _disposables = new();
 
-        public RemoteResourceRunner(ILogger<RemoteResourceRunner> logger, IHubContext<McpServerHub> remoteAppContext, IRequestTrackingService requestTrackingService)
+        public RemoteResourceRunner(ILogger<RemoteResourceRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IRequestTrackingService requestTrackingService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("Ctor.");
             _remoteAppContext = remoteAppContext ?? throw new ArgumentNullException(nameof(remoteAppContext));
+            _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
         }
 
@@ -43,6 +45,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 hubContext: _remoteAppContext,
                 methodName: Consts.RPC.Client.RunResourceContent,
                 request: requestData,
+                dataArguments: _dataArguments,
                 cancellationToken: cancellationToken);
         }
 
@@ -53,6 +56,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 hubContext: _remoteAppContext,
                 methodName: Consts.RPC.Client.RunListResources,
                 request: requestData,
+                dataArguments: _dataArguments,
                 cancellationToken: cancellationToken);
         }
 
@@ -63,6 +67,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 hubContext: _remoteAppContext,
                 methodName: Consts.RPC.Client.RunListResourceTemplates,
                 request: requestData,
+                dataArguments: _dataArguments,
                 cancellationToken: cancellationToken);
         }
 

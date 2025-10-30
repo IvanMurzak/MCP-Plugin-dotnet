@@ -62,6 +62,9 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                 var builder = WebApplication.CreateBuilder(args);
 
+                // Register IDataArguments as singleton
+                builder.Services.AddSingleton(dataArguments);
+
                 // Replace default logging with NLog
                 builder.Logging.ClearProviders();
                 builder.Logging.AddNLog();
@@ -85,10 +88,12 @@ namespace com.IvanMurzak.McpPlugin.Server
                     Api = Consts.ApiVersion,
                     Plugin = Consts.ApiVersion
                 };
-                builder.Services.WithAppFeatures(version, new NLogLoggerProvider(), configure =>
-                {
-                    configure.WithServerFeatures(dataArguments);
-                }).Build(reflector);
+
+                // Disabled plugin features at the Server side
+                // builder.Services.WithAppFeatures(version, new NLogLoggerProvider(), configure =>
+                // {
+                //     configure.WithServerFeatures(dataArguments);
+                // }).Build(reflector);
 
                 builder.Services.WithMcpServer(dataArguments, logger);
 
