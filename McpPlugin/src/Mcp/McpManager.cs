@@ -28,9 +28,9 @@ namespace com.IvanMurzak.McpPlugin
         public IPromptManager? PromptManager => _prompts;
         public IResourceManager? ResourceManager => _resources;
 
-        public IClientToolHub ToolHub => ToolManager;
-        public IClientPromptHub PromptHub => PromptManager;
-        public IClientResourceHub ResourceHub => ResourceManager;
+        public IClientToolHub? ToolHub => ToolManager;
+        public IClientPromptHub? PromptHub => PromptManager;
+        public IClientResourceHub? ResourceHub => ResourceManager;
 
         public McpManager(
             ILogger<McpManager> logger,

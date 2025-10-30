@@ -54,58 +54,67 @@ namespace com.IvanMurzak.McpPlugin
 
             // Tool events -------------------------------------------------------------
 
-            hubConnection.On<RequestCallTool, ResponseData<ResponseCallTool>>(nameof(IClientToolHub.RunCallTool), async data =>
-                {
-                    _logger.LogDebug("{class}.{method}", nameof(IClientToolHub), nameof(IClientToolHub.RunCallTool));
-                    return await _mcpManager.ToolHub.RunCallTool(data);
-                })
-                .AddTo(_serverEventsDisposables);
+            if (_mcpManager.ToolHub != null)
+            {
+                hubConnection.On<RequestCallTool, ResponseData<ResponseCallTool>>(nameof(IClientToolHub.RunCallTool), async data =>
+                    {
+                        _logger.LogDebug("{class}.{method}", nameof(IClientToolHub), nameof(IClientToolHub.RunCallTool));
+                        return await _mcpManager.ToolHub.RunCallTool(data);
+                    })
+                    .AddTo(_serverEventsDisposables);
 
-            hubConnection.On<RequestListTool, ResponseData<ResponseListTool[]>>(nameof(IClientToolHub.RunListTool), async data =>
-                {
-                    _logger.LogDebug("{class}.{method}", nameof(IClientToolHub), nameof(IClientToolHub.RunListTool));
-                    return await _mcpManager.ToolHub.RunListTool(data);
-                })
-                .AddTo(_serverEventsDisposables);
+                hubConnection.On<RequestListTool, ResponseData<ResponseListTool[]>>(nameof(IClientToolHub.RunListTool), async data =>
+                    {
+                        _logger.LogDebug("{class}.{method}", nameof(IClientToolHub), nameof(IClientToolHub.RunListTool));
+                        return await _mcpManager.ToolHub.RunListTool(data);
+                    })
+                    .AddTo(_serverEventsDisposables);
+            }
 
             // Prompt events -----------------------------------------------------------
 
-            hubConnection.On<RequestGetPrompt, ResponseData<ResponseGetPrompt>>(nameof(IClientPromptHub.RunGetPrompt), async data =>
-                {
-                    _logger.LogDebug("{class}.{method}", nameof(IClientPromptHub), nameof(IClientPromptHub.RunGetPrompt));
-                    return await _mcpManager.PromptHub.RunGetPrompt(data);
-                })
-                .AddTo(_serverEventsDisposables);
+            if (_mcpManager.PromptHub != null)
+            {
+                hubConnection.On<RequestGetPrompt, ResponseData<ResponseGetPrompt>>(nameof(IClientPromptHub.RunGetPrompt), async data =>
+                    {
+                        _logger.LogDebug("{class}.{method}", nameof(IClientPromptHub), nameof(IClientPromptHub.RunGetPrompt));
+                        return await _mcpManager.PromptHub.RunGetPrompt(data);
+                    })
+                    .AddTo(_serverEventsDisposables);
 
-            hubConnection.On<RequestListPrompts, ResponseData<ResponseListPrompts>>(nameof(IClientPromptHub.RunListPrompts), async data =>
-                {
-                    _logger.LogDebug("{class}.{method}", nameof(IClientPromptHub), nameof(IClientPromptHub.RunListPrompts));
-                    return await _mcpManager.PromptHub.RunListPrompts(data);
-                })
-                .AddTo(_serverEventsDisposables);
+                hubConnection.On<RequestListPrompts, ResponseData<ResponseListPrompts>>(nameof(IClientPromptHub.RunListPrompts), async data =>
+                    {
+                        _logger.LogDebug("{class}.{method}", nameof(IClientPromptHub), nameof(IClientPromptHub.RunListPrompts));
+                        return await _mcpManager.PromptHub.RunListPrompts(data);
+                    })
+                    .AddTo(_serverEventsDisposables);
+            }
 
             // Resource events ---------------------------------------------------------
 
-            hubConnection.On<RequestResourceContent, ResponseData<ResponseResourceContent[]>>(nameof(IClientResourceHub.RunResourceContent), async data =>
-                {
-                    _logger.LogDebug("{class}.{method}", nameof(IClientResourceHub), nameof(IClientResourceHub.RunResourceContent));
-                    return await _mcpManager.ResourceHub.RunResourceContent(data);
-                })
-                .AddTo(_serverEventsDisposables);
+            if (_mcpManager.ResourceHub != null)
+            {
+                hubConnection.On<RequestResourceContent, ResponseData<ResponseResourceContent[]>>(nameof(IClientResourceHub.RunResourceContent), async data =>
+                    {
+                        _logger.LogDebug("{class}.{method}", nameof(IClientResourceHub), nameof(IClientResourceHub.RunResourceContent));
+                        return await _mcpManager.ResourceHub.RunResourceContent(data);
+                    })
+                    .AddTo(_serverEventsDisposables);
 
-            hubConnection.On<RequestListResources, ResponseData<ResponseListResource[]>>(nameof(IClientResourceHub.RunListResources), async data =>
-                {
-                    _logger.LogDebug("{class}.{method}", nameof(IClientResourceHub), nameof(IClientResourceHub.RunListResources));
-                    return await _mcpManager.ResourceHub.RunListResources(data);
-                })
-                .AddTo(_serverEventsDisposables);
+                hubConnection.On<RequestListResources, ResponseData<ResponseListResource[]>>(nameof(IClientResourceHub.RunListResources), async data =>
+                    {
+                        _logger.LogDebug("{class}.{method}", nameof(IClientResourceHub), nameof(IClientResourceHub.RunListResources));
+                        return await _mcpManager.ResourceHub.RunListResources(data);
+                    })
+                    .AddTo(_serverEventsDisposables);
 
-            hubConnection.On<RequestListResourceTemplates, ResponseData<ResponseResourceTemplate[]>>(nameof(IClientResourceHub.RunResourceTemplates), async data =>
-                {
-                    _logger.LogDebug("{class}.{method}", nameof(IClientResourceHub), nameof(IClientResourceHub.RunResourceTemplates));
-                    return await _mcpManager.ResourceHub.RunResourceTemplates(data);
-                })
-                .AddTo(_serverEventsDisposables);
+                hubConnection.On<RequestListResourceTemplates, ResponseData<ResponseResourceTemplate[]>>(nameof(IClientResourceHub.RunResourceTemplates), async data =>
+                    {
+                        _logger.LogDebug("{class}.{method}", nameof(IClientResourceHub), nameof(IClientResourceHub.RunResourceTemplates));
+                        return await _mcpManager.ResourceHub.RunResourceTemplates(data);
+                    })
+                    .AddTo(_serverEventsDisposables);
+            }
         }
 
         #endregion
