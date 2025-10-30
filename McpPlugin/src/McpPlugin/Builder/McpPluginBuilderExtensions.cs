@@ -19,7 +19,7 @@ namespace com.IvanMurzak.McpPlugin
 {
     public static partial class McpPluginBuilderExtensions
     {
-        public static IMcpPluginBuilder WithAppFeatures(this IServiceCollection services, Version version, ILoggerProvider? loggerProvider = null, Action<IMcpPluginBuilder>? configure = null)
+        public static IMcpPluginBuilder WithMcpPluginFeatures(this IServiceCollection services, Version version, ILoggerProvider? loggerProvider = null, Action<IMcpPluginBuilder>? configure = null)
         {
             // Create an instance of McpAppBuilder
             var mcpPluginBuilder = new McpPluginBuilder(version, loggerProvider, services);
