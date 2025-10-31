@@ -34,8 +34,8 @@
     <!-- Conditional reference to McpPlugin.Common -->
     <!-- Debug: Use local project reference for development -->
     <!-- Release: Use NuGet package for deployment -->
-    <ProjectReference Include="./../McpPlugin.Common/McpPlugin.Common.csproj" Condition="'$(Configuration)' == 'Debug'" />
-    <PackageReference Include="com.IvanMurzak.McpPlugin.Common" Version="0.1.0" Condition="'$(Configuration)' == 'Release'" />
+    <ProjectReference Include="./../McpPlugin.Common/McpPlugin.Common.csproj" />
+    <!-- <PackageReference Include="com.IvanMurzak.McpPlugin.Common" Version="0.1.0" /> -->
 
     <PackageReference Include="com.IvanMurzak.ReflectorNet" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.10" />
