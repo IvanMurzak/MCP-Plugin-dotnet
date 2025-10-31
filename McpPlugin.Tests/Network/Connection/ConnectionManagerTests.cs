@@ -232,7 +232,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
 
             // Complete connection and wait for both tasks
             allowConnectionToComplete.SetResult(true);
-            await EnsureTasksCompleteAsync(firstTask, secondTask);
+            await EnsureTasksCompleteAsync(5000, firstTask, secondTask);
 
             providerCallCount.Should().Be(1, "provider should only be called once");
         }
@@ -559,7 +559,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
         /// </summary>
         /// <param name="timeoutMs">The timeout in milliseconds.</param>
         /// <param name="tasks">The tasks to wait for completion.</param>
-        private static async Task EnsureTasksCompleteAsync(int timeoutMs, Task[] tasks)
+        private static async Task EnsureTasksCompleteAsync(int timeoutMs, params Task[] tasks)
         {
             var allTasksCompleted = Task.WhenAll(tasks);
             var timeoutTask = Task.Delay(timeoutMs);
