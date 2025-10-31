@@ -14,12 +14,12 @@ on:
   workflow_call:
     inputs:
       version: { required: true, type: string }
-    secrets:
-      NUGET_API_KEY:    { required: true }
 
 jobs:
   deploy-to-nuget:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -50,6 +50,12 @@ jobs:
         working-directory: ./
         run: dotnet test --no-build --verbosity normal --configuration Release
 
+      - name: Login to NuGet with Trusted Publishing
+        id: nuget_login
+        uses: NuGet/login@v1
+        with:
+          user: IvanMurzak
+
       - name: Pack McpPlugin.Common NuGet package
         working-directory: ./McpPlugin.Common
         run: dotnet pack McpPlugin.Common.csproj --no-build --configuration Release --output ../nupkg
@@ -70,7 +76,7 @@ jobs:
             exit 1
           fi
           echo "Deploying NuGet package: $nupkg_file (version: ${{ steps.version.outputs.version }})"
-          dotnet nuget push "$nupkg_file" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+          dotnet nuget push "$nupkg_file" --api-key ${{ steps.nuget_login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
 
       - name: Deploy McpPlugin NuGet package
         run: |
@@ -80,7 +86,7 @@ jobs:
             exit 1
           fi
           echo "Deploying NuGet package: $nupkg_file (version: ${{ steps.version.outputs.version }})"
-          dotnet nuget push "$nupkg_file" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+          dotnet nuget push "$nupkg_file" --api-key ${{ steps.nuget_login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
 
       - name: Deploy McpPlugin.Server NuGet package
         run: |
@@ -90,4 +96,4 @@ jobs:
             exit 1
           fi
           echo "Deploying NuGet package: $nupkg_file (version: ${{ steps.version.outputs.version }})"
-          dotnet nuget push "$nupkg_file" --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+          dotnet nuget push "$nupkg_file" --api-key ${{ steps.nuget_login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
