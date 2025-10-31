@@ -16,8 +16,6 @@ on:
       version: { required: true, type: string }
     secrets:
       NUGET_API_KEY:    { required: true }
-      DOCKER_USERNAME:  { required: true }
-      DOCKER_PASSWORD:  { required: true }
 
 jobs:
   deploy-to-nuget:
