@@ -39,6 +39,12 @@ $VersionFiles = @(
         Description = "Server JSON version (2 occurrences)"
     },
     @{
+        Path        = "McpPlugin.Common/McpPlugin.Common.csproj"
+        Pattern     = '<Version>[\d\.]+</Version>'
+        Replace     = '<Version>{VERSION}</Version>'
+        Description = "Common csproj XML version"
+    },
+    @{
         Path        = "McpPlugin.Server/McpPlugin.Server.csproj"
         Pattern     = '<Version>[\d\.]+</Version>'
         Replace     = '<Version>{VERSION}</Version>'
