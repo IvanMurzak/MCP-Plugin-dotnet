@@ -121,6 +121,11 @@ namespace com.IvanMurzak.McpPlugin
                         _logger.LogWarning("{0} Connection task was canceled {1}.", _guid, Endpoint);
                         return false;
                     }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("{0} Connection task failed: {1}", _guid, ex.Message);
+                        return false;
+                    }
                 }, cancellationToken);
             }
 
@@ -165,18 +170,35 @@ namespace com.IvanMurzak.McpPlugin
                             _logger.LogWarning("{0} Concurrent connection task was canceled {1}.", _guid, Endpoint);
                             return false;
                         }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError("{0} Concurrent connection task failed: {1}", _guid, ex.Message);
+                            return false;
+                        }
                     }, cancellationToken);
                 }
 
                 // We won the race, proceed with connection
-                var result = await InternalConnect(internalCts.Token);
-                taskCompletionSource.SetResult(result);
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("{0} Error during connection: {1}\n{2}", _guid, ex.Message, ex.StackTrace);
-                return false;
+                try
+                {
+                    var result = await InternalConnect(internalCts.Token);
+                    taskCompletionSource.SetResult(result);
+                    return result;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Ensure waiting tasks are notified of the cancellation
+                    taskCompletionSource.TrySetCanceled();
+                    _logger.LogWarning("{0} Connection was canceled for endpoint: {1}", _guid, Endpoint);
+                    return false;
+                }
+                catch (Exception ex)
+                {
+                    // Ensure waiting tasks are notified of the failure
+                    taskCompletionSource.TrySetResult(false);
+                    _logger.LogError("{0} Error during connection: {1}\n{2}", _guid, ex.Message, ex.StackTrace);
+                    return false;
+                }
             }
             finally
             {
