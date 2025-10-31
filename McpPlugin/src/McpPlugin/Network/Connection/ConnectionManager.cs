@@ -109,7 +109,14 @@ namespace com.IvanMurzak.McpPlugin
             CancelInternalToken(dispose: true);
 
             if (_hubConnection.Value != null)
+            {
                 await _hubConnection.Value.StopAsync();
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogWarning("{0} Connection canceled before starting connection loop for endpoint: {1}", _guid, Endpoint);
+                    return false;
+                }
+            }
 
             _continueToReconnect.Value = true;
 
@@ -172,7 +179,19 @@ namespace com.IvanMurzak.McpPlugin
             if (!await CreateHubConnectionIfNeeded(cancellationToken))
                 return false;
 
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning("{0} Connection canceled before starting connection loop for endpoint: {1}", _guid, Endpoint);
+                return false;
+            }
+
             await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning("{0} Connection canceled before starting connection loop for endpoint: {1}", _guid, Endpoint);
+                return false;
+            }
 
             return await StartConnectionLoop(cancellationToken);
         }

@@ -1,0 +1,45 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch DemoWebApp",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net9.0/DemoWebApp.dll",
+            "args": [
+                "--port=11111"
+            ],
+            "cwd": "${workspaceFolder}/DemoWebApp",
+            "stopAtEntry": false,
+            "console": "internalConsole",
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        },
+        {
+            "name": "Launch DemoConsoleApp (McpPlugin Client)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/DemoConsoleApp/bin/Debug/net9.0/DemoConsoleApp.dll",
+            "args": [
+                "--port=11111"
+            ],
+            "cwd": "${workspaceFolder}/DemoConsoleApp",
+            "stopAtEntry": false,
+            "console": "internalConsole"
+        }
+    ],
+    "compounds": [
+        {
+            "name": "Launch WebApp + ConsoleApp",
+            "configurations": [
+                "Launch DemoWebApp",
+                "Launch DemoConsoleApp (McpPlugin Client)"
+            ],
+            "stopAll": true,
+            "preLaunchTask": "build"
+        }
+    ]
+}

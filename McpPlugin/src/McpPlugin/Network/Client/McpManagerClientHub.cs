@@ -139,23 +139,18 @@ namespace com.IvanMurzak.McpPlugin
             return _connectionManager.InvokeAsync<string, ResponseData>(nameof(IServerMcpManager.NotifyAboutUpdatedResources), data, cancellationToken);
         }
 
-        public Task<ResponseData> NotifyToolRequestCompleted(ResponseCallTool response, CancellationToken cancellationToken = default)
+        public Task<ResponseData> NotifyToolRequestCompleted(ToolRequestCompletedData request, CancellationToken cancellationToken = default)
         {
             if (_logger.IsEnabled(LogLevel.Trace))
             {
-                _logger.LogTrace("{class}.{method} request: {RequestID}\n{Json}",
+                _logger.LogTrace("{class}.{method} request: {RequestId}\n{Json}",
                     nameof(IServerMcpManager),
                     nameof(IServerMcpManager.NotifyToolRequestCompleted),
-                    response.RequestID,
-                    response.ToPrettyJson()
+                    request.RequestId,
+                    request.ToPrettyJson()
                 );
             }
-            var data = new ToolRequestCompletedData
-            {
-                RequestId = response.RequestID,
-                Result = response
-            };
-            return _connectionManager.InvokeAsync<ToolRequestCompletedData, ResponseData>(nameof(IServerMcpManager.NotifyToolRequestCompleted), data, cancellationToken);
+            return _connectionManager.InvokeAsync<ToolRequestCompletedData, ResponseData>(nameof(IServerMcpManager.NotifyToolRequestCompleted), request, cancellationToken);
         }
 
         #endregion

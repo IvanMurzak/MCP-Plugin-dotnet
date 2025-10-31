@@ -13,6 +13,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -23,7 +24,7 @@ using Microsoft.Extensions.Logging;
 using NLog;
 using NLog.Extensions.Logging;
 
-namespace com.IvanMurzak.McpPlugin.Server
+namespace com.IvanMurzak.McpPlugin.DemoWebApp
 {
     public class Program
     {
