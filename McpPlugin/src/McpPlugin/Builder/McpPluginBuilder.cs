@@ -214,6 +214,12 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
+        public IMcpPluginBuilder WithConfigFromArgsOrEnv(string[]? args = null) => WithConfig(config =>
+        {
+            config.ServerUrl = ConnectionConfig.GetEndpointFromArgsOrEnv(args);
+            config.TimeoutMs = ConnectionConfig.GetTimeoutFromArgsOrEnv(args);
+        });
+
         public IMcpPlugin Build(Reflector reflector)
         {
             if (isBuilt)

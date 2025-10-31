@@ -14,7 +14,7 @@ var version = new Version()
 var reflector = new Reflector();
 
 var mcpPlugin = new McpPluginBuilder(version)
-    .WithConfig(configure => ConnectionConfig.BuildFromArgsOrEnv(args))
+    .WithConfigFromArgsOrEnv(args)
     .AddLogging(builder =>
     {
         builder.AddConsole();

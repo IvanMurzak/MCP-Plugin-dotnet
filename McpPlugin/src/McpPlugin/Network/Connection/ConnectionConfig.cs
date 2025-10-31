@@ -31,12 +31,43 @@ namespace com.IvanMurzak.McpPlugin
             TimeoutMs = Consts.Hub.DefaultTimeoutMs
         };
 
-        public static ConnectionConfig BuildFromArgsOrEnv(string[] args)
+        public static ConnectionConfig BuildFromArgsOrEnv(string[]? args = null)
         {
+            args ??= Environment.GetCommandLineArgs();
             var config = new ConnectionConfig();
             config.ParseEnvironmentVariables();
             config.ParseCommandLineArguments(args);
             return config;
+        }
+
+        public static string GetEndpointFromArgsOrEnv(string[]? args = null)
+        {
+            args ??= Environment.GetCommandLineArgs();
+            var endpoint = Environment.GetEnvironmentVariable(Consts.MCP.Plugin.Env.McpServerEndpoint);
+            var commandLineArgs = ArgsUtils.ParseLineArguments(args);
+
+            if (commandLineArgs.TryGetValue(Consts.MCP.Plugin.Args.McpServerEndpoint.TrimStart('-'), out var argEndpoint))
+                return argEndpoint;
+
+            return endpoint ?? Consts.Hub.DefaultEndpoint;
+        }
+
+        public static int GetTimeoutFromArgsOrEnv(string[]? args = null)
+        {
+            args ??= Environment.GetCommandLineArgs();
+            var timeoutStr = Environment.GetEnvironmentVariable(Consts.MCP.Plugin.Env.McpServerTimeout);
+            var commandLineArgs = ArgsUtils.ParseLineArguments(args);
+
+            if (commandLineArgs.TryGetValue(Consts.MCP.Plugin.Args.McpServerTimeout.TrimStart('-'), out var argTimeout))
+            {
+                if (int.TryParse(argTimeout, out var timeoutFromArgs))
+                    return timeoutFromArgs;
+            }
+
+            if (timeoutStr != null && int.TryParse(timeoutStr, out var timeoutFromEnv))
+                return timeoutFromEnv;
+
+            return Consts.Hub.DefaultTimeoutMs;
         }
 
         void ParseEnvironmentVariables()
