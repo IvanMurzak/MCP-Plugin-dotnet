@@ -128,15 +128,17 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             // Arrange
             var connectionCreationCount = 0;
             var connectionCreated = new TaskCompletionSource<bool>();
-            var allowConnectionToComplete = new TaskCompletionSource<bool>();
 
             _mockHubConnectionProvider
                 .Setup(x => x.CreateConnectionAsync(_testEndpoint))
                 .Returns(async () =>
                 {
-                    Interlocked.Increment(ref connectionCreationCount);
+                    var count = Interlocked.Increment(ref connectionCreationCount);
+                    System.Diagnostics.Debug.WriteLine($"CreateConnectionAsync called. Count: {count}");
                     connectionCreated.TrySetResult(true);
-                    await allowConnectionToComplete.Task;
+                    // Return immediately - the HubConnection will fail to start, but that's OK
+                    // We're testing that CreateConnectionAsync is only called once, not that the connection succeeds
+                    await Task.Yield();
                     return CreateMockHubConnection();
                 });
 
@@ -147,26 +149,39 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                 _mockHubConnectionProvider.Object
             );
 
-            // Act - Launch 10 concurrent connection attempts
+            // Act - Launch 10 concurrent connection attempts with SHORT timeout
+            // The timeout needs to be short so the connection attempts fail quickly
+            // We're testing concurrency control, not successful connections
             var tasks = new Task<bool>[10];
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < tasks.Length; i++)
             {
+                var taskIndex = i;
                 tasks[i] = Task.Run(async () =>
                 {
-                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-                    return await connectionManager.Connect(cts.Token);
+                    System.Diagnostics.Debug.WriteLine($"Task {taskIndex} starting Connect call");
+                    // Short timeout - we expect the connection to fail (non-existent endpoint)
+                    // but we're testing that only ONE CreateConnectionAsync call is made
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                    var result = await connectionManager.Connect(cts.Token);
+                    System.Diagnostics.Debug.WriteLine($"Task {taskIndex} completed with result: {result}");
+                    return result;
                 });
             }
 
+            System.Diagnostics.Debug.WriteLine("Waiting for connection to start...");
             await EnsureConnectionStartedAsync(connectionCreated.Task);
+            System.Diagnostics.Debug.WriteLine($"Connection started. Current creation count: {connectionCreationCount}");
+
             await Task.Delay(100); // Allow other tasks to queue
 
-            // Allow connection to complete
-            allowConnectionToComplete.SetResult(true);
+            System.Diagnostics.Debug.WriteLine($"Before tasks complete. Creation count: {connectionCreationCount}");
 
-            await EnsureTasksCompleteAsync(tasks);
+            // Wait for all tasks to complete (they will fail due to invalid endpoint, but that's expected)
+            await EnsureTasksCompleteAsync(6000, tasks);
 
-            // Assert
+            System.Diagnostics.Debug.WriteLine($"Final connection creation count: {connectionCreationCount}");
+
+            // Assert - Only ONE CreateConnectionAsync call should have been made despite 10 concurrent Connect calls
             connectionCreationCount.Should().Be(1, "only one connection should be created despite multiple concurrent calls");
         }
 
