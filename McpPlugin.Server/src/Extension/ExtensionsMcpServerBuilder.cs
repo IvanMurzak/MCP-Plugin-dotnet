@@ -10,6 +10,7 @@
 
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
+using com.IvanMurzak.McpPlugin.Common.Utils;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace com.IvanMurzak.McpPlugin.Server

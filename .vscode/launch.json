@@ -24,7 +24,8 @@
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/DemoConsoleApp/bin/Debug/net9.0/DemoConsoleApp.dll",
             "args": [
-                "--port=11111"
+                "--mcp-server-endpoint=http://localhost:11111",
+                "--mcp-server-timeout=5000"
             ],
             "cwd": "${workspaceFolder}/DemoConsoleApp",
             "stopAtEntry": false,

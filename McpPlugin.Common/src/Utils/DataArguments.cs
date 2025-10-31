@@ -10,10 +10,8 @@
 
 using System;
 using System.Collections.Generic;
-using com.IvanMurzak.McpPlugin.Common;
-using com.IvanMurzak.McpPlugin.Server.Utils;
 
-namespace com.IvanMurzak.McpPlugin.Server
+namespace com.IvanMurzak.McpPlugin.Common.Utils
 {
     public interface IDataArguments
     {

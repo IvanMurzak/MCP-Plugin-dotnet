@@ -10,7 +10,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace com.IvanMurzak.McpPlugin.Server.Utils
+namespace com.IvanMurzak.McpPlugin.Common.Utils
 {
     public static class ArgsUtils
     {

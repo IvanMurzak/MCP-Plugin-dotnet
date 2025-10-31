@@ -18,6 +18,18 @@ namespace com.IvanMurzak.McpPlugin.Common
             public static class Plugin
             {
                 public const int LinesLimit = 1000;
+
+                public static partial class Args
+                {
+                    public const string McpServerEndpoint = "--mcp-server-endpoint";
+                    public const string McpServerTimeout = "--mcp-server-timeout";
+                }
+
+                public static class Env
+                {
+                    public const string McpServerEndpoint = "MCP_SERVER_ENDPOINT";
+                    public const string McpServerTimeout = "MCP_SERVER_TIMEOUT";
+                }
             }
             public static class Server
             {
