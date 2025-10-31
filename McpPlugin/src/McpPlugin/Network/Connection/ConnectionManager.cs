@@ -103,6 +103,27 @@ namespace com.IvanMurzak.McpPlugin
                 return true;
             }
 
+            // Check for existing connection task FIRST before canceling or stopping
+            var existingTask = connectionTask;
+            if (existingTask != null)
+            {
+                _logger.LogDebug("{0} Connection task already exists. Waiting for the completion... {1}.", _guid, Endpoint);
+                // Create a new task that waits for the existing task but can be canceled independently
+                return await Task.Run(async () =>
+                {
+                    try
+                    {
+                        await existingTask; // Wait for the existing connection task
+                        return _hubConnection.Value?.State == HubConnectionState.Connected;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        _logger.LogWarning("{0} Connection task was canceled {1}.", _guid, Endpoint);
+                        return false;
+                    }
+                }, cancellationToken);
+            }
+
             _continueToReconnect.Value = false;
 
             // Dispose the previous internal CancellationTokenSource if it exists
@@ -122,29 +143,35 @@ namespace com.IvanMurzak.McpPlugin
 
             internalCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
-            if (connectionTask != null)
-            {
-                _logger.LogDebug("{0} Connection task already exists. Waiting for the completion... {1}.", _guid, Endpoint);
-                // Create a new task that waits for the existing task but can be canceled independently
-                return await Task.Run(async () =>
-                {
-                    try
-                    {
-                        await connectionTask; // Wait for the existing connection task
-                        return _hubConnection.Value?.State == HubConnectionState.Connected;
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        _logger.LogWarning("{0} Connection task was canceled {1}.", _guid, Endpoint);
-                        return false;
-                    }
-                }, internalCts.Token);
-            }
-
             try
             {
-                connectionTask = InternalConnect(internalCts.Token);
-                return await connectionTask;
+                // Set the task BEFORE starting to prevent race conditions
+                var taskCompletionSource = new TaskCompletionSource<bool>();
+                var previousTask = Interlocked.CompareExchange(ref connectionTask, taskCompletionSource.Task, null);
+
+                if (previousTask != null)
+                {
+                    // Another thread won the race, wait for their task
+                    _logger.LogDebug("{0} Another connection attempt started concurrently. Waiting for it... {1}.", _guid, Endpoint);
+                    return await Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await previousTask;
+                            return _hubConnection.Value?.State == HubConnectionState.Connected;
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            _logger.LogWarning("{0} Concurrent connection task was canceled {1}.", _guid, Endpoint);
+                            return false;
+                        }
+                    }, cancellationToken);
+                }
+
+                // We won the race, proceed with connection
+                var result = await InternalConnect(internalCts.Token);
+                taskCompletionSource.SetResult(result);
+                return result;
             }
             catch (Exception ex)
             {
