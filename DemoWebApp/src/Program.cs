@@ -9,7 +9,6 @@
 */
 
 using System;
-using System.Text.Json;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Utils;
@@ -63,9 +62,6 @@ namespace com.IvanMurzak.McpPlugin.DemoWebApp
 
                 var builder = WebApplication.CreateBuilder(args);
 
-                // Register IDataArguments as singleton
-                builder.Services.AddSingleton(dataArguments);
-
                 // Replace default logging with NLog
                 builder.Logging.ClearProviders();
                 builder.Logging.AddNLog();
@@ -89,6 +85,11 @@ namespace com.IvanMurzak.McpPlugin.DemoWebApp
                     Api = Consts.ApiVersion,
                     Plugin = Consts.ApiVersion
                 };
+
+                // TODO: To register `version`. And use it for the VersionHandshake feature.
+
+                // Register IDataArguments as singleton
+                builder.Services.AddSingleton(dataArguments);
 
                 // Disabled plugin features at the Server side
                 // builder.Services.WithAppFeatures(version, new NLogLoggerProvider(), configure =>

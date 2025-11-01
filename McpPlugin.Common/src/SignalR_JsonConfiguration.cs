@@ -10,7 +10,7 @@
 
 using com.IvanMurzak.ReflectorNet;
 
-namespace com.IvanMurzak.McpPlugin
+namespace com.IvanMurzak.McpPlugin.Common
 {
     public static class SignalR_JsonConfiguration
     {
