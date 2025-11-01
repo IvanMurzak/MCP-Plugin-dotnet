@@ -10,6 +10,7 @@
 
 using System;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,7 +41,7 @@ namespace com.IvanMurzak.McpPlugin
                 var connectionConfig = _serviceProvider.GetRequiredService<IOptions<ConnectionConfig>>().Value;
 
                 var hubConnectionBuilder = new HubConnectionBuilder()
-                    .WithUrl(connectionConfig.ServerUrl + endpoint)
+                    .WithUrl(connectionConfig.Host + endpoint)
                     .WithAutomaticReconnect(new FixedRetryPolicy(TimeSpan.FromSeconds(10)))
                     .WithKeepAliveInterval(TimeSpan.FromSeconds(30))
                     .WithServerTimeout(TimeSpan.FromMinutes(5))

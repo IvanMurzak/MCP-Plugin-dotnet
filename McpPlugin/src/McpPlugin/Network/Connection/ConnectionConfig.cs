@@ -16,18 +16,19 @@ namespace com.IvanMurzak.McpPlugin
 {
     public class ConnectionConfig
     {
-        public string ServerUrl { get; set; } = Consts.Hub.DefaultEndpoint;
+        public virtual string Host { get; set; } = Consts.Hub.DefaultHost;
 
         /// <summary>
         /// Timeout in milliseconds for MCP operations. This is set at runtime via command line args or environment variables.
         /// </summary>
-        public int TimeoutMs { get; set; } = Consts.Hub.DefaultTimeoutMs;
+        public virtual int TimeoutMs { get; set; } = Consts.Hub.DefaultTimeoutMs;
+        public virtual bool KeepConnected { get; set; } = true;
 
         public ConnectionConfig() { }
 
         public static ConnectionConfig Default => new ConnectionConfig()
         {
-            ServerUrl = Consts.Hub.DefaultEndpoint,
+            Host = Consts.Hub.DefaultHost,
             TimeoutMs = Consts.Hub.DefaultTimeoutMs
         };
 
@@ -49,7 +50,7 @@ namespace com.IvanMurzak.McpPlugin
             if (commandLineArgs.TryGetValue(Consts.MCP.Plugin.Args.McpServerEndpoint.TrimStart('-'), out var argEndpoint))
                 return argEndpoint;
 
-            return endpoint ?? Consts.Hub.DefaultEndpoint;
+            return endpoint ?? Consts.Hub.DefaultHost;
         }
 
         public static int GetTimeoutFromArgsOrEnv(string[]? args = null)
@@ -76,7 +77,7 @@ namespace com.IvanMurzak.McpPlugin
 
             var endpoint = Environment.GetEnvironmentVariable(Consts.MCP.Plugin.Env.McpServerEndpoint);
             if (endpoint != null)
-                ServerUrl = endpoint;
+                Host = endpoint;
 
             // --- Plugin variables ---
 
@@ -92,7 +93,7 @@ namespace com.IvanMurzak.McpPlugin
 
             var argPort = commandLineArgs.GetValueOrDefault(Consts.MCP.Plugin.Args.McpServerEndpoint.TrimStart('-'));
             if (argPort != null)
-                ServerUrl = argPort;
+                Host = argPort;
 
             // --- Plugin variables ---
 
@@ -102,6 +103,6 @@ namespace com.IvanMurzak.McpPlugin
         }
 
         public override string ToString()
-            => $"Endpoint: {ServerUrl}, Timeout: {TimeoutMs}ms";
+            => $"Endpoint: {Host}, Timeout: {TimeoutMs}ms";
     }
 }
