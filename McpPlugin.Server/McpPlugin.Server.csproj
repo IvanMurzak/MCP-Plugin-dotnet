@@ -11,7 +11,7 @@
     <!-- NuGet Package Information -->
     <IsPackable>true</IsPackable>
     <PackageId>com.IvanMurzak.McpPlugin.Server</PackageId>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <Authors>Ivan Murzak</Authors>
     <Company>Ivan Murzak</Company>
     <Copyright>Copyright © Ivan Murzak 2025</Copyright>

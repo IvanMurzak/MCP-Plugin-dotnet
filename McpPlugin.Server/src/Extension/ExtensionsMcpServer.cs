@@ -11,7 +11,6 @@
 using System;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
-using com.IvanMurzak.McpPlugin.Common.Utils;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NLog;
@@ -20,9 +19,12 @@ namespace com.IvanMurzak.McpPlugin.Server
 {
     public static class ExtensionsMcpServer
     {
-        public static IMcpServerBuilder? WithMcpServer(this IServiceCollection services, DataArguments dataArguments, Logger logger)
+        public static IMcpServerBuilder WithMcpServer(
+            this IServiceCollection services,
+            Consts.MCP.Server.TransportMethod mcpClientTransport,
+            Logger? logger = null)
         {
-            var mcpBuilder = services
+            var mcpServerBuilder = services
                 .AddMcpServer(options =>
                 {
                     // Setup MCP tools
@@ -46,17 +48,17 @@ namespace com.IvanMurzak.McpPlugin.Server
                     options.Capabilities.Prompts.ListPromptsHandler = PromptRouter.List;
                 });
 
-            if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.stdio)
+            if (mcpClientTransport == Consts.MCP.Server.TransportMethod.stdio)
             {
                 // Configure STDIO transport
-                mcpBuilder = mcpBuilder.WithStdioServerTransport();
+                mcpServerBuilder = mcpServerBuilder.WithStdioServerTransport();
             }
-            else if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.http)
+            else if (mcpClientTransport == Consts.MCP.Server.TransportMethod.http)
             {
                 // Configure HTTP transport
-                mcpBuilder = mcpBuilder.WithHttpTransport(options =>
+                mcpServerBuilder = mcpServerBuilder.WithHttpTransport(options =>
                 {
-                    logger.Debug($"Http transport configuration.");
+                    logger?.Debug($"Http transport configuration.");
 
                     options.Stateless = false;
                     options.PerSessionExecutionContext = true;
@@ -67,7 +69,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                         {
                             // This is where you can run logic before a session starts
                             // For example, you can log the session start or initialize resources
-                            logger.Debug($"----------\nRunning session handler for HTTP transport. Connection guid: {connectionGuid}");
+                            logger?.Debug($"----------\nRunning session handler for HTTP transport. Connection guid: {connectionGuid}");
 
                             var service = new McpServerService(
                                 server.Services!.GetRequiredService<ILogger<McpServerService>>(),
@@ -92,21 +94,21 @@ namespace com.IvanMurzak.McpPlugin.Server
                         }
                         catch (Exception ex)
                         {
-                            logger.Error(ex, $"Error occurred while processing HTTP transport session. Connection guid: {connectionGuid}.");
+                            logger?.Error(ex, $"Error occurred while processing HTTP transport session. Connection guid: {connectionGuid}.");
                         }
                         finally
                         {
-                            logger.Debug($"Session handler for HTTP transport completed. Connection guid: {connectionGuid}\n----------");
+                            logger?.Debug($"Session handler for HTTP transport completed. Connection guid: {connectionGuid}\n----------");
                         }
                     };
                 });
             }
             else
             {
-                throw new ArgumentException($"Unsupported transport method: {dataArguments.ClientTransport}. " +
+                throw new ArgumentException($"Unsupported transport method: {mcpClientTransport}. " +
                     $"Supported methods are: {Consts.MCP.Server.TransportMethod.stdio}, {Consts.MCP.Server.TransportMethod.http}");
             }
-            return mcpBuilder;
+            return mcpServerBuilder;
         }
     }
 }

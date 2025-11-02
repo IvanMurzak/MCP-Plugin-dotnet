@@ -17,23 +17,29 @@ namespace com.IvanMurzak.McpPlugin.Server
 {
     public static class ExtensionsMcpServerBuilder
     {
-        public static IServiceCollection WithServerFeatures(this IServiceCollection services, DataArguments dataArguments)
+        public static IMcpServerBuilder WithMcpPluginServer(this IMcpServerBuilder mcpServerBuilder, DataArguments dataArguments, Version version)
         {
-            services.AddRouting();
-            if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.stdio)
-                services.AddHostedService<McpServerService>();
+            if (mcpServerBuilder == null)
+                throw new System.ArgumentNullException(nameof(mcpServerBuilder));
 
-            services.AddSingleton<HubEventToolsChange>();
-            services.AddSingleton<HubEventPromptsChange>();
-            services.AddSingleton<HubEventResourcesChange>();
-            services.AddSingleton<IRequestTrackingService, RequestTrackingService>();
-            services.AddSingleton<IClientToolHub, RemoteToolRunner>();
-            services.AddSingleton<IClientPromptHub, RemotePromptRunner>();
-            services.AddSingleton<IClientResourceHub, RemoteResourceRunner>();
+            mcpServerBuilder.Services.AddSingleton(dataArguments);
+            mcpServerBuilder.Services.AddSingleton(version);
+
+            mcpServerBuilder.Services.AddRouting();
+            if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.stdio)
+                mcpServerBuilder.Services.AddHostedService<McpServerService>();
+
+            mcpServerBuilder.Services.AddSingleton<HubEventToolsChange>();
+            mcpServerBuilder.Services.AddSingleton<HubEventPromptsChange>();
+            mcpServerBuilder.Services.AddSingleton<HubEventResourcesChange>();
+            mcpServerBuilder.Services.AddSingleton<IRequestTrackingService, RequestTrackingService>();
+            mcpServerBuilder.Services.AddSingleton<IClientToolHub, RemoteToolRunner>();
+            mcpServerBuilder.Services.AddSingleton<IClientPromptHub, RemotePromptRunner>();
+            mcpServerBuilder.Services.AddSingleton<IClientResourceHub, RemoteResourceRunner>();
 
             // builder.AddMcpRunner();
 
-            return services;
+            return mcpServerBuilder;
         }
     }
 }
