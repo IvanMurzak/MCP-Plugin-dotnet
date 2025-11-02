@@ -86,18 +86,9 @@ namespace com.IvanMurzak.McpPlugin.DemoWebApp
                     Plugin = Consts.ApiVersion
                 };
 
-                // TODO: To register `version`. And use it for the VersionHandshake feature.
-
-                // Register IDataArguments as singleton
-                builder.Services.AddSingleton(dataArguments);
-
-                // Disabled plugin features at the Server side
-                // builder.Services.WithAppFeatures(version, new NLogLoggerProvider(), configure =>
-                // {
-                //     configure.WithServerFeatures(dataArguments);
-                // }).Build(reflector);
-
-                builder.Services.WithMcpServer(dataArguments, logger);
+                builder.Services
+                    .WithMcpServer(dataArguments.ClientTransport, logger)
+                    .WithMcpPluginServer(dataArguments, version);
 
                 // builder.WebHost.UseUrls(Consts.Hub.DefaultEndpoint);
 
