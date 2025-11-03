@@ -14,11 +14,15 @@ namespace com.IvanMurzak.McpPlugin.Common
 {
     public static class ExtensionsCompositeDisposable
     {
-        public static CancellationToken ToCancellationToken(this CompositeDisposable disposables)
+        public static CancellationTokenSource ToCancellationTokenSource(this CompositeDisposable disposables)
         {
             var cancellationTokenSource = new CancellationTokenSource();
             disposables.Add(Disposable.Create(() => cancellationTokenSource.Cancel()));
-            return cancellationTokenSource.Token;
+            return cancellationTokenSource;
+        }
+        public static CancellationToken ToCancellationToken(this CompositeDisposable disposables)
+        {
+            return ToCancellationTokenSource(disposables).Token;
         }
     }
 }

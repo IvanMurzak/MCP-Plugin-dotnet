@@ -28,6 +28,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly IHubContext<McpServerHub> _remoteAppContext;
         readonly IRequestTrackingService _requestTrackingService;
         readonly CompositeDisposable _disposables = new();
+        readonly CancellationTokenSource _cancellationTokenSource;
 
         public RemoteToolRunner(ILogger<RemoteToolRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IRequestTrackingService requestTrackingService)
         {
@@ -36,12 +37,13 @@ namespace com.IvanMurzak.McpPlugin.Server
             _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
             _remoteAppContext = remoteAppContext ?? throw new ArgumentNullException(nameof(remoteAppContext));
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
+            _cancellationTokenSource = _disposables.ToCancellationTokenSource();
         }
 
         public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request) => RunCallTool(request, default);
         public async Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request, CancellationToken cancellationToken = default)
         {
-            var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_disposables.ToCancellationToken(), cancellationToken);
+            cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken).Token;
 
             var response = await _requestTrackingService.TrackRequestAsync(
                 request.RequestID,
@@ -53,12 +55,12 @@ namespace com.IvanMurzak.McpPlugin.Server
                         methodName: Consts.RPC.Client.RunCallTool,
                         request: request,
                         dataArguments: _dataArguments,
-                        cancellationToken: linkedCts.Token);
+                        cancellationToken: cancellationToken);
 
                     return responseData.Value ?? ResponseCallTool.Error("Response data is null");
                 },
                 TimeSpan.FromMinutes(5),
-                linkedCts.Token);
+                cancellationToken);
 
             // Wrap the ResponseCallTool back into ResponseData<ResponseCallTool>
             return response.Pack(request.RequestID);
@@ -66,13 +68,15 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request) => RunListTool(request, default);
         public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request, CancellationToken cancellationToken = default)
-            => ClientUtils.InvokeAsync<RequestListTool, ResponseListTool[], McpServerHub>(
+        {
+            cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken).Token;
+            return ClientUtils.InvokeAsync<RequestListTool, ResponseListTool[], McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,
                 methodName: Consts.RPC.Client.RunListTool,
                 request: request,
                 dataArguments: _dataArguments,
-                cancellationToken: CancellationTokenSource.CreateLinkedTokenSource(_disposables.ToCancellationToken(), cancellationToken).Token)
+                cancellationToken: cancellationToken)
                 .ContinueWith(task =>
             {
                 var response = task.Result;
@@ -80,7 +84,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                     return ResponseData<ResponseListTool[]>.Error(request.RequestID, response.Message ?? "Got an error during listing tools");
 
                 return response;
-            }, cancellationToken: CancellationTokenSource.CreateLinkedTokenSource(_disposables.ToCancellationToken(), cancellationToken).Token);
+            }, cancellationToken: cancellationToken);
+        }
 
         public void Dispose()
         {
