@@ -43,7 +43,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request) => RunCallTool(request, default);
         public async Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request, CancellationToken cancellationToken = default)
         {
-            cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken).Token;
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
+            cancellationToken = linkedCts.Token;
 
             var response = await _requestTrackingService.TrackRequestAsync(
                 request.RequestID,
@@ -67,24 +68,23 @@ namespace com.IvanMurzak.McpPlugin.Server
         }
 
         public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request) => RunListTool(request, default);
-        public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request, CancellationToken cancellationToken = default)
+        public async Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request, CancellationToken cancellationToken = default)
         {
-            cancellationToken = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken).Token;
-            return ClientUtils.InvokeAsync<RequestListTool, ResponseListTool[], McpServerHub>(
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
+            cancellationToken = linkedCts.Token;
+
+            var response = await ClientUtils.InvokeAsync<RequestListTool, ResponseListTool[], McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,
                 methodName: Consts.RPC.Client.RunListTool,
                 request: request,
                 dataArguments: _dataArguments,
-                cancellationToken: cancellationToken)
-                .ContinueWith(task =>
-            {
-                var response = task.Result;
-                if (response.Status == ResponseStatus.Error)
-                    return ResponseData<ResponseListTool[]>.Error(request.RequestID, response.Message ?? "Got an error during listing tools");
+                cancellationToken: cancellationToken);
 
-                return response;
-            }, cancellationToken: cancellationToken);
+            if (response.Status == ResponseStatus.Error)
+                return ResponseData<ResponseListTool[]>.Error(request.RequestID, response.Message ?? "Got an error during listing tools");
+
+            return response;
         }
 
         public void Dispose()
