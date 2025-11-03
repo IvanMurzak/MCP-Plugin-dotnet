@@ -8,7 +8,6 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 
@@ -16,7 +15,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
 {
     public interface IClientPromptHub
     {
-        Task<ResponseData<ResponseGetPrompt>> RunGetPrompt(RequestGetPrompt request, CancellationToken cancellationToken = default);
-        Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request, CancellationToken cancellationToken = default);
+        Task<ResponseData<ResponseGetPrompt>> RunGetPrompt(RequestGetPrompt request);
+        Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request);
     }
 }

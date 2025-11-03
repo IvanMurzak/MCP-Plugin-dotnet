@@ -8,7 +8,6 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 
@@ -16,6 +15,6 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Server
 {
     public interface IServerPromptHub
     {
-        Task<ResponseData> NotifyAboutUpdatedPrompts(string data, CancellationToken cancellationToken = default);
+        Task<ResponseData> NotifyAboutUpdatedPrompts(RequestPromptsUpdated request);
     }
 }

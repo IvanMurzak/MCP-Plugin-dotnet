@@ -32,7 +32,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             var requestData = new RequestListResources(cursor: request?.Params?.Cursor);
 
-            var response = await resourceRunner.RunListResources(requestData, cancellationToken: cancellationToken);
+            var response = await resourceRunner.RunListResources(requestData);
             if (response == null)
                 return new ListResourcesResult().SetError("[Error] Resource is null");
 

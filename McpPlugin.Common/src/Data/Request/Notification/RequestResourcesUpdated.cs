@@ -7,22 +7,14 @@
 │  See the LICENSE file in the project root for more information.        │
 └────────────────────────────────────────────────────────────────────────┘
 */
-using System.Text.Json.Serialization;
 
 namespace com.IvanMurzak.McpPlugin.Common.Model
 {
-    public class VersionHandshakeRequest : IRequestID
+    public class RequestResourcesUpdated
     {
-        [JsonPropertyName("requestId")]
-        public string RequestID { get; set; } = string.Empty;
+        public string RequestId { get; set; } = string.Empty;
 
-        [JsonPropertyName("apiVersion")]
-        public string ApiVersion { get; set; } = string.Empty;
-
-        [JsonPropertyName("pluginVersion")]
-        public string PluginVersion { get; set; } = string.Empty;
-
-        [JsonPropertyName("environment")]
-        public string Environment { get; set; } = string.Empty;
+        public override string ToString()
+            => $"RequestId: {RequestId}";
     }
 }

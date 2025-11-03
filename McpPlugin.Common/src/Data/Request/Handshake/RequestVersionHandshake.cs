@@ -7,18 +7,22 @@
 │  See the LICENSE file in the project root for more information.        │
 └────────────────────────────────────────────────────────────────────────┘
 */
-using System.Threading;
-using R3;
+using System.Text.Json.Serialization;
 
-namespace com.IvanMurzak.McpPlugin
+namespace com.IvanMurzak.McpPlugin.Common.Model
 {
-    public static class ExtensionsCompositeDisposable
+    public class RequestVersionHandshake : IRequestID
     {
-        public static CancellationToken ToCancellationToken(this CompositeDisposable disposables)
-        {
-            var cancellationTokenSource = new CancellationTokenSource();
-            disposables.Add(Disposable.Create(() => cancellationTokenSource.Cancel()));
-            return cancellationTokenSource.Token;
-        }
+        [JsonPropertyName("requestId")]
+        public string RequestID { get; set; } = string.Empty;
+
+        [JsonPropertyName("apiVersion")]
+        public string ApiVersion { get; set; } = string.Empty;
+
+        [JsonPropertyName("pluginVersion")]
+        public string PluginVersion { get; set; } = string.Empty;
+
+        [JsonPropertyName("environment")]
+        public string Environment { get; set; } = string.Empty;
     }
 }

@@ -39,7 +39,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             logger.Trace("Using PromptRunner: {0}", promptRunner.GetType().GetTypeShortName());
 
             var requestData = new RequestListPrompts();
-            var response = await promptRunner.RunListPrompts(requestData, cancellationToken: cancellationToken);
+            var response = await promptRunner.RunListPrompts(requestData);
             if (response == null)
                 return new ListPromptsResult().SetError($"[Error] '{nameof(response)}' is null");
 

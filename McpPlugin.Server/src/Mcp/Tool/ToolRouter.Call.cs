@@ -54,7 +54,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (logger.IsTraceEnabled)
                 logger.Trace("Call remote tool '{0}':\n{1}", request.Params.Name, requestData.ToPrettyJson());
 
-            var response = await toolRunner.RunCallTool(requestData, cancellationToken: cancellationToken);
+            var response = await toolRunner.RunCallTool(requestData);
             if (response == null)
                 return new CallToolResult().SetError($"[Error] '{nameof(response)}' is null");
 

@@ -12,6 +12,7 @@ using System;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.Logging;
+using R3;
 
 namespace com.IvanMurzak.McpPlugin
 {
@@ -19,6 +20,8 @@ namespace com.IvanMurzak.McpPlugin
     {
         protected readonly ILogger _logger;
         protected readonly Reflector _reflector;
+        private readonly Subject<Unit> _onForceDisconnect = new();
+
         readonly IToolManager? _tools;
         readonly IPromptManager? _prompts;
         readonly IResourceManager? _resources;
@@ -28,9 +31,11 @@ namespace com.IvanMurzak.McpPlugin
         public IPromptManager? PromptManager => _prompts;
         public IResourceManager? ResourceManager => _resources;
 
-        public IClientToolHub? ToolHub => ToolManager;
-        public IClientPromptHub? PromptHub => PromptManager;
-        public IClientResourceHub? ResourceHub => ResourceManager;
+        public IClientToolHub? ToolHub => _tools;
+        public IClientPromptHub? PromptHub => _prompts;
+        public IClientResourceHub? ResourceHub => _resources;
+
+        public Observable<Unit> OnForceDisconnect => _onForceDisconnect.AsObservable();
 
         public McpManager(
             ILogger<McpManager> logger,
@@ -58,7 +63,7 @@ namespace com.IvanMurzak.McpPlugin
 
         public void ForceDisconnect()
         {
-            throw new NotImplementedException();
+            _onForceDisconnect.OnNext(Unit.Default);
         }
     }
 }

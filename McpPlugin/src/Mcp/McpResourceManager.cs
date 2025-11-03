@@ -11,7 +11,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,6 +26,7 @@ namespace com.IvanMurzak.McpPlugin
     {
         protected readonly ILogger _logger;
         protected readonly Reflector _reflector;
+        protected readonly CompositeDisposable _disposables = new();
         readonly ResourceRunnerCollection _resources;
         readonly Subject<Unit> _onResourcesUpdated = new();
 
@@ -105,6 +105,7 @@ namespace com.IvanMurzak.McpPlugin
             _onResourcesUpdated.OnNext(Unit.Default);
             return true;
         }
+        public Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(RequestResourceContent data) => RunResourceContent(data, _disposables.ToCancellationToken());
         public async Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(RequestResourceContent data, CancellationToken cancellationToken = default)
         {
             if (data == null)
@@ -126,6 +127,7 @@ namespace com.IvanMurzak.McpPlugin
             var result = await runner.Run(parameters);
             return result.Pack(data.RequestID);
         }
+        public Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources data) => RunListResources(data, _disposables.ToCancellationToken());
         public async Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources data, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Listing resources. [{Count}]", _resources.Count);
@@ -139,6 +141,7 @@ namespace com.IvanMurzak.McpPlugin
                 .ToArray()
                 .Pack(data.RequestID);
         }
+        public Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(RequestListResourceTemplates data) => RunResourceTemplates(data, _disposables.ToCancellationToken());
         public Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(RequestListResourceTemplates data, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Listing resource templates. [{Count}]", _resources.Count);
@@ -217,6 +220,7 @@ namespace com.IvanMurzak.McpPlugin
 
         public void Dispose()
         {
+            _disposables.Dispose();
             _resources.Clear();
         }
     }

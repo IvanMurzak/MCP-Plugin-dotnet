@@ -26,6 +26,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         protected readonly ILogger _logger;
         // protected readonly IHubContext<T> _hubContext;
         protected readonly CompositeDisposable _disposables = new();
+        // protected readonly CancellationTokenSource _cancellationTokenSource = new();
         protected readonly string _guid = Guid.NewGuid().ToString();
 
         protected BaseHub(ILogger logger)

@@ -29,6 +29,8 @@ namespace com.IvanMurzak.McpPlugin
 
         protected readonly ILogger _logger;
         protected readonly Reflector _reflector;
+        protected readonly CompositeDisposable _disposables = new();
+
         readonly ToolRunnerCollection _tools;
         readonly Subject<Unit> _onToolsUpdated = new();
 
@@ -104,6 +106,7 @@ namespace com.IvanMurzak.McpPlugin
             return true;
         }
 
+        public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool data) => RunCallTool(data, _disposables.ToCancellationToken());
         public async Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool data, CancellationToken cancellationToken = default)
         {
             if (data == null)
@@ -144,6 +147,7 @@ namespace com.IvanMurzak.McpPlugin
             }
         }
 
+        public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool data) => RunListTool(data, _disposables.ToCancellationToken());
         public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool data, CancellationToken cancellationToken = default)
         {
             try
@@ -199,6 +203,7 @@ namespace com.IvanMurzak.McpPlugin
 
         public void Dispose()
         {
+            _disposables.Dispose();
             _tools.Clear();
         }
     }

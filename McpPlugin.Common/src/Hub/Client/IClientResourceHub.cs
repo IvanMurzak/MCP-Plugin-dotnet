@@ -8,7 +8,6 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 
@@ -16,8 +15,8 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
 {
     public interface IClientResourceHub
     {
-        Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(RequestResourceContent request, CancellationToken cancellationToken = default);
-        Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources request, CancellationToken cancellationToken = default);
-        Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(RequestListResourceTemplates request, CancellationToken cancellationToken = default);
+        Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(RequestResourceContent request);
+        Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources request);
+        Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(RequestListResourceTemplates request);
     }
 }

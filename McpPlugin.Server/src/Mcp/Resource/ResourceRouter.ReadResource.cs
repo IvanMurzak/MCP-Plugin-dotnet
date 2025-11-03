@@ -37,7 +37,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             var requestData = new RequestResourceContent(request.Params.Uri);
 
-            var response = await resourceRunner.RunResourceContent(requestData, cancellationToken: cancellationToken);
+            var response = await resourceRunner.RunResourceContent(requestData);
             if (response == null)
                 return new ReadResourceResult().SetError(request.Params.Uri, "[Error] Resource is null");
 

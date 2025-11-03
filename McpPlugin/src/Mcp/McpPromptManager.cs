@@ -24,6 +24,7 @@ namespace com.IvanMurzak.McpPlugin
     {
         protected readonly ILogger _logger;
         protected readonly Reflector _reflector;
+        protected readonly CompositeDisposable _disposables = new();
         readonly PromptRunnerCollection _prompts;
         readonly Subject<Unit> _onPromptsUpdated = new();
 
@@ -103,6 +104,8 @@ namespace com.IvanMurzak.McpPlugin
 
             return true;
         }
+
+        public Task<ResponseData<ResponseGetPrompt>> RunGetPrompt(RequestGetPrompt request) => RunGetPrompt(request, _disposables.ToCancellationToken());
         public async Task<ResponseData<ResponseGetPrompt>> RunGetPrompt(RequestGetPrompt request, CancellationToken cancellationToken = default)
         {
             if (!_prompts.TryGetValue(request.Name, out var runner))
@@ -119,6 +122,7 @@ namespace com.IvanMurzak.McpPlugin
             return result.Pack(request.RequestID);
         }
 
+        public Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request) => RunListPrompts(request, _disposables.ToCancellationToken());
         public Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request, CancellationToken cancellationToken = default)
         {
             try
@@ -160,6 +164,7 @@ namespace com.IvanMurzak.McpPlugin
 
         public void Dispose()
         {
+            _disposables.Dispose();
             _prompts.Clear();
         }
     }

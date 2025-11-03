@@ -39,6 +39,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
         }
 
+        public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request) => RunCallTool(request, cts.Token);
         public async Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request, CancellationToken cancellationToken = default)
         {
             var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
@@ -64,6 +65,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             return response.Pack(request.RequestID);
         }
 
+        public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request) => RunListTool(request, cts.Token);
         public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request, CancellationToken cancellationToken = default)
             => ClientUtils.InvokeAsync<RequestListTool, ResponseListTool[], McpServerHub>(
                 logger: _logger,
@@ -81,17 +83,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 return response;
             }, cancellationToken: CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken).Token);
 
-        public void Dispose()
-        {
-            _logger.LogTrace("{0} Dispose.", typeof(RemotePromptRunner).Name);
-            _disposables.Dispose();
-
-            if (!cts.IsCancellationRequested)
-                cts.Cancel();
-
-            cts.Dispose();
-        }
-
+        public Task<ResponseData<ResponseGetPrompt>> RunGetPrompt(RequestGetPrompt request) => RunGetPrompt(request, cts.Token);
         public async Task<ResponseData<ResponseGetPrompt>> RunGetPrompt(RequestGetPrompt request, CancellationToken cancellationToken = default)
         {
             var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
@@ -110,6 +102,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             return ResponseGetPrompt.Error("Response data is null").Pack(request.RequestID);
         }
 
+        public Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request) => RunListPrompts(request, cts.Token);
         public Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request, CancellationToken cancellationToken = default)
             => ClientUtils.InvokeAsync<RequestListPrompts, ResponseListPrompts, McpServerHub>(
                 logger: _logger,
@@ -126,5 +119,16 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                 return response;
             }, cancellationToken: CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken).Token);
+
+        public void Dispose()
+        {
+            _logger.LogTrace("{0} Dispose.", typeof(RemotePromptRunner).Name);
+            _disposables.Dispose();
+
+            if (!cts.IsCancellationRequested)
+                cts.Cancel();
+
+            cts.Dispose();
+        }
     }
 }

@@ -121,25 +121,29 @@ namespace com.IvanMurzak.McpPlugin
 
         #region Server Calls
 
-        public Task<ResponseData> NotifyAboutUpdatedTools(string data, CancellationToken cancellationToken = default)
+        public Task<ResponseData> NotifyAboutUpdatedTools(RequestToolsUpdated request) => NotifyAboutUpdatedTools(request, _cancellationTokenSource.Token);
+        public Task<ResponseData> NotifyAboutUpdatedTools(RequestToolsUpdated request, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{class}.{method}", nameof(IServerMcpManager), nameof(IServerMcpManager.NotifyAboutUpdatedTools));
-            return _connectionManager.InvokeAsync<string, ResponseData>(nameof(IServerMcpManager.NotifyAboutUpdatedTools), data, cancellationToken);
+            return _connectionManager.InvokeAsync<RequestToolsUpdated, ResponseData>(nameof(IServerMcpManager.NotifyAboutUpdatedTools), request, cancellationToken);
         }
 
-        public Task<ResponseData> NotifyAboutUpdatedPrompts(string data, CancellationToken cancellationToken = default)
+        public Task<ResponseData> NotifyAboutUpdatedPrompts(RequestPromptsUpdated request) => NotifyAboutUpdatedPrompts(request, _cancellationTokenSource.Token);
+        public Task<ResponseData> NotifyAboutUpdatedPrompts(RequestPromptsUpdated request, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{class}.{method}", nameof(IServerMcpManager), nameof(IServerMcpManager.NotifyAboutUpdatedPrompts));
-            return _connectionManager.InvokeAsync<string, ResponseData>(nameof(IServerMcpManager.NotifyAboutUpdatedPrompts), data, cancellationToken);
+            return _connectionManager.InvokeAsync<RequestPromptsUpdated, ResponseData>(nameof(IServerMcpManager.NotifyAboutUpdatedPrompts), request, cancellationToken);
         }
 
-        public Task<ResponseData> NotifyAboutUpdatedResources(string data, CancellationToken cancellationToken = default)
+        public Task<ResponseData> NotifyAboutUpdatedResources(RequestResourcesUpdated request) => NotifyAboutUpdatedResources(request, _cancellationTokenSource.Token);
+        public Task<ResponseData> NotifyAboutUpdatedResources(RequestResourcesUpdated request, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{class}.{method}", nameof(IServerMcpManager), nameof(IServerMcpManager.NotifyAboutUpdatedResources));
-            return _connectionManager.InvokeAsync<string, ResponseData>(nameof(IServerMcpManager.NotifyAboutUpdatedResources), data, cancellationToken);
+            return _connectionManager.InvokeAsync<RequestResourcesUpdated, ResponseData>(nameof(IServerMcpManager.NotifyAboutUpdatedResources), request, cancellationToken);
         }
 
-        public Task<ResponseData> NotifyToolRequestCompleted(ToolRequestCompletedData request, CancellationToken cancellationToken = default)
+        public Task<ResponseData> NotifyToolRequestCompleted(RequestToolCompletedData request) => NotifyToolRequestCompleted(request, _cancellationTokenSource.Token);
+        public Task<ResponseData> NotifyToolRequestCompleted(RequestToolCompletedData request, CancellationToken cancellationToken = default)
         {
             if (_logger.IsEnabled(LogLevel.Trace))
             {
@@ -150,7 +154,7 @@ namespace com.IvanMurzak.McpPlugin
                     request.ToPrettyJson()
                 );
             }
-            return _connectionManager.InvokeAsync<ToolRequestCompletedData, ResponseData>(nameof(IServerMcpManager.NotifyToolRequestCompleted), request, cancellationToken);
+            return _connectionManager.InvokeAsync<RequestToolCompletedData, ResponseData>(nameof(IServerMcpManager.NotifyToolRequestCompleted), request, cancellationToken);
         }
 
         #endregion

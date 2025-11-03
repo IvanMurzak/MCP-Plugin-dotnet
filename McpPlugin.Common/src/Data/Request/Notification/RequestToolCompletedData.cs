@@ -7,18 +7,15 @@
 │  See the LICENSE file in the project root for more information.        │
 └────────────────────────────────────────────────────────────────────────┘
 */
-using System;
-using com.IvanMurzak.ReflectorNet;
-using R3;
 
-namespace com.IvanMurzak.McpPlugin
+namespace com.IvanMurzak.McpPlugin.Common.Model
 {
-    public interface IMcpManager : IDisposable
+    public class RequestToolCompletedData
     {
-        Reflector Reflector { get; }
-        Observable<Unit> OnForceDisconnect { get; }
-        IToolManager? ToolManager { get; }
-        IPromptManager? PromptManager { get; }
-        IResourceManager? ResourceManager { get; }
+        public string RequestId { get; set; } = string.Empty;
+        public ResponseCallTool Result { get; set; } = null!;
+
+        public override string ToString()
+            => $"RequestId: {RequestId}, Result: {Result}";
     }
 }

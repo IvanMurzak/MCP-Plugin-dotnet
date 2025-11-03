@@ -11,6 +11,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Hub.Server;
 using com.IvanMurzak.McpPlugin.Common.Model;
@@ -42,48 +43,51 @@ namespace com.IvanMurzak.McpPlugin.Server
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
         }
 
-        public Task<ResponseData> NotifyAboutUpdatedTools(string data, CancellationToken cancellationToken = default)
+        Task<ResponseData> IServerToolHub.NotifyAboutUpdatedTools(RequestToolsUpdated request) => NotifyAboutUpdatedTools(request, _disposables.ToCancellationToken());
+        protected virtual Task<ResponseData> NotifyAboutUpdatedTools(RequestToolsUpdated request, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
-                nameof(IServerMcpManager.NotifyAboutUpdatedTools), _guid, data);
+                nameof(IServerToolHub.NotifyAboutUpdatedTools), _guid, request);
 
             _eventAppToolsChange.OnNext(new HubEventToolsChange.EventData
             {
                 ConnectionId = Context.ConnectionId,
-                Data = data
+                Request = request
             });
-            return ResponseData.Success(data, string.Empty).TaskFromResult();
+            return ResponseData.Success(request.RequestId, "Received tools update notification").TaskFromResult();
         }
 
-        public Task<ResponseData> NotifyAboutUpdatedPrompts(string data, CancellationToken cancellationToken = default)
+        Task<ResponseData> IServerPromptHub.NotifyAboutUpdatedPrompts(RequestPromptsUpdated request) => NotifyAboutUpdatedPrompts(request, _disposables.ToCancellationToken());
+        public Task<ResponseData> NotifyAboutUpdatedPrompts(RequestPromptsUpdated request, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
-                nameof(IServerMcpManager.NotifyAboutUpdatedPrompts), _guid, data);
+                nameof(IServerPromptHub.NotifyAboutUpdatedPrompts), _guid, request);
 
             _eventAppPromptsChange.OnNext(new HubEventPromptsChange.EventData
             {
                 ConnectionId = Context.ConnectionId,
-                Data = data
+                Request = request
             });
 
-            return ResponseData.Success(data, string.Empty).TaskFromResult();
+            return ResponseData.Success(request.RequestId, "Received prompts update notification").TaskFromResult();
         }
 
-        public Task<ResponseData> NotifyAboutUpdatedResources(string data, CancellationToken cancellationToken = default)
+        Task<ResponseData> IServerResourceHub.NotifyAboutUpdatedResources(RequestResourcesUpdated request) => NotifyAboutUpdatedResources(request, _disposables.ToCancellationToken());
+        public Task<ResponseData> NotifyAboutUpdatedResources(RequestResourcesUpdated request, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
-                nameof(IServerMcpManager.NotifyAboutUpdatedResources), _guid, data);
-
+                nameof(IServerResourceHub.NotifyAboutUpdatedResources), _guid, request);
             _eventAppResourcesChange.OnNext(new HubEventResourcesChange.EventData
             {
                 ConnectionId = Context.ConnectionId,
-                Data = data
+                Request = request
             });
 
-            return ResponseData.Success(data, string.Empty).TaskFromResult();
+            return ResponseData.Success(request.RequestId, "Received resources update notification").TaskFromResult();
         }
 
-        public Task<ResponseData> NotifyToolRequestCompleted(ToolRequestCompletedData data, CancellationToken cancellationToken = default)
+        public Task<ResponseData> NotifyToolRequestCompleted(RequestToolCompletedData data) => NotifyToolRequestCompleted(data, _disposables.ToCancellationToken());
+        Task<ResponseData> NotifyToolRequestCompleted(RequestToolCompletedData data, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{method}. {guid}. RequestId: {requestId}",
                 nameof(IServerMcpManager.NotifyToolRequestCompleted), _guid, data.RequestId);
@@ -97,10 +101,11 @@ namespace com.IvanMurzak.McpPlugin.Server
                 _logger.LogError(ex, "Error deserializing tool response for RequestId: {requestId}", data.RequestId);
             }
 
-            return ResponseData.Success(string.Empty, string.Empty).TaskFromResult();
+            return ResponseData.Success(data.RequestId, string.Empty).TaskFromResult();
         }
 
-        public Task<VersionHandshakeResponse> PerformVersionHandshake(VersionHandshakeRequest request, CancellationToken cancellationToken = default)
+        public Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request) => PerformVersionHandshake(request, _disposables.ToCancellationToken());
+        Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request, CancellationToken cancellationToken = default)
         {
             try
             {
