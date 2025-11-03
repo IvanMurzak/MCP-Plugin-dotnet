@@ -12,6 +12,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using R3;
@@ -62,6 +63,17 @@ namespace com.IvanMurzak.McpPlugin
                     _logger.LogDebug("{class}.{method}, initial notifications sent.",
                         nameof(McpPlugin),
                         nameof(ConnectionState));
+                })
+                .AddTo(_disposables);
+
+            McpManager.OnForceDisconnect
+                .Subscribe(_ =>
+                {
+                    _logger.LogDebug("{class}.{method}, force disconnect requested.",
+                        nameof(McpPlugin),
+                        nameof(McpManager.OnForceDisconnect));
+
+                    _remoteMcpManagerHub.Disconnect();
                 })
                 .AddTo(_disposables);
 

@@ -11,6 +11,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Hub.Server;
 using com.IvanMurzak.McpPlugin.Common.Model;
@@ -42,7 +43,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
         }
 
-        Task<ResponseData> IServerToolHub.NotifyAboutUpdatedTools(RequestToolsUpdated request) => NotifyAboutUpdatedTools(request, _cancellationTokenSource.Token);
+        Task<ResponseData> IServerToolHub.NotifyAboutUpdatedTools(RequestToolsUpdated request) => NotifyAboutUpdatedTools(request, _disposables.ToCancellationToken());
         protected virtual Task<ResponseData> NotifyAboutUpdatedTools(RequestToolsUpdated request, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
@@ -56,7 +57,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             return ResponseData.Success(request.RequestId, "Received tools update notification").TaskFromResult();
         }
 
-        Task<ResponseData> IServerPromptHub.NotifyAboutUpdatedPrompts(RequestPromptsUpdated request) => NotifyAboutUpdatedPrompts(request, _cancellationTokenSource.Token);
+        Task<ResponseData> IServerPromptHub.NotifyAboutUpdatedPrompts(RequestPromptsUpdated request) => NotifyAboutUpdatedPrompts(request, _disposables.ToCancellationToken());
         public Task<ResponseData> NotifyAboutUpdatedPrompts(RequestPromptsUpdated request, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
@@ -71,7 +72,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             return ResponseData.Success(request.RequestId, "Received prompts update notification").TaskFromResult();
         }
 
-        Task<ResponseData> IServerResourceHub.NotifyAboutUpdatedResources(RequestResourcesUpdated request) => NotifyAboutUpdatedResources(request, _cancellationTokenSource.Token);
+        Task<ResponseData> IServerResourceHub.NotifyAboutUpdatedResources(RequestResourcesUpdated request) => NotifyAboutUpdatedResources(request, _disposables.ToCancellationToken());
         public Task<ResponseData> NotifyAboutUpdatedResources(RequestResourcesUpdated request, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
@@ -85,7 +86,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             return ResponseData.Success(request.RequestId, "Received resources update notification").TaskFromResult();
         }
 
-        public Task<ResponseData> NotifyToolRequestCompleted(RequestToolCompletedData data) => NotifyToolRequestCompleted(data, _cancellationTokenSource.Token);
+        public Task<ResponseData> NotifyToolRequestCompleted(RequestToolCompletedData data) => NotifyToolRequestCompleted(data, _disposables.ToCancellationToken());
         Task<ResponseData> NotifyToolRequestCompleted(RequestToolCompletedData data, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{method}. {guid}. RequestId: {requestId}",
@@ -103,7 +104,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             return ResponseData.Success(data.RequestId, string.Empty).TaskFromResult();
         }
 
-        public Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request) => PerformVersionHandshake(request, _cancellationTokenSource.Token);
+        public Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request) => PerformVersionHandshake(request, _disposables.ToCancellationToken());
         Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request, CancellationToken cancellationToken = default)
         {
             try

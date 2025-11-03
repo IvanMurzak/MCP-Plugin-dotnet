@@ -9,12 +9,14 @@
 */
 using System;
 using com.IvanMurzak.ReflectorNet;
+using R3;
 
 namespace com.IvanMurzak.McpPlugin
 {
     public interface IMcpManager : IDisposable
     {
         Reflector Reflector { get; }
+        Observable<Unit> OnForceDisconnect { get; }
         IToolManager? ToolManager { get; }
         IPromptManager? PromptManager { get; }
         IResourceManager? ResourceManager { get; }

@@ -11,6 +11,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Server;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -171,10 +172,12 @@ namespace com.IvanMurzak.McpPlugin
         {
             _logger.LogTrace("{class} DisposeAsync.", GetType().Name);
 
-            if (!_cancellationTokenSource.IsCancellationRequested)
-                _cancellationTokenSource.Cancel();
-
-            _cancellationTokenSource.Dispose();
+            lock (_cancellationTokenSource)
+            {
+                if (!_cancellationTokenSource.IsCancellationRequested)
+                    _cancellationTokenSource.Cancel();
+                _cancellationTokenSource.Dispose();
+            }
             _serverEventsDisposables.Dispose();
             _hubConnectionDisposable.Dispose();
 
