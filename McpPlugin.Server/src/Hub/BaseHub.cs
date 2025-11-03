@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.ReflectorNet;
@@ -26,6 +27,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         protected readonly ILogger _logger;
         // protected readonly IHubContext<T> _hubContext;
         protected readonly CompositeDisposable _disposables = new();
+        protected readonly CancellationTokenSource _cancellationTokenSource = new();
         protected readonly string _guid = Guid.NewGuid().ToString();
 
         protected BaseHub(ILogger logger)
@@ -76,6 +78,11 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             _logger.LogTrace("Dispose. {0}", _guid);
             base.Dispose();
+
+            if (!_cancellationTokenSource.IsCancellationRequested)
+                _cancellationTokenSource.Cancel();
+
+            _cancellationTokenSource.Dispose();
             _disposables.Dispose();
         }
     }

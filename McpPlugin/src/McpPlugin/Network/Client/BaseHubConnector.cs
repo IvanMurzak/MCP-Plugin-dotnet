@@ -25,6 +25,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly ILogger _logger;
         protected readonly Version _apiVersion;
         protected readonly IConnectionManager _connectionManager;
+        protected readonly CancellationTokenSource _cancellationTokenSource = new();
 
         /// <summary>
         /// Disposable for subscription on the HubConnection changes.
@@ -80,7 +81,7 @@ namespace com.IvanMurzak.McpPlugin
 
             var cancellationToken = _serverEventsDisposables.ToCancellationToken();
             var handshakeResponse = await PerformVersionHandshake(
-                request: new VersionHandshakeRequest
+                request: new RequestVersionHandshake
                 {
                     RequestID = Guid.NewGuid().ToString(),
                     ApiVersion = _apiVersion.Api,
@@ -110,13 +111,14 @@ namespace com.IvanMurzak.McpPlugin
 
         protected abstract void SubscribeOnServerEvents(HubConnection hubConnection, CompositeDisposable disposables);
 
-        public async Task<VersionHandshakeResponse> PerformVersionHandshake(VersionHandshakeRequest request, CancellationToken cancellationToken = default)
+        public Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request) => PerformVersionHandshake(request, _cancellationTokenSource.Token);
+        public async Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{class} Performing version handshake.", GetType().Name);
 
             try
             {
-                var response = await _connectionManager.InvokeAsync<VersionHandshakeRequest, VersionHandshakeResponse>(
+                var response = await _connectionManager.InvokeAsync<RequestVersionHandshake, VersionHandshakeResponse>(
                     nameof(IServerMcpManager.PerformVersionHandshake), request, cancellationToken);
 
                 if (cancellationToken.IsCancellationRequested)
@@ -168,6 +170,8 @@ namespace com.IvanMurzak.McpPlugin
         public Task DisposeAsync()
         {
             _logger.LogTrace("{class} DisposeAsync.", GetType().Name);
+            _cancellationTokenSource.Cancel();
+            _cancellationTokenSource.Dispose();
             _serverEventsDisposables.Dispose();
             _hubConnectionDisposable.Dispose();
 

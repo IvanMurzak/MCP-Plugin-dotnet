@@ -39,7 +39,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             logger.Trace("Using ToolRunner: {0}", toolRunner.GetType().GetTypeShortName());
 
             var requestData = new RequestListTool();
-            var response = await toolRunner.RunListTool(requestData, cancellationToken: cancellationToken);
+            var response = await toolRunner.RunListTool(requestData);
             if (response == null)
                 return new ListToolsResult().SetError($"[Error] '{nameof(response)}' is null");
 

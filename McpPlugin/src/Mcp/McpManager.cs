@@ -19,6 +19,7 @@ namespace com.IvanMurzak.McpPlugin
     {
         protected readonly ILogger _logger;
         protected readonly Reflector _reflector;
+
         readonly IToolManager? _tools;
         readonly IPromptManager? _prompts;
         readonly IResourceManager? _resources;

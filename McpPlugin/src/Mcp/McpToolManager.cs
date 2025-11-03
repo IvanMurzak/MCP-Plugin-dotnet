@@ -31,6 +31,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly Reflector _reflector;
         readonly ToolRunnerCollection _tools;
         readonly Subject<Unit> _onToolsUpdated = new();
+        readonly CancellationTokenSource _cancellationTokenSource = new();
 
         public Reflector Reflector => _reflector;
         public Observable<Unit> OnToolsUpdated => _onToolsUpdated;
@@ -104,6 +105,7 @@ namespace com.IvanMurzak.McpPlugin
             return true;
         }
 
+        public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool data) => RunCallTool(data, _cancellationTokenSource.Token);
         public async Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool data, CancellationToken cancellationToken = default)
         {
             if (data == null)
@@ -144,6 +146,7 @@ namespace com.IvanMurzak.McpPlugin
             }
         }
 
+        public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool data) => RunListTool(data, _cancellationTokenSource.Token);
         public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool data, CancellationToken cancellationToken = default)
         {
             try
@@ -199,6 +202,8 @@ namespace com.IvanMurzak.McpPlugin
 
         public void Dispose()
         {
+            _cancellationTokenSource.Cancel();
+            _cancellationTokenSource.Dispose();
             _tools.Clear();
         }
     }

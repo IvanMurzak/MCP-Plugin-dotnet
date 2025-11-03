@@ -8,6 +8,7 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+using com.IvanMurzak.McpPlugin.Common.Model;
 using R3;
 
 namespace com.IvanMurzak.McpPlugin.Server
@@ -17,7 +18,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         public class EventData
         {
             public string ConnectionId { get; set; } = string.Empty;
-            public string Data { get; set; } = string.Empty;
+            public RequestPromptsUpdated Request { get; set; } = null!;
         }
     }
 }

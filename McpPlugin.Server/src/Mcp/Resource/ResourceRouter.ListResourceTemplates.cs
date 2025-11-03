@@ -31,7 +31,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             var requestData = new RequestListResourceTemplates();
 
-            var response = await resourceRunner.RunResourceTemplates(requestData, cancellationToken: cancellationToken);
+            var response = await resourceRunner.RunResourceTemplates(requestData);
             if (response == null)
                 return new ListResourceTemplatesResult().SetError("[Error] Resource is null");
 

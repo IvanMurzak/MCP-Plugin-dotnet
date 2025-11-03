@@ -56,7 +56,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (logger.IsTraceEnabled)
                 logger.Trace("Get remote prompt '{0}':\n{1}", request.Params.Name, requestData.ToPrettyJson());
 
-            var response = await promptRunner.RunGetPrompt(requestData, cancellationToken: cancellationToken);
+            var response = await promptRunner.RunGetPrompt(requestData);
             if (response == null)
                 return new GetPromptResult().SetError($"[Error] '{nameof(response)}' is null");
 

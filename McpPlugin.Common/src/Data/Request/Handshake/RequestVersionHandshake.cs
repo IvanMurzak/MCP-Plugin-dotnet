@@ -11,7 +11,7 @@ using System.Text.Json.Serialization;
 
 namespace com.IvanMurzak.McpPlugin.Common.Model
 {
-    public class VersionHandshakeRequest : IRequestID
+    public class RequestVersionHandshake : IRequestID
     {
         [JsonPropertyName("requestId")]
         public string RequestID { get; set; } = string.Empty;
