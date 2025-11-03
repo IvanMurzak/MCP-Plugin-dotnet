@@ -170,7 +170,10 @@ namespace com.IvanMurzak.McpPlugin
         public Task DisposeAsync()
         {
             _logger.LogTrace("{class} DisposeAsync.", GetType().Name);
-            _cancellationTokenSource.Cancel();
+
+            if (!_cancellationTokenSource.IsCancellationRequested)
+                _cancellationTokenSource.Cancel();
+
             _cancellationTokenSource.Dispose();
             _serverEventsDisposables.Dispose();
             _hubConnectionDisposable.Dispose();

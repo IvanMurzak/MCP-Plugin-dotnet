@@ -164,7 +164,9 @@ namespace com.IvanMurzak.McpPlugin
 
         public void Dispose()
         {
-            _cancellationTokenSource.Cancel();
+            if (!_cancellationTokenSource.IsCancellationRequested)
+                _cancellationTokenSource.Cancel();
+
             _cancellationTokenSource.Dispose();
             _prompts.Clear();
         }
