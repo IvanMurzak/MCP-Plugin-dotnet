@@ -176,8 +176,8 @@ namespace com.IvanMurzak.McpPlugin
             {
                 if (!_cancellationTokenSource.IsCancellationRequested)
                     _cancellationTokenSource.Cancel();
-                _cancellationTokenSource.Dispose();
             }
+            _cancellationTokenSource.Dispose();
             _serverEventsDisposables.Dispose();
             _hubConnectionDisposable.Dispose();
 
