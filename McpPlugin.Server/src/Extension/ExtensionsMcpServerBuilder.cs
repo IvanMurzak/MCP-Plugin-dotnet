@@ -22,6 +22,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (mcpServerBuilder == null)
                 throw new System.ArgumentNullException(nameof(mcpServerBuilder));
 
+            mcpServerBuilder.Services.AddSingleton<IDataArguments>(dataArguments);
             mcpServerBuilder.Services.AddSingleton(dataArguments);
             mcpServerBuilder.Services.AddSingleton(version);
 
