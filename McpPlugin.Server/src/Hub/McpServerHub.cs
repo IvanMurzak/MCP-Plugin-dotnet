@@ -53,7 +53,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 ConnectionId = Context.ConnectionId,
                 Request = request
             });
-            return ResponseData.Success("Received tools update notification", string.Empty).TaskFromResult();
+            return ResponseData.Success(request.RequestId, "Received tools update notification").TaskFromResult();
         }
 
         Task<ResponseData> IServerPromptHub.NotifyAboutUpdatedPrompts(RequestPromptsUpdated request) => NotifyAboutUpdatedPrompts(request, _cancellationTokenSource.Token);
@@ -68,7 +68,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 Request = request
             });
 
-            return ResponseData.Success("Received prompts update notification", string.Empty).TaskFromResult();
+            return ResponseData.Success(request.RequestId, "Received prompts update notification").TaskFromResult();
         }
 
         Task<ResponseData> IServerResourceHub.NotifyAboutUpdatedResources(RequestResourcesUpdated request) => NotifyAboutUpdatedResources(request, _cancellationTokenSource.Token);
@@ -82,7 +82,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 Request = request
             });
 
-            return ResponseData.Success("Received resources update notification", string.Empty).TaskFromResult();
+            return ResponseData.Success(request.RequestId, "Received resources update notification").TaskFromResult();
         }
 
         public Task<ResponseData> NotifyToolRequestCompleted(RequestToolCompletedData data) => NotifyToolRequestCompleted(data, _cancellationTokenSource.Token);
@@ -100,7 +100,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 _logger.LogError(ex, "Error deserializing tool response for RequestId: {requestId}", data.RequestId);
             }
 
-            return ResponseData.Success(string.Empty, string.Empty).TaskFromResult();
+            return ResponseData.Success(data.RequestId, string.Empty).TaskFromResult();
         }
 
         public Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request) => PerformVersionHandshake(request, _cancellationTokenSource.Token);
