@@ -43,7 +43,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
         }
 
-        Task<ResponseData> IServerToolHub.NotifyAboutUpdatedTools(RequestToolsUpdated request) => NotifyAboutUpdatedTools(request, default);
+        public Task<ResponseData> NotifyAboutUpdatedTools(RequestToolsUpdated request) => NotifyAboutUpdatedTools(request, default);
         protected virtual Task<ResponseData> NotifyAboutUpdatedTools(RequestToolsUpdated request, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
@@ -57,8 +57,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             return ResponseData.Success(request.RequestId, "Received tools update notification").TaskFromResult();
         }
 
-        Task<ResponseData> IServerPromptHub.NotifyAboutUpdatedPrompts(RequestPromptsUpdated request) => NotifyAboutUpdatedPrompts(request, default);
-        public Task<ResponseData> NotifyAboutUpdatedPrompts(RequestPromptsUpdated request, CancellationToken cancellationToken = default)
+        public Task<ResponseData> NotifyAboutUpdatedPrompts(RequestPromptsUpdated request) => NotifyAboutUpdatedPrompts(request, default);
+        protected virtual Task<ResponseData> NotifyAboutUpdatedPrompts(RequestPromptsUpdated request, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
                 nameof(IServerPromptHub.NotifyAboutUpdatedPrompts), _guid, request);
@@ -72,8 +72,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             return ResponseData.Success(request.RequestId, "Received prompts update notification").TaskFromResult();
         }
 
-        Task<ResponseData> IServerResourceHub.NotifyAboutUpdatedResources(RequestResourcesUpdated request) => NotifyAboutUpdatedResources(request, default);
-        public Task<ResponseData> NotifyAboutUpdatedResources(RequestResourcesUpdated request, CancellationToken cancellationToken = default)
+        public Task<ResponseData> NotifyAboutUpdatedResources(RequestResourcesUpdated request) => NotifyAboutUpdatedResources(request, default);
+        protected virtual Task<ResponseData> NotifyAboutUpdatedResources(RequestResourcesUpdated request, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
                 nameof(IServerResourceHub.NotifyAboutUpdatedResources), _guid, request);
@@ -87,7 +87,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         }
 
         public Task<ResponseData> NotifyToolRequestCompleted(RequestToolCompletedData data) => NotifyToolRequestCompleted(data, default);
-        Task<ResponseData> NotifyToolRequestCompleted(RequestToolCompletedData data, CancellationToken cancellationToken = default)
+        protected virtual Task<ResponseData> NotifyToolRequestCompleted(RequestToolCompletedData data, CancellationToken cancellationToken = default)
         {
             _logger.LogTrace("{method}. {guid}. RequestId: {requestId}",
                 nameof(IServerMcpManager.NotifyToolRequestCompleted), _guid, data.RequestId);
@@ -105,7 +105,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         }
 
         public Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request) => PerformVersionHandshake(request, default);
-        Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request, CancellationToken cancellationToken = default)
+        protected virtual Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -151,7 +151,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
         }
 
-        private static bool IsApiVersionCompatible(string pluginApiVersion, string serverApiVersion)
+        protected virtual bool IsApiVersionCompatible(string pluginApiVersion, string serverApiVersion)
         {
             if (string.IsNullOrEmpty(pluginApiVersion) || string.IsNullOrEmpty(serverApiVersion))
                 return false;
