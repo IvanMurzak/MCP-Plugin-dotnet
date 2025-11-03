@@ -27,7 +27,6 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly IHubContext<McpServerHub> _remoteAppContext;
         readonly IDataArguments _dataArguments;
         readonly IRequestTrackingService _requestTrackingService;
-        readonly CancellationTokenSource cts = new();
         readonly CompositeDisposable _disposables = new();
 
         public RemoteResourceRunner(ILogger<RemoteResourceRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IRequestTrackingService requestTrackingService)
@@ -39,7 +38,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
         }
 
-        public Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(RequestResourceContent requestData) => RunResourceContent(requestData, cts.Token);
+        public Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(RequestResourceContent requestData) => RunResourceContent(requestData, _disposables.ToCancellationToken());
         public Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(RequestResourceContent requestData, CancellationToken cancellationToken = default)
         {
             return ClientUtils.InvokeAsync<RequestResourceContent, ResponseResourceContent[], McpServerHub>(
@@ -51,7 +50,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 cancellationToken: cancellationToken);
         }
 
-        public Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources requestData) => RunListResources(requestData, cts.Token);
+        public Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources requestData) => RunListResources(requestData, _disposables.ToCancellationToken());
         public Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources requestData, CancellationToken cancellationToken = default)
         {
             return ClientUtils.InvokeAsync<RequestListResources, ResponseListResource[], McpServerHub>(
@@ -63,7 +62,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 cancellationToken: cancellationToken);
         }
 
-        public Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(RequestListResourceTemplates requestData) => RunResourceTemplates(requestData, cts.Token);
+        public Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(RequestListResourceTemplates requestData) => RunResourceTemplates(requestData, _disposables.ToCancellationToken());
         public Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(RequestListResourceTemplates requestData, CancellationToken cancellationToken = default)
         {
             return ClientUtils.InvokeAsync<RequestListResourceTemplates, ResponseResourceTemplate[], McpServerHub>(
@@ -79,11 +78,6 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             _logger.LogTrace("Dispose.");
             _disposables.Dispose();
-
-            if (!cts.IsCancellationRequested)
-                cts.Cancel();
-
-            cts.Dispose();
         }
     }
 }

@@ -27,7 +27,6 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly IDataArguments _dataArguments;
         readonly IHubContext<McpServerHub> _remoteAppContext;
         readonly IRequestTrackingService _requestTrackingService;
-        readonly CancellationTokenSource cts = new();
         readonly CompositeDisposable _disposables = new();
 
         public RemoteToolRunner(ILogger<RemoteToolRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IRequestTrackingService requestTrackingService)
@@ -39,10 +38,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
         }
 
-        public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request) => RunCallTool(request, cts.Token);
+        public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request) => RunCallTool(request, _disposables.ToCancellationToken());
         public async Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request, CancellationToken cancellationToken = default)
         {
-            var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
+            var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_disposables.ToCancellationToken(), cancellationToken);
 
             var response = await _requestTrackingService.TrackRequestAsync(
                 request.RequestID,
@@ -65,7 +64,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             return response.Pack(request.RequestID);
         }
 
-        public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request) => RunListTool(request, cts.Token);
+        public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request) => RunListTool(request, _disposables.ToCancellationToken());
         public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request, CancellationToken cancellationToken = default)
             => ClientUtils.InvokeAsync<RequestListTool, ResponseListTool[], McpServerHub>(
                 logger: _logger,
@@ -73,7 +72,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 methodName: Consts.RPC.Client.RunListTool,
                 request: request,
                 dataArguments: _dataArguments,
-                cancellationToken: CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken).Token)
+                cancellationToken: CancellationTokenSource.CreateLinkedTokenSource(_disposables.ToCancellationToken(), cancellationToken).Token)
                 .ContinueWith(task =>
             {
                 var response = task.Result;
@@ -81,17 +80,12 @@ namespace com.IvanMurzak.McpPlugin.Server
                     return ResponseData<ResponseListTool[]>.Error(request.RequestID, response.Message ?? "Got an error during listing tools");
 
                 return response;
-            }, cancellationToken: CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken).Token);
+            }, cancellationToken: CancellationTokenSource.CreateLinkedTokenSource(_disposables.ToCancellationToken(), cancellationToken).Token);
 
         public void Dispose()
         {
             _logger.LogTrace("{0} Dispose.", typeof(RemoteToolRunner).Name);
             _disposables.Dispose();
-
-            if (!cts.IsCancellationRequested)
-                cts.Cancel();
-
-            cts.Dispose();
         }
     }
 }
