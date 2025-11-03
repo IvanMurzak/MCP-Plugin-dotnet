@@ -17,7 +17,7 @@ namespace com.IvanMurzak.McpPlugin.Common
         public static CancellationTokenSource ToCancellationTokenSource(this CompositeDisposable disposables)
         {
             var cancellationTokenSource = new CancellationTokenSource();
-            disposables.Add(Disposable.Create(() => cancellationTokenSource.Cancel()));
+            disposables.Add(cancellationTokenSource);
             return cancellationTokenSource;
         }
         public static CancellationToken ToCancellationToken(this CompositeDisposable disposables)
