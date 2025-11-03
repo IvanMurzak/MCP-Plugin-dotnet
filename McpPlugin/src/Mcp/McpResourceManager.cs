@@ -105,7 +105,7 @@ namespace com.IvanMurzak.McpPlugin
             _onResourcesUpdated.OnNext(Unit.Default);
             return true;
         }
-        public Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(RequestResourceContent data) => RunResourceContent(data, _disposables.ToCancellationToken());
+        public Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(RequestResourceContent data) => RunResourceContent(data, default);
         public async Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(RequestResourceContent data, CancellationToken cancellationToken = default)
         {
             if (data == null)
@@ -127,7 +127,7 @@ namespace com.IvanMurzak.McpPlugin
             var result = await runner.Run(parameters);
             return result.Pack(data.RequestID);
         }
-        public Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources data) => RunListResources(data, _disposables.ToCancellationToken());
+        public Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources data) => RunListResources(data, default);
         public async Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources data, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Listing resources. [{Count}]", _resources.Count);
@@ -141,7 +141,7 @@ namespace com.IvanMurzak.McpPlugin
                 .ToArray()
                 .Pack(data.RequestID);
         }
-        public Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(RequestListResourceTemplates data) => RunResourceTemplates(data, _disposables.ToCancellationToken());
+        public Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(RequestListResourceTemplates data) => RunResourceTemplates(data, default);
         public Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(RequestListResourceTemplates data, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Listing resource templates. [{Count}]", _resources.Count);

@@ -22,7 +22,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (mcpServerBuilder == null)
                 throw new System.ArgumentNullException(nameof(mcpServerBuilder));
 
-            mcpServerBuilder.Services.AddSingleton(dataArguments);
+            if (dataArguments == null)
+                throw new System.ArgumentNullException(nameof(dataArguments));
+
+            mcpServerBuilder.Services.AddSingleton<IDataArguments>(dataArguments);
             mcpServerBuilder.Services.AddSingleton(version);
 
             mcpServerBuilder.Services.AddRouting();

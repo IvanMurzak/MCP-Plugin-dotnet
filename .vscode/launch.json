@@ -2,13 +2,14 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch DemoWebApp",
+            "name": "Launch Demo Web App (http)",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net9.0/DemoWebApp.dll",
             "args": [
-                "--port=11111"
+                "--port=11111",
+                "--client-transport=http"
             ],
             "cwd": "${workspaceFolder}/DemoWebApp",
             "stopAtEntry": false,
@@ -18,7 +19,24 @@
             }
         },
         {
-            "name": "Launch DemoConsoleApp (McpPlugin Client)",
+            "name": "Launch Demo Web App (stdio)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net9.0/DemoWebApp.dll",
+            "args": [
+                "--port=11111",
+                "--client-transport=stdio"
+            ],
+            "cwd": "${workspaceFolder}/DemoWebApp",
+            "stopAtEntry": false,
+            "console": "internalConsole",
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        },
+        {
+            "name": "Launch Demo App",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
@@ -34,10 +52,19 @@
     ],
     "compounds": [
         {
-            "name": "Launch WebApp + ConsoleApp",
+            "name": "Web + App (http)",
             "configurations": [
-                "Launch DemoWebApp",
-                "Launch DemoConsoleApp (McpPlugin Client)"
+                "Launch Demo Web App (http)",
+                "Launch Demo App"
+            ],
+            "stopAll": true,
+            "preLaunchTask": "build"
+        },
+        {
+            "name": "Web + App (stdio)",
+            "configurations": [
+                "Launch Demo Web App (stdio)",
+                "Launch Demo App"
             ],
             "stopAll": true,
             "preLaunchTask": "build"

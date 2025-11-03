@@ -27,8 +27,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly IDataArguments _dataArguments;
         readonly IHubContext<McpServerHub> _remoteAppContext;
         readonly IRequestTrackingService _requestTrackingService;
-        readonly CancellationTokenSource cts = new();
         readonly CompositeDisposable _disposables = new();
+        readonly CancellationTokenSource _cancellationTokenSource;
 
         public RemotePromptRunner(ILogger<RemotePromptRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IRequestTrackingService requestTrackingService)
         {
@@ -37,12 +37,14 @@ namespace com.IvanMurzak.McpPlugin.Server
             _remoteAppContext = remoteAppContext ?? throw new ArgumentNullException(nameof(remoteAppContext));
             _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
+            _cancellationTokenSource = _disposables.ToCancellationTokenSource();
         }
 
-        public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request) => RunCallTool(request, cts.Token);
+        public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request) => RunCallTool(request, default);
         public async Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request, CancellationToken cancellationToken = default)
         {
-            var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
+            cancellationToken = linkedCts.Token;
 
             var response = await _requestTrackingService.TrackRequestAsync(
                 request.RequestID,
@@ -54,39 +56,42 @@ namespace com.IvanMurzak.McpPlugin.Server
                         methodName: Consts.RPC.Client.RunCallTool,
                         request: request,
                         dataArguments: _dataArguments,
-                        cancellationToken: linkedCts.Token);
+                        cancellationToken: cancellationToken);
 
                     return responseData.Value ?? ResponseCallTool.Error("Response data is null");
                 },
                 TimeSpan.FromMinutes(5),
-                linkedCts.Token);
+                cancellationToken);
 
             // Wrap the ResponseCallTool back into ResponseData<ResponseCallTool>
             return response.Pack(request.RequestID);
         }
 
-        public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request) => RunListTool(request, cts.Token);
-        public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request, CancellationToken cancellationToken = default)
-            => ClientUtils.InvokeAsync<RequestListTool, ResponseListTool[], McpServerHub>(
+        public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request) => RunListTool(request, default);
+        public async Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request, CancellationToken cancellationToken = default)
+        {
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
+            cancellationToken = linkedCts.Token;
+
+            var response = await ClientUtils.InvokeAsync<RequestListTool, ResponseListTool[], McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,
                 methodName: Consts.RPC.Client.RunListTool,
                 request: request,
                 dataArguments: _dataArguments,
-                cancellationToken: CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken).Token)
-                .ContinueWith(task =>
-            {
-                var response = task.Result;
-                if (response.Status == ResponseStatus.Error)
-                    return ResponseData<ResponseListTool[]>.Error(request.RequestID, response.Message ?? "Got an error during listing tools");
+                cancellationToken: cancellationToken);
 
-                return response;
-            }, cancellationToken: CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken).Token);
+            if (response.Status == ResponseStatus.Error)
+                return ResponseData<ResponseListTool[]>.Error(request.RequestID, response.Message ?? "Got an error during listing tools");
 
-        public Task<ResponseData<ResponseGetPrompt>> RunGetPrompt(RequestGetPrompt request) => RunGetPrompt(request, cts.Token);
+            return response;
+        }
+
+        public Task<ResponseData<ResponseGetPrompt>> RunGetPrompt(RequestGetPrompt request) => RunGetPrompt(request, default);
         public async Task<ResponseData<ResponseGetPrompt>> RunGetPrompt(RequestGetPrompt request, CancellationToken cancellationToken = default)
         {
-            var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
+            cancellationToken = linkedCts.Token;
 
             var responseData = await ClientUtils.InvokeAsync<RequestGetPrompt, ResponseGetPrompt, McpServerHub>(
                 logger: _logger,
@@ -94,7 +99,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 methodName: Consts.RPC.Client.RunGetPrompt,
                 request: request,
                 dataArguments: _dataArguments,
-                cancellationToken: linkedCts.Token);
+                cancellationToken: cancellationToken);
 
             if (responseData.Value != null)
                 return responseData.Value.Pack(request.RequestID);
@@ -102,33 +107,29 @@ namespace com.IvanMurzak.McpPlugin.Server
             return ResponseGetPrompt.Error("Response data is null").Pack(request.RequestID);
         }
 
-        public Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request) => RunListPrompts(request, cts.Token);
-        public Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request, CancellationToken cancellationToken = default)
-            => ClientUtils.InvokeAsync<RequestListPrompts, ResponseListPrompts, McpServerHub>(
+        public Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request) => RunListPrompts(request, default);
+        public async Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request, CancellationToken cancellationToken = default)
+        {
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
+            cancellationToken = linkedCts.Token;
+
+            var response = await ClientUtils.InvokeAsync<RequestListPrompts, ResponseListPrompts, McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,
                 methodName: Consts.RPC.Client.RunListPrompts,
                 request: request,
                 dataArguments: _dataArguments,
-                cancellationToken: CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken).Token)
-                .ContinueWith(task =>
-            {
-                var response = task.Result;
-                if (response.Status == ResponseStatus.Error)
-                    return ResponseData<ResponseListPrompts>.Error(request.RequestID, response.Message ?? "Got an error during listing tools");
+                cancellationToken: cancellationToken);
 
-                return response;
-            }, cancellationToken: CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken).Token);
+            if (response.Status == ResponseStatus.Error)
+                return ResponseData<ResponseListPrompts>.Error(request.RequestID, response.Message ?? "Got an error during listing tools");
 
+            return response;
+        }
         public void Dispose()
         {
             _logger.LogTrace("{0} Dispose.", typeof(RemotePromptRunner).Name);
             _disposables.Dispose();
-
-            if (!cts.IsCancellationRequested)
-                cts.Cancel();
-
-            cts.Dispose();
         }
     }
 }
