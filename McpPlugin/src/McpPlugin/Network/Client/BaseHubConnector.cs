@@ -80,7 +80,8 @@ namespace com.IvanMurzak.McpPlugin
 
             // Perform version handshake first
 
-            var cancellationToken = _serverEventsDisposables.ToCancellationToken();
+            var serverEventsCts = _serverEventsDisposables.ToCancellationTokenSource();
+            var cancellationToken = serverEventsCts.Token;
             var handshakeResponse = await PerformVersionHandshake(
                 request: new RequestVersionHandshake
                 {

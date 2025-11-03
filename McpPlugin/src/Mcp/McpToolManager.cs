@@ -106,7 +106,7 @@ namespace com.IvanMurzak.McpPlugin
             return true;
         }
 
-        public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool data) => RunCallTool(data, _disposables.ToCancellationToken());
+        public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool data) => RunCallTool(data, default);
         public async Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool data, CancellationToken cancellationToken = default)
         {
             if (data == null)
@@ -147,7 +147,7 @@ namespace com.IvanMurzak.McpPlugin
             }
         }
 
-        public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool data) => RunListTool(data, _disposables.ToCancellationToken());
+        public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool data) => RunListTool(data, default);
         public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool data, CancellationToken cancellationToken = default)
         {
             try

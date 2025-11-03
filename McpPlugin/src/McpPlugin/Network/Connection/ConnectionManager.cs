@@ -30,6 +30,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly ReactiveProperty<HubConnection?> _hubConnection = new();
         protected readonly ReactiveProperty<HubConnectionState> _connectionState = new(HubConnectionState.Disconnected);
         protected readonly CompositeDisposable _disposables = new();
+        protected readonly CancellationTokenSource _cancellationTokenSource;
 
         private volatile Task<bool>? connectionTask;
         private HubConnectionLogger? hubConnectionLogger;
@@ -50,6 +51,7 @@ namespace com.IvanMurzak.McpPlugin
             _apiVersion = apiVersion ?? throw new ArgumentNullException(nameof(apiVersion));
             _endpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
             _hubConnectionBuilder = hubConnectionBuilder ?? throw new ArgumentNullException(nameof(hubConnectionBuilder));
+            _cancellationTokenSource = _disposables.ToCancellationTokenSource();
 
             _hubConnection
                 .Subscribe(hubConnection =>
@@ -71,7 +73,7 @@ namespace com.IvanMurzak.McpPlugin
                 .Subscribe(async state =>
                 {
                     _logger.LogInformation("{0} Connection state changed to Reconnecting. Initiating reconnection to: {1}", _guid, Endpoint);
-                    await Connect(_disposables.ToCancellationToken());
+                    await Connect(_cancellationTokenSource.Token);
                 })
                 .AddTo(_disposables);
         }

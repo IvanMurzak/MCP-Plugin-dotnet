@@ -20,9 +20,5 @@ namespace com.IvanMurzak.McpPlugin.Common
             disposables.Add(cancellationTokenSource);
             return cancellationTokenSource;
         }
-        public static CancellationToken ToCancellationToken(this CompositeDisposable disposables)
-        {
-            return ToCancellationTokenSource(disposables).Token;
-        }
     }
 }

@@ -24,6 +24,7 @@ namespace com.IvanMurzak.McpPlugin
         readonly ILogger<McpPlugin> _logger;
         readonly IRemoteMcpManagerHub _remoteMcpManagerHub;
         readonly CompositeDisposable _disposables = new();
+        readonly CancellationTokenSource _cancellationTokenSource;
 
         public ILogger Logger => _logger;
         public IMcpManager McpManager { get; private set; }
@@ -42,13 +43,12 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogTrace("{0} Ctor.", typeof(McpPlugin).Name);
 
             McpManager = mcpManager ?? throw new ArgumentNullException(nameof(mcpManager));
-
-            var cancellationToken = _disposables.ToCancellationToken();
+            _cancellationTokenSource = _disposables.ToCancellationTokenSource();
 
             _remoteMcpManagerHub = remoteMcpManagerHub ?? throw new ArgumentNullException(nameof(remoteMcpManagerHub));
             _remoteMcpManagerHub.ConnectionState
                 .Where(state => state == HubConnectionState.Connected)
-                .Where(state => !cancellationToken.IsCancellationRequested)
+                .Where(state => !_cancellationTokenSource.Token.IsCancellationRequested)
                 .Subscribe(async state =>
                 {
                     _logger.LogDebug("{class}.{method}, connection state: {2}",
@@ -84,7 +84,7 @@ namespace com.IvanMurzak.McpPlugin
                         nameof(McpPlugin),
                         nameof(McpManager.ToolManager.OnToolsUpdated));
 
-                    if (cancellationToken.IsCancellationRequested)
+                    if (_cancellationTokenSource.Token.IsCancellationRequested)
                         return;
 
                     if (_remoteMcpManagerHub == null)
@@ -106,7 +106,7 @@ namespace com.IvanMurzak.McpPlugin
                         nameof(McpPlugin),
                         nameof(McpManager.PromptManager.OnPromptsUpdated));
 
-                    if (cancellationToken.IsCancellationRequested)
+                    if (_cancellationTokenSource.Token.IsCancellationRequested)
                         return;
 
                     if (_remoteMcpManagerHub == null)
@@ -128,7 +128,7 @@ namespace com.IvanMurzak.McpPlugin
                         nameof(McpPlugin),
                         nameof(McpManager.ResourceManager.OnResourcesUpdated));
 
-                    if (cancellationToken.IsCancellationRequested)
+                    if (_cancellationTokenSource.Token.IsCancellationRequested)
                         return;
 
                     if (_remoteMcpManagerHub == null)
