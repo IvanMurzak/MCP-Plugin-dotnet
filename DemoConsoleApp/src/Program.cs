@@ -21,6 +21,9 @@ var mcpPlugin = new McpPluginBuilder(version)
         builder.SetMinimumLevel(LogLevel.Trace);
     })
     .AddMcpManager()
+    .WithToolsFromAssembly(typeof(McpToolConsole).Assembly)
+    .WithPromptsFromAssembly(typeof(McpToolConsole).Assembly)
+    .WithResourcesFromAssembly(typeof(McpToolConsole).Assembly)
     .Build(reflector);
 
 mcpPlugin.ConnectionState
@@ -29,16 +32,10 @@ mcpPlugin.ConnectionState
 var result = await mcpPlugin.Connect();
 
 Console.WriteLine($"Connected: {result}");
+Console.WriteLine($"Time: {DateTime.Now}");
 
-try
+while (true)
 {
-    if (!Console.IsInputRedirected)
-    {
-        Console.WriteLine("Press any key to exit...");
-        Console.ReadKey();
-    }
-}
-catch (InvalidOperationException)
-{
-    // Console input is not available, just exit
+    await Task.Delay(1000);
+    Console.WriteLine($"Time: {DateTime.Now}");
 }

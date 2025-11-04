@@ -212,12 +212,6 @@ namespace com.IvanMurzak.McpPlugin
         }
         #endregion
 
-
-        public void ForceDisconnect()
-        {
-            throw new NotImplementedException();
-        }
-
         public void Dispose()
         {
             _disposables.Dispose();

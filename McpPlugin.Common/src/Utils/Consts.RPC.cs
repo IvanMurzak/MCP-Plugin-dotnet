@@ -19,30 +19,5 @@ namespace com.IvanMurzak.McpPlugin.Common
             public const string RemoteApp = "/hub/mcp-server";
             public const int DefaultTimeoutMs = 10000;
         }
-
-        public static partial class RPC
-        {
-            public static class Client
-            {
-                public const string RunCallTool = "/mcp/run-call-tool";
-                public const string RunListTool = "/mcp/run-list-tool";
-                public const string RunGetPrompt = "/mcp/run-get-prompt";
-                public const string RunListPrompts = "/mcp/run-list-prompts";
-                public const string RunResourceContent = "/mcp/run-resource-content";
-                public const string RunListResources = "/mcp/run-list-resources";
-                public const string RunListResourceTemplates = "/mcp/run-list-resource-templates";
-
-                public const string ForceDisconnect = "force-disconnect";
-            }
-
-            public static class Server
-            {
-                public const string OnListToolsUpdated = "OnListToolsUpdated";
-                public const string OnListPromptsUpdated = "OnListPromptsUpdated";
-                public const string OnListResourcesUpdated = "OnListResourcesUpdated";
-                public const string OnToolRequestCompleted = "OnToolRequestCompleted";
-                public const string OnVersionHandshake = "OnVersionHandshake";
-            }
-        }
     }
 }

@@ -49,7 +49,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             return await ClientUtils.InvokeAsync<RequestResourceContent, ResponseResourceContent[], McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,
-                methodName: Consts.RPC.Client.RunResourceContent,
+                methodName: nameof(IClientResourceHub.RunResourceContent),
                 request: requestData,
                 dataArguments: _dataArguments,
                 cancellationToken: cancellationToken);
@@ -64,7 +64,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             return await ClientUtils.InvokeAsync<RequestListResources, ResponseListResource[], McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,
-                methodName: Consts.RPC.Client.RunListResources,
+                methodName: nameof(IClientResourceHub.RunListResources),
                 request: requestData,
                 dataArguments: _dataArguments,
                 cancellationToken: cancellationToken);
@@ -79,7 +79,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             return await ClientUtils.InvokeAsync<RequestListResourceTemplates, ResponseResourceTemplate[], McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,
-                methodName: Consts.RPC.Client.RunListResourceTemplates,
+                methodName: nameof(IClientResourceHub.RunResourceTemplates),
                 request: requestData,
                 dataArguments: _dataArguments,
                 cancellationToken: cancellationToken);

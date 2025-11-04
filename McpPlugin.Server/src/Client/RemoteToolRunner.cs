@@ -53,7 +53,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                     var responseData = await ClientUtils.InvokeAsync<RequestCallTool, ResponseCallTool, McpServerHub>(
                         logger: _logger,
                         hubContext: _remoteAppContext,
-                        methodName: Consts.RPC.Client.RunCallTool,
+                        methodName: nameof(IClientToolHub.RunCallTool),
                         request: request,
                         dataArguments: _dataArguments,
                         cancellationToken: cancellationToken);
@@ -76,7 +76,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             var response = await ClientUtils.InvokeAsync<RequestListTool, ResponseListTool[], McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,
-                methodName: Consts.RPC.Client.RunListTool,
+                methodName: nameof(IClientToolHub.RunListTool),
                 request: request,
                 dataArguments: _dataArguments,
                 cancellationToken: cancellationToken);
