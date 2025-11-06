@@ -19,7 +19,7 @@ using R3;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public partial class McpPlugin : IMcpPlugin
+    public partial class McpPlugin : IMcpPlugin, IDisposable
     {
         readonly ILogger<McpPlugin> _logger;
         readonly IRemoteMcpManagerHub _remoteMcpManagerHub;
@@ -40,7 +40,7 @@ namespace com.IvanMurzak.McpPlugin
             IRemoteMcpManagerHub remoteMcpManagerHub)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _logger.LogTrace("{0} Ctor.", typeof(McpPlugin).Name);
+            _logger.LogTrace("{class} Ctor.", nameof(McpPlugin));
 
             McpManager = mcpManager ?? throw new ArgumentNullException(nameof(mcpManager));
             _cancellationTokenSource = _disposables.ToCancellationTokenSource();
@@ -51,17 +51,14 @@ namespace com.IvanMurzak.McpPlugin
                 .Where(state => !_cancellationTokenSource.Token.IsCancellationRequested)
                 .Subscribe(async state =>
                 {
-                    _logger.LogDebug("{class}.{method}, connection state: {2}",
-                        nameof(McpPlugin),
-                        nameof(ConnectionState),
-                        state);
+                    _logger.LogDebug("{method}, connection state: {state}",
+                        nameof(ConnectionState), state);
 
                     var tasks = Enumerable.Empty<Task>();
 
                     await _remoteMcpManagerHub.NotifyAboutUpdatedTools(new Common.Model.RequestToolsUpdated());
 
-                    _logger.LogDebug("{class}.{method}, initial notifications sent.",
-                        nameof(McpPlugin),
+                    _logger.LogDebug("{method}, initial notifications sent.",
                         nameof(ConnectionState));
                 })
                 .AddTo(_disposables);
@@ -69,8 +66,7 @@ namespace com.IvanMurzak.McpPlugin
             McpManager.OnForceDisconnect
                 .Subscribe(_ =>
                 {
-                    _logger.LogDebug("{class}.{method}, force disconnect requested.",
-                        nameof(McpPlugin),
+                    _logger.LogDebug("{method}, force disconnect requested.",
                         nameof(McpManager.OnForceDisconnect));
 
                     _remoteMcpManagerHub.Disconnect();
@@ -80,8 +76,7 @@ namespace com.IvanMurzak.McpPlugin
             McpManager.ToolManager?.OnToolsUpdated
                 .Subscribe(async _ =>
                 {
-                    _logger.LogDebug("{class}.{method}, tools updated event received.",
-                        nameof(McpPlugin),
+                    _logger.LogDebug("{method}, tools updated event received.",
                         nameof(McpManager.ToolManager.OnToolsUpdated));
 
                     if (_cancellationTokenSource.Token.IsCancellationRequested)
@@ -89,8 +84,7 @@ namespace com.IvanMurzak.McpPlugin
 
                     if (_remoteMcpManagerHub == null)
                     {
-                        _logger.LogWarning("{class}.{method}, RPC Router is not initialized, cannot notify about updated tools.",
-                            nameof(McpPlugin),
+                        _logger.LogWarning("{method}, RPC Router is not initialized, cannot notify about updated tools.",
                             nameof(McpManager.ToolManager.OnToolsUpdated));
                         return;
                     }
@@ -102,8 +96,7 @@ namespace com.IvanMurzak.McpPlugin
             McpManager.PromptManager?.OnPromptsUpdated
                 .Subscribe(async _ =>
                 {
-                    _logger.LogDebug("{class}.{method}, prompts updated event received.",
-                        nameof(McpPlugin),
+                    _logger.LogDebug("{method}, prompts updated event received.",
                         nameof(McpManager.PromptManager.OnPromptsUpdated));
 
                     if (_cancellationTokenSource.Token.IsCancellationRequested)
@@ -111,8 +104,7 @@ namespace com.IvanMurzak.McpPlugin
 
                     if (_remoteMcpManagerHub == null)
                     {
-                        _logger.LogWarning("{class}.{method}, RPC Router is not initialized, cannot notify about updated prompts.",
-                            nameof(McpPlugin),
+                        _logger.LogWarning("{method}, RPC Router is not initialized, cannot notify about updated prompts.",
                             nameof(McpManager.PromptManager.OnPromptsUpdated));
                         return;
                     }
@@ -124,8 +116,7 @@ namespace com.IvanMurzak.McpPlugin
             McpManager.ResourceManager?.OnResourcesUpdated
                 .Subscribe(async _ =>
                 {
-                    _logger.LogDebug("{class}.{method}, resources updated event received.",
-                        nameof(McpPlugin),
+                    _logger.LogDebug("{method}, resources updated event received.",
                         nameof(McpManager.ResourceManager.OnResourcesUpdated));
 
                     if (_cancellationTokenSource.Token.IsCancellationRequested)
@@ -133,8 +124,7 @@ namespace com.IvanMurzak.McpPlugin
 
                     if (_remoteMcpManagerHub == null)
                     {
-                        _logger.LogWarning("{class}.{method}, RPC Router is not initialized, cannot notify about updated resources.",
-                            nameof(McpPlugin),
+                        _logger.LogWarning("{method}, RPC Router is not initialized, cannot notify about updated resources.",
                             nameof(McpManager.ResourceManager.OnResourcesUpdated));
                         return;
                     }
@@ -145,7 +135,7 @@ namespace com.IvanMurzak.McpPlugin
 
             if (HasInstance)
             {
-                _logger.LogError($"{nameof(McpPlugin)} already created. Use Singleton instance.");
+                _logger.LogError($"Instance already created. Use Singleton instance.");
                 return;
             }
 
@@ -160,7 +150,7 @@ namespace com.IvanMurzak.McpPlugin
 
         public Task<bool> Connect(CancellationToken cancellationToken = default)
         {
-            _logger.LogDebug("{class}.{method} called.", nameof(McpPlugin), nameof(Connect));
+            _logger.LogDebug("{method} called.", nameof(Connect));
             if (_remoteMcpManagerHub == null)
                 return Task.FromResult(false);
             return _remoteMcpManagerHub.Connect(cancellationToken);
@@ -168,7 +158,7 @@ namespace com.IvanMurzak.McpPlugin
 
         public Task Disconnect(CancellationToken cancellationToken = default)
         {
-            _logger.LogDebug("{class}.{method} called.", nameof(McpPlugin), nameof(Disconnect));
+            _logger.LogDebug("{method} called.", nameof(Disconnect));
             if (_remoteMcpManagerHub == null)
                 return Task.CompletedTask;
             return _remoteMcpManagerHub.Disconnect(cancellationToken);
@@ -176,7 +166,7 @@ namespace com.IvanMurzak.McpPlugin
 
         public void Dispose()
         {
-            _logger.LogInformation("{class}.{method} called.", nameof(McpPlugin), nameof(Dispose));
+            _logger.LogInformation("{method} called.", nameof(Dispose));
 #pragma warning disable CS4014
             DisposeAsync();
 #pragma warning restore CS4014
@@ -184,7 +174,7 @@ namespace com.IvanMurzak.McpPlugin
 
         public async Task DisposeAsync()
         {
-            _logger.LogInformation("{class}.{method} called.", nameof(McpPlugin), nameof(DisposeAsync));
+            _logger.LogInformation("{method} called.", nameof(DisposeAsync));
 
             _disposables.Dispose();
 
@@ -199,7 +189,7 @@ namespace com.IvanMurzak.McpPlugin
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error during async disposal: {0}\n{1}", ex.Message, ex.StackTrace);
+                _logger.LogError("Error during async disposal: {message}\n{stackTrace}", ex.Message, ex.StackTrace);
             }
 
             try
@@ -209,8 +199,10 @@ namespace com.IvanMurzak.McpPlugin
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error during async disposal: {0}\n{1}", ex.Message, ex.StackTrace);
+                _logger.LogError("Error during async disposal: {message}\n{stackTrace}", ex.Message, ex.StackTrace);
             }
+
+            McpManager.Dispose();
         }
 
         ~McpPlugin() => Dispose();

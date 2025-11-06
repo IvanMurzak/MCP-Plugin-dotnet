@@ -33,7 +33,8 @@ namespace com.IvanMurzak.McpPlugin
                     return;
                 if (func == null)
                 {
-                    instance._logger.LogWarning($"[{nameof(McpPlugin)}] DoOnce() called with null func");
+                    instance._logger.LogWarning("{method} called with null func",
+                        nameof(DoOnce));
                     return;
                 }
                 try
@@ -42,7 +43,8 @@ namespace com.IvanMurzak.McpPlugin
                 }
                 catch (Exception e)
                 {
-                    instance._logger.LogError(e, $"[{nameof(McpPlugin)}] Error in DoOnce()");
+                    instance._logger.LogError(e, "Error in {method}",
+                        nameof(DoOnce));
                 }
             });
 
@@ -56,7 +58,8 @@ namespace com.IvanMurzak.McpPlugin
                     return;
                 if (func == null)
                 {
-                    instance._logger.LogWarning($"[{nameof(McpPlugin)}] DoAlways() called with null func");
+                    instance._logger.LogWarning("{method} called with null func",
+                        nameof(DoAlways));
                     return;
                 }
                 try
@@ -65,7 +68,8 @@ namespace com.IvanMurzak.McpPlugin
                 }
                 catch (Exception e)
                 {
-                    instance._logger.LogError(e, $"[{nameof(McpPlugin)}] Error in DoAlways()");
+                    instance._logger.LogError(e, "Error in {method}",
+                        nameof(DoAlways));
                 }
             });
 
@@ -75,7 +79,8 @@ namespace com.IvanMurzak.McpPlugin
             if (instance == null)
                 return Task.CompletedTask;
 
-            _instance.Value = null;
+            // _instance.Value = null;
+            _instance.Dispose();
 
             return instance.DisposeAsync();
         }

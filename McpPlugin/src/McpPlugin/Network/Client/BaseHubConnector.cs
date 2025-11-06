@@ -28,6 +28,8 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly IConnectionManager _connectionManager;
         protected readonly CancellationTokenSource _cancellationTokenSource = new();
 
+        private readonly ThreadSafeBool _isDisposed = new(false);
+
         /// <summary>
         /// Disposable for subscription on the HubConnection changes.
         /// </summary>
@@ -171,6 +173,9 @@ namespace com.IvanMurzak.McpPlugin
         }
         public Task DisposeAsync()
         {
+            if (!_isDisposed.TrySetTrue())
+                return Task.CompletedTask; // already disposed
+
             _logger.LogTrace("{class} DisposeAsync.", GetType().Name);
 
             lock (_cancellationTokenSource)
