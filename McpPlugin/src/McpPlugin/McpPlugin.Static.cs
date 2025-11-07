@@ -79,13 +79,13 @@ namespace com.IvanMurzak.McpPlugin
             if (instance == null)
                 return;
 
+            instance.DisconnectImmediate();
+
             if (!_instance.IsDisposed)
             {
                 _instance.Value = null;
                 _instance.Dispose();
             }
-
-            instance.DisconnectImmediate();
         }
     }
 }

@@ -178,7 +178,7 @@ namespace com.IvanMurzak.McpPlugin
             if (!_isDisposed.TrySetTrue())
                 return; // already disposed
 
-            _logger.LogTrace("{class} DisposeAsync.", GetType().Name);
+            _logger.LogTrace("{class} {method} called.", GetType().Name, nameof(Dispose));
 
             lock (_cancellationTokenSource)
             {
@@ -190,6 +190,8 @@ namespace com.IvanMurzak.McpPlugin
             _hubConnectionDisposable.Dispose();
 
             _connectionManager.Dispose();
+
+            _logger.LogTrace("{class} {method} completed.", GetType().Name, nameof(Dispose));
         }
 
         ~BaseHubConnector()
