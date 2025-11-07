@@ -9,7 +9,6 @@
 */
 
 using System;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
@@ -33,6 +32,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly CompositeDisposable _disposables = new();
         protected readonly CancellationTokenSource _cancellationTokenSource;
 
+        private readonly Mutex _hubConnectionMutex = new();
         private readonly ThreadSafeBool _isDisposed = new(false);
         private volatile Task<bool>? connectionTask;
         private HubConnectionLogger? hubConnectionLogger;
@@ -122,11 +122,13 @@ namespace com.IvanMurzak.McpPlugin
                 return false; // already disposed
             }
 
-            _logger.LogDebug("{class}[{guid}] Connect.", nameof(ConnectionManager), _guid);
+            _logger.LogDebug("{class}[{guid}] {method}.",
+                nameof(ConnectionManager), _guid, nameof(Connect));
+
             if (_hubConnection.Value?.State == HubConnectionState.Connected)
             {
-                _logger.LogDebug("{class}[{guid}] Already connected. Ignoring.",
-                    nameof(ConnectionManager), _guid);
+                _logger.LogDebug("{class}[{guid}] {method} Already connected. Ignoring.",
+                    nameof(ConnectionManager), _guid, nameof(Connect));
                 return true;
             }
 
@@ -134,8 +136,8 @@ namespace com.IvanMurzak.McpPlugin
             var existingTask = connectionTask;
             if (existingTask != null)
             {
-                _logger.LogDebug("{class}[{guid}] Connection task already exists. Waiting for the completion... {endpoint}.",
-                    nameof(ConnectionManager), _guid, Endpoint);
+                _logger.LogDebug("{class}[{guid}] {method} Connection task already exists. Waiting for the completion... {endpoint}.",
+                    nameof(ConnectionManager), _guid, nameof(Connect), Endpoint);
                 // Create a new task that waits for the existing task but can be canceled independently
                 return await Task.Run(async () =>
                 {
@@ -164,20 +166,27 @@ namespace com.IvanMurzak.McpPlugin
             // Dispose the previous internal CancellationTokenSource if it exists
             CancelInternalToken(dispose: true);
 
+            internalCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            cancellationToken = internalCts.Token;
+
             if (_hubConnection.Value != null)
             {
+                _logger.LogDebug("{class}[{guid}] {method} Stopping existing HubConnection before reconnecting. {endpoint}",
+                    nameof(ConnectionManager), _guid, nameof(Connect), Endpoint);
+
                 await _hubConnection.Value.StopAsync();
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    _logger.LogWarning("{class}[{guid}] Connection canceled before starting connection loop for endpoint: {endpoint}",
-                        nameof(ConnectionManager), _guid, Endpoint);
+                    _logger.LogWarning("{class}[{guid}] {method} Connection canceled before starting connection loop for endpoint: {endpoint}",
+                        nameof(ConnectionManager), _guid, nameof(Connect), Endpoint);
                     return false;
                 }
             }
 
-            _continueToReconnect.Value = true;
+            _logger.LogDebug("{class}[{guid}] {method} Set {variable1} as 'true'.",
+                nameof(ConnectionManager), _guid, nameof(Connect), nameof(_continueToReconnect));
 
-            internalCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _continueToReconnect.Value = true;
 
             try
             {
@@ -266,7 +275,7 @@ namespace com.IvanMurzak.McpPlugin
                 return false; // already disposed
             }
 
-            _logger.LogTrace("{class}[{guid}] {method}",
+            _logger.LogDebug("{class}[{guid}] {method}",
                 nameof(ConnectionManager), _guid, nameof(InternalConnect));
 
             if (!await CreateHubConnectionIfNeeded(cancellationToken))
@@ -293,15 +302,29 @@ namespace com.IvanMurzak.McpPlugin
 
         public Task Disconnect(CancellationToken cancellationToken = default)
         {
+            return DisconnectInternal(cancellationToken, graceful: true);
+        }
+
+        /// <summary>
+        /// Immediately disconnects without waiting for async cleanup.
+        /// Use this during Unity assembly reload or other critical shutdown scenarios.
+        /// </summary>
+        public void DisconnectImmediate()
+        {
+            DisconnectInternal(CancellationToken.None, graceful: false);
+        }
+
+        private Task DisconnectInternal(CancellationToken cancellationToken, bool graceful)
+        {
             if (_isDisposed.Value)
             {
                 _logger.LogWarning("{class}[{guid}] {method} called but already disposed, ignored.",
-                    nameof(ConnectionManager), _guid, nameof(Disconnect));
+                    nameof(ConnectionManager), _guid, nameof(DisconnectInternal));
                 return Task.CompletedTask; // already disposed
             }
 
-            _logger.LogDebug("{class}[{guid}] {method}.",
-                 nameof(ConnectionManager), _guid, nameof(Disconnect));
+            _logger.LogDebug("{class}[{guid}] {method}. Graceful: {graceful}",
+                 nameof(ConnectionManager), _guid, nameof(DisconnectInternal), graceful);
 
             connectionTask = null;
 
@@ -315,43 +338,52 @@ namespace com.IvanMurzak.McpPlugin
             hubConnectionLogger = null;
             hubConnectionObservable = null;
 
-            if (_hubConnection.Value == null)
+            // Update state immediately to prevent reconnection attempts
+            _connectionState.Value = HubConnectionState.Disconnected;
+
+            var tempHubConnection = _hubConnection.CurrentValue;
+            if (tempHubConnection == null)
                 return Task.CompletedTask;
 
-            return _hubConnection.Value.StopAsync(cancellationToken).ContinueWith(task =>
+            // For non-graceful disconnect (Unity domain reload), skip all async operations
+            if (!graceful)
             {
-                if (task.IsCompletedSuccessfully)
-                {
-                    _logger.LogInformation("{class}[{guid}] HubConnection stopped successfully.",
-                        nameof(ConnectionManager), _guid);
-                }
-                else if (task.Exception != null)
-                {
-                    _logger.LogError("{class}[{guid}] Error while stopping HubConnection: {message}\n{stackTrace}",
-                        nameof(ConnectionManager), _guid, task.Exception.Message, task.Exception.StackTrace);
-                }
-                _connectionState.Value = HubConnectionState.Disconnected;
-            });
+                _logger.LogDebug("{class}[{guid}] Performing immediate disconnect without waiting for cleanup.",
+                    nameof(ConnectionManager), _guid);
+
+                tempHubConnection.DisposeAsync();
+                // Don't call StopAsync or DisposeAsync - they use thread pool during shutdown
+                // Just clear the reference and let the connection die
+                // The connection state was already set to Disconnected above
+                return Task.CompletedTask;
+            }
+
+            // For graceful disconnect, use proper async cleanup
+            return DisconnectGracefulAsync(tempHubConnection, cancellationToken);
+        }
+
+        private async Task DisconnectGracefulAsync(HubConnection hubConnection, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await hubConnection.StopAsync(cancellationToken).ConfigureAwait(false);
+                _logger.LogInformation("{class}[{guid}] HubConnection stopped successfully.",
+                    nameof(ConnectionManager), _guid);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("{class}[{guid}] Error while stopping HubConnection: {message}\n{stackTrace}",
+                    nameof(ConnectionManager), _guid, ex.Message, ex.StackTrace);
+            }
         }
 
         public void Dispose()
         {
-#pragma warning disable CS4014
-            DisposeAsync();
-#pragma warning restore CS4014
-        }
-
-        public async Task DisposeAsync()
-        {
             if (!_isDisposed.TrySetTrue())
-            {
-                _logger.LogWarning("{class}[{guid}] {method} called but already disposed, ignored.",
-                    nameof(ConnectionManager), _guid, nameof(DisposeAsync));
                 return; // already disposed
-            }
 
-            _logger.LogDebug("{class}[{guid}] DisposeAsync.",
-                nameof(ConnectionManager), _guid);
+            _logger.LogDebug("{class}[{guid}] {method}.",
+                nameof(ConnectionManager), _guid, nameof(Dispose));
 
             _disposables.Dispose();
             connectionTask = null;
@@ -370,41 +402,39 @@ namespace com.IvanMurzak.McpPlugin
 
             CancelInternalToken(dispose: true);
 
-            if (_hubConnection.CurrentValue != null)
+            try
             {
-                try
+                _hubConnectionMutex.WaitOne();
+                if (_hubConnection.CurrentValue != null)
                 {
-                    var tempHubConnection = _hubConnection.Value;
-
-                    if (!_hubConnection.IsDisposed)
-                        _hubConnection.Value = null;
-                    _hubConnection.Dispose();
-
-                    if (tempHubConnection != null)
+                    try
                     {
-                        await tempHubConnection.StopAsync()
-                            .ContinueWith(task =>
-                            {
-                                try
-                                {
-                                    tempHubConnection.DisposeAsync();
-                                }
-                                catch { }
-                            });
+                        // Clear the hub connection reference
+                        if (!_hubConnection.IsDisposed)
+                            _hubConnection.Value = null;
+                        _hubConnection.Dispose();
+
+                        // DO NOT call StopAsync or DisposeAsync here - they use thread pool
+                        // This is a synchronous Dispose, likely called during Unity domain reload
+                        // Let the connection cleanup happen naturally through GC
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError("{class}[{guid}] Error during disposal: {message}\n{stackTrace}",
+                            nameof(ConnectionManager), _guid, ex.Message, ex.StackTrace);
                     }
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError("{class}[{guid}] Error during async disposal: {message}\n{stackTrace}",
-                        nameof(ConnectionManager), _guid, ex.Message, ex.StackTrace);
-                }
+
+                if (!_hubConnection.IsDisposed)
+                    _hubConnection.Dispose();
+            }
+            finally
+            {
+                _hubConnectionMutex.ReleaseMutex();
             }
 
-            if (!_hubConnection.IsDisposed)
-                _hubConnection.Dispose();
-
-            _logger.LogDebug("{class}[{guid}] DisposeAsync completed.",
-                nameof(ConnectionManager), _guid);
+            _logger.LogDebug("{class}[{guid}] {method} completed.",
+                nameof(ConnectionManager), _guid, nameof(Dispose));
         }
 
         // New helper methods for better separation of concerns
@@ -483,31 +513,40 @@ namespace com.IvanMurzak.McpPlugin
 
         private async Task<bool> CreateHubConnectionIfNeeded(CancellationToken cancellationToken)
         {
-            if (_hubConnection.Value != null)
-                return true;
-
-            hubConnectionLogger?.Dispose();
-            hubConnectionObservable?.Dispose();
-
-            _logger.LogDebug("{class}[{guid}] Creating new HubConnection instance for endpoint: {endpoint}",
-                nameof(ConnectionManager), _guid, Endpoint);
-
-            var hubConnection = await _hubConnectionBuilder.CreateConnectionAsync(Endpoint);
-            if (hubConnection == null)
+            try
             {
-                _logger.LogError("{class}[{guid}] Failed to create HubConnection instance. Check connection configuration for endpoint: {endpoint}",
-                    nameof(ConnectionManager), _guid, Endpoint);
-                return false;
+                _hubConnectionMutex.WaitOne();
+
+                if (_hubConnection.Value != null)
+                    return true;
+
+                hubConnectionLogger?.Dispose();
+                hubConnectionObservable?.Dispose();
+
+                _logger.LogDebug("{class}[{guid}] {method} Creating new HubConnection instance for endpoint: {endpoint}",
+                    nameof(ConnectionManager), _guid, nameof(CreateHubConnectionIfNeeded), Endpoint);
+
+                var hubConnection = await _hubConnectionBuilder.CreateConnectionAsync(Endpoint);
+                if (hubConnection == null)
+                {
+                    _logger.LogError("{class}[{guid}] {method} Failed to create HubConnection instance. Check connection configuration for endpoint: {endpoint}",
+                        nameof(ConnectionManager), _guid, nameof(CreateHubConnectionIfNeeded), Endpoint);
+                    return false;
+                }
+
+                _logger.LogDebug("{class}[{guid}] {method} Successfully created HubConnection instance for endpoint: {endpoint}",
+                    nameof(ConnectionManager), _guid, nameof(CreateHubConnectionIfNeeded), Endpoint);
+                _hubConnection.Value = hubConnection;
+
+                SetupHubConnectionLogging(hubConnection);
+                SetupHubConnectionObservables(hubConnection, cancellationToken);
+
+                return true;
             }
-
-            _logger.LogDebug("{class}[{guid}] Successfully created HubConnection instance for endpoint: {endpoint}",
-                nameof(ConnectionManager), _guid, Endpoint);
-            _hubConnection.Value = hubConnection;
-
-            SetupHubConnectionLogging(hubConnection);
-            SetupHubConnectionObservables(hubConnection, cancellationToken);
-
-            return true;
+            finally
+            {
+                _hubConnectionMutex.ReleaseMutex();
+            }
         }
 
         private void SetupHubConnectionLogging(HubConnection hubConnection)
@@ -555,43 +594,51 @@ namespace com.IvanMurzak.McpPlugin
 
         private async Task<bool> AttemptConnection(CancellationToken cancellationToken)
         {
-            var connection = _hubConnection.CurrentValue;
-            if (connection == null)
-                return false;
-
-            _logger.LogInformation("{class}[{guid}] Starting connection attempt to: {endpoint}",
-                nameof(ConnectionManager), _guid, Endpoint);
-
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            var connectionTask = connection.StartAsync(cts.Token);
-
             try
             {
-                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
-                var completedTask = await Task.WhenAny(connectionTask, timeoutTask);
-
-                if (completedTask == timeoutTask)
-                {
-                    _logger.LogWarning("{class}[{guid}] Connection attempt timed out after 30 seconds for endpoint: {endpoint}",
-                        nameof(ConnectionManager), _guid, Endpoint);
+                _hubConnectionMutex.WaitOne();
+                var connection = _hubConnection.CurrentValue;
+                if (connection == null)
                     return false;
-                }
 
-                if (connectionTask.IsCompletedSuccessfully)
+                _logger.LogInformation("{class}[{guid}] Starting connection attempt to: {endpoint}",
+                    nameof(ConnectionManager), _guid, Endpoint);
+
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                var connectionTask = connection.StartAsync(cts.Token);
+
+                try
                 {
-                    _logger.LogInformation("{class}[{guid}] Connection established successfully to: {endpoint}",
-                        nameof(ConnectionManager), _guid, Endpoint);
-                    _connectionState.Value = HubConnectionState.Connected;
-                    return true;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "{class}[{guid}] Connection attempt failed for endpoint: {endpoint}. Error: {error}",
-                    nameof(ConnectionManager), _guid, Endpoint, ex.Message);
-            }
+                    var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
+                    var completedTask = await Task.WhenAny(connectionTask, timeoutTask);
 
-            return false;
+                    if (completedTask == timeoutTask)
+                    {
+                        _logger.LogWarning("{class}[{guid}] Connection attempt timed out after 30 seconds for endpoint: {endpoint}",
+                            nameof(ConnectionManager), _guid, Endpoint);
+                        return false;
+                    }
+
+                    if (connectionTask.IsCompletedSuccessfully)
+                    {
+                        _logger.LogInformation("{class}[{guid}] Connection established successfully to: {endpoint}",
+                            nameof(ConnectionManager), _guid, Endpoint);
+                        _connectionState.Value = HubConnectionState.Connected;
+                        return true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "{class}[{guid}] Connection attempt failed for endpoint: {endpoint}. Error: {error}",
+                        nameof(ConnectionManager), _guid, Endpoint, ex.Message);
+                }
+
+                return false;
+            }
+            finally
+            {
+                _hubConnectionMutex.ReleaseMutex();
+            }
         }
 
         private async Task WaitBeforeRetry(CancellationToken cancellationToken)

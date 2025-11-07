@@ -72,6 +72,12 @@ namespace com.IvanMurzak.McpPlugin
             return _connectionManager.Disconnect(cancellationToken);
         }
 
+        public void DisconnectImmediate()
+        {
+            _logger.LogTrace("{class} DisconnectImmediate... to {endpoint}.", GetType().Name, _connectionManager.Endpoint);
+            _connectionManager.DisconnectImmediate();
+        }
+
         private async void OnHubConnectionChanged(HubConnection? hubConnection)
         {
             _logger.LogTrace("{class} Clearing server events disposables.", GetType().Name);
@@ -169,12 +175,8 @@ namespace com.IvanMurzak.McpPlugin
 
         public void Dispose()
         {
-            DisposeAsync().Wait();
-        }
-        public Task DisposeAsync()
-        {
             if (!_isDisposed.TrySetTrue())
-                return Task.CompletedTask; // already disposed
+                return; // already disposed
 
             _logger.LogTrace("{class} DisposeAsync.", GetType().Name);
 
@@ -187,12 +189,12 @@ namespace com.IvanMurzak.McpPlugin
             _serverEventsDisposables.Dispose();
             _hubConnectionDisposable.Dispose();
 
-            return _connectionManager.DisposeAsync();
+            _connectionManager.Dispose();
         }
 
         ~BaseHubConnector()
         {
-            DisposeAsync().Wait();
+            Dispose();
         }
     }
 }

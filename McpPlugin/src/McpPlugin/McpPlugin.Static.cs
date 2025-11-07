@@ -73,16 +73,19 @@ namespace com.IvanMurzak.McpPlugin
                 }
             });
 
-        public static Task StaticDisposeAsync()
+        public static void StaticDispose()
         {
             var instance = _instance.CurrentValue;
             if (instance == null)
-                return Task.CompletedTask;
+                return;
 
-            // _instance.Value = null;
-            _instance.Dispose();
+            if (!_instance.IsDisposed)
+            {
+                _instance.Value = null;
+                _instance.Dispose();
+            }
 
-            return instance.DisposeAsync();
+            instance.DisconnectImmediate();
         }
     }
 }

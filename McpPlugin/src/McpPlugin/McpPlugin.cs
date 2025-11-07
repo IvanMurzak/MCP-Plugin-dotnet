@@ -21,10 +21,11 @@ namespace com.IvanMurzak.McpPlugin
 {
     public partial class McpPlugin : IMcpPlugin, IDisposable
     {
-        readonly ILogger<McpPlugin> _logger;
-        readonly IRemoteMcpManagerHub _remoteMcpManagerHub;
-        readonly CompositeDisposable _disposables = new();
-        readonly CancellationTokenSource _cancellationTokenSource;
+        private readonly ILogger<McpPlugin> _logger;
+        private readonly IRemoteMcpManagerHub _remoteMcpManagerHub;
+        private readonly CompositeDisposable _disposables = new();
+        private readonly CancellationTokenSource _cancellationTokenSource;
+        private readonly ThreadSafeBool _isDisposed = new(false);
 
         public ILogger Logger => _logger;
         public IMcpManager McpManager { get; private set; }
@@ -150,6 +151,12 @@ namespace com.IvanMurzak.McpPlugin
 
         public Task<bool> Connect(CancellationToken cancellationToken = default)
         {
+            if (_isDisposed.Value)
+            {
+                _logger.LogWarning("{method} called but already disposed, ignored.",
+                    nameof(Connect));
+                return Task.FromResult(false); // already disposed
+            }
             _logger.LogDebug("{method} called.", nameof(Connect));
             if (_remoteMcpManagerHub == null)
                 return Task.FromResult(false);
@@ -158,23 +165,36 @@ namespace com.IvanMurzak.McpPlugin
 
         public Task Disconnect(CancellationToken cancellationToken = default)
         {
+            if (_isDisposed.Value)
+            {
+                _logger.LogWarning("{method} called but already disposed, ignored.",
+                    nameof(Disconnect));
+                return Task.CompletedTask; // already disposed
+            }
             _logger.LogDebug("{method} called.", nameof(Disconnect));
             if (_remoteMcpManagerHub == null)
                 return Task.CompletedTask;
             return _remoteMcpManagerHub.Disconnect(cancellationToken);
         }
 
-        public void Dispose()
+        public void DisconnectImmediate()
         {
-            _logger.LogInformation("{method} called.", nameof(Dispose));
-#pragma warning disable CS4014
-            DisposeAsync();
-#pragma warning restore CS4014
+            if (_isDisposed.Value)
+            {
+                _logger.LogWarning("{method} called but already disposed, ignored.",
+                    nameof(DisconnectImmediate));
+                return; // already disposed
+            }
+            _logger.LogDebug("{method} called.", nameof(DisconnectImmediate));
+            _remoteMcpManagerHub?.DisconnectImmediate();
         }
 
-        public async Task DisposeAsync()
+        public void Dispose()
         {
-            _logger.LogInformation("{method} called.", nameof(DisposeAsync));
+            if (!_isDisposed.TrySetTrue())
+                return; // already disposed
+
+            _logger.LogInformation("{method} called.", nameof(Dispose));
 
             _disposables.Dispose();
 
@@ -184,8 +204,7 @@ namespace com.IvanMurzak.McpPlugin
 
             try
             {
-                if (_remoteMcpManagerHub != null)
-                    await _remoteMcpManagerHub.Disconnect();
+                _remoteMcpManagerHub?.DisconnectImmediate();
             }
             catch (Exception ex)
             {
@@ -194,8 +213,7 @@ namespace com.IvanMurzak.McpPlugin
 
             try
             {
-                if (_remoteMcpManagerHub != null)
-                    await _remoteMcpManagerHub.DisposeAsync();
+                _remoteMcpManagerHub?.Dispose();
             }
             catch (Exception ex)
             {
@@ -203,6 +221,8 @@ namespace com.IvanMurzak.McpPlugin
             }
 
             McpManager.Dispose();
+
+            _logger.LogInformation("{method} completed.", nameof(Dispose));
         }
 
         ~McpPlugin() => Dispose();
