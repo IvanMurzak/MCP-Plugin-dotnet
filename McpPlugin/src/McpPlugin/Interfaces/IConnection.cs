@@ -8,19 +8,24 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
-using com.IvanMurzak.McpPlugin.Common;
 using Microsoft.AspNetCore.SignalR.Client;
 using R3;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public interface IConnection : IDisposableAsync
+    public interface IConnection : IDisposable
     {
         ReadOnlyReactiveProperty<bool> KeepConnected { get; }
         ReadOnlyReactiveProperty<HubConnectionState> ConnectionState { get; }
         Task<bool> Connect(CancellationToken cancellationToken = default);
         Task Disconnect(CancellationToken cancellationToken = default);
+        /// <summary>
+        /// Immediately disconnects without waiting for async cleanup.
+        /// Use this during Unity assembly reload or other critical shutdown scenarios.
+        /// </summary>
+        void DisconnectImmediate();
     }
 }

@@ -56,9 +56,13 @@ namespace com.IvanMurzak.McpPlugin
 
         public void Dispose()
         {
+            _logger.LogDebug("{method} called.", nameof(Dispose));
+
             _tools?.Dispose();
             _prompts?.Dispose();
             _resources?.Dispose();
+
+            _logger.LogDebug("{method} completed.", nameof(Dispose));
         }
 
         public void ForceDisconnect()

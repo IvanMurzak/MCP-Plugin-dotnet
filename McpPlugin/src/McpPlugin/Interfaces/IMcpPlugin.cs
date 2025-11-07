@@ -8,12 +8,12 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using com.IvanMurzak.McpPlugin.Common;
+using System;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public interface IMcpPlugin : IConnection, IDisposableAsync
+    public interface IMcpPlugin : IConnection, IDisposable
     {
         ILogger Logger { get; }
         IMcpManager McpManager { get; }
