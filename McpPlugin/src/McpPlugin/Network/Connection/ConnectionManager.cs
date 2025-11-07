@@ -144,7 +144,7 @@ namespace com.IvanMurzak.McpPlugin
                     return false; // already disposed
                 }
 
-                if (_hubConnection.CurrentValue?.State == HubConnectionState.Connected)
+                if (_hubConnection.CurrentValue?.State is HubConnectionState.Connected or HubConnectionState.Connecting)
                 {
                     _logger.LogDebug("{class}[{guid}] {method} Already connected. Ignoring.",
                         nameof(ConnectionManager), _guid, nameof(Connect));
@@ -158,34 +158,6 @@ namespace com.IvanMurzak.McpPlugin
 
                 internalCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cancellationToken = internalCts.Token;
-
-                if (_hubConnection.CurrentValue?.State is HubConnectionState.Connected or HubConnectionState.Connecting)
-                {
-                    _logger.LogDebug("{class}[{guid}] {method} Stopping existing HubConnection before reconnecting. {endpoint}",
-                        nameof(ConnectionManager), _guid, nameof(Connect), Endpoint);
-
-                    try
-                    {
-                        await _hubConnection.CurrentValue.StopAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError("{class}[{guid}] {method} Error while stopping existing HubConnection: {message}\n{stackTrace}",
-                            nameof(ConnectionManager), _guid, nameof(Connect), ex.Message, ex.StackTrace);
-                    }
-
-                    _logger.LogDebug("{class}[{guid}] {method} Existing HubConnection stopped.",
-                        nameof(ConnectionManager), _guid, nameof(Connect));
-
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        _logger.LogWarning("{class}[{guid}] {method} Connection canceled before starting connection loop for endpoint: {endpoint}",
-                            nameof(ConnectionManager), _guid, nameof(Connect), Endpoint);
-                        return false;
-                    }
-                }
-
-                _hubConnection.Value = null;
 
                 _logger.LogDebug("{class}[{guid}] {method} Set {variable1} as 'true'.",
                     nameof(ConnectionManager), _guid, nameof(Connect), nameof(_continueToReconnect));
@@ -304,12 +276,33 @@ namespace com.IvanMurzak.McpPlugin
 
         /// <summary>
         /// Immediately disconnects without waiting for async cleanup.
-        /// Use this during Unity assembly reload or other critical shutdown scenarios.
+        /// Use this during assembly reload or other critical shutdown scenarios.
         /// </summary>
         public void DisconnectImmediate()
         {
-            // Don't wait for gate during immediate shutdown - just set flags
-            DisconnectInternal(CancellationToken.None, graceful: false).GetAwaiter().GetResult();
+            // Try to acquire gate for thread safety, but don't wait long during emergency shutdown
+            bool acquiredGate = _gate.Wait(TimeSpan.FromSeconds(1));
+            try
+            {
+                _logger.LogDebug("{class}[{guid}] {method} Gate acquired: {acquired}",
+                    nameof(ConnectionManager), _guid, nameof(DisconnectImmediate), acquiredGate);
+
+                DisconnectInternal(CancellationToken.None, graceful: false).GetAwaiter().GetResult();
+            }
+            finally
+            {
+                if (acquiredGate)
+                {
+                    _logger.LogDebug("{class}[{guid}] {method} Releasing gate.",
+                        nameof(ConnectionManager), _guid, nameof(DisconnectImmediate));
+                    _gate.Release();
+                }
+                else
+                {
+                    _logger.LogWarning("{class}[{guid}] {method} Could not acquire gate within timeout. Proceeding without gate protection.",
+                        nameof(ConnectionManager), _guid, nameof(DisconnectImmediate));
+                }
+            }
         }
 
         private async Task DisconnectInternal(CancellationToken cancellationToken, bool graceful)
