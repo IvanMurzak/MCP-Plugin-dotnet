@@ -148,14 +148,14 @@ namespace com.IvanMurzak.McpPlugin
                     }
                     catch (OperationCanceledException)
                     {
-                        _logger.LogWarning("{class}[{guid}] Connection task was canceled {endpoint}.",
-                            nameof(ConnectionManager), _guid, Endpoint);
+                        _logger.LogWarning("{class}[{guid}] {method} Connection task was canceled {endpoint}.",
+                            nameof(ConnectionManager), _guid, nameof(Connect), Endpoint);
                         return false;
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError("{class}[{guid}] Connection task failed: {message}",
-                            nameof(ConnectionManager), _guid, ex.Message);
+                        _logger.LogError("{class}[{guid}] {method} Connection task failed: {message}",
+                            nameof(ConnectionManager), _guid, nameof(Connect), ex.Message);
                         return false;
                     }
                 }, cancellationToken);
