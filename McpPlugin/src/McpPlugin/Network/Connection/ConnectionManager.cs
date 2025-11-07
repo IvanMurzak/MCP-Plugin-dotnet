@@ -677,6 +677,9 @@ namespace com.IvanMurzak.McpPlugin
             if (connection == null)
                 return false;
 
+            if (connection.State is HubConnectionState.Connected or HubConnectionState.Connecting)
+                return true;
+
             _logger.LogInformation("{class}[{guid}] {method} Starting connection attempt to: {endpoint}",
                 nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint);
 
