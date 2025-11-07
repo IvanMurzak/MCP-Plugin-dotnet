@@ -114,6 +114,13 @@ namespace com.IvanMurzak.McpPlugin
 
         public async Task<bool> Connect(CancellationToken cancellationToken = default)
         {
+            if (_isDisposed.Value)
+            {
+                _logger.LogWarning("{class}[{guid}] {method} called but already disposed, ignored.",
+                    nameof(ConnectionManager), _guid, nameof(Connect));
+                return false; // already disposed
+            }
+
             _logger.LogDebug("{class}[{guid}] {method}.",
                 nameof(ConnectionManager), _guid, nameof(Connect));
 
@@ -158,9 +165,6 @@ namespace com.IvanMurzak.McpPlugin
 
                 internalCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cancellationToken = internalCts.Token;
-
-                _logger.LogDebug("{class}[{guid}] {method} Set {variable1} as 'true'.",
-                    nameof(ConnectionManager), _guid, nameof(Connect), nameof(_continueToReconnect));
 
                 _continueToReconnect.Value = true;
 
@@ -253,13 +257,19 @@ namespace com.IvanMurzak.McpPlugin
 
         public async Task Disconnect(CancellationToken cancellationToken = default)
         {
+            if (_isDisposed.Value)
+            {
+                _logger.LogWarning("{class}[{guid}] {method} called but already disposed, ignored.",
+                    nameof(ConnectionManager), _guid, nameof(Disconnect));
+                return; // already disposed
+            }
             try
             {
                 await _gate.WaitAsync(cancellationToken);
             }
             catch (OperationCanceledException)
             {
-                _logger.LogWarning("{class}[{guid}] {method} Disconnect canceled while waiting for gate for endpoint: {endpoint}",
+                _logger.LogWarning("{class}[{guid}] {method} canceled while waiting for gate for endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(Disconnect), Endpoint);
                 return;
             }
@@ -280,6 +290,12 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         public void DisconnectImmediate()
         {
+            if (_isDisposed.Value)
+            {
+                _logger.LogWarning("{class}[{guid}] {method} called but already disposed, ignored.",
+                    nameof(ConnectionManager), _guid, nameof(DisconnectImmediate));
+                return; // already disposed
+            }
             // Try to acquire gate for thread safety, but don't wait long during emergency shutdown
             var acquiredGate = _gate.Wait(TimeSpan.FromSeconds(1));
             try
