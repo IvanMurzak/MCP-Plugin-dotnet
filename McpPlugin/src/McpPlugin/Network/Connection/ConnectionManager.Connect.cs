@@ -210,7 +210,7 @@ namespace com.IvanMurzak.McpPlugin
                     nameof(ConnectionManager), _guid, nameof(InternalConnect), ex.Message, ex.StackTrace);
                 return false;
             }
-            catch (Exception ex) when (!(ex is OutOfMemoryException) && !(ex is StackOverflowException) && !(ex is ThreadAbortException))
+            catch (Exception ex)
             {
                 _logger.LogError("{class}[{guid}] {method} Unexpected error during connection: {message}\n{stackTrace}",
                     nameof(ConnectionManager), _guid, nameof(InternalConnect), ex.Message, ex.StackTrace);
