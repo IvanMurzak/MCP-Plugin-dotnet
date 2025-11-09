@@ -291,7 +291,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     .BuildJsonElement(),
                 expectedOutputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
-                    .AddRefProperty<Company>(JsonSchema.Result, required: Environment.Version.Major >= 5) // `required` should be true for .NET 5.0+
+                    .AddRefProperty<Company>(JsonSchema.Result, required: true) // TODO: `required` should be true for .NET 8.0+
                     .AddCompanyDefine()
                     .BuildJsonElement());
         }

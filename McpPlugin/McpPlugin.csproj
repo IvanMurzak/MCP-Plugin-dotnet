@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.1</TargetFrameworks>
+    <TargetFrameworks>netstandard2.1;net8.0;net9.0</TargetFrameworks>
     <RootNamespace>com.IvanMurzak.McpPlugin</RootNamespace>
     <LangVersion>9.0</LangVersion>
     <ImplicitUsings>disable</ImplicitUsings>
@@ -31,9 +31,7 @@
 
   <ItemGroup>
     <ProjectReference Include="./../McpPlugin.Common/McpPlugin.Common.csproj" />
-    <!-- <PackageReference Include="com.IvanMurzak.McpPlugin.Common" Version="0.1.0" /> -->
-
-    <PackageReference Include="com.IvanMurzak.ReflectorNet" Version="2.2.0" />
+    <PackageReference Include="com.IvanMurzak.ReflectorNet" Version="2.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.10" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
     <PackageReference Include="ModelContextProtocol" Version="0.3.0-preview.4" />
