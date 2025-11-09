@@ -11,6 +11,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using R3;
@@ -181,9 +182,21 @@ namespace com.IvanMurzak.McpPlugin
                     nameof(ConnectionManager), _guid, nameof(InternalConnect), Endpoint);
                 return false;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
-                _logger.LogError("{class}[{guid}] {method} Error during connection: {message}\n{stackTrace}",
+                _logger.LogError("{class}[{guid}] {method} Invalid operation during connection: {message}\n{stackTrace}",
+                    nameof(ConnectionManager), _guid, nameof(InternalConnect), ex.Message, ex.StackTrace);
+                return false;
+            }
+            catch (HubException ex)
+            {
+                _logger.LogError("{class}[{guid}] {method} SignalR HubException during connection: {message}\n{stackTrace}",
+                    nameof(ConnectionManager), _guid, nameof(InternalConnect), ex.Message, ex.StackTrace);
+                return false;
+            }
+            catch (Exception ex) when (!(ex is OutOfMemoryException) && !(ex is StackOverflowException) && !(ex is ThreadAbortException))
+            {
+                _logger.LogError("{class}[{guid}] {method} Unexpected error during connection: {message}\n{stackTrace}",
                     nameof(ConnectionManager), _guid, nameof(InternalConnect), ex.Message, ex.StackTrace);
                 return false;
             }
