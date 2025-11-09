@@ -31,7 +31,7 @@ namespace com.IvanMurzak.McpPlugin
         public bool Enabled { get; set; } = true;
         public string Name { get; protected set; }
         public string? Title { get; protected set; }
-        public MethodInfo? Method { get; private set; }
+        public MethodInfo Method => _methodInfo;
 
         protected string? RequestID { get; set; }
 
@@ -70,19 +70,16 @@ namespace com.IvanMurzak.McpPlugin
         public RunPrompt(Reflector reflector, string name, ILogger? logger, MethodInfo methodInfo) : base(reflector, logger, methodInfo)
         {
             Name = name;
-            Method = methodInfo;
         }
 
         public RunPrompt(Reflector reflector, string name, ILogger? logger, object targetInstance, MethodInfo methodInfo) : base(reflector, logger, targetInstance, methodInfo)
         {
             Name = name;
-            Method = methodInfo;
         }
 
         public RunPrompt(Reflector reflector, string name, ILogger? logger, Type classType, MethodInfo methodInfo) : base(reflector, logger, classType, methodInfo)
         {
             Name = name;
-            Method = methodInfo;
         }
 
         protected override object? GetParameterValue(Reflector reflector, ParameterInfo paramInfo, object? value)
@@ -140,7 +137,7 @@ namespace com.IvanMurzak.McpPlugin
                     return response.SetRequestID(requestId);
 
                 return ResponseGetPrompt.Success(
-                    result.ToString(),
+                    result.ToString()!,
                     role: Role.Assistant,
                     description: description).SetRequestID(requestId);
             }
@@ -193,7 +190,7 @@ namespace com.IvanMurzak.McpPlugin
                     return response.SetRequestID(requestId);
 
                 return ResponseGetPrompt.Success(
-                        result.ToString(),
+                        result.ToString()!,
                         role: Method.GetCustomAttribute<McpPluginPromptAttribute>()?.Role ?? Role.User,
                         description: description)
                     .SetRequestID(requestId);
