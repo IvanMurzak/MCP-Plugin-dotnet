@@ -194,7 +194,7 @@ namespace com.IvanMurzak.McpPlugin
             if (!_isDisposed.TrySetTrue())
                 return; // already disposed
 
-            _logger.LogInformation("{method} called.", nameof(Dispose));
+            _logger.LogDebug("{method} called.", nameof(Dispose));
 
             _disposables.Dispose();
 
@@ -222,7 +222,7 @@ namespace com.IvanMurzak.McpPlugin
 
             McpManager.Dispose();
 
-            _logger.LogInformation("{method} completed.", nameof(Dispose));
+            _logger.LogDebug("{method} completed.", nameof(Dispose));
         }
 
         ~McpPlugin() => Dispose();
