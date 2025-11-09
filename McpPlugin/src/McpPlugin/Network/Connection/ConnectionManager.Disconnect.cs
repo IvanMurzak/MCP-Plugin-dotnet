@@ -117,6 +117,9 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{class}[{guid}] {method}. Graceful: {graceful}",
                  nameof(ConnectionManager), _guid, nameof(DisconnectInternal), graceful);
 
+            // Clear the ongoing connection task to prevent new Connect calls from waiting for it
+            _ongoingConnectionTask = null;
+
             hubConnectionLogger?.Dispose();
             hubConnectionObservable?.Dispose();
 
@@ -131,9 +134,6 @@ namespace com.IvanMurzak.McpPlugin
                 return;
 
             _hubConnection.Value = null;
-
-            // Clear the ongoing connection task to prevent new Connect calls from waiting for it
-            _ongoingConnectionTask = null;
 
             // For non-graceful disconnect (Unity domain reload), skip all async operations
             if (!graceful)

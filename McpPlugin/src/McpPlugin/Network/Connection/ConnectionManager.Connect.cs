@@ -87,6 +87,15 @@ namespace com.IvanMurzak.McpPlugin
                     return true;
                 }
 
+                // Check if the internal token was canceled by Disconnect before we acquired the gate
+                // If it was, we should not start a new connection
+                if (internalCts != null && internalCts.IsCancellationRequested)
+                {
+                    _logger.LogDebug("{class}[{guid}] {method} Internal token was canceled before starting connection, aborting for endpoint: {endpoint}",
+                        nameof(ConnectionManager), _guid, nameof(Connect), Endpoint);
+                    return false;
+                }
+
                 _continueToReconnect.Value = false;
 
                 // Dispose the previous internal CancellationTokenSource if it exists
@@ -98,7 +107,14 @@ namespace com.IvanMurzak.McpPlugin
                 _continueToReconnect.Value = true;
 
                 _ongoingConnectionTask = InternalConnect(cancellationToken);
-                return await _ongoingConnectionTask;
+                try
+                {
+                    return await _ongoingConnectionTask;
+                }
+                finally
+                {
+                    _ongoingConnectionTask = null;
+                }
             }
             finally
             {
@@ -199,10 +215,6 @@ namespace com.IvanMurzak.McpPlugin
                 _logger.LogError("{class}[{guid}] {method} Unexpected error during connection: {message}\n{stackTrace}",
                     nameof(ConnectionManager), _guid, nameof(InternalConnect), ex.Message, ex.StackTrace);
                 return false;
-            }
-            finally
-            {
-                _ongoingConnectionTask = null;
             }
         }
 
