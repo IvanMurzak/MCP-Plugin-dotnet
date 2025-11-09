@@ -178,13 +178,13 @@ namespace com.IvanMurzak.McpPlugin
             catch (OperationCanceledException)
             {
                 _logger.LogWarning("{class}[{guid}] {method} Connection was canceled for endpoint: {endpoint}",
-                    nameof(ConnectionManager), _guid, nameof(Connect), Endpoint);
+                    nameof(ConnectionManager), _guid, nameof(InternalConnect), Endpoint);
                 return false;
             }
             catch (Exception ex)
             {
                 _logger.LogError("{class}[{guid}] {method} Error during connection: {message}\n{stackTrace}",
-                    nameof(ConnectionManager), _guid, nameof(Connect), ex.Message, ex.StackTrace);
+                    nameof(ConnectionManager), _guid, nameof(InternalConnect), ex.Message, ex.StackTrace);
                 return false;
             }
             finally
