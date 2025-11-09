@@ -377,9 +377,19 @@ namespace com.IvanMurzak.McpPlugin
                         nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint, connectionTask.Exception?.Message);
                 }
             }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("{class}[{guid}] {method} Connection attempt canceled for endpoint: {endpoint}",
+                    nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint);
+            }
+            catch (HubException ex)
+            {
+                _logger.LogError("{class}[{guid}] {method} SignalR HubException during connection attempt to endpoint: {endpoint}. Error: {error}",
+                    nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint, ex.Message);
+            }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "{class}[{guid}] {method} Connection attempt failed for endpoint: {endpoint}. Error: {error}",
+                _logger.LogError(ex, "{class}[{guid}] {method} Connection attempt failed for endpoint: {endpoint}. Error: {error}",
                     nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint, ex.Message);
             }
 

@@ -37,7 +37,7 @@ namespace com.IvanMurzak.McpPlugin
         private HubConnectionLogger? hubConnectionLogger;
         private HubConnectionObservable? hubConnectionObservable;
         private CancellationTokenSource? internalCts;
-        private Task<bool>? _ongoingConnectionTask;
+        private volatile Task<bool>? _ongoingConnectionTask;
 
         public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _connectionState.ToReadOnlyReactiveProperty();
         public ReadOnlyReactiveProperty<HubConnection?> HubConnection => _hubConnection.ToReadOnlyReactiveProperty();
