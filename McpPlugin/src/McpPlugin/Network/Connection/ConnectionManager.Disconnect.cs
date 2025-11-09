@@ -160,10 +160,21 @@ namespace com.IvanMurzak.McpPlugin
                 _logger.LogInformation("{class}[{guid}] {method} HubConnection stopped successfully.",
                     nameof(ConnectionManager), _guid, nameof(DisconnectGracefulAsync));
             }
+            catch (OperationCanceledException ex)
+            {
+                _logger.LogWarning("{class}[{guid}] {method} HubConnection stop was canceled: {message}",
+                    nameof(ConnectionManager), _guid, nameof(DisconnectGracefulAsync), ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError("{class}[{guid}] {method} Invalid operation while stopping HubConnection: {message}\n{stackTrace}",
+                    nameof(ConnectionManager), _guid, nameof(DisconnectGracefulAsync), ex.Message, ex.StackTrace);
+            }
             catch (Exception ex)
             {
-                _logger.LogError("{class}[{guid}] {method} Error while stopping HubConnection: {message}\n{stackTrace}",
+                _logger.LogCritical("{class}[{guid}] {method} Unexpected error while stopping HubConnection: {message}\n{stackTrace}",
                     nameof(ConnectionManager), _guid, nameof(DisconnectGracefulAsync), ex.Message, ex.StackTrace);
+                throw;
             }
         }
     }
