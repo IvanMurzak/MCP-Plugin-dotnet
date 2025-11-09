@@ -32,11 +32,6 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{class}[{guid}] {method} called.",
                 nameof(ConnectionManager), _guid, nameof(Connect));
 
-            // Check if there's already an ongoing connection attempt
-            var ongoingTask = _ongoingConnectionTask;
-            if (ongoingTask != null)
-                return await WaitForConnectionCompletion(ongoingTask, cancellationToken);
-
             try
             {
                 _logger.LogDebug("{class}[{guid}] {method} acquiring gate.",
@@ -70,8 +65,8 @@ namespace com.IvanMurzak.McpPlugin
                     return false; // already disposed
                 }
 
-                // Double-check for ongoing task after acquiring gate
-                ongoingTask = _ongoingConnectionTask;
+                // Check for ongoing task after acquiring gate
+                var ongoingTask = _ongoingConnectionTask;
                 if (ongoingTask != null)
                 {
                     _logger.LogDebug("{class}[{guid}] {method} Connection already in progress after acquiring gate, releasing gate and waiting.",
