@@ -105,7 +105,7 @@ namespace com.IvanMurzak.McpPlugin
         public async Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request, CancellationToken cancellationToken = default)
         {
             if (_isDisposed.Value)
-                throw new ObjectDisposedException("Can't perform version handshake on disposed object.", GetType().Name);
+                throw new ObjectDisposedException(GetType().Name, "Can't perform version handshake on disposed object.");
 
             _logger.LogTrace("{class} Performing version handshake.", GetType().Name);
 
