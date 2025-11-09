@@ -63,67 +63,50 @@ namespace com.IvanMurzak.McpPlugin
 
         public Task<bool> Connect(CancellationToken cancellationToken = default)
         {
-            _logger.LogTrace("{class} Connecting... to {endpoint}.", GetType().Name, _connectionManager.Endpoint);
+            if (_isDisposed.Value)
+            {
+                _logger.LogWarning("{method} called on disposed object. Ignoring.", nameof(Connect));
+                return Task.FromResult(false);
+            }
+            _logger.LogDebug("{method} Connecting... to {endpoint}.",
+                nameof(Connect), _connectionManager.Endpoint);
             return _connectionManager.Connect(cancellationToken);
         }
+
         public Task Disconnect(CancellationToken cancellationToken = default)
         {
-            _logger.LogTrace("{class} Disconnecting... to {endpoint}.", GetType().Name, _connectionManager.Endpoint);
+            if (_isDisposed.Value)
+            {
+                _logger.LogWarning("{method} called on disposed object. Ignoring.",
+                    nameof(Disconnect));
+                return Task.CompletedTask;
+            }
+            _logger.LogDebug("{method} Disconnecting... from {endpoint}.",
+                nameof(Disconnect), _connectionManager.Endpoint);
             return _connectionManager.Disconnect(cancellationToken);
         }
 
         public void DisconnectImmediate()
         {
-            _logger.LogTrace("{class} DisconnectImmediate... to {endpoint}.", GetType().Name, _connectionManager.Endpoint);
-            _connectionManager.DisconnectImmediate();
-        }
-
-        private async void OnHubConnectionChanged(HubConnection? hubConnection)
-        {
-            _logger.LogTrace("{class} Clearing server events disposables.", GetType().Name);
-            _serverEventsDisposables.Clear();
-
-            if (hubConnection == null)
-                return;
-
-            // Perform version handshake first
-
-            var serverEventsCts = _serverEventsDisposables.ToCancellationTokenSource();
-            var cancellationToken = serverEventsCts.Token;
-            var handshakeResponse = await PerformVersionHandshake(
-                request: new RequestVersionHandshake
-                {
-                    RequestID = Guid.NewGuid().ToString(),
-                    ApiVersion = _apiVersion.Api,
-                    PluginVersion = _apiVersion.Plugin,
-                    Environment = _apiVersion.Environment
-                },
-                cancellationToken: cancellationToken);
-
-            if (handshakeResponse != null && !handshakeResponse.Compatible)
+            if (_isDisposed.Value)
             {
-                LogVersionMismatchError(handshakeResponse);
-                // Still proceed with tool notification for now, but user will see the error
+                _logger.LogWarning("{method} called on disposed object. Ignoring.",
+                    nameof(DisconnectImmediate));
+                return;
             }
 
-            if (cancellationToken.IsCancellationRequested)
-                return;
+            _logger.LogDebug("{method}... from {endpoint}.",
+                nameof(DisconnectImmediate), _connectionManager.Endpoint);
 
-            _logger.LogTrace("{class} Subscribing to server events.", GetType().Name);
-            SubscribeOnServerEvents(hubConnection, _serverEventsDisposables);
+            _connectionManager.DisconnectImmediate();
         }
-
-        private void LogVersionMismatchError(VersionHandshakeResponse handshakeResponse)
-        {
-            var errorMessage = $"[MCP-Plugin] API VERSION MISMATCH: {handshakeResponse.Message}";
-            _logger.LogError(errorMessage);
-        }
-
-        protected abstract void SubscribeOnServerEvents(HubConnection hubConnection, CompositeDisposable disposables);
 
         public Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request) => PerformVersionHandshake(request, _cancellationTokenSource.Token);
         public async Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request, CancellationToken cancellationToken = default)
         {
+            if (_isDisposed.Value)
+                throw new ObjectDisposedException(GetType().Name, "Can't perform version handshake on disposed object.");
+
             _logger.LogTrace("{class} Performing version handshake.", GetType().Name);
 
             try
@@ -173,30 +156,78 @@ namespace com.IvanMurzak.McpPlugin
             }
         }
 
-        public void Dispose()
+        private async void OnHubConnectionChanged(HubConnection? hubConnection)
+        {
+            if (_isDisposed.Value)
+            {
+                _logger.LogWarning("{method} called on disposed object. Ignoring.", nameof(OnHubConnectionChanged));
+                return;
+            }
+
+            _logger.LogTrace("{method} Clearing server events disposables.",
+                nameof(OnHubConnectionChanged));
+
+            _serverEventsDisposables.Clear();
+
+            if (hubConnection == null)
+                return; // not connected
+
+            // Perform version handshake first
+
+            var serverEventsCts = _serverEventsDisposables.ToCancellationTokenSource();
+            var cancellationToken = serverEventsCts.Token;
+            var handshakeResponse = await PerformVersionHandshake(
+                request: new RequestVersionHandshake
+                {
+                    RequestID = Guid.NewGuid().ToString(),
+                    ApiVersion = _apiVersion.Api,
+                    PluginVersion = _apiVersion.Plugin,
+                    Environment = _apiVersion.Environment
+                },
+                cancellationToken: cancellationToken);
+
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
+            if (handshakeResponse != null && !handshakeResponse.Compatible)
+            {
+                LogVersionMismatchError(handshakeResponse);
+                // Still proceed with tool notification for now, but user will see the error
+            }
+
+            _logger.LogTrace("{method} Subscribing to server events.",
+                nameof(OnHubConnectionChanged));
+
+            SubscribeOnServerEvents(hubConnection, _serverEventsDisposables);
+        }
+
+        private void LogVersionMismatchError(VersionHandshakeResponse handshakeResponse)
+        {
+            var errorMessage = $"API VERSION MISMATCH: {handshakeResponse.Message}";
+            _logger.LogError(errorMessage);
+        }
+
+        protected abstract void SubscribeOnServerEvents(HubConnection hubConnection, CompositeDisposable disposables);
+
+        public virtual void Dispose()
         {
             if (!_isDisposed.TrySetTrue())
                 return; // already disposed
 
-            _logger.LogTrace("{class} {method} called.", GetType().Name, nameof(Dispose));
+            _logger.LogDebug("{method} called.", nameof(Dispose));
 
-            lock (_cancellationTokenSource)
-            {
-                if (!_cancellationTokenSource.IsCancellationRequested)
-                    _cancellationTokenSource.Cancel();
-            }
+            if (!_cancellationTokenSource.IsCancellationRequested)
+                _cancellationTokenSource.Cancel();
+
             _cancellationTokenSource.Dispose();
             _serverEventsDisposables.Dispose();
             _hubConnectionDisposable.Dispose();
 
             _connectionManager.Dispose();
 
-            _logger.LogTrace("{class} {method} completed.", GetType().Name, nameof(Dispose));
+            _logger.LogDebug("{method} completed.", nameof(Dispose));
         }
 
-        ~BaseHubConnector()
-        {
-            Dispose();
-        }
+        ~BaseHubConnector() => Dispose();
     }
 }

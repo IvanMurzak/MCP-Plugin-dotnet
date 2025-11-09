@@ -36,13 +36,6 @@ namespace com.IvanMurzak.McpPlugin.Common
                     return _value;
                 }
             }
-            set
-            {
-                lock (_lock)
-                {
-                    _value = value;
-                }
-            }
         }
 
         /// <summary>

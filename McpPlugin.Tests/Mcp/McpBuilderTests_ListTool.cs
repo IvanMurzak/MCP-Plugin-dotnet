@@ -82,7 +82,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     var expectedProps = expected.EnumerateObject().ToList();
                     var actualProps = actual.EnumerateObject().ToList();
 
-                    actualProps.Count.Should().Be(expectedProps.Count, $"{path}: Object property count mismatch");
+                    actualProps.Count.Should().Be(expectedProps.Count, $"{path}: Object property count mismatch. Expected properties: {string.Join(", ", expectedProps.Select(p => p.Name))}. Actual properties: {string.Join(", ", actualProps.Select(p => p.Name))}");
 
                     foreach (var expectedProp in expectedProps)
                     {
@@ -291,7 +291,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     .BuildJsonElement(),
                 expectedOutputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
-                    .AddRefProperty<Company>(JsonSchema.Result, required: true) // TODO: `required` should be true for .NET 5.0+
+                    .AddRefProperty<Company>(JsonSchema.Result, required: true) // TODO: `required` should be true for .NET 8.0+
                     .AddCompanyDefine()
                     .BuildJsonElement());
         }

@@ -511,6 +511,178 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
 
         #endregion
 
+        #region Disconnect Tests
+
+        [Fact]
+        public async Task Disconnect_WhenCalledDuringMultipleConcurrentConnectAttempts_StopsAllAttempts()
+        {
+            // Arrange
+            var connectionStarted = new TaskCompletionSource<bool>();
+            var allowConnectionToComplete = new TaskCompletionSource<bool>();
+            var providerCallCount = 0;
+
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .Returns(async () =>
+                {
+                    var count = Interlocked.Increment(ref providerCallCount);
+                    System.Diagnostics.Debug.WriteLine($"CreateConnectionAsync called. Count: {count}");
+                    connectionStarted.TrySetResult(true);
+                    await allowConnectionToComplete.Task;
+                    return CreateMockHubConnection();
+                });
+
+            var connectionManager = new ConnectionManager(
+                _logger,
+                _testVersion,
+                _testEndpoint,
+                _mockHubConnectionProvider.Object
+            );
+
+            // Act - Start first connection attempt without awaiting
+            var firstConnectTask = Task.Run(async () =>
+            {
+                System.Diagnostics.Debug.WriteLine("First Connect call started");
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var result = await connectionManager.Connect(cts.Token);
+                System.Diagnostics.Debug.WriteLine($"First Connect call completed with result: {result}");
+                return result;
+            });
+
+            // Wait for the first connection to start
+            await EnsureConnectionStartedAsync(connectionStarted.Task);
+            System.Diagnostics.Debug.WriteLine("First connection started");
+
+            // Start second connection attempt (should wait for first)
+            var secondConnectTask = Task.Run(async () =>
+            {
+                System.Diagnostics.Debug.WriteLine("Second Connect call started");
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                var result = await connectionManager.Connect(cts.Token);
+                System.Diagnostics.Debug.WriteLine($"Second Connect call completed with result: {result}");
+                return result;
+            });
+
+            // Give second connect time to start waiting
+            await Task.Delay(100);
+            System.Diagnostics.Debug.WriteLine("Second connection should be waiting now");
+
+            // Now call Disconnect - this should cancel all connection attempts
+            var disconnectTask = Task.Run(async () =>
+            {
+                System.Diagnostics.Debug.WriteLine("Disconnect call started");
+                await connectionManager.Disconnect();
+                System.Diagnostics.Debug.WriteLine("Disconnect call completed");
+            });
+
+            // Give Disconnect time to cancel the internal token
+            await Task.Delay(100);
+            System.Diagnostics.Debug.WriteLine("Disconnect should have canceled the token");
+
+            // Allow the connection creation to complete (but it should already be canceled)
+            allowConnectionToComplete.SetResult(true);
+            System.Diagnostics.Debug.WriteLine("Allowed connection to complete");
+
+            // Wait for all operations to complete
+            await EnsureTasksCompleteAsync(10000, firstConnectTask, secondConnectTask, disconnectTask);
+            System.Diagnostics.Debug.WriteLine("All tasks completed");
+
+            // Assert - Both connect calls should return false (canceled)
+            var firstResult = await firstConnectTask;
+            var secondResult = await secondConnectTask;
+
+            firstResult.Should().BeFalse("first connect should be canceled by Disconnect");
+            secondResult.Should().BeFalse("second connect should be canceled by Disconnect");
+
+            // Only one connection should have been attempted
+            providerCallCount.Should().Be(1, "only one connection creation should occur despite multiple Connect calls");
+
+            System.Diagnostics.Debug.WriteLine($"Test completed. Provider call count: {providerCallCount}");
+        }
+
+        [Fact]
+        public async Task Disconnect_WhenCalledAfterConcurrentConnects_PreventsQueuedConnectFromProceeding()
+        {
+            // This test specifically addresses the bug where:
+            // 1. Connect #1 acquires gate, starts connection loop
+            // 2. Connect #2 waits for gate
+            // 3. Disconnect cancels token, waits for gate
+            // 4. Connect #1 releases gate
+            // 5. Connect #2 acquires gate, creates new token, starts new loop (BUG!)
+            // 6. Disconnect finally acquires gate but too late
+            //
+            // Expected behavior: Connect #2 should see ongoing task and wait for it,
+            // and when Disconnect clears the task, Connect #2 should return false
+
+            // Arrange
+            var connectionStarted = new TaskCompletionSource<bool>();
+            var firstConnectCanFinish = new TaskCompletionSource<bool>();
+            var providerCallCount = 0;
+
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .Returns(async () =>
+                {
+                    var count = Interlocked.Increment(ref providerCallCount);
+                    System.Diagnostics.Debug.WriteLine($"Provider call #{count}");
+                    connectionStarted.TrySetResult(true);
+                    await firstConnectCanFinish.Task;
+                    return CreateMockHubConnection();
+                });
+
+            var connectionManager = new ConnectionManager(
+                _logger,
+                _testVersion,
+                _testEndpoint,
+                _mockHubConnectionProvider.Object
+            );
+
+            // Act
+            // Start first Connect (will acquire gate and start connection)
+            var firstConnect = Task.Run(async () =>
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                return await connectionManager.Connect(cts.Token);
+            });
+
+            // Wait for first connection to start
+            await EnsureConnectionStartedAsync(connectionStarted.Task);
+
+            // Start second Connect immediately (should wait for ongoing task, NOT queue for gate)
+            var secondConnect = Task.Run(async () =>
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                return await connectionManager.Connect(cts.Token);
+            });
+
+            await Task.Delay(50); // Let second connect start waiting
+
+            // Call Disconnect (should cancel token and clear ongoing task)
+            var disconnect = Task.Run(async () => await connectionManager.Disconnect());
+
+            await Task.Delay(50); // Let disconnect cancel the token
+
+            // Now allow first connect to finish
+            firstConnectCanFinish.SetResult(true);
+
+            // Wait for everything to complete
+            await EnsureTasksCompleteAsync(10000, firstConnect, secondConnect, disconnect);
+
+            // Assert
+            var firstResult = await firstConnect;
+            var secondResult = await secondConnect;
+
+            // Both should fail because Disconnect was called
+            firstResult.Should().BeFalse("first connect should fail due to disconnect");
+            secondResult.Should().BeFalse("second connect should fail because ongoing task was canceled and cleared");
+
+            // CRITICAL: Only ONE provider call should have been made
+            // If there are 2 calls, it means Connect #2 created a new connection after Disconnect (BUG!)
+            providerCallCount.Should().Be(1, "second Connect should NOT create a new connection after Disconnect");
+        }
+
+        #endregion
+
         #region Helper Methods
 
         /// <summary>
