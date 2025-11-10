@@ -266,10 +266,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var result1 = await connectionManager.Connect(cts.Token);
             await Task.Delay(20); // Minimal delay to ensure connection completes
 
-            var result2 = await connectionManager.Connect(cts.Token);
+            using var cts2 = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var result2 = await connectionManager.Connect(cts2.Token);
             await Task.Delay(20);
 
-            var result3 = await connectionManager.Connect(cts.Token);
+            using var cts3 = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var result3 = await connectionManager.Connect(cts3.Token);
 
             // Assert - Sequential calls should each create a connection (or reuse if already connected)
             providerCallCount.Should().BeGreaterThanOrEqualTo(1, "at least one connection should be created");

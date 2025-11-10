@@ -30,6 +30,13 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{class}[{guid}] {method} called.",
                 nameof(ConnectionManager), _guid, nameof(Disconnect));
 
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning("{class}[{guid}] {method} canceled before it get started.",
+                    nameof(ConnectionManager), _guid, nameof(Disconnect));
+                return;
+            }
+
             // Cancel the internal token to stop any ongoing connection attempts
             CancelInternalToken(dispose: false);
             _continueToReconnect.Value = false;

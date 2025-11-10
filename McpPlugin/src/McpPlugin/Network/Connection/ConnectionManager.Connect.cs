@@ -32,6 +32,13 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{class}[{guid}] {method} called.",
                 nameof(ConnectionManager), _guid, nameof(Connect));
 
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning("{class}[{guid}] {method} Connection canceled before starting for endpoint: {endpoint}",
+                    nameof(ConnectionManager), _guid, nameof(Connect), Endpoint);
+                return false;
+            }
+
             // Check if there's already an ongoing connection attempt
             await _ongoingConnectionGate.WaitAsync(cancellationToken);
             var ongoingTask = _ongoingConnectionTask;
@@ -112,7 +119,7 @@ namespace com.IvanMurzak.McpPlugin
                 }
                 finally
                 {
-                    await _ongoingConnectionGate.WaitAsync(cancellationToken);
+                    await _ongoingConnectionGate.WaitAsync();
                     _ongoingConnectionTask = null;
                     _ongoingConnectionGate.Release();
                 }
