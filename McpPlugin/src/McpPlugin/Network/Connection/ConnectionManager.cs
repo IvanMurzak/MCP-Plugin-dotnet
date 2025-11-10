@@ -33,6 +33,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly CancellationTokenSource _cancellationTokenSource;
 
         private readonly SemaphoreSlim _gate = new(1, 1);
+        private readonly SemaphoreSlim _ongoingConnectionGate = new(1, 1);
         private readonly ThreadSafeBool _isDisposed = new(false);
         private HubConnectionLogger? hubConnectionLogger;
         private HubConnectionObservable? hubConnectionObservable;
@@ -121,6 +122,7 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{class}[{guid}] {method}.",
                 nameof(ConnectionManager), _guid, nameof(Dispose));
 
+            CancelInternalToken(dispose: true);
             _disposables.Dispose();
 
             if (!_continueToReconnect.IsDisposed)
@@ -134,8 +136,6 @@ namespace com.IvanMurzak.McpPlugin
 
             _connectionState.Dispose();
             _continueToReconnect.Dispose();
-
-            CancelInternalToken(dispose: true);
 
             // Use Wait with timeout for synchronous disposal
             var acquiredGate = _gate.Wait(TimeSpan.FromSeconds(5));

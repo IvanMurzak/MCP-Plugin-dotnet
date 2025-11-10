@@ -33,7 +33,10 @@ namespace com.IvanMurzak.McpPlugin
                 nameof(ConnectionManager), _guid, nameof(Connect));
 
             // Check if there's already an ongoing connection attempt
+            await _ongoingConnectionGate.WaitAsync();
             var ongoingTask = _ongoingConnectionTask;
+            _ongoingConnectionGate.Release();
+
             if (ongoingTask != null)
                 return await WaitForConnectionCompletion(ongoingTask, cancellationToken);
 
@@ -71,7 +74,10 @@ namespace com.IvanMurzak.McpPlugin
                 }
 
                 // Double-check for ongoing task after acquiring gate
+                await _ongoingConnectionGate.WaitAsync();
                 ongoingTask = _ongoingConnectionTask;
+                _ongoingConnectionGate.Release();
+
                 if (ongoingTask != null)
                 {
                     _logger.LogDebug("{class}[{guid}] {method} Connection already in progress after acquiring gate, releasing gate and waiting.",
@@ -97,14 +103,18 @@ namespace com.IvanMurzak.McpPlugin
 
                 _continueToReconnect.Value = true;
 
+                await _ongoingConnectionGate.WaitAsync();
                 _ongoingConnectionTask = InternalConnect(cancellationToken);
+                _ongoingConnectionGate.Release();
                 try
                 {
                     return await _ongoingConnectionTask;
                 }
                 finally
                 {
+                    await _ongoingConnectionGate.WaitAsync();
                     _ongoingConnectionTask = null;
+                    _ongoingConnectionGate.Release();
                 }
             }
             finally
@@ -319,10 +329,13 @@ namespace com.IvanMurzak.McpPlugin
                 if (await AttemptConnection(cancellationToken))
                     return true;
 
+                if (cancellationToken.IsCancellationRequested || !_continueToReconnect.CurrentValue)
+                    break;
+
                 await WaitBeforeRetry(cancellationToken);
             }
 
-            _logger.LogWarning("{class}[{guid}] {method} Connection loop terminated for endpoint: {endpoint}",
+            _logger.LogDebug("{class}[{guid}] {method} Connection loop terminated for endpoint: {endpoint}",
                 nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint);
             return false;
         }
@@ -389,11 +402,22 @@ namespace com.IvanMurzak.McpPlugin
 
         private async Task WaitBeforeRetry(CancellationToken cancellationToken)
         {
-            if (_continueToReconnect.CurrentValue && !cancellationToken.IsCancellationRequested)
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
+            _logger.LogTrace("{class}[{guid}] {method} Waiting 5 seconds before retry for endpoint: {endpoint}",
+                nameof(ConnectionManager), _guid, nameof(WaitBeforeRetry), Endpoint);
+            try
             {
-                _logger.LogTrace("{class}[{guid}] {method} Waiting 5 seconds before retry for endpoint: {endpoint}",
-                    nameof(ConnectionManager), _guid, nameof(WaitBeforeRetry), Endpoint);
                 await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                // Ignore cancellation during delay
+            }
+            catch (ObjectDisposedException)
+            {
+                // Ignore disposal during delay
             }
         }
     }

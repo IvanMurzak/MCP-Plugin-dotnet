@@ -118,7 +118,9 @@ namespace com.IvanMurzak.McpPlugin
                  nameof(ConnectionManager), _guid, nameof(DisconnectInternal), graceful);
 
             // Clear the ongoing connection task to prevent new Connect calls from waiting for it
+            await _ongoingConnectionGate.WaitAsync();
             _ongoingConnectionTask = null;
+            _ongoingConnectionGate.Release();
 
             hubConnectionLogger?.Dispose();
             hubConnectionObservable?.Dispose();
