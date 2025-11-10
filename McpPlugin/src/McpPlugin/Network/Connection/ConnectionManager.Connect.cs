@@ -33,7 +33,7 @@ namespace com.IvanMurzak.McpPlugin
                 nameof(ConnectionManager), _guid, nameof(Connect));
 
             // Check if there's already an ongoing connection attempt
-            await _ongoingConnectionGate.WaitAsync();
+            await _ongoingConnectionGate.WaitAsync(cancellationToken);
             var ongoingTask = _ongoingConnectionTask;
             _ongoingConnectionGate.Release();
 
@@ -74,7 +74,7 @@ namespace com.IvanMurzak.McpPlugin
                 }
 
                 // Double-check for ongoing task after acquiring gate
-                await _ongoingConnectionGate.WaitAsync();
+                await _ongoingConnectionGate.WaitAsync(cancellationToken);
                 ongoingTask = _ongoingConnectionTask;
                 _ongoingConnectionGate.Release();
 
@@ -103,7 +103,7 @@ namespace com.IvanMurzak.McpPlugin
 
                 _continueToReconnect.Value = true;
 
-                await _ongoingConnectionGate.WaitAsync();
+                await _ongoingConnectionGate.WaitAsync(cancellationToken);
                 _ongoingConnectionTask = InternalConnect(cancellationToken);
                 _ongoingConnectionGate.Release();
                 try
@@ -112,7 +112,7 @@ namespace com.IvanMurzak.McpPlugin
                 }
                 finally
                 {
-                    await _ongoingConnectionGate.WaitAsync();
+                    await _ongoingConnectionGate.WaitAsync(cancellationToken);
                     _ongoingConnectionTask = null;
                     _ongoingConnectionGate.Release();
                 }

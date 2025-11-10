@@ -137,6 +137,8 @@ namespace com.IvanMurzak.McpPlugin
             _connectionState.Dispose();
             _continueToReconnect.Dispose();
 
+            _ongoingConnectionGate.Dispose();
+
             // Use Wait with timeout for synchronous disposal
             var acquiredGate = _gate.Wait(TimeSpan.FromSeconds(5));
             try
@@ -180,6 +182,7 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{class}[{guid}] {method}.",
                 nameof(ConnectionManager), _guid, nameof(DisposeAsync));
 
+            CancelInternalToken(dispose: true);
             _disposables.Dispose();
 
             if (!_continueToReconnect.IsDisposed)
@@ -194,9 +197,9 @@ namespace com.IvanMurzak.McpPlugin
             _connectionState.Dispose();
             _continueToReconnect.Dispose();
 
-            CancelInternalToken(dispose: true);
+            _ongoingConnectionGate.Dispose();
 
-            await _gate.WaitAsync();
+            await _gate.WaitAsync(TimeSpan.FromSeconds(5));
             try
             {
                 if (_hubConnection.CurrentValue != null)
