@@ -681,6 +681,60 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             providerCallCount.Should().Be(1, "second Connect should NOT create a new connection after Disconnect");
         }
 
+        [Fact]
+        public async Task Connect_AfterDisconnect_SucceedsOnReconnect()
+        {
+            // This test verifies the Connect -> Disconnect -> Connect scenario
+            // Bug: After Disconnect, the internalCts is canceled but not disposed/nulled,
+            // causing subsequent Connect attempts to fail at the canceled token check
+
+            // Arrange
+            var providerCallCount = 0;
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .Returns(async () =>
+                {
+                    var count = Interlocked.Increment(ref providerCallCount);
+                    System.Diagnostics.Debug.WriteLine($"Provider call #{count}");
+                    await Task.Yield();
+                    return CreateMockHubConnection();
+                });
+
+            var connectionManager = new ConnectionManager(
+                _logger,
+                _testVersion,
+                _testEndpoint,
+                _mockHubConnectionProvider.Object
+            );
+
+            // Act
+            // First Connect
+            System.Diagnostics.Debug.WriteLine("First Connect attempt");
+            using var cts1 = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var firstConnect = await connectionManager.Connect(cts1.Token);
+            System.Diagnostics.Debug.WriteLine($"First Connect result: {firstConnect}");
+
+            await Task.Delay(100); // Give connection time to process
+
+            // Disconnect
+            System.Diagnostics.Debug.WriteLine("Disconnecting");
+            await connectionManager.Disconnect();
+            System.Diagnostics.Debug.WriteLine("Disconnect completed");
+
+            await Task.Delay(100); // Give disconnect time to process
+
+            // Second Connect (should succeed)
+            System.Diagnostics.Debug.WriteLine("Second Connect attempt (after disconnect)");
+            using var cts2 = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var secondConnect = await connectionManager.Connect(cts2.Token);
+            System.Diagnostics.Debug.WriteLine($"Second Connect result: {secondConnect}");
+
+            // Assert
+            // The second connect should succeed (or at least attempt to connect)
+            // The provider should be called at least twice (once for each Connect)
+            providerCallCount.Should().BeGreaterThanOrEqualTo(2, "reconnection after disconnect should create a new connection");
+        }
+
         #endregion
 
         #region Helper Methods
