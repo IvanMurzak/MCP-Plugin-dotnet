@@ -137,8 +137,6 @@ namespace com.IvanMurzak.McpPlugin
             _connectionState.Dispose();
             _continueToReconnect.Dispose();
 
-            _ongoingConnectionGate.Dispose();
-
             // Use Wait with timeout for synchronous disposal
             var acquiredGate = _gate.Wait(TimeSpan.FromSeconds(5));
             try
@@ -167,12 +165,13 @@ namespace com.IvanMurzak.McpPlugin
             {
                 if (acquiredGate)
                     _gate.Release();
+
+                _gate.Dispose();
+                _ongoingConnectionGate.Dispose();
+
+                _logger.LogDebug("{class}[{guid}] {method} completed.",
+                    nameof(ConnectionManager), _guid, nameof(Dispose));
             }
-
-            _gate.Dispose();
-
-            _logger.LogDebug("{class}[{guid}] {method} completed.",
-                nameof(ConnectionManager), _guid, nameof(Dispose));
         }
         public async ValueTask DisposeAsync()
         {
@@ -197,9 +196,7 @@ namespace com.IvanMurzak.McpPlugin
             _connectionState.Dispose();
             _continueToReconnect.Dispose();
 
-            _ongoingConnectionGate.Dispose();
-
-            await _gate.WaitAsync(TimeSpan.FromSeconds(5));
+            var isGateAcquired = await _gate.WaitAsync(TimeSpan.FromSeconds(5));
             try
             {
                 if (_hubConnection.CurrentValue != null)
@@ -226,12 +223,15 @@ namespace com.IvanMurzak.McpPlugin
             }
             finally
             {
-                _gate.Release();
-                _gate.Dispose();
-            }
+                if (isGateAcquired)
+                    _gate.Release();
 
-            _logger.LogDebug("{class}[{guid}] {method} completed.",
-                nameof(ConnectionManager), _guid, nameof(DisposeAsync));
+                _gate.Dispose();
+                _ongoingConnectionGate.Dispose();
+
+                _logger.LogDebug("{class}[{guid}] {method} completed.",
+                    nameof(ConnectionManager), _guid, nameof(DisposeAsync));
+            }
         }
 
         private async Task ExecuteHubMethodAsync(string methodName, Func<HubConnection, Task> hubMethod)
