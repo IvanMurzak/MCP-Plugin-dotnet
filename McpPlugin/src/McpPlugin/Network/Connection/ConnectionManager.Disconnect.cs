@@ -32,7 +32,7 @@ namespace com.IvanMurzak.McpPlugin
 
             if (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogWarning("{class}[{guid}] {method} canceled before it get started.",
+                _logger.LogWarning("{class}[{guid}] {method} canceled before it gets started.",
                     nameof(ConnectionManager), _guid, nameof(Disconnect));
                 return;
             }
