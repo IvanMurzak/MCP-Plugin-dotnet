@@ -87,15 +87,6 @@ namespace com.IvanMurzak.McpPlugin
                     return true;
                 }
 
-                // Check if the internal token was canceled by Disconnect before we acquired the gate
-                // If it was, we should not start a new connection
-                if (internalCts != null && internalCts.IsCancellationRequested)
-                {
-                    _logger.LogDebug("{class}[{guid}] {method} Internal token was canceled before starting connection, aborting for endpoint: {endpoint}",
-                        nameof(ConnectionManager), _guid, nameof(Connect), Endpoint);
-                    return false;
-                }
-
                 _continueToReconnect.Value = false;
 
                 // Dispose the previous internal CancellationTokenSource if it exists
