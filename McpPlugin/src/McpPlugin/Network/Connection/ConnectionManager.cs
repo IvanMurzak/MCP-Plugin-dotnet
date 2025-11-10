@@ -33,6 +33,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly CancellationTokenSource _cancellationTokenSource;
 
         private readonly SemaphoreSlim _gate = new(1, 1);
+        private readonly SemaphoreSlim _ongoingConnectionGate = new(1, 1);
         private readonly ThreadSafeBool _isDisposed = new(false);
         private HubConnectionLogger? hubConnectionLogger;
         private HubConnectionObservable? hubConnectionObservable;
@@ -121,6 +122,7 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{class}[{guid}] {method}.",
                 nameof(ConnectionManager), _guid, nameof(Dispose));
 
+            CancelInternalToken(dispose: true);
             _disposables.Dispose();
 
             if (!_continueToReconnect.IsDisposed)
@@ -134,8 +136,6 @@ namespace com.IvanMurzak.McpPlugin
 
             _connectionState.Dispose();
             _continueToReconnect.Dispose();
-
-            CancelInternalToken(dispose: true);
 
             // Use Wait with timeout for synchronous disposal
             var acquiredGate = _gate.Wait(TimeSpan.FromSeconds(5));
@@ -165,12 +165,13 @@ namespace com.IvanMurzak.McpPlugin
             {
                 if (acquiredGate)
                     _gate.Release();
+
+                _gate.Dispose();
+                _ongoingConnectionGate.Dispose();
+
+                _logger.LogDebug("{class}[{guid}] {method} completed.",
+                    nameof(ConnectionManager), _guid, nameof(Dispose));
             }
-
-            _gate.Dispose();
-
-            _logger.LogDebug("{class}[{guid}] {method} completed.",
-                nameof(ConnectionManager), _guid, nameof(Dispose));
         }
         public async ValueTask DisposeAsync()
         {
@@ -180,6 +181,7 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{class}[{guid}] {method}.",
                 nameof(ConnectionManager), _guid, nameof(DisposeAsync));
 
+            CancelInternalToken(dispose: true);
             _disposables.Dispose();
 
             if (!_continueToReconnect.IsDisposed)
@@ -194,9 +196,7 @@ namespace com.IvanMurzak.McpPlugin
             _connectionState.Dispose();
             _continueToReconnect.Dispose();
 
-            CancelInternalToken(dispose: true);
-
-            await _gate.WaitAsync();
+            var isGateAcquired = await _gate.WaitAsync(TimeSpan.FromSeconds(5));
             try
             {
                 if (_hubConnection.CurrentValue != null)
@@ -223,12 +223,15 @@ namespace com.IvanMurzak.McpPlugin
             }
             finally
             {
-                _gate.Release();
-                _gate.Dispose();
-            }
+                if (isGateAcquired)
+                    _gate.Release();
 
-            _logger.LogDebug("{class}[{guid}] {method} completed.",
-                nameof(ConnectionManager), _guid, nameof(DisposeAsync));
+                _gate.Dispose();
+                _ongoingConnectionGate.Dispose();
+
+                _logger.LogDebug("{class}[{guid}] {method} completed.",
+                    nameof(ConnectionManager), _guid, nameof(DisposeAsync));
+            }
         }
 
         private async Task ExecuteHubMethodAsync(string methodName, Func<HubConnection, Task> hubMethod)

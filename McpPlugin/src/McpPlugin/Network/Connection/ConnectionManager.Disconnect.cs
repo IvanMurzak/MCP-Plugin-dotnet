@@ -30,6 +30,13 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{class}[{guid}] {method} called.",
                 nameof(ConnectionManager), _guid, nameof(Disconnect));
 
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning("{class}[{guid}] {method} canceled before it gets started.",
+                    nameof(ConnectionManager), _guid, nameof(Disconnect));
+                return;
+            }
+
             // Cancel the internal token to stop any ongoing connection attempts
             CancelInternalToken(dispose: false);
             _continueToReconnect.Value = false;
@@ -118,7 +125,9 @@ namespace com.IvanMurzak.McpPlugin
                  nameof(ConnectionManager), _guid, nameof(DisconnectInternal), graceful);
 
             // Clear the ongoing connection task to prevent new Connect calls from waiting for it
+            await _ongoingConnectionGate.WaitAsync(cancellationToken);
             _ongoingConnectionTask = null;
+            _ongoingConnectionGate.Release();
 
             hubConnectionLogger?.Dispose();
             hubConnectionObservable?.Dispose();
