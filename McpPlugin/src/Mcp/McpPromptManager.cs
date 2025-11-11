@@ -32,7 +32,7 @@ namespace com.IvanMurzak.McpPlugin
         public Reflector Reflector => _reflector;
         public Observable<Unit> OnPromptsUpdated => _onPromptsUpdated;
 
-        public IEnumerable<IRunPrompt> GetAllPrompts() => _prompts.Values;
+        public IEnumerable<IRunPrompt> GetAllPrompts() => _prompts.Values.ToList();
 
         public McpPromptManager(ILogger<McpPromptManager> logger, Reflector reflector, PromptRunnerCollection prompts)
         {

@@ -33,7 +33,7 @@ namespace com.IvanMurzak.McpPlugin
         public Reflector Reflector => _reflector;
         public Observable<Unit> OnResourcesUpdated => _onResourcesUpdated;
 
-        public IEnumerable<IRunResource> GetAllResources() => _resources.Values;
+        public IEnumerable<IRunResource> GetAllResources() => _resources.Values.ToList();
 
         public McpResourceManager(ILogger<McpResourceManager> logger, Reflector reflector, ResourceRunnerCollection resources)
         {
