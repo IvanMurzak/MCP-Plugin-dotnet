@@ -34,38 +34,6 @@ namespace com.IvanMurzak.McpPlugin
 
         protected string? RequestID { get; set; }
 
-        /// <summary>
-        /// Initializes the Command with the target method information.
-        /// </summary>
-        /// <param name="type">The type containing the static method.</param>
-        public static RunTool CreateFromStaticMethod(Reflector reflector, ILogger? logger, MethodInfo methodInfo, string? title = null)
-            => new RunTool(reflector, logger, methodInfo)
-            {
-                Title = title
-            };
-
-        /// <summary>
-        /// Initializes the Command with the target instance method information.
-        /// </summary>
-        /// <param name="targetInstance">The instance of the object containing the method.</param>
-        /// <param name="methodInfo">The MethodInfo of the instance method to execute.</param>
-        public static RunTool CreateFromInstanceMethod(Reflector reflector, ILogger? logger, object targetInstance, MethodInfo methodInfo, string? title = null)
-            => new RunTool(reflector, logger, targetInstance, methodInfo)
-            {
-                Title = title
-            };
-
-        /// <summary>
-        /// Initializes the Command with the target instance method information.
-        /// </summary>
-        /// <param name="targetInstance">The instance of the object containing the method.</param>
-        /// <param name="methodInfo">The MethodInfo of the instance method to execute.</param>
-        public static RunTool CreateFromClassMethod(Reflector reflector, ILogger? logger, Type classType, MethodInfo methodInfo, string? title = null)
-            => new RunTool(reflector, logger, classType, methodInfo)
-            {
-                Title = title
-            };
-
         public RunTool(Reflector reflector, ILogger? logger, MethodInfo methodInfo) : base(reflector, logger, methodInfo)
         {
             Method = methodInfo;

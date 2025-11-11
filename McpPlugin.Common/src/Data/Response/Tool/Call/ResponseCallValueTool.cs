@@ -9,21 +9,14 @@
 */
 
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Nodes;
-using com.IvanMurzak.ReflectorNet.Utils;
 
 namespace com.IvanMurzak.McpPlugin.Common.Model
 {
-    public partial class ResponseCallTool : IRequestID
+    public partial class ResponseCallValueTool<T> : ResponseCallTool
     {
-        public string RequestID { get; set; } = string.Empty;
-        public virtual ResponseStatus Status { get; set; } = ResponseStatus.Error;
-        public virtual List<ContentBlock> Content { get; set; } = new List<ContentBlock>();
-        public virtual JsonNode? StructuredContent { get; set; } = null;
-
-        public ResponseCallTool() { }
-        public ResponseCallTool(ResponseStatus status, List<ContentBlock> content) : this(
+        public ResponseCallValueTool() : base() { }
+        public ResponseCallValueTool(ResponseStatus status, List<ContentBlock> content) : base(
             requestId: string.Empty,
             structuredContent: null,
             status: status,
@@ -31,7 +24,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         {
             // none
         }
-        public ResponseCallTool(JsonNode? structuredContent, ResponseStatus status, List<ContentBlock> content) : this(
+        public ResponseCallValueTool(JsonNode? structuredContent, ResponseStatus status, List<ContentBlock> content) : base(
             requestId: string.Empty,
             structuredContent: structuredContent,
             status: status,
@@ -39,25 +32,19 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         {
             // none
         }
-        public ResponseCallTool(string requestId, JsonNode? structuredContent, ResponseStatus status, List<ContentBlock> content)
+        public ResponseCallValueTool(string requestId, JsonNode? structuredContent, ResponseStatus status, List<ContentBlock> content) : base(
+            requestId: requestId,
+            structuredContent: structuredContent,
+            status: status,
+            content: content)
         {
-            RequestID = requestId;
-            Status = status;
-            Content = content;
-            StructuredContent = new JsonObject()
-            {
-                [JsonSchema.Result] = structuredContent
-            };
+            // none
         }
 
-        public ResponseCallTool SetRequestID(string requestId)
+        public new ResponseCallValueTool<T> SetRequestID(string requestId)
         {
             RequestID = requestId;
             return this;
         }
-
-        public string? GetMessage() => Content
-            ?.FirstOrDefault(item => item.Type == "text" && !string.IsNullOrEmpty(item.Text))
-            ?.Text;
     }
 }
