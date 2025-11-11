@@ -22,9 +22,12 @@ namespace com.IvanMurzak.McpPlugin
     public partial class RunTool : MethodWrapper, IRunTool
     {
         /// <summary>
-        /// Initializes the Command with the target method information.
+        /// Initializes the Command with the target static method information.
         /// </summary>
-        /// <param name="type">The type containing the static method.</param>
+        /// <param name="reflector">The Reflector instance used for method invocation.</param>
+        /// <param name="logger">The logger for logging execution details (optional).</param>
+        /// <param name="methodInfo">The MethodInfo of the static method to execute.</param>
+        /// <param name="title">An optional title for the command.</param>
         public static RunTool CreateFromStaticMethod(Reflector reflector, ILogger? logger, MethodInfo methodInfo, string? title = null)
             => new RunTool(reflector, logger, methodInfo)
             {
@@ -43,10 +46,13 @@ namespace com.IvanMurzak.McpPlugin
             };
 
         /// <summary>
-        /// Initializes the Command with the target instance method information.
+        /// Initializes the Command with the target method information for a specified class type.
         /// </summary>
-        /// <param name="targetInstance">The instance of the object containing the method.</param>
-        /// <param name="methodInfo">The MethodInfo of the instance method to execute.</param>
+        /// <param name="reflector">The reflector used for method invocation and analysis.</param>
+        /// <param name="logger">The logger for diagnostic and runtime information.</param>
+        /// <param name="classType">The type containing the method to execute.</param>
+        /// <param name="methodInfo">The MethodInfo of the method to execute.</param>
+        /// <param name="title">An optional title for the command.</param>
         public static RunTool CreateFromClassMethod(Reflector reflector, ILogger? logger, Type classType, MethodInfo methodInfo, string? title = null)
             => new RunTool(reflector, logger, classType, methodInfo)
             {

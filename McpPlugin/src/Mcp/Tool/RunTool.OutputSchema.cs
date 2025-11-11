@@ -59,7 +59,7 @@ namespace com.IvanMurzak.McpPlugin
                             type: genericArg,
                             name: JsonSchema.Result,
                             description: null,
-                            required: isNullable == false
+                            required: !isNullable
                         )
                     };
                     return reflector.JsonSchema.GenerateSchema(reflector, types, justRef: false, defines: null);
