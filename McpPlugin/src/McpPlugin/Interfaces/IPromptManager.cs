@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using R3;
 
@@ -19,6 +20,7 @@ namespace com.IvanMurzak.McpPlugin
         Observable<Unit> OnPromptsUpdated { get; }
         int EnabledPromptsCount { get; }
         int TotalPromptsCount { get; }
+        IEnumerable<IRunPrompt> GetAllPrompts();
         bool HasPrompt(string name);
         bool AddPrompt(IRunPrompt runner);
         bool RemovePrompt(string name);

@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,6 +31,8 @@ namespace com.IvanMurzak.McpPlugin
 
         public Reflector Reflector => _reflector;
         public Observable<Unit> OnPromptsUpdated => _onPromptsUpdated;
+
+        public IEnumerable<IRunPrompt> GetAllPrompts() => _prompts.Values;
 
         public McpPromptManager(ILogger<McpPromptManager> logger, Reflector reflector, PromptRunnerCollection prompts)
         {
