@@ -134,13 +134,12 @@ namespace com.IvanMurzak.McpPlugin
                 var result = new ResponseListPrompts()
                 {
                     Prompts = _prompts.Values
-                        .Select(p => new ResponsePrompt()
-                        {
-                            Name = p.Name,
-                            Title = p.Title,
-                            Description = p.Description,
-                            Arguments = p.InputSchema.ToResponsePromptArguments()
-                        })
+                        .Select(p => new ResponsePrompt(
+                            name: p.Name,
+                            enabled: p.Enabled,
+                            title: p.Title,
+                            description: p.Description,
+                            arguments: p.InputSchema.ToResponsePromptArguments()))
                         .ToList()
                 };
                 _logger.LogDebug("{0} Prompts listed.", result.Prompts.Count);

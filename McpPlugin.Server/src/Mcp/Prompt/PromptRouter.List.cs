@@ -52,7 +52,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             var result = new ListPromptsResult()
             {
                 Prompts = response.Value.Prompts
-                    .Where(x => x != null)
+                    .Where(x => x?.Enabled == true)
                     .Select(x => x!.ToPrompt())
                     .ToList()
             };

@@ -21,7 +21,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
                 return target;
 
             foreach (var item in target)
-                logger.LogInformation(ex, "Resource: {0}", item.uri);
+                logger.LogInformation(ex, "Resource: {0}", item.Uri);
 
             return target;
         }

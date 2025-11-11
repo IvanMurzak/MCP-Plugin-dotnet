@@ -148,7 +148,12 @@ namespace com.IvanMurzak.McpPlugin
         {
             _logger.LogDebug("Listing resource templates. [{Count}]", _resources.Count);
             return _resources.Values
-                .Select(resource => new ResponseResourceTemplate(resource.Route, resource.Name, resource.Description, resource.MimeType))
+                .Select(resource => new ResponseResourceTemplate(
+                    uri: resource.Route,
+                    name: resource.Name,
+                    enabled: resource.Enabled,
+                    mimeType: resource.MimeType,
+                    description: resource.Description))
                 .ToArray()
                 .Pack(data.RequestID)
                 .TaskFromResult();

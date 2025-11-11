@@ -25,10 +25,10 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             return new Resource()
             {
-                Uri = response.uri,
-                Name = response.name,
-                Description = response.description,
-                MimeType = response.mimeType
+                Uri = response.Uri,
+                Name = response.Name,
+                Description = response.Description,
+                MimeType = response.MimeType
             };
         }
     }

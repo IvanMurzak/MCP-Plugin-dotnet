@@ -162,6 +162,7 @@ namespace com.IvanMurzak.McpPlugin
                         var response = new ResponseListTool()
                         {
                             Name = kvp.Key,
+                            Enabled = kvp.Value.Enabled,
                             Title = kvp.Value.Title,
                             Description = kvp.Value.Description,
                             InputSchema = kvp.Value.InputSchema.ToJsonElement() ?? EmptyInputSchema

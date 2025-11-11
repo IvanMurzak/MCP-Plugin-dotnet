@@ -8,7 +8,6 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System;
 using System.Collections.Generic;
 
 namespace com.IvanMurzak.McpPlugin.Common.Model
@@ -16,7 +15,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
     public class ResponsePrompt
     {
         public string Name { get; set; } = string.Empty;
-
+        public bool Enabled { get; set; } = true; // custom property
         public string? Title { get; set; }
 
         /// <summary>
@@ -51,9 +50,10 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
 
         public ResponsePrompt() { }
 
-        public ResponsePrompt(string name, string? title, string? description, List<ResponsePromptArgument>? arguments)
+        public ResponsePrompt(string name, bool enabled, string? title, string? description, List<ResponsePromptArgument>? arguments)
         {
             Name = name;
+            Enabled = enabled;
             Title = title;
             Description = description;
             Arguments = arguments;

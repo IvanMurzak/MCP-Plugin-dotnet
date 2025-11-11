@@ -51,7 +51,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 Contents = response.Value
                     .Where(x => x != null)
-                    .Where(x => x!.text != null || x!.blob != null)
+                    .Where(x => x!.Text != null || x!.Blob != null)
                     .Select(x => x!.ToResourceContents())
                     .ToList()
             };
