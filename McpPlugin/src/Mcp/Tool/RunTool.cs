@@ -28,25 +28,26 @@ namespace com.IvanMurzak.McpPlugin
     /// </summary>
     public partial class RunTool : MethodWrapper, IRunTool
     {
+        public string Name { get; private set; }
         public bool Enabled { get; set; } = true;
         public string? Title { get; protected set; }
-        public MethodInfo? Method { get; private set; }
+        public MethodInfo Method => _methodInfo;
 
         protected string? RequestID { get; set; }
 
-        public RunTool(Reflector reflector, ILogger? logger, MethodInfo methodInfo) : base(reflector, logger, methodInfo)
+        public RunTool(Reflector reflector, ILogger? logger, string name, MethodInfo methodInfo) : base(reflector, logger, methodInfo)
         {
-            Method = methodInfo;
+            Name = name ?? throw new ArgumentNullException(nameof(name));
         }
 
-        public RunTool(Reflector reflector, ILogger? logger, object targetInstance, MethodInfo methodInfo) : base(reflector, logger, targetInstance, methodInfo)
+        public RunTool(Reflector reflector, ILogger? logger, string name, object targetInstance, MethodInfo methodInfo) : base(reflector, logger, targetInstance, methodInfo)
         {
-            Method = methodInfo;
+            Name = name ?? throw new ArgumentNullException(nameof(name));
         }
 
-        public RunTool(Reflector reflector, ILogger? logger, Type classType, MethodInfo methodInfo) : base(reflector, logger, classType, methodInfo)
+        public RunTool(Reflector reflector, ILogger? logger, string name, Type classType, MethodInfo methodInfo) : base(reflector, logger, classType, methodInfo)
         {
-            Method = methodInfo;
+            Name = name ?? throw new ArgumentNullException(nameof(name));
         }
 
         protected override object? GetParameterValue(Reflector reflector, ParameterInfo paramInfo, object? value)
