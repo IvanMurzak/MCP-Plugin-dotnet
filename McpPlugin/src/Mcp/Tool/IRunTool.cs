@@ -19,6 +19,7 @@ namespace com.IvanMurzak.McpPlugin
 {
     public interface IRunTool : IEnabled
     {
+        string Name { get; }
         string? Title { get; }
         string? Description { get; }
         JsonNode? InputSchema { get; }

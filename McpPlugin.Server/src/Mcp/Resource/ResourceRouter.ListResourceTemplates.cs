@@ -44,7 +44,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             return new ListResourceTemplatesResult()
             {
                 ResourceTemplates = response.Value
-                    .Where(x => x != null)
+                    .Where(x => x?.Enabled == true)
                     .Select(x => x!.ToResourceTemplate())
                     .ToList()
             };

@@ -39,20 +39,20 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public static ResourceContents ToResourceContents(this ResponseResourceContent response)
         {
-            if (response!.text != null)
+            if (response!.Text != null)
                 return new TextResourceContents()
                 {
-                    Uri = response.uri,
-                    MimeType = response.mimeType,
-                    Text = response.text
+                    Uri = response.Uri,
+                    MimeType = response.MimeType,
+                    Text = response.Text
                 };
 
-            if (response!.blob != null)
+            if (response!.Blob != null)
                 return new BlobResourceContents()
                 {
-                    Uri = response.uri,
-                    MimeType = response.mimeType,
-                    Blob = response.blob
+                    Uri = response.Uri,
+                    MimeType = response.MimeType,
+                    Blob = response.Blob
                 };
 
             throw new InvalidOperationException("Resource contents is null");

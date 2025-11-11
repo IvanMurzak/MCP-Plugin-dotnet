@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using R3;
 
@@ -19,6 +20,7 @@ namespace com.IvanMurzak.McpPlugin
         Observable<Unit> OnToolsUpdated { get; }
         int EnabledToolsCount { get; }
         int TotalToolsCount { get; }
+        IEnumerable<IRunTool> GetAllTools();
         bool HasTool(string name);
         bool AddTool(string name, IRunTool runner);
         bool RemoveTool(string name);

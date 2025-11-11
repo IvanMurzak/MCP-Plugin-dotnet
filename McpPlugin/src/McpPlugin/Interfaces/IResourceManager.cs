@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using R3;
 
@@ -19,6 +20,7 @@ namespace com.IvanMurzak.McpPlugin
         Observable<Unit> OnResourcesUpdated { get; }
         int EnabledResourcesCount { get; }
         int TotalResourcesCount { get; }
+        IEnumerable<IRunResource> GetAllResources();
         bool HasResource(string name);
         bool AddResource(IRunResource resourceParams);
         bool RemoveResource(string name);

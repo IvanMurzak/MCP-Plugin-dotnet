@@ -15,6 +15,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
     public class ResponseListTool
     {
         public string Name { get; set; } = string.Empty;
+        public bool Enabled { get; set; } = true; // custom property
         public string? Title { get; set; }
         public string? Description { get; set; }
         public JsonElement InputSchema { get; set; }

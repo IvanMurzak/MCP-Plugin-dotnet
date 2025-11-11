@@ -45,7 +45,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             return new ListResourcesResult()
             {
                 Resources = response.Value
-                    .Where(x => x != null)
+                    .Where(x => x?.Enabled == true)
                     .Select(x => x!.ToResource())
                     .ToList() ?? new List<Resource>(),
             };

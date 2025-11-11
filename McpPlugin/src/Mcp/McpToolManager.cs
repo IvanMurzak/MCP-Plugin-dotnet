@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -36,6 +37,8 @@ namespace com.IvanMurzak.McpPlugin
 
         public Reflector Reflector => _reflector;
         public Observable<Unit> OnToolsUpdated => _onToolsUpdated;
+
+        public IEnumerable<IRunTool> GetAllTools() => _tools.Values.ToList();
 
         public McpToolManager(ILogger<McpToolManager> logger, Reflector reflector, ToolRunnerCollection tools)
         {
@@ -159,6 +162,7 @@ namespace com.IvanMurzak.McpPlugin
                         var response = new ResponseListTool()
                         {
                             Name = kvp.Key,
+                            Enabled = kvp.Value.Enabled,
                             Title = kvp.Value.Title,
                             Description = kvp.Value.Description,
                             InputSchema = kvp.Value.InputSchema.ToJsonElement() ?? EmptyInputSchema

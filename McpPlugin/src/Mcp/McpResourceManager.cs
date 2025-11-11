@@ -33,6 +33,8 @@ namespace com.IvanMurzak.McpPlugin
         public Reflector Reflector => _reflector;
         public Observable<Unit> OnResourcesUpdated => _onResourcesUpdated;
 
+        public IEnumerable<IRunResource> GetAllResources() => _resources.Values.ToList();
+
         public McpResourceManager(ILogger<McpResourceManager> logger, Reflector reflector, ResourceRunnerCollection resources)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -146,7 +148,12 @@ namespace com.IvanMurzak.McpPlugin
         {
             _logger.LogDebug("Listing resource templates. [{Count}]", _resources.Count);
             return _resources.Values
-                .Select(resource => new ResponseResourceTemplate(resource.Route, resource.Name, resource.Description, resource.MimeType))
+                .Select(resource => new ResponseResourceTemplate(
+                    uri: resource.Route,
+                    name: resource.Name,
+                    enabled: resource.Enabled,
+                    mimeType: resource.MimeType,
+                    description: resource.Description))
                 .ToArray()
                 .Pack(data.RequestID)
                 .TaskFromResult();

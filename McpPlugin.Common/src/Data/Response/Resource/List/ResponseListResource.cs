@@ -8,25 +8,26 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-
 namespace com.IvanMurzak.McpPlugin.Common.Model
 {
     public class ResponseListResource
     {
-        public string uri { get; set; } = string.Empty;
-        public string name { get; set; } = string.Empty;
-        public string? mimeType { get; set; }
-        public string? description { get; set; }
-        public long? size { get; set; }
+        public string Uri { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public bool Enabled { get; set; } = true; // custom property
+        public string? MimeType { get; set; }
+        public string? Description { get; set; }
+        public long? Size { get; set; }
 
         public ResponseListResource() { }
-        public ResponseListResource(string uri, string name, string? mimeType = null, string? description = null, long? size = null)
+        public ResponseListResource(string uri, string name, bool enabled = true, string? mimeType = null, string? description = null, long? size = null)
         {
-            this.uri = uri;
-            this.name = name;
-            this.mimeType = mimeType;
-            this.description = description;
-            this.size = size;
+            this.Uri = uri;
+            this.Name = name;
+            this.Enabled = enabled;
+            this.MimeType = mimeType;
+            this.Description = description;
+            this.Size = size;
         }
     }
 }

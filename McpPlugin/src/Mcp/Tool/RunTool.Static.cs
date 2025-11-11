@@ -19,7 +19,7 @@ namespace com.IvanMurzak.McpPlugin
     /// Provides functionality to execute methods dynamically, supporting both static and instance methods.
     /// Allows for parameter passing by position or by name, with support for default parameter values.
     /// </summary>
-    public partial class RunTool : MethodWrapper, IRunTool
+    public partial class RunTool
     {
         /// <summary>
         /// Initializes the Command with the target static method information.
@@ -28,8 +28,8 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="logger">The logger for logging execution details (optional).</param>
         /// <param name="methodInfo">The MethodInfo of the static method to execute.</param>
         /// <param name="title">An optional title for the command.</param>
-        public static RunTool CreateFromStaticMethod(Reflector reflector, ILogger? logger, MethodInfo methodInfo, string? title = null)
-            => new RunTool(reflector, logger, methodInfo)
+        public static RunTool CreateFromStaticMethod(Reflector reflector, ILogger? logger, string name, MethodInfo methodInfo, string? title = null)
+            => new RunTool(reflector, logger, name, methodInfo)
             {
                 Title = title
             };
@@ -39,8 +39,8 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         /// <param name="targetInstance">The instance of the object containing the method.</param>
         /// <param name="methodInfo">The MethodInfo of the instance method to execute.</param>
-        public static RunTool CreateFromInstanceMethod(Reflector reflector, ILogger? logger, object targetInstance, MethodInfo methodInfo, string? title = null)
-            => new RunTool(reflector, logger, targetInstance, methodInfo)
+        public static RunTool CreateFromInstanceMethod(Reflector reflector, ILogger? logger, string name, object targetInstance, MethodInfo methodInfo, string? title = null)
+            => new RunTool(reflector, logger, name, targetInstance, methodInfo)
             {
                 Title = title
             };
@@ -53,8 +53,8 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="classType">The type containing the method to execute.</param>
         /// <param name="methodInfo">The MethodInfo of the method to execute.</param>
         /// <param name="title">An optional title for the command.</param>
-        public static RunTool CreateFromClassMethod(Reflector reflector, ILogger? logger, Type classType, MethodInfo methodInfo, string? title = null)
-            => new RunTool(reflector, logger, classType, methodInfo)
+        public static RunTool CreateFromClassMethod(Reflector reflector, ILogger? logger, string name, Type classType, MethodInfo methodInfo, string? title = null)
+            => new RunTool(reflector, logger, name, classType, methodInfo)
             {
                 Title = title
             };

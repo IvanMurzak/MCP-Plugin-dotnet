@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,6 +31,8 @@ namespace com.IvanMurzak.McpPlugin
 
         public Reflector Reflector => _reflector;
         public Observable<Unit> OnPromptsUpdated => _onPromptsUpdated;
+
+        public IEnumerable<IRunPrompt> GetAllPrompts() => _prompts.Values.ToList();
 
         public McpPromptManager(ILogger<McpPromptManager> logger, Reflector reflector, PromptRunnerCollection prompts)
         {
@@ -131,13 +134,12 @@ namespace com.IvanMurzak.McpPlugin
                 var result = new ResponseListPrompts()
                 {
                     Prompts = _prompts.Values
-                        .Select(p => new ResponsePrompt()
-                        {
-                            Name = p.Name,
-                            Title = p.Title,
-                            Description = p.Description,
-                            Arguments = p.InputSchema.ToResponsePromptArguments()
-                        })
+                        .Select(p => new ResponsePrompt(
+                            name: p.Name,
+                            enabled: p.Enabled,
+                            title: p.Title,
+                            description: p.Description,
+                            arguments: p.InputSchema.ToResponsePromptArguments()))
                         .ToList()
                 };
                 _logger.LogDebug("{0} Prompts listed.", result.Prompts.Count);

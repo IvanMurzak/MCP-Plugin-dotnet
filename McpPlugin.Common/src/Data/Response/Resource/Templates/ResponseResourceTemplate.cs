@@ -11,18 +11,20 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
 {
     public class ResponseResourceTemplate
     {
-        public string uriTemplate { get; set; } = string.Empty;
-        public string name { get; set; } = string.Empty;
-        public string? mimeType { get; set; }
-        public string? description { get; set; }
+        public string UriTemplate { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public bool Enabled { get; set; } = true; // custom property
+        public string? MimeType { get; set; }
+        public string? Description { get; set; }
 
         public ResponseResourceTemplate() { }
-        public ResponseResourceTemplate(string uri, string name, string? mimeType = null, string? description = null)
+        public ResponseResourceTemplate(string uri, string name, bool enabled = true, string? mimeType = null, string? description = null)
         {
-            this.uriTemplate = uri;
-            this.name = name;
-            this.mimeType = mimeType;
-            this.description = description;
+            this.UriTemplate = uri;
+            this.Name = name;
+            this.Enabled = enabled;
+            this.MimeType = mimeType;
+            this.Description = description;
         }
     }
 }

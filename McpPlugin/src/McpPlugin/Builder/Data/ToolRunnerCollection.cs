@@ -31,9 +31,9 @@ namespace com.IvanMurzak.McpPlugin
         {
             foreach (var method in methods.Where(resource => !string.IsNullOrEmpty(resource.Attribute?.Name)))
             {
-                this[method.Attribute.Name!] = method.MethodInfo.IsStatic
-                    ? RunTool.CreateFromStaticMethod(reflector, _logger, method.MethodInfo, method.Attribute.Title) as IRunTool
-                    : RunTool.CreateFromClassMethod(reflector, _logger, method.ClassType, method.MethodInfo, method.Attribute.Title);
+                this[method.Attribute.Name] = method.MethodInfo.IsStatic
+                    ? RunTool.CreateFromStaticMethod(reflector, _logger, method.Attribute.Name, method.MethodInfo, method.Attribute.Title) as IRunTool
+                    : RunTool.CreateFromClassMethod(reflector, _logger, method.Attribute.Name, method.ClassType, method.MethodInfo, method.Attribute.Title);
             }
             return this;
         }
