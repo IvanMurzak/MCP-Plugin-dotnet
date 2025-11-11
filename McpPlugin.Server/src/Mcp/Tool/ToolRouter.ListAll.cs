@@ -11,7 +11,6 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.ReflectorNet;
@@ -47,7 +46,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 return new ListToolsResult().SetError(response.Message ?? "[Error] Got an error during reading resources");
 
             if (response.Value == null)
-                return new ListToolsResult().SetError("[Error] Resource value is null");
+                return new ListToolsResult().SetError($"[Error] '{nameof(response)}.Value' is null");
 
             var result = new ListToolsResult()
             {

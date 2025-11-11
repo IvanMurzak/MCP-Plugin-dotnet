@@ -161,7 +161,7 @@ namespace com.IvanMurzak.McpPlugin
                     {
                         var response = new ResponseListTool()
                         {
-                            Name = kvp.Key,
+                            Name = kvp.Value.Name,
                             Enabled = kvp.Value.Enabled,
                             Title = kvp.Value.Title,
                             Description = kvp.Value.Description,

@@ -58,7 +58,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             if (_logger.IsTraceEnabled)
             {
-                _logger.Trace("Converting IResponseListTool to Tool: {Name}", response.Name);
+                _logger.Trace("Converting {type} to Tool: {Name}", nameof(ResponseListTool), response.Name);
                 _logger.Trace(JsonSerializer.Serialize(response));
             }
             return new Tool()

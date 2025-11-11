@@ -75,6 +75,7 @@ namespace com.IvanMurzak.McpPlugin
                 .AddTo(_disposables);
 
             McpManager.ToolManager?.OnToolsUpdated
+                .ThrottleFirst(TimeSpan.FromMilliseconds(100))
                 .Subscribe(async _ =>
                 {
                     _logger.LogDebug("{method}, tools updated event received.",
@@ -95,6 +96,7 @@ namespace com.IvanMurzak.McpPlugin
                 .AddTo(_disposables);
 
             McpManager.PromptManager?.OnPromptsUpdated
+                .ThrottleFirst(TimeSpan.FromMilliseconds(100))
                 .Subscribe(async _ =>
                 {
                     _logger.LogDebug("{method}, prompts updated event received.",
@@ -115,6 +117,7 @@ namespace com.IvanMurzak.McpPlugin
                 .AddTo(_disposables);
 
             McpManager.ResourceManager?.OnResourcesUpdated
+                .ThrottleFirst(TimeSpan.FromMilliseconds(100))
                 .Subscribe(async _ =>
                 {
                     _logger.LogDebug("{method}, resources updated event received.",

@@ -28,7 +28,8 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         }
 
         public static ResponseData<ResponseListTool[]> Pack(this ResponseListTool[] response, string requestId, string? message = null)
-            => ResponseData<ResponseListTool[]>.Success(requestId, message ?? "List Tool execution completed.")
+            => ResponseData<ResponseListTool[]>
+                .Success(requestId, message ?? "List Tool execution completed.")
                 .SetData(response);
     }
 }
