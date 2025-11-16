@@ -59,6 +59,21 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
                     }
                 });
 
+
+        public static ResponseCallTool ErrorStructured(JsonNode? structuredContent, string? message)
+            => new ResponseCallTool(
+                structuredContent: structuredContent,
+                status: ResponseStatus.Error,
+                content: new List<ContentBlock>
+                {
+                    new ContentBlock()
+                    {
+                        Type = "text",
+                        Text = message, // needed for MCP backward compatibility: https://modelcontextprotocol.io/specification/2025-06-18/server/tools#structured-content
+                        MimeType = Consts.MimeType.TextJson
+                    }
+                });
+
         public static ResponseCallTool Processing(string? message = null)
             => new ResponseCallTool(
                 status: ResponseStatus.Processing,
