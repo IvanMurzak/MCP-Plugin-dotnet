@@ -50,7 +50,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (toolRunner == null)
                 return new CallToolResult().SetError($"[Error] '{nameof(toolRunner)}' is null");
 
-            var requestData = new RequestCallTool(request.Params.Name, request.Params.Arguments);
+            var requestData = new RequestCallTool(request.Params.Name, (IReadOnlyDictionary<string, JsonElement>)request.Params.Arguments);
             if (logger.IsTraceEnabled)
                 logger.Trace("Call remote tool '{0}':\n{1}", request.Params.Name, requestData.ToPrettyJson());
 

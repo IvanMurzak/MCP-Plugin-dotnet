@@ -16,7 +16,6 @@ namespace com.IvanMurzak.McpPlugin.Server
     {
         public static ContentBlock ToTextContent(this Common.Model.ContentBlock response) => new TextContentBlock()
         {
-            Type = response.Type,
             Text = response.Text ?? string.Empty
         };
     }

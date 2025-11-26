@@ -32,7 +32,6 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             var content = new TextContentBlock()
             {
-                Type = "text",
                 Text = message
             };
 

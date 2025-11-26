@@ -52,7 +52,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (promptRunner == null)
                 return new GetPromptResult().SetError($"[Error] '{nameof(promptRunner)}' is null");
 
-            var requestData = new RequestGetPrompt(request.Params.Name, request.Params.Arguments);
+            var requestData = new RequestGetPrompt(request.Params.Name, (IReadOnlyDictionary<string, JsonElement>)request.Params.Arguments);
             if (logger.IsTraceEnabled)
                 logger.Trace("Get remote prompt '{0}':\n{1}", request.Params.Name, requestData.ToPrettyJson());
 

@@ -25,7 +25,7 @@ namespace com.IvanMurzak.McpPlugin.Server
     public class McpServerService : IHostedService
     {
         readonly ILogger<McpServerService> _logger;
-        readonly IMcpServer _mcpServer;
+        readonly McpSession _mcpSession;
         readonly IClientToolHub _toolRunner;
         readonly IClientPromptHub _promptRunner;
         readonly IClientResourceHub _resourceRunner;
@@ -34,7 +34,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly HubEventResourcesChange _eventAppResourcesChange;
         readonly CompositeDisposable _disposables = new();
 
-        public IMcpServer McpServer => _mcpServer;
+        public McpSession McpSession => _mcpSession;
         public IClientToolHub ToolRunner => _toolRunner;
         public IClientPromptHub PromptRunner => _promptRunner;
         public IClientResourceHub ResourceRunner => _resourceRunner;
@@ -43,7 +43,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public McpServerService(
             ILogger<McpServerService> logger,
-            IMcpServer mcpServer,
+            McpSession mcpSession,
             IClientToolHub toolRunner,
             IClientPromptHub promptRunner,
             IClientResourceHub resourceRunner,
@@ -53,7 +53,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("{0} Ctor.", GetType().GetTypeShortName());
-            _mcpServer = mcpServer ?? throw new ArgumentNullException(nameof(mcpServer));
+            _mcpSession = mcpSession ?? throw new ArgumentNullException(nameof(mcpSession));
             _toolRunner = toolRunner ?? throw new ArgumentNullException(nameof(toolRunner));
             _promptRunner = promptRunner ?? throw new ArgumentNullException(nameof(promptRunner));
             _resourceRunner = resourceRunner ?? throw new ArgumentNullException(nameof(resourceRunner));
@@ -112,7 +112,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnListToolUpdated));
             try
             {
-                await McpServer.SendNotificationAsync(NotificationMethods.ToolListChangedNotification, cancellationToken);
+                await McpSession.SendNotificationAsync(NotificationMethods.ToolListChangedNotification, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -124,7 +124,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnResourceUpdated));
             try
             {
-                await McpServer.SendNotificationAsync(NotificationMethods.ResourceUpdatedNotification, cancellationToken);
+                await McpSession.SendNotificationAsync(NotificationMethods.ResourceUpdatedNotification, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -136,7 +136,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnListPromptsUpdated));
             try
             {
-                await McpServer.SendNotificationAsync(NotificationMethods.PromptListChangedNotification, cancellationToken);
+                await McpSession.SendNotificationAsync(NotificationMethods.PromptListChangedNotification, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -148,7 +148,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnListResourcesUpdated));
             try
             {
-                await McpServer.SendNotificationAsync(NotificationMethods.ResourceListChangedNotification, cancellationToken);
+                await McpSession.SendNotificationAsync(NotificationMethods.ResourceListChangedNotification, cancellationToken);
             }
             catch (Exception ex)
             {

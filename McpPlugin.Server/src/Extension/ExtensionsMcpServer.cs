@@ -31,21 +31,21 @@ namespace com.IvanMurzak.McpPlugin.Server
                     options.Capabilities ??= new();
                     options.Capabilities.Tools ??= new();
                     options.Capabilities.Tools.ListChanged = true;
-                    options.Capabilities.Tools.CallToolHandler = ToolRouter.Call;
-                    options.Capabilities.Tools.ListToolsHandler = ToolRouter.ListAll;
+                    options.Handlers.CallToolHandler = ToolRouter.Call;
+                    options.Handlers.ListToolsHandler = ToolRouter.ListAll;
 
                     // Setup MCP resources
                     // options.Capabilities.Resources ??= new();
                     // options.Capabilities.Resources.ListChanged = true;
-                    // options.Capabilities.Resources.ReadResourceHandler = ResourceRouter.Read;
-                    // options.Capabilities.Resources.ListResourcesHandler = ResourceRouter.List;
-                    // options.Capabilities.Resources.ListResourceTemplatesHandler = ResourceRouter.ListTemplates;
+                    // options.Handlers.ReadResourceHandler = ResourceRouter.Read;
+                    // options.Handlers.ListResourcesHandler = ResourceRouter.List;
+                    // options.Handlers.ListResourceTemplatesHandler = ResourceRouter.ListTemplates;
 
                     // Setup MCP prompts
                     options.Capabilities.Prompts ??= new();
                     options.Capabilities.Prompts.ListChanged = true;
-                    options.Capabilities.Prompts.GetPromptHandler = PromptRouter.Get;
-                    options.Capabilities.Prompts.ListPromptsHandler = PromptRouter.List;
+                    options.Handlers.GetPromptHandler = PromptRouter.Get;
+                    options.Handlers.ListPromptsHandler = PromptRouter.List;
                 });
 
             if (mcpClientTransport == Consts.MCP.Server.TransportMethod.stdio)
