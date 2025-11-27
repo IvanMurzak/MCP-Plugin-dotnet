@@ -25,7 +25,8 @@ namespace com.IvanMurzak.McpPlugin.Server
     public class McpServerService : IHostedService
     {
         readonly ILogger<McpServerService> _logger;
-        readonly McpSession _mcpSession;
+        readonly McpServer? _mcpServer;
+        readonly McpSession? _mcpSession; // Should be replaced with McpSession class, but for now it doesn't work in csharp-sdk.0.4.1.preview-1
         readonly IClientToolHub _toolRunner;
         readonly IClientPromptHub _promptRunner;
         readonly IClientResourceHub _resourceRunner;
@@ -34,7 +35,10 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly HubEventResourcesChange _eventAppResourcesChange;
         readonly CompositeDisposable _disposables = new();
 
-        public McpSession McpSession => _mcpSession;
+#pragma warning disable CS0618 // csharp-sdk.0.4.1.preview-1 has IMcpEndpoint marked as obsolete but not yet provided replacement
+        public IMcpEndpoint McpSessionOrServer => _mcpSession ?? _mcpServer ?? throw new InvalidOperationException($"{nameof(_mcpSession)} and {nameof(_mcpServer)} are both null.");
+#pragma warning restore CS0618
+
         public IClientToolHub ToolRunner => _toolRunner;
         public IClientPromptHub PromptRunner => _promptRunner;
         public IClientResourceHub ResourceRunner => _resourceRunner;
@@ -43,17 +47,23 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public McpServerService(
             ILogger<McpServerService> logger,
-            McpSession mcpSession,
             IClientToolHub toolRunner,
             IClientPromptHub promptRunner,
             IClientResourceHub resourceRunner,
             HubEventToolsChange eventAppToolsChange,
             HubEventPromptsChange eventAppPromptsChange,
-            HubEventResourcesChange eventAppResourcesChange)
+            HubEventResourcesChange eventAppResourcesChange,
+            McpServer? mcpServer = null,
+            McpSession? mcpSession = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("{0} Ctor.", GetType().GetTypeShortName());
-            _mcpSession = mcpSession ?? throw new ArgumentNullException(nameof(mcpSession));
+            _mcpServer = mcpServer;
+            _mcpSession = mcpSession;
+
+            if (_mcpSession == null && _mcpServer == null)
+                throw new ArgumentNullException($"{nameof(mcpSession)} and {nameof(mcpServer)}");
+
             _toolRunner = toolRunner ?? throw new ArgumentNullException(nameof(toolRunner));
             _promptRunner = promptRunner ?? throw new ArgumentNullException(nameof(promptRunner));
             _resourceRunner = resourceRunner ?? throw new ArgumentNullException(nameof(resourceRunner));
@@ -112,7 +122,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnListToolUpdated));
             try
             {
-                await McpSession.SendNotificationAsync(NotificationMethods.ToolListChangedNotification, cancellationToken);
+#pragma warning disable CS0618 // Type or member is obsolete
+                await McpSessionOrServer.SendNotificationAsync(NotificationMethods.ToolListChangedNotification, cancellationToken);
+#pragma warning restore CS0618 // Type or member is obsolete
             }
             catch (Exception ex)
             {
@@ -124,7 +136,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnResourceUpdated));
             try
             {
-                await McpSession.SendNotificationAsync(NotificationMethods.ResourceUpdatedNotification, cancellationToken);
+#pragma warning disable CS0618 // Type or member is obsolete
+                await McpSessionOrServer.SendNotificationAsync(NotificationMethods.ResourceUpdatedNotification, cancellationToken);
+#pragma warning restore CS0618 // Type or member is obsolete
             }
             catch (Exception ex)
             {
@@ -136,7 +150,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnListPromptsUpdated));
             try
             {
-                await McpSession.SendNotificationAsync(NotificationMethods.PromptListChangedNotification, cancellationToken);
+#pragma warning disable CS0618 // Type or member is obsolete
+                await McpSessionOrServer.SendNotificationAsync(NotificationMethods.PromptListChangedNotification, cancellationToken);
+#pragma warning restore CS0618 // Type or member is obsolete
             }
             catch (Exception ex)
             {
@@ -148,7 +164,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnListResourcesUpdated));
             try
             {
-                await McpSession.SendNotificationAsync(NotificationMethods.ResourceListChangedNotification, cancellationToken);
+#pragma warning disable CS0618 // Type or member is obsolete
+                await McpSessionOrServer.SendNotificationAsync(NotificationMethods.ResourceListChangedNotification, cancellationToken);
+#pragma warning restore CS0618 // Type or member is obsolete
             }
             catch (Exception ex)
             {

@@ -24,6 +24,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             Consts.MCP.Server.TransportMethod mcpClientTransport,
             Logger? logger = null)
         {
+            // Setup MCP Server -------------------------------------------------------------
             var mcpServerBuilder = services
                 .AddMcpServer(options =>
                 {
@@ -73,13 +74,14 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                             var service = new McpServerService(
                                 server.Services!.GetRequiredService<ILogger<McpServerService>>(),
-                                server,
                                 server.Services!.GetRequiredService<IClientToolHub>(),
                                 server.Services!.GetRequiredService<IClientPromptHub>(),
                                 server.Services!.GetRequiredService<IClientResourceHub>(),
                                 server.Services!.GetRequiredService<HubEventToolsChange>(),
                                 server.Services!.GetRequiredService<HubEventPromptsChange>(),
-                                server.Services!.GetRequiredService<HubEventResourcesChange>()
+                                server.Services!.GetRequiredService<HubEventResourcesChange>(),
+                                mcpServer: server,
+                                mcpSession: null
                             );
 
                             try

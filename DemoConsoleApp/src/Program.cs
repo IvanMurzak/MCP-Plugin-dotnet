@@ -1,5 +1,6 @@
 ﻿
 using com.IvanMurzak.McpPlugin;
+using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.Logging;
 using R3;
@@ -7,8 +8,8 @@ using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
 var version = new Version()
 {
-    Api = "1.0.0",
-    Plugin = "1.0.0",
+    Api = Consts.ApiVersion,
+    Plugin = Consts.PluginVersion,
     Environment = "DemoConsoleApp v1.0.0"
 };
 var reflector = new Reflector();
