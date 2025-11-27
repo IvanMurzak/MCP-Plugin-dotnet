@@ -26,7 +26,7 @@ namespace com.IvanMurzak.McpPlugin.Server
     {
         readonly ILogger<McpServerService> _logger;
         readonly McpServer? _mcpServer;
-        readonly McpSession? _mcpSession; // Should be replaced with McpSession class, but for now it doesn't work in csharp-sdk.0.4.1.preview-1
+        readonly McpSession? _mcpSession; // Should be replaced with McpSession class, but for now it doesn't work in csharp-sdk.0.4.1-preview.1
         readonly IClientToolHub _toolRunner;
         readonly IClientPromptHub _promptRunner;
         readonly IClientResourceHub _resourceRunner;
@@ -62,7 +62,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _mcpSession = mcpSession;
 
             if (_mcpSession == null && _mcpServer == null)
-                throw new ArgumentNullException($"{nameof(mcpSession)} and {nameof(mcpServer)}");
+                throw new InvalidOperationException($"{nameof(mcpSession)} and {nameof(mcpServer)} are both null.");
 
             _toolRunner = toolRunner ?? throw new ArgumentNullException(nameof(toolRunner));
             _promptRunner = promptRunner ?? throw new ArgumentNullException(nameof(promptRunner));
