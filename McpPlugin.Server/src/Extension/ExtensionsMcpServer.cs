@@ -24,6 +24,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             Consts.MCP.Server.TransportMethod mcpClientTransport,
             Logger? logger = null)
         {
+            // Setup MCP Server -------------------------------------------------------------
             var mcpServerBuilder = services
                 .AddMcpServer(options =>
                 {
@@ -31,21 +32,21 @@ namespace com.IvanMurzak.McpPlugin.Server
                     options.Capabilities ??= new();
                     options.Capabilities.Tools ??= new();
                     options.Capabilities.Tools.ListChanged = true;
-                    options.Capabilities.Tools.CallToolHandler = ToolRouter.Call;
-                    options.Capabilities.Tools.ListToolsHandler = ToolRouter.ListAll;
+                    options.Handlers.CallToolHandler = ToolRouter.Call;
+                    options.Handlers.ListToolsHandler = ToolRouter.ListAll;
 
                     // Setup MCP resources
                     // options.Capabilities.Resources ??= new();
                     // options.Capabilities.Resources.ListChanged = true;
-                    // options.Capabilities.Resources.ReadResourceHandler = ResourceRouter.Read;
-                    // options.Capabilities.Resources.ListResourcesHandler = ResourceRouter.List;
-                    // options.Capabilities.Resources.ListResourceTemplatesHandler = ResourceRouter.ListTemplates;
+                    // options.Handlers.ReadResourceHandler = ResourceRouter.Read;
+                    // options.Handlers.ListResourcesHandler = ResourceRouter.List;
+                    // options.Handlers.ListResourceTemplatesHandler = ResourceRouter.ListTemplates;
 
                     // Setup MCP prompts
                     options.Capabilities.Prompts ??= new();
                     options.Capabilities.Prompts.ListChanged = true;
-                    options.Capabilities.Prompts.GetPromptHandler = PromptRouter.Get;
-                    options.Capabilities.Prompts.ListPromptsHandler = PromptRouter.List;
+                    options.Handlers.GetPromptHandler = PromptRouter.Get;
+                    options.Handlers.ListPromptsHandler = PromptRouter.List;
                 });
 
             if (mcpClientTransport == Consts.MCP.Server.TransportMethod.stdio)
@@ -73,13 +74,14 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                             var service = new McpServerService(
                                 server.Services!.GetRequiredService<ILogger<McpServerService>>(),
-                                server,
                                 server.Services!.GetRequiredService<IClientToolHub>(),
                                 server.Services!.GetRequiredService<IClientPromptHub>(),
                                 server.Services!.GetRequiredService<IClientResourceHub>(),
                                 server.Services!.GetRequiredService<HubEventToolsChange>(),
                                 server.Services!.GetRequiredService<HubEventPromptsChange>(),
-                                server.Services!.GetRequiredService<HubEventResourcesChange>()
+                                server.Services!.GetRequiredService<HubEventResourcesChange>(),
+                                mcpServer: server,
+                                mcpSession: null
                             );
 
                             try

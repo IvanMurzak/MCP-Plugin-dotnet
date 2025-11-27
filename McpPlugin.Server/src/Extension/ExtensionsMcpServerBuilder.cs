@@ -8,22 +8,49 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+using System;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
     public static class ExtensionsMcpServerBuilder
     {
-        public static IMcpServerBuilder WithMcpPluginServer(this IMcpServerBuilder mcpServerBuilder, DataArguments dataArguments, Version version)
+        public static IMcpServerBuilder WithMcpPluginServer(
+            this IMcpServerBuilder mcpServerBuilder,
+            DataArguments dataArguments,
+            Action<Microsoft.AspNetCore.SignalR.HubOptions>? signalRConfigure = null,
+            Common.Version? version = null)
         {
             if (mcpServerBuilder == null)
-                throw new System.ArgumentNullException(nameof(mcpServerBuilder));
+                throw new ArgumentNullException(nameof(mcpServerBuilder));
 
             if (dataArguments == null)
-                throw new System.ArgumentNullException(nameof(dataArguments));
+                throw new ArgumentNullException(nameof(dataArguments));
+
+            var reflector = new Reflector();
+
+            signalRConfigure ??= configure =>
+            {
+                configure.EnableDetailedErrors = false;
+                configure.MaximumReceiveMessageSize = 1024 * 1024 * 256; // 256 MB
+                configure.ClientTimeoutInterval = TimeSpan.FromMinutes(5);
+                configure.KeepAliveInterval = TimeSpan.FromSeconds(30);
+                configure.HandshakeTimeout = TimeSpan.FromMinutes(2);
+            };
+
+            version ??= new Common.Version
+            {
+                Api = Consts.ApiVersion,
+                Plugin = Consts.PluginVersion
+            };
+
+            mcpServerBuilder.Services
+                .AddSignalR(signalRConfigure)
+                .AddJsonProtocol(options => SignalR_JsonConfiguration.ConfigureJsonSerializer(reflector, options));
 
             mcpServerBuilder.Services.AddSingleton<IDataArguments>(dataArguments);
             mcpServerBuilder.Services.AddSingleton(version);
