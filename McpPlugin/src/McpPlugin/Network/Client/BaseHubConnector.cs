@@ -172,10 +172,18 @@ namespace com.IvanMurzak.McpPlugin
             if (hubConnection == null)
                 return; // not connected
 
-            // Perform version handshake first
-
             var serverEventsCts = _serverEventsDisposables.ToCancellationTokenSource();
             var cancellationToken = serverEventsCts.Token;
+
+            // Subscribe to server events BEFORE handshake to avoid race condition.
+            // The server may send RunListTool/RunListPrompts immediately after handshake,
+            // so handlers must be registered before we respond to the handshake.
+            _logger.LogTrace("{method} Subscribing to server events (before handshake).",
+                nameof(OnHubConnectionChanged));
+
+            SubscribeOnServerEvents(hubConnection, _serverEventsDisposables);
+
+            // Perform version handshake after handlers are registered
             var handshakeResponse = await PerformVersionHandshake(
                 request: new RequestVersionHandshake
                 {
@@ -194,11 +202,6 @@ namespace com.IvanMurzak.McpPlugin
                 LogVersionMismatchError(handshakeResponse);
                 // Still proceed with tool notification for now, but user will see the error
             }
-
-            _logger.LogTrace("{method} Subscribing to server events.",
-                nameof(OnHubConnectionChanged));
-
-            SubscribeOnServerEvents(hubConnection, _serverEventsDisposables);
         }
 
         private void LogVersionMismatchError(VersionHandshakeResponse handshakeResponse)
