@@ -16,6 +16,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Utils;
 using com.IvanMurzak.ReflectorNet;
 using com.IvanMurzak.ReflectorNet.Utils;
 using Microsoft.Extensions.Logging;
@@ -35,19 +36,28 @@ namespace com.IvanMurzak.McpPlugin
 
         protected string? RequestID { get; set; }
 
+        /// <summary>
+        /// Cached lookup dictionary for case-insensitive parameter name matching.
+        /// Built once during construction for performance.
+        /// </summary>
+        private readonly Dictionary<string, string>? _paramNameLookup;
+
         public RunTool(Reflector reflector, ILogger? logger, string name, MethodInfo methodInfo) : base(reflector, logger, methodInfo)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
+            _paramNameLookup = ParameterNameUtils.BuildParameterNameLookup(methodInfo?.GetParameters());
         }
 
         public RunTool(Reflector reflector, ILogger? logger, string name, object targetInstance, MethodInfo methodInfo) : base(reflector, logger, targetInstance, methodInfo)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
+            _paramNameLookup = ParameterNameUtils.BuildParameterNameLookup(methodInfo?.GetParameters());
         }
 
         public RunTool(Reflector reflector, ILogger? logger, string name, Type classType, MethodInfo methodInfo) : base(reflector, logger, classType, methodInfo)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
+            _paramNameLookup = ParameterNameUtils.BuildParameterNameLookup(methodInfo?.GetParameters());
         }
 
         protected override object? GetParameterValue(Reflector reflector, ParameterInfo paramInfo, object? value)
@@ -254,6 +264,7 @@ namespace com.IvanMurzak.McpPlugin
 
         /// <summary>
         /// Converts named parameters from JsonElement dictionary to object dictionary with improved error handling.
+        /// Also normalizes parameter names using case-insensitive matching when there's no conflict.
         /// </summary>
         /// <param name="namedParameters">The named parameters to convert.</param>
         /// <returns>A dictionary with object values.</returns>
@@ -264,9 +275,28 @@ namespace com.IvanMurzak.McpPlugin
 
             try
             {
-                return namedParameters.ToDictionary(
-                    keySelector: kvp => kvp.Key,
-                    elementSelector: kvp => (object?)kvp.Value);
+                var result = new Dictionary<string, object?>(StringComparer.Ordinal);
+
+                foreach (var kvp in namedParameters)
+                {
+                    var normalizedKey = ParameterNameUtils.NormalizeParameterName(kvp.Key, _paramNameLookup);
+
+                    // Check for duplicate keys after normalization (e.g., LLM provided both "value" and "VALUE")
+                    if (result.ContainsKey(normalizedKey))
+                    {
+                        throw new ArgumentException(
+                            $"Duplicate parameter detected after case-insensitive normalization: '{kvp.Key}' normalizes to '{normalizedKey}' which already exists. " +
+                            $"Please provide each parameter only once.");
+                    }
+
+                    result[normalizedKey] = kvp.Value;
+                }
+
+                return result;
+            }
+            catch (ArgumentException)
+            {
+                throw; // Re-throw ArgumentException as-is
             }
             catch (Exception ex)
             {

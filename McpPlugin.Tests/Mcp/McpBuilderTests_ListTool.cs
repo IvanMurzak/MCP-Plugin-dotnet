@@ -25,6 +25,7 @@ using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
 namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 {
+    [Collection("McpPlugin")]
     public class McpBuilderTests_ListTool
     {
         private readonly ITestOutputHelper _output;

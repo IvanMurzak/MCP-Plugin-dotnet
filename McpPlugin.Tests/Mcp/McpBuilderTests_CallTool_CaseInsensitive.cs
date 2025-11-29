@@ -1,0 +1,735 @@
+/*
+┌────────────────────────────────────────────────────────────────────────┐
+│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
+│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
+│  Copyright (c) 2025 Ivan Murzak                                        │
+│  Licensed under the Apache License, Version 2.0.                       │
+│  See the LICENSE file in the project root for more information.        │
+└────────────────────────────────────────────────────────────────────────┘
+*/
+using System;
+using System.Collections.Generic;
+using System.Text.Json;
+using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Tests.Data.Other;
+using com.IvanMurzak.McpPlugin.Tests.Infrastructure;
+using com.IvanMurzak.McpPlugin.Utils;
+using com.IvanMurzak.ReflectorNet;
+using FluentAssertions;
+using Xunit;
+using Xunit.Abstractions;
+using Version = com.IvanMurzak.McpPlugin.Common.Version;
+
+namespace com.IvanMurzak.McpPlugin.Tests.Mcp
+{
+    #region Test Data Classes for Case-Insensitive Tests
+
+    /// <summary>
+    /// Method with no arguments for testing empty parameter case.
+    /// </summary>
+    public class Method_NoArgs_StringReturn
+    {
+        public string GetHello() => "Hello";
+    }
+
+    /// <summary>
+    /// Method with parameter name containing underscore.
+    /// </summary>
+    public class Method_UnderscoreParam
+    {
+        public string Format(string user_name) => $"User: {user_name}";
+    }
+
+    /// <summary>
+    /// Method with parameter name containing numbers.
+    /// </summary>
+    public class Method_NumberInParam
+    {
+        public int AddValue1(int value1) => value1 + 1;
+    }
+
+    /// <summary>
+    /// Method with multiple parameters of same type.
+    /// </summary>
+    public class Method_ThreeParams
+    {
+        public string Combine(string first, string second, string third) => $"{first}-{second}-{third}";
+    }
+
+    /// <summary>
+    /// Method with PascalCase parameter name (as sometimes used in .NET).
+    /// </summary>
+    public class Method_PascalCaseParam
+    {
+        public string Process(string InputValue) => InputValue.ToUpper();
+    }
+
+    /// <summary>
+    /// Method with mixed parameter naming styles.
+    /// </summary>
+    public class Method_MixedParamStyles
+    {
+        public string Mix(string camelCase, string PascalCase, string snake_case)
+            => $"{camelCase}|{PascalCase}|{snake_case}";
+    }
+
+    /// <summary>
+    /// Method with optional parameters.
+    /// </summary>
+    public class Method_OptionalParams
+    {
+        public int Calculate(int required, int optional = 10) => required + optional;
+    }
+
+    /// <summary>
+    /// Method with parameters that differ only by case (conflict scenario).
+    /// Note: This is unusual in C# but demonstrates conflict detection.
+    /// </summary>
+    public class Method_CaseConflictParams
+    {
+        // C# allows this at runtime through reflection, even though the compiler prevents it in source
+        // We test this scenario to ensure conflict detection works correctly
+        public string Process(string value) => value.ToUpper();
+    }
+
+    /// <summary>
+    /// Method with three parameters that differ only by case.
+    /// This tests the scenario where LLM must provide exact parameter names.
+    /// </summary>
+    public class Method_TheSameArguments
+    {
+        public static int TheSameArguments(int value, int vAlue, int vaLue) => value + vAlue + vaLue;
+    }
+
+    #endregion
+
+    /// <summary>
+    /// Tests for case-insensitive parameter name matching in MCP tool calls.
+    /// Validates that LLM-provided input arguments with different casing are correctly matched
+    /// to method parameters when there is no naming conflict.
+    /// </summary>
+    [Collection("McpPlugin")]
+    public class McpBuilderTests_CallTool_CaseInsensitive
+    {
+        private readonly ITestOutputHelper _output;
+        private readonly XunitTestOutputLoggerProvider _loggerProvider;
+        private readonly Version _version = new Version();
+
+        public McpBuilderTests_CallTool_CaseInsensitive(ITestOutputHelper output)
+        {
+            _output = output;
+            _loggerProvider = new XunitTestOutputLoggerProvider(output);
+        }
+
+        private IMcpPlugin BuildMcpPluginWithTool(Type classType, string methodName)
+        {
+            var method = classType.GetMethod(methodName)!;
+            var toolName = classType.GetTypeShortName();
+            var toolTitle = $"Title of {toolName}";
+
+            var reflector = new Reflector();
+            var mcpPluginBuilder = new McpPluginBuilder(_version, _loggerProvider)
+                .AddLogging(b => b.AddXunitTestOutput(_output))
+                .AddMcpManager();
+
+            mcpPluginBuilder.WithTool(
+                name: toolName,
+                title: toolTitle,
+                classType: classType,
+                method: method);
+
+            return mcpPluginBuilder.Build(reflector)!;
+        }
+
+        private static Dictionary<string, JsonElement> CreateArguments(params (string name, object value)[] args)
+        {
+            var dict = new Dictionary<string, JsonElement>();
+            foreach (var (name, value) in args)
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(value);
+                dict[name] = JsonDocument.Parse(json).RootElement.Clone();
+            }
+            return dict;
+        }
+
+        #region Basic Case-Insensitive Matching Tests
+
+        [Fact]
+        public async Task CallTool_WithExactCaseParameter_ShouldSucceed()
+        {
+            // Arrange
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_OneArg_IntReturn), nameof(Method_OneArg_IntReturn.AddOne));
+            var toolName = typeof(Method_OneArg_IntReturn).GetTypeShortName();
+
+            // Act - using exact case "value" (method parameter is "value")
+            var request = new RequestCallTool(toolName, CreateArguments(("value", 5)));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(6);
+        }
+
+        [Fact]
+        public async Task CallTool_WithUpperCaseParameter_ShouldSucceed()
+        {
+            // Arrange
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_OneArg_IntReturn), nameof(Method_OneArg_IntReturn.AddOne));
+            var toolName = typeof(Method_OneArg_IntReturn).GetTypeShortName();
+
+            // Act - using uppercase "VALUE" (method parameter is "value")
+            var request = new RequestCallTool(toolName, CreateArguments(("VALUE", 10)));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(11);
+        }
+
+        [Fact]
+        public async Task CallTool_WithPascalCaseParameter_ShouldSucceed()
+        {
+            // Arrange
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_OneArg_IntReturn), nameof(Method_OneArg_IntReturn.AddOne));
+            var toolName = typeof(Method_OneArg_IntReturn).GetTypeShortName();
+
+            // Act - using PascalCase "Value" (method parameter is "value")
+            var request = new RequestCallTool(toolName, CreateArguments(("Value", 20)));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(21);
+        }
+
+        [Fact]
+        public async Task CallTool_WithMixedCaseParameters_ShouldSucceed()
+        {
+            // Arrange
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_TwoArgs_StringReturn), nameof(Method_TwoArgs_StringReturn.Concat));
+            var toolName = typeof(Method_TwoArgs_StringReturn).GetTypeShortName();
+
+            // Act - using mixed case "LEFT" and "Right" (method parameters are "left" and "right")
+            var request = new RequestCallTool(toolName, CreateArguments(("LEFT", "Hello"), ("Right", "World")));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("HelloWorld");
+        }
+
+        [Fact]
+        public async Task CallTool_WithRandomCaseParameter_ShouldSucceed()
+        {
+            // Arrange
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_OneArg_IntReturn), nameof(Method_OneArg_IntReturn.AddOne));
+            var toolName = typeof(Method_OneArg_IntReturn).GetTypeShortName();
+
+            // Act - using random case "vALUE" (method parameter is "value")
+            var request = new RequestCallTool(toolName, CreateArguments(("vALUE", 30)));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(31);
+        }
+
+        #endregion
+
+        #region Edge Cases Tests
+
+        [Fact]
+        public async Task CallTool_WithNoParameters_ShouldSucceed()
+        {
+            // Arrange - Method takes no parameters
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_NoArgs_StringReturn), nameof(Method_NoArgs_StringReturn.GetHello));
+            var toolName = typeof(Method_NoArgs_StringReturn).GetTypeShortName();
+
+            // Act - Empty arguments
+            var request = new RequestCallTool(toolName, CreateArguments());
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("Hello");
+        }
+
+        [Fact]
+        public async Task CallTool_WithUnknownParameter_ShouldStillWork()
+        {
+            // Arrange - The unknown parameter should be passed through as-is
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_OneArg_IntReturn), nameof(Method_OneArg_IntReturn.AddOne));
+            var toolName = typeof(Method_OneArg_IntReturn).GetTypeShortName();
+
+            // Act - using "value" (correct) plus an unknown parameter "unknown"
+            var request = new RequestCallTool(toolName, CreateArguments(("value", 40), ("unknown", 99)));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - Should succeed (unknown parameters are typically ignored)
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(41);
+        }
+
+        [Fact]
+        public async Task CallTool_WithUnderscoreParameterName_CaseInsensitive_ShouldSucceed()
+        {
+            // Arrange - Parameter name contains underscore: "user_name"
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_UnderscoreParam), nameof(Method_UnderscoreParam.Format));
+            var toolName = typeof(Method_UnderscoreParam).GetTypeShortName();
+
+            // Act - using "USER_NAME" (method parameter is "user_name")
+            var request = new RequestCallTool(toolName, CreateArguments(("USER_NAME", "John")));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("User: John");
+        }
+
+        [Fact]
+        public async Task CallTool_WithNumberInParameterName_CaseInsensitive_ShouldSucceed()
+        {
+            // Arrange - Parameter name contains number: "value1"
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_NumberInParam), nameof(Method_NumberInParam.AddValue1));
+            var toolName = typeof(Method_NumberInParam).GetTypeShortName();
+
+            // Act - using "VALUE1" (method parameter is "value1")
+            var request = new RequestCallTool(toolName, CreateArguments(("VALUE1", 100)));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(101);
+        }
+
+        #endregion
+
+        #region Multiple Parameters Tests
+
+        [Fact]
+        public async Task CallTool_WithThreeParameters_AllDifferentCases_ShouldSucceed()
+        {
+            // Arrange
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_ThreeParams), nameof(Method_ThreeParams.Combine));
+            var toolName = typeof(Method_ThreeParams).GetTypeShortName();
+
+            // Act - using "FIRST", "Second", "tHiRd" (method parameters are "first", "second", "third")
+            var request = new RequestCallTool(toolName, CreateArguments(
+                ("FIRST", "A"),
+                ("Second", "B"),
+                ("tHiRd", "C")));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("A-B-C");
+        }
+
+        [Fact]
+        public async Task CallTool_WithMixedParamStyles_CaseInsensitive_ShouldSucceed()
+        {
+            // Arrange - Method has params: camelCase, PascalCase, snake_case
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_MixedParamStyles), nameof(Method_MixedParamStyles.Mix));
+            var toolName = typeof(Method_MixedParamStyles).GetTypeShortName();
+
+            // Act - using all uppercase versions
+            var request = new RequestCallTool(toolName, CreateArguments(
+                ("CAMELCASE", "a"),
+                ("PASCALCASE", "b"),
+                ("SNAKE_CASE", "c")));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("a|b|c");
+        }
+
+        #endregion
+
+        #region PascalCase Method Parameter Tests
+
+        [Fact]
+        public async Task CallTool_PascalCaseMethodParam_WithLowerCase_ShouldSucceed()
+        {
+            // Arrange - Method parameter is "InputValue" (PascalCase)
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_PascalCaseParam), nameof(Method_PascalCaseParam.Process));
+            var toolName = typeof(Method_PascalCaseParam).GetTypeShortName();
+
+            // Act - using lowercase "inputvalue"
+            var request = new RequestCallTool(toolName, CreateArguments(("inputvalue", "test")));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("TEST");
+        }
+
+        [Fact]
+        public async Task CallTool_PascalCaseMethodParam_WithCamelCase_ShouldSucceed()
+        {
+            // Arrange - Method parameter is "InputValue" (PascalCase)
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_PascalCaseParam), nameof(Method_PascalCaseParam.Process));
+            var toolName = typeof(Method_PascalCaseParam).GetTypeShortName();
+
+            // Act - using camelCase "inputValue"
+            var request = new RequestCallTool(toolName, CreateArguments(("inputValue", "hello")));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("HELLO");
+        }
+
+        #endregion
+
+        #region Optional Parameters Tests
+
+        [Fact]
+        public async Task CallTool_WithOptionalParam_OnlyRequiredProvided_DifferentCase_ShouldSucceed()
+        {
+            // Arrange
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_OptionalParams), nameof(Method_OptionalParams.Calculate));
+            var toolName = typeof(Method_OptionalParams).GetTypeShortName();
+
+            // Act - Only provide "REQUIRED" (method param is "required"), omit optional
+            var request = new RequestCallTool(toolName, CreateArguments(("REQUIRED", 5)));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - Should use default value 10 for optional parameter
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(15); // 5 + 10 (default)
+        }
+
+        [Fact]
+        public async Task CallTool_WithOptionalParam_BothProvided_DifferentCases_ShouldSucceed()
+        {
+            // Arrange
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_OptionalParams), nameof(Method_OptionalParams.Calculate));
+            var toolName = typeof(Method_OptionalParams).GetTypeShortName();
+
+            // Act - Provide both "Required" and "OPTIONAL" with different casing
+            var request = new RequestCallTool(toolName, CreateArguments(("Required", 7), ("OPTIONAL", 3)));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(10); // 7 + 3
+        }
+
+        #endregion
+
+        #region Typical LLM Behavior Tests
+
+        [Theory]
+        [InlineData("value", 1)]
+        [InlineData("Value", 2)]
+        [InlineData("VALUE", 3)]
+        [InlineData("vAlUe", 4)]
+        public async Task CallTool_WithVariousCasings_ShouldAllSucceed(string paramName, int inputValue)
+        {
+            // Arrange - LLMs often provide parameters in different casings
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_OneArg_IntReturn), nameof(Method_OneArg_IntReturn.AddOne));
+            var toolName = typeof(Method_OneArg_IntReturn).GetTypeShortName();
+
+            // Act
+            var request = new RequestCallTool(toolName, CreateArguments((paramName, inputValue)));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success, $"Parameter name '{paramName}' should work");
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(inputValue + 1);
+        }
+
+        [Theory]
+        [InlineData("left", "right", "AB")]
+        [InlineData("LEFT", "RIGHT", "AB")]
+        [InlineData("Left", "Right", "AB")]
+        [InlineData("lEfT", "rIgHt", "AB")]
+        public async Task CallTool_TwoParams_WithVariousCasings_ShouldAllSucceed(string leftParam, string rightParam, string expected)
+        {
+            // Arrange
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_TwoArgs_StringReturn), nameof(Method_TwoArgs_StringReturn.Concat));
+            var toolName = typeof(Method_TwoArgs_StringReturn).GetTypeShortName();
+
+            // Act
+            var request = new RequestCallTool(toolName, CreateArguments((leftParam, "A"), (rightParam, "B")));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success, $"Parameters '{leftParam}' and '{rightParam}' should work");
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be(expected);
+        }
+
+        #endregion
+
+        #region Duplicate Parameter Detection Tests
+
+        [Fact]
+        public async Task CallTool_WithDuplicateParametersAfterNormalization_ShouldReturnError()
+        {
+            // Arrange - LLM provides both "value" and "VALUE" which normalize to the same key
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_OneArg_IntReturn), nameof(Method_OneArg_IntReturn.AddOne));
+            var toolName = typeof(Method_OneArg_IntReturn).GetTypeShortName();
+
+            // Create arguments with duplicate keys after normalization
+            // We need to manually create the dictionary to bypass the CreateArguments helper
+            var arguments = new Dictionary<string, JsonElement>();
+            var json1 = System.Text.Json.JsonSerializer.Serialize(5);
+            var json2 = System.Text.Json.JsonSerializer.Serialize(10);
+            arguments["value"] = JsonDocument.Parse(json1).RootElement.Clone();
+            arguments["VALUE"] = JsonDocument.Parse(json2).RootElement.Clone();
+
+            // Act
+            var request = new RequestCallTool(toolName, arguments);
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - Should return an error about duplicate parameters
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Error);
+            response.Message.Should().Contain("Duplicate parameter");
+        }
+
+        [Fact]
+        public async Task CallTool_WithDuplicateMixedCaseParameters_ShouldReturnError()
+        {
+            // Arrange - LLM provides "Value" and "vALUE" which normalize to the same key
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_OneArg_IntReturn), nameof(Method_OneArg_IntReturn.AddOne));
+            var toolName = typeof(Method_OneArg_IntReturn).GetTypeShortName();
+
+            var arguments = new Dictionary<string, JsonElement>();
+            var json1 = System.Text.Json.JsonSerializer.Serialize(5);
+            var json2 = System.Text.Json.JsonSerializer.Serialize(10);
+            arguments["Value"] = JsonDocument.Parse(json1).RootElement.Clone();
+            arguments["vALUE"] = JsonDocument.Parse(json2).RootElement.Clone();
+
+            // Act
+            var request = new RequestCallTool(toolName, arguments);
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - Should return an error about duplicate parameters
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Error);
+            response.Message.Should().Contain("Duplicate parameter");
+        }
+
+        #endregion
+
+        #region Conflict Detection Tests (Method Parameters Differ Only By Case)
+
+        [Fact]
+        public void BuildParameterNameLookup_WithConflictingParams_ShouldExcludeConflicts()
+        {
+            // Arrange - Simulate a method with parameters that would conflict (same name, different case)
+            // This tests the ParameterNameUtils.BuildParameterNameLookup conflict detection directly
+            var method = typeof(Method_TwoArgs_StringReturn).GetMethod(nameof(Method_TwoArgs_StringReturn.Concat))!;
+            var methodParams = method.GetParameters();
+
+            // Act
+            var lookup = Utils.ParameterNameUtils.BuildParameterNameLookup(methodParams);
+
+            // Assert - Both "left" and "right" should be in the lookup (no conflicts)
+            lookup.Should().NotBeNull();
+            lookup!.Should().ContainKey("left");
+            lookup.Should().ContainKey("right");
+        }
+
+        [Fact]
+        public async Task CallTool_WithCaseConflictParams_ExactMatch_ShouldSucceed()
+        {
+            // Arrange - Use a method with a single parameter to test that exact matching still works
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_CaseConflictParams), nameof(Method_CaseConflictParams.Process));
+            var toolName = typeof(Method_CaseConflictParams).GetTypeShortName();
+
+            // Act - Use exact case match
+            var request = new RequestCallTool(toolName, CreateArguments(("value", "test")));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - Should succeed with exact case match
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("TEST");
+        }
+
+        [Fact]
+        public async Task CallTool_WithCaseConflictParams_DifferentCase_ShouldStillSucceed()
+        {
+            // Arrange - Use a method with a single parameter
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_CaseConflictParams), nameof(Method_CaseConflictParams.Process));
+            var toolName = typeof(Method_CaseConflictParams).GetTypeShortName();
+
+            // Act - Use different case (VALUE instead of value)
+            var request = new RequestCallTool(toolName, CreateArguments(("VALUE", "hello")));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - Should succeed because case-insensitive matching works when no conflict
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("HELLO");
+        }
+
+        #endregion
+
+        #region TheSameArguments (Parameters Differ Only By Case) Tests
+
+        [Fact]
+        public void BuildParameterNameLookup_WithTheSameArguments_ShouldExcludeAllConflicts()
+        {
+            // Arrange - Method with parameters: value, vAlue, vaLue (all differ only by case)
+            var method = typeof(Method_TheSameArguments).GetMethod(nameof(Method_TheSameArguments.TheSameArguments))!;
+            var methodParams = method.GetParameters();
+
+            // Act
+            var lookup = ParameterNameUtils.BuildParameterNameLookup(methodParams);
+
+            // Assert - All parameters should be excluded from lookup due to case conflicts
+            // When there are conflicts, the lookup should be null or empty
+            lookup.Should().BeNull("all parameters differ only by case, creating conflicts");
+        }
+
+        [Fact]
+        public async Task CallTool_TheSameArguments_WithExactNames_ShouldSucceed()
+        {
+            // Arrange - Method has parameters: value, vAlue, vaLue
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_TheSameArguments), nameof(Method_TheSameArguments.TheSameArguments));
+            var toolName = typeof(Method_TheSameArguments).GetTypeShortName();
+
+            // Act - Provide exact parameter names (case-sensitive match required due to conflicts)
+            var request = new RequestCallTool(toolName, CreateArguments(("value", 1), ("vAlue", 2), ("vaLue", 3)));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - Should succeed with exact matches
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success, "exact parameter names should work");
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(6); // 1 + 2 + 3
+        }
+
+        [Fact]
+        public async Task CallTool_TheSameArguments_WithWrongCase_UsesDefaultValue()
+        {
+            // Arrange - Method has parameters: value, vAlue, vaLue
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_TheSameArguments), nameof(Method_TheSameArguments.TheSameArguments));
+            var toolName = typeof(Method_TheSameArguments).GetTypeShortName();
+
+            // Act - Provide incorrect case for first parameter (VALUE instead of value)
+            // Since there are conflicts, no case-insensitive normalization happens
+            // "VALUE" won't match "value" exactly, so "value" gets default value (0)
+            var request = new RequestCallTool(toolName, CreateArguments(("VALUE", 1), ("vAlue", 2), ("vaLue", 3)));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - Should succeed but with default value for unmatched parameter
+            // "value" = 0 (default), "vAlue" = 2, "vaLue" = 3 → 0 + 2 + 3 = 5
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success, "call succeeds but with default values for unmatched params");
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(5); // 0 + 2 + 3
+        }
+
+        [Fact]
+        public async Task CallTool_TheSameArguments_WithAllLowerCase_ShouldDetectDuplicates()
+        {
+            // Arrange - Method has parameters: value, vAlue, vaLue
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_TheSameArguments), nameof(Method_TheSameArguments.TheSameArguments));
+            var toolName = typeof(Method_TheSameArguments).GetTypeShortName();
+
+            // Act - Try to provide all lowercase names (would be duplicates in a dictionary)
+            // Note: Dictionary in C# doesn't allow duplicate keys, so this tests if we can even create such input
+            var arguments = new Dictionary<string, JsonElement>();
+            var json = System.Text.Json.JsonSerializer.Serialize(1);
+            arguments["value"] = JsonDocument.Parse(json).RootElement.Clone();
+            // Adding another "value" would throw in Dictionary, so we can only add one
+
+            var request = new RequestCallTool(toolName, arguments);
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - Should succeed but with default values for missing params
+            // Only "value" = 1 is provided, "vAlue" = 0, "vaLue" = 0 → 1 + 0 + 0 = 1
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(1); // 1 + 0 + 0
+        }
+
+        [Fact]
+        public async Task CallTool_TheSameArguments_WithPartialExactMatch_UsesDefaultForUnmatched()
+        {
+            // Arrange - Method has parameters: value, vAlue, vaLue
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_TheSameArguments), nameof(Method_TheSameArguments.TheSameArguments));
+            var toolName = typeof(Method_TheSameArguments).GetTypeShortName();
+
+            // Act - Provide two exact matches but one wrong case
+            // "value" = 1 (exact), "vAlue" = 2 (exact), "VALUE" = 3 (doesn't match "vaLue")
+            var request = new RequestCallTool(toolName, CreateArguments(("value", 1), ("vAlue", 2), ("VALUE", 3)));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - "vaLue" gets default value (0) since "VALUE" doesn't match exactly
+            // "value" = 1, "vAlue" = 2, "vaLue" = 0 → 1 + 2 + 0 = 3
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success, "call succeeds with default value for unmatched param");
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(3); // 1 + 2 + 0
+        }
+
+        #endregion
+    }
+}

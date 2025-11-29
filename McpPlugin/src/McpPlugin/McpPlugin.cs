@@ -144,12 +144,6 @@ namespace com.IvanMurzak.McpPlugin
             }
 
             _instance.Value = this;
-
-            // Dispose if another instance is created, because only one instance is allowed.
-            _instance
-                .Where(instance => instance != this)
-                .Subscribe(instance => Dispose())
-                .AddTo(_disposables);
         }
 
         public Task<bool> Connect(CancellationToken cancellationToken = default)
