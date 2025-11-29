@@ -94,6 +94,15 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         public string Process(string value) => value.ToUpper();
     }
 
+    /// <summary>
+    /// Method with three parameters that differ only by case.
+    /// This tests the scenario where LLM must provide exact parameter names.
+    /// </summary>
+    public class Method_TheSameArguments
+    {
+        public static int TheSameArguments(int value, int vAlue, int vaLue) => value + vAlue + vaLue;
+    }
+
     #endregion
 
     /// <summary>
@@ -612,6 +621,113 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             response.Value.Should().NotBeNull();
             response.Value!.StructuredContent.Should().NotBeNull();
             response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("HELLO");
+        }
+
+        #endregion
+
+        #region TheSameArguments (Parameters Differ Only By Case) Tests
+
+        [Fact]
+        public void BuildParameterNameLookup_WithTheSameArguments_ShouldExcludeAllConflicts()
+        {
+            // Arrange - Method with parameters: value, vAlue, vaLue (all differ only by case)
+            var method = typeof(Method_TheSameArguments).GetMethod(nameof(Method_TheSameArguments.TheSameArguments))!;
+            var methodParams = method.GetParameters();
+
+            // Act
+            var lookup = ParameterNameUtils.BuildParameterNameLookup(methodParams);
+
+            // Assert - All parameters should be excluded from lookup due to case conflicts
+            // When there are conflicts, the lookup should be null or empty
+            lookup.Should().BeNull("all parameters differ only by case, creating conflicts");
+        }
+
+        [Fact]
+        public async Task CallTool_TheSameArguments_WithExactNames_ShouldSucceed()
+        {
+            // Arrange - Method has parameters: value, vAlue, vaLue
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_TheSameArguments), nameof(Method_TheSameArguments.TheSameArguments));
+            var toolName = typeof(Method_TheSameArguments).GetTypeShortName();
+
+            // Act - Provide exact parameter names (case-sensitive match required due to conflicts)
+            var request = new RequestCallTool(toolName, CreateArguments(("value", 1), ("vAlue", 2), ("vaLue", 3)));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - Should succeed with exact matches
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success, "exact parameter names should work");
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(6); // 1 + 2 + 3
+        }
+
+        [Fact]
+        public async Task CallTool_TheSameArguments_WithWrongCase_UsesDefaultValue()
+        {
+            // Arrange - Method has parameters: value, vAlue, vaLue
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_TheSameArguments), nameof(Method_TheSameArguments.TheSameArguments));
+            var toolName = typeof(Method_TheSameArguments).GetTypeShortName();
+
+            // Act - Provide incorrect case for first parameter (VALUE instead of value)
+            // Since there are conflicts, no case-insensitive normalization happens
+            // "VALUE" won't match "value" exactly, so "value" gets default value (0)
+            var request = new RequestCallTool(toolName, CreateArguments(("VALUE", 1), ("vAlue", 2), ("vaLue", 3)));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - Should succeed but with default value for unmatched parameter
+            // "value" = 0 (default), "vAlue" = 2, "vaLue" = 3 → 0 + 2 + 3 = 5
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success, "call succeeds but with default values for unmatched params");
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(5); // 0 + 2 + 3
+        }
+
+        [Fact]
+        public async Task CallTool_TheSameArguments_WithAllLowerCase_ShouldDetectDuplicates()
+        {
+            // Arrange - Method has parameters: value, vAlue, vaLue
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_TheSameArguments), nameof(Method_TheSameArguments.TheSameArguments));
+            var toolName = typeof(Method_TheSameArguments).GetTypeShortName();
+
+            // Act - Try to provide all lowercase names (would be duplicates in a dictionary)
+            // Note: Dictionary in C# doesn't allow duplicate keys, so this tests if we can even create such input
+            var arguments = new Dictionary<string, JsonElement>();
+            var json = System.Text.Json.JsonSerializer.Serialize(1);
+            arguments["value"] = JsonDocument.Parse(json).RootElement.Clone();
+            // Adding another "value" would throw in Dictionary, so we can only add one
+
+            var request = new RequestCallTool(toolName, arguments);
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - Should succeed but with default values for missing params
+            // Only "value" = 1 is provided, "vAlue" = 0, "vaLue" = 0 → 1 + 0 + 0 = 1
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(1); // 1 + 0 + 0
+        }
+
+        [Fact]
+        public async Task CallTool_TheSameArguments_WithPartialExactMatch_UsesDefaultForUnmatched()
+        {
+            // Arrange - Method has parameters: value, vAlue, vaLue
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_TheSameArguments), nameof(Method_TheSameArguments.TheSameArguments));
+            var toolName = typeof(Method_TheSameArguments).GetTypeShortName();
+
+            // Act - Provide two exact matches but one wrong case
+            // "value" = 1 (exact), "vAlue" = 2 (exact), "VALUE" = 3 (doesn't match "vaLue")
+            var request = new RequestCallTool(toolName, CreateArguments(("value", 1), ("vAlue", 2), ("VALUE", 3)));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - "vaLue" gets default value (0) since "VALUE" doesn't match exactly
+            // "value" = 1, "vAlue" = 2, "vaLue" = 0 → 1 + 2 + 0 = 3
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success, "call succeeds with default value for unmatched param");
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(3); // 1 + 2 + 0
         }
 
         #endregion
