@@ -292,7 +292,7 @@ namespace com.IvanMurzak.McpPlugin
                 return null;
 
             var lookup = new Dictionary<string, string>(StringComparer.Ordinal);
-            var conflicts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var conflicts = new HashSet<string>(StringComparer.Ordinal);
 
             foreach (var param in methodParams)
             {
@@ -313,7 +313,8 @@ namespace com.IvanMurzak.McpPlugin
                 }
             }
 
-            // Remove conflicting entries
+            // Remove conflicting entries - when two parameters differ only by case,
+            // we can't safely normalize, so we remove both from the lookup
             foreach (var conflict in conflicts)
             {
                 lookup.Remove(conflict);
