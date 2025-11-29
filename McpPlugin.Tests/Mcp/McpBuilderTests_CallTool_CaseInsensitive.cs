@@ -109,6 +109,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
     /// Validates that LLM-provided input arguments with different casing are correctly matched
     /// to method parameters when there is no naming conflict.
     /// </summary>
+    [Collection("McpPlugin")]
     public class McpBuilderTests_CallTool_CaseInsensitive
     {
         private readonly ITestOutputHelper _output;

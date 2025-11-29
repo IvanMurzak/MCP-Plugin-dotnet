@@ -137,6 +137,12 @@ namespace com.IvanMurzak.McpPlugin
                 })
                 .AddTo(_disposables);
 
+            if (HasInstance)
+            {
+                _logger.LogError($"Instance already created. Use Singleton instance.");
+                return;
+            }
+
             _instance.Value = this;
         }
 
