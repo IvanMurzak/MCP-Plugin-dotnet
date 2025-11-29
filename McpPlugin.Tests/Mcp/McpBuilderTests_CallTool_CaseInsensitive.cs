@@ -16,7 +16,6 @@ using com.IvanMurzak.McpPlugin.Tests.Data.Other;
 using com.IvanMurzak.McpPlugin.Tests.Infrastructure;
 using com.IvanMurzak.McpPlugin.Utils;
 using com.IvanMurzak.ReflectorNet;
-using com.IvanMurzak.ReflectorNet.Utils;
 using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
@@ -25,7 +24,7 @@ using Version = com.IvanMurzak.McpPlugin.Common.Version;
 namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 {
     #region Test Data Classes for Case-Insensitive Tests
-    
+
     /// <summary>
     /// Method with no arguments for testing empty parameter case.
     /// </summary>
@@ -71,7 +70,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
     /// </summary>
     public class Method_MixedParamStyles
     {
-        public string Mix(string camelCase, string PascalCase, string snake_case) 
+        public string Mix(string camelCase, string PascalCase, string snake_case)
             => $"{camelCase}|{PascalCase}|{snake_case}";
     }
 

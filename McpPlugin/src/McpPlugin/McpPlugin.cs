@@ -137,19 +137,7 @@ namespace com.IvanMurzak.McpPlugin
                 })
                 .AddTo(_disposables);
 
-            if (HasInstance)
-            {
-                _logger.LogError($"Instance already created. Use Singleton instance.");
-                return;
-            }
-
             _instance.Value = this;
-
-            // Dispose if another instance is created, because only one instance is allowed.
-            _instance
-                .Where(instance => instance != this)
-                .Subscribe(instance => Dispose())
-                .AddTo(_disposables);
         }
 
         public Task<bool> Connect(CancellationToken cancellationToken = default)
