@@ -9,6 +9,7 @@
 */
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 
 namespace com.IvanMurzak.McpPlugin.Utils
@@ -34,12 +35,9 @@ namespace com.IvanMurzak.McpPlugin.Utils
             var lookup = new Dictionary<string, string>(StringComparer.Ordinal);
             var conflicts = new HashSet<string>(StringComparer.Ordinal);
 
-            foreach (var param in methodParams)
+            foreach (var param in methodParams.Where(p => p.Name != null))
             {
-                if (param.Name == null)
-                    continue;
-
-                var lowerName = param.Name.ToLowerInvariant();
+                var lowerName = param.Name!.ToLowerInvariant();
 
                 // Check if this lowercase name already exists (conflict)
                 if (lookup.ContainsKey(lowerName))

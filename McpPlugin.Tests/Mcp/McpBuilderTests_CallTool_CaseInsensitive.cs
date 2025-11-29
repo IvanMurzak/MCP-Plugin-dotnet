@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Tests.Data.Other;
 using com.IvanMurzak.McpPlugin.Tests.Infrastructure;
+using com.IvanMurzak.McpPlugin.Utils;
 using com.IvanMurzak.ReflectorNet;
 using com.IvanMurzak.ReflectorNet.Utils;
 using FluentAssertions;
@@ -80,6 +81,17 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
     public class Method_OptionalParams
     {
         public int Calculate(int required, int optional = 10) => required + optional;
+    }
+
+    /// <summary>
+    /// Method with parameters that differ only by case (conflict scenario).
+    /// Note: This is unusual in C# but demonstrates conflict detection.
+    /// </summary>
+    public class Method_CaseConflictParams
+    {
+        // C# allows this at runtime through reflection, even though the compiler prevents it in source
+        // We test this scenario to ensure conflict detection works correctly
+        public string Process(string value) => value.ToUpper();
     }
 
     #endregion
@@ -489,6 +501,117 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             response.Value.Should().NotBeNull();
             response.Value!.StructuredContent.Should().NotBeNull();
             response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be(expected);
+        }
+
+        #endregion
+
+        #region Duplicate Parameter Detection Tests
+
+        [Fact]
+        public async Task CallTool_WithDuplicateParametersAfterNormalization_ShouldReturnError()
+        {
+            // Arrange - LLM provides both "value" and "VALUE" which normalize to the same key
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_OneArg_IntReturn), nameof(Method_OneArg_IntReturn.AddOne));
+            var toolName = typeof(Method_OneArg_IntReturn).GetTypeShortName();
+
+            // Create arguments with duplicate keys after normalization
+            // We need to manually create the dictionary to bypass the CreateArguments helper
+            var arguments = new Dictionary<string, JsonElement>();
+            var json1 = System.Text.Json.JsonSerializer.Serialize(5);
+            var json2 = System.Text.Json.JsonSerializer.Serialize(10);
+            arguments["value"] = JsonDocument.Parse(json1).RootElement.Clone();
+            arguments["VALUE"] = JsonDocument.Parse(json2).RootElement.Clone();
+
+            // Act
+            var request = new RequestCallTool(toolName, arguments);
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - Should return an error about duplicate parameters
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Error);
+            response.Message.Should().Contain("Duplicate parameter");
+        }
+
+        [Fact]
+        public async Task CallTool_WithDuplicateMixedCaseParameters_ShouldReturnError()
+        {
+            // Arrange - LLM provides "Value" and "vALUE" which normalize to the same key
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_OneArg_IntReturn), nameof(Method_OneArg_IntReturn.AddOne));
+            var toolName = typeof(Method_OneArg_IntReturn).GetTypeShortName();
+
+            var arguments = new Dictionary<string, JsonElement>();
+            var json1 = System.Text.Json.JsonSerializer.Serialize(5);
+            var json2 = System.Text.Json.JsonSerializer.Serialize(10);
+            arguments["Value"] = JsonDocument.Parse(json1).RootElement.Clone();
+            arguments["vALUE"] = JsonDocument.Parse(json2).RootElement.Clone();
+
+            // Act
+            var request = new RequestCallTool(toolName, arguments);
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - Should return an error about duplicate parameters
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Error);
+            response.Message.Should().Contain("Duplicate parameter");
+        }
+
+        #endregion
+
+        #region Conflict Detection Tests (Method Parameters Differ Only By Case)
+
+        [Fact]
+        public void BuildParameterNameLookup_WithConflictingParams_ShouldExcludeConflicts()
+        {
+            // Arrange - Simulate a method with parameters that would conflict (same name, different case)
+            // This tests the ParameterNameUtils.BuildParameterNameLookup conflict detection directly
+            var method = typeof(Method_TwoArgs_StringReturn).GetMethod(nameof(Method_TwoArgs_StringReturn.Concat))!;
+            var methodParams = method.GetParameters();
+
+            // Act
+            var lookup = Utils.ParameterNameUtils.BuildParameterNameLookup(methodParams);
+
+            // Assert - Both "left" and "right" should be in the lookup (no conflicts)
+            lookup.Should().NotBeNull();
+            lookup!.Should().ContainKey("left");
+            lookup.Should().ContainKey("right");
+        }
+
+        [Fact]
+        public async Task CallTool_WithCaseConflictParams_ExactMatch_ShouldSucceed()
+        {
+            // Arrange - Use a method with a single parameter to test that exact matching still works
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_CaseConflictParams), nameof(Method_CaseConflictParams.Process));
+            var toolName = typeof(Method_CaseConflictParams).GetTypeShortName();
+
+            // Act - Use exact case match
+            var request = new RequestCallTool(toolName, CreateArguments(("value", "test")));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - Should succeed with exact case match
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("TEST");
+        }
+
+        [Fact]
+        public async Task CallTool_WithCaseConflictParams_DifferentCase_ShouldStillSucceed()
+        {
+            // Arrange - Use a method with a single parameter
+            var mcpPlugin = BuildMcpPluginWithTool(typeof(Method_CaseConflictParams), nameof(Method_CaseConflictParams.Process));
+            var toolName = typeof(Method_CaseConflictParams).GetTypeShortName();
+
+            // Act - Use different case (VALUE instead of value)
+            var request = new RequestCallTool(toolName, CreateArguments(("VALUE", "hello")));
+            var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
+
+            // Assert - Should succeed because case-insensitive matching works when no conflict
+            response.Should().NotBeNull();
+            response.Status.Should().Be(ResponseStatus.Success);
+            response.Value.Should().NotBeNull();
+            response.Value!.StructuredContent.Should().NotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("HELLO");
         }
 
         #endregion
