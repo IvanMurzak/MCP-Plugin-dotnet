@@ -10,7 +10,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading;
@@ -105,13 +104,13 @@ namespace com.IvanMurzak.McpPlugin
             if (TypeUtils.IsPrimitive(type))
             {
                 return ResponseCallTool.SuccessStructured(
-                        structuredContent: System.Text.Json.JsonSerializer.SerializeToNode(result, _reflector.JsonSerializer.JsonSerializerOptions),
+                        structuredContent: System.Text.Json.JsonSerializer.SerializeToNode(result, _reflector.JsonSerializerOptions),
                         message: result.ToString())
                     .SetRequestID(requestId);
             }
 
-            var node = System.Text.Json.JsonSerializer.SerializeToNode(result, _reflector.JsonSerializer.JsonSerializerOptions);
-            var json = node?.ToJsonString(_reflector.JsonSerializer.JsonSerializerOptions);
+            var node = System.Text.Json.JsonSerializer.SerializeToNode(result, _reflector.JsonSerializerOptions);
+            var json = node?.ToJsonString(_reflector.JsonSerializerOptions);
 
             return ResponseCallTool.SuccessStructured(
                 structuredContent: node,

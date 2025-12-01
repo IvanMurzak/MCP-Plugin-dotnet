@@ -16,7 +16,7 @@ namespace com.IvanMurzak.McpPlugin.Common
     {
         public static void ConfigureJsonSerializer(Reflector reflector, Microsoft.AspNetCore.SignalR.JsonHubProtocolOptions options)
         {
-            var jsonSerializerOptions = reflector.JsonSerializer.JsonSerializerOptions;
+            var jsonSerializerOptions = reflector.JsonSerializerOptions;
 
             options.PayloadSerializerOptions.DefaultIgnoreCondition = jsonSerializerOptions.DefaultIgnoreCondition;
             options.PayloadSerializerOptions.PropertyNamingPolicy = jsonSerializerOptions.PropertyNamingPolicy;

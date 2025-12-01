@@ -18,11 +18,11 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
     {
         public static ResponseListTool[] Log(this ResponseListTool[] response, ILogger logger, Exception? ex = null)
         {
-            if (!logger.IsEnabled(LogLevel.Information))
+            if (!logger.IsEnabled(LogLevel.Debug))
                 return response;
 
             foreach (var item in response)
-                logger.LogInformation(ex, $"Tool: {item.Name}:\n{item.ToPrettyJson()}");
+                logger.LogDebug(ex, $"Tool: {item.Name}:\n{item.ToPrettyJson()}");
 
             return response;
         }
