@@ -46,7 +46,14 @@ namespace com.IvanMurzak.McpPlugin
             _logger = loggerProvider?.CreateLogger(nameof(McpPluginBuilder));
             _services = services ?? new ServiceCollection();
 
-            _services.AddLogging();
+            if (_loggerProvider != null)
+            {
+                _services.AddLogging(builder => builder.AddProvider(_loggerProvider));
+            }
+            else
+            {
+                _services.AddLogging();
+            }
             _services.AddSingleton(version);
             _services.AddSingleton<IConnectionManager, ConnectionManager>();
             _services.AddSingleton<IHubConnectionProvider, HubConnectionProvider>();
