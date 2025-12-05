@@ -34,8 +34,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         {
             // Arrange
             var reflector = new Reflector();
-            var mcpPluginBuilder = new McpPluginBuilder(_version)
-                .AddMcpManager();
+            var mcpPluginBuilder = new McpPluginBuilder(_version);
 
             // Act
             var plugin = mcpPluginBuilder.Build(reflector);
@@ -49,8 +48,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         {
             // Arrange
             var reflector = new Reflector();
-            var mcpPluginBuilder = new McpPluginBuilder(_version)
-                .AddMcpManager();
+            var mcpPluginBuilder = new McpPluginBuilder(_version);
 
             mcpPluginBuilder.Build(reflector);
 
@@ -67,8 +65,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         {
             // Arrange
             var reflector = new Reflector();
-            var mcpPluginBuilder = new McpPluginBuilder(_version)
-                .AddMcpManager();
+            var mcpPluginBuilder = new McpPluginBuilder(_version);
 
             mcpPluginBuilder.Build(reflector);
 
@@ -85,8 +82,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         {
             // Arrange
             var reflector = new Reflector();
-            var mcpPluginBuilder = new McpPluginBuilder(_version)
-                .AddMcpManager();
+            var mcpPluginBuilder = new McpPluginBuilder(_version);
 
             mcpPluginBuilder.Build(reflector);
 
@@ -143,7 +139,6 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var loggerProvider = new MockLoggerProvider(logs);
 
             var mcpPluginBuilder = new McpPluginBuilder(_version)
-                .AddMcpManager()
                 .AddLogging(builder => builder.AddProvider(loggerProvider).SetMinimumLevel(LogLevel.Trace));
 
             // Act
