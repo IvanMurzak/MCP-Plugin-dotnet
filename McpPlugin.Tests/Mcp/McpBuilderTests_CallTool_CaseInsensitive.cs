@@ -130,8 +130,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var reflector = new Reflector();
             var mcpPluginBuilder = new McpPluginBuilder(_version, _loggerProvider)
-                .AddLogging(b => b.AddXunitTestOutput(_output))
-                .AddMcpManager();
+                .AddLogging(b => b.AddXunitTestOutput(_output));
 
             mcpPluginBuilder.WithTool(
                 name: toolName,

@@ -48,18 +48,18 @@ namespace com.IvanMurzak.McpPlugin
 
             _services.AddSingleton(version);
             _services.AddSingleton<IConnectionManager, ConnectionManager>();
-            _services.AddSingleton<IMcpPlugin, McpPlugin>();
             _services.AddSingleton<IHubConnectionProvider, HubConnectionProvider>();
 
             _services.AddSingleton<IToolManager, McpToolManager>();
             _services.AddSingleton<IPromptManager, McpPromptManager>();
             _services.AddSingleton<IResourceManager, McpResourceManager>();
 
+            _services.AddSingleton<IMcpPlugin, McpPlugin>();
+            _services.AddSingleton<IRemoteMcpManagerHub, McpManagerClientHub>();
+
             _services.AddSingleton<McpManager>();
             _services.AddSingleton<IMcpManager>(sp => sp.GetRequiredService<McpManager>());
             _services.AddSingleton<IClientMcpManager>(sp => sp.GetRequiredService<McpManager>());
-
-            _services.AddSingleton<IRemoteMcpManagerHub, McpManagerClientHub>();
         }
 
         #region Tool

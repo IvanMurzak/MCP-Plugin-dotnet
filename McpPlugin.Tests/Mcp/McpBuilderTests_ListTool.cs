@@ -163,8 +163,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var method = typeof(Method_NoArgs_Void).GetMethod(nameof(Method_NoArgs_Void.Do))!;
             var reflector = new Reflector();
             var mcpPluginBuilder = new McpPluginBuilder(version, _loggerProvider)
-                .AddLogging(b => b.AddXunitTestOutput(_output))
-                .AddMcpManager();
+                .AddLogging(b => b.AddXunitTestOutput(_output));
 
             // Act
             mcpPluginBuilder.WithTool(
@@ -183,8 +182,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var reflector = new Reflector();
             var mcpPluginBuilder = new McpPluginBuilder(version, _loggerProvider)
-                .AddLogging(b => b.AddXunitTestOutput(_output))
-                .AddMcpManager();
+                .AddLogging(b => b.AddXunitTestOutput(_output));
 
             // Act
             mcpPluginBuilder.WithTool(
