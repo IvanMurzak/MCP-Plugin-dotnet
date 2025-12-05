@@ -1,0 +1,152 @@
+/*
+┌────────────────────────────────────────────────────────────────────────┐
+│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
+│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
+│  Copyright (c) 2025 Ivan Murzak                                        │
+│  Licensed under the Apache License, Version 2.0.                       │
+│  See the LICENSE file in the project root for more information.        │
+└────────────────────────────────────────────────────────────────────────┘
+*/
+
+using System;
+using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Threading;
+using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.ReflectorNet;
+using FluentAssertions;
+using Xunit;
+using Version = com.IvanMurzak.McpPlugin.Common.Version;
+
+namespace com.IvanMurzak.McpPlugin.Tests.Mcp
+{
+    [Collection("McpPlugin")]
+    public class McpBuilderTests
+    {
+        private readonly Version _version = new Version();
+
+        [Fact]
+        public void Build_WithoutLogging_ShouldSucceed()
+        {
+            // Arrange
+            var reflector = new Reflector();
+            var mcpPluginBuilder = new McpPluginBuilder(_version)
+                .AddMcpManager();
+
+            // Act
+            var plugin = mcpPluginBuilder.Build(reflector);
+
+            // Assert
+            plugin.Should().NotBeNull();
+        }
+
+        [Fact]
+        public void Build_CalledTwice_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            var reflector = new Reflector();
+            var mcpPluginBuilder = new McpPluginBuilder(_version)
+                .AddMcpManager();
+
+            mcpPluginBuilder.Build(reflector);
+
+            // Act
+            Action act = () => mcpPluginBuilder.Build(reflector);
+
+            // Assert
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("The builder has already been built.");
+        }
+
+        [Fact]
+        public void WithTool_AfterBuild_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            var reflector = new Reflector();
+            var mcpPluginBuilder = new McpPluginBuilder(_version)
+                .AddMcpManager();
+
+            mcpPluginBuilder.Build(reflector);
+
+            // Act
+            Action act = () => mcpPluginBuilder.WithTool(typeof(McpBuilderTests), typeof(McpBuilderTests).GetMethods()[0]);
+
+            // Assert
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("The builder has already been built.");
+        }
+
+        [Fact]
+        public void WithConfig_AfterBuild_ShouldThrowInvalidOperationException()
+        {
+            // Arrange
+            var reflector = new Reflector();
+            var mcpPluginBuilder = new McpPluginBuilder(_version)
+                .AddMcpManager();
+
+            mcpPluginBuilder.Build(reflector);
+
+            // Act
+            Action act = () => mcpPluginBuilder.WithConfig(c => { });
+
+            // Assert
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("The builder has already been built.");
+        }
+
+        [Fact]
+        public void WithTool_EmptyName_ShouldThrowArgumentException()
+        {
+            // Arrange
+            var mcpPluginBuilder = new McpPluginBuilder(_version);
+            var method = typeof(TestTool).GetMethod(nameof(TestTool.Method));
+
+            // Act
+            Action act = () => mcpPluginBuilder.WithTool(
+                name: "",
+                title: "title",
+                classType: typeof(TestTool),
+                method: method!);
+
+            // Assert
+            act.Should().Throw<ArgumentException>()
+                .WithMessage($"Tool name cannot be null or empty. Type: {typeof(TestTool).Name}, Method: {method!.Name}");
+        }
+
+        [Fact]
+        public void AddTool_DuplicateName_ShouldThrowArgumentException()
+        {
+            // Arrange
+            var mcpPluginBuilder = new McpPluginBuilder(_version);
+            var runner = new MockRunTool();
+
+            mcpPluginBuilder.AddTool("tool1", runner);
+
+            // Act
+            Action act = () => mcpPluginBuilder.AddTool("tool1", runner);
+
+            // Assert
+            act.Should().Throw<ArgumentException>()
+                .WithMessage("Tool with name 'tool1' already exists.");
+        }
+
+        private class TestTool
+        {
+            public void Method() { }
+        }
+
+        private class MockRunTool : IRunTool
+        {
+            public string Name => "MockTool";
+            public string Title => "Mock Tool Title";
+            public string Description => "Mock Tool";
+            public JsonNode InputSchema => JsonNode.Parse("{}")!;
+            public JsonNode OutputSchema => JsonNode.Parse("{}")!;
+            public bool Enabled { get; set; } = true;
+            public Task<ResponseCallTool> Run(RequestCallTool request) => throw new NotImplementedException();
+            public Task<ResponseCallTool> Run(string name, IReadOnlyDictionary<string, JsonElement>? arguments, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        }
+    }
+}

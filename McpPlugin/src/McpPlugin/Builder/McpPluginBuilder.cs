@@ -49,6 +49,7 @@ namespace com.IvanMurzak.McpPlugin
             _services.AddSingleton<IConnectionManager, ConnectionManager>();
             _services.AddSingleton<IMcpPlugin, McpPlugin>();
             _services.AddSingleton<IHubConnectionProvider, HubConnectionProvider>();
+            _services.AddLogging();
         }
 
         #region Tool
