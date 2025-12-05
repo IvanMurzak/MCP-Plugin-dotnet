@@ -17,6 +17,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         const string NullJson = "null";
         public static readonly JsonSerializerOptions Pretty = new()
         {
+            PropertyNamingPolicy = null,
             PropertyNameCaseInsensitive = true,
             WriteIndented = true,
             AllowTrailingCommas = false,

@@ -17,12 +17,11 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
     {
         public static ResponseResourceTemplate[] Log(this ResponseResourceTemplate[] target, ILogger logger, Exception? ex = null)
         {
-            if (!logger.IsEnabled(LogLevel.Information))
+            if (!logger.IsEnabled(LogLevel.Debug))
                 return target;
 
             foreach (var item in target)
-                logger.LogInformation(ex, "Resource Template: {0}", item.UriTemplate);
-
+                logger.LogDebug(ex, "Resource Template: {0}", item.UriTemplate);
             return target;
         }
 

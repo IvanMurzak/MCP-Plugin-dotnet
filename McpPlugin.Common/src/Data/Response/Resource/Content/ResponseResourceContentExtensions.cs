@@ -17,12 +17,11 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
     {
         public static ResponseResourceContent[] Log(this ResponseResourceContent[] target, ILogger logger, Exception? ex = null)
         {
-            if (!logger.IsEnabled(LogLevel.Information))
+            if (!logger.IsEnabled(LogLevel.Debug))
                 return target;
 
             foreach (var item in target)
-                logger.LogInformation(ex, "Resource: {0}", item.Uri);
-
+                logger.LogDebug(ex, "Resource: {0}", item.Uri);
             return target;
         }
 
