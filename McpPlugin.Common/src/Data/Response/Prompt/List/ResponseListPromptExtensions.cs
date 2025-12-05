@@ -9,7 +9,6 @@
 */
 
 using System;
-using System.Text.Json;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using Microsoft.Extensions.Logging;
 
@@ -19,11 +18,11 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
     {
         public static ResponseListPrompts Log(this ResponseListPrompts response, ILogger logger, Exception? ex = null)
         {
-            if (!logger.IsEnabled(LogLevel.Information))
+            if (!logger.IsEnabled(LogLevel.Debug))
                 return response;
 
             foreach (var item in response.Prompts)
-                logger.LogInformation(ex, $"Prompt: {item.Name}:\n{item.ToPrettyJson()}");
+                logger.LogDebug(ex, $"Prompt: {item.Name}:\n{item.ToPrettyJson()}");
 
             return response;
         }
