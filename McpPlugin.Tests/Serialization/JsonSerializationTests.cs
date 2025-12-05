@@ -26,8 +26,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
             builder.Build(reflector);
 
             // Assert
-            reflector.JsonSerializer.JsonSerializerOptions.PropertyNamingPolicy.Should().BeNull();
-            reflector.JsonSerializer.JsonSerializerOptions.PropertyNameCaseInsensitive.Should().BeTrue();
+            reflector.JsonSerializerOptions.PropertyNamingPolicy.Should().BeNull();
+            reflector.JsonSerializerOptions.PropertyNameCaseInsensitive.Should().BeTrue();
         }
 
         [Fact]
