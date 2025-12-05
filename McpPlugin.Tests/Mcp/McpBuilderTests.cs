@@ -17,6 +17,8 @@ using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.ReflectorNet;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Xunit;
 using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
@@ -132,6 +134,25 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 .WithMessage("Tool with name 'tool1' already exists.");
         }
 
+        [Fact]
+        public void Build_WithLogging_ShouldLogMessage()
+        {
+            // Arrange
+            var reflector = new Reflector();
+            var logs = new List<string>();
+            var loggerProvider = new MockLoggerProvider(logs);
+
+            var mcpPluginBuilder = new McpPluginBuilder(_version)
+                .AddMcpManager()
+                .AddLogging(builder => builder.AddProvider(loggerProvider).SetMinimumLevel(LogLevel.Trace));
+
+            // Act
+            var plugin = mcpPluginBuilder.Build(reflector);
+
+            // Assert
+            logs.Should().Contain("McpPlugin Ctor.");
+        }
+
         private class TestTool
         {
             public void Method() { }
@@ -147,6 +168,42 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             public bool Enabled { get; set; } = true;
             public Task<ResponseCallTool> Run(RequestCallTool request) => throw new NotImplementedException();
             public Task<ResponseCallTool> Run(string name, IReadOnlyDictionary<string, JsonElement>? arguments, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+        }
+
+        private class MockLoggerProvider : ILoggerProvider
+        {
+            private readonly List<string> _logs;
+
+            public MockLoggerProvider(List<string> logs)
+            {
+                _logs = logs;
+            }
+
+            public ILogger CreateLogger(string categoryName)
+            {
+                return new MockLogger(_logs);
+            }
+
+            public void Dispose() { }
+        }
+
+        private class MockLogger : ILogger
+        {
+            private readonly List<string> _logs;
+
+            public MockLogger(List<string> logs)
+            {
+                _logs = logs;
+            }
+
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+            {
+                _logs.Add(formatter(state, exception));
+            }
         }
     }
 }
