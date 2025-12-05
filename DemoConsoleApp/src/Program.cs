@@ -21,7 +21,6 @@ var mcpPlugin = new McpPluginBuilder(version)
         builder.AddConsole();
         builder.SetMinimumLevel(LogLevel.Trace);
     })
-    .AddMcpManager()
     .WithToolsFromAssembly(typeof(McpToolConsole).Assembly)
     .WithPromptsFromAssembly(typeof(McpToolConsole).Assembly)
     .WithResourcesFromAssembly(typeof(McpToolConsole).Assembly)
