@@ -48,8 +48,11 @@ namespace com.IvanMurzak.McpPlugin
             builder.Services.TryAddSingleton<IToolManager, McpToolManager>();
             builder.Services.TryAddSingleton<IPromptManager, McpPromptManager>();
             builder.Services.TryAddSingleton<IResourceManager, McpResourceManager>();
-            builder.Services.TryAddSingleton<IMcpManager, McpManager>();
-            builder.Services.TryAddSingleton<IClientMcpManager, McpManager>();
+
+            builder.Services.TryAddSingleton<McpManager>();
+            builder.Services.TryAddSingleton<IMcpManager>(sp => sp.GetRequiredService<McpManager>());
+            builder.Services.TryAddSingleton<IClientMcpManager>(sp => sp.GetRequiredService<McpManager>());
+
             builder.Services.TryAddSingleton<IRemoteMcpManagerHub, McpManagerClientHub>();
             return builder;
         }
