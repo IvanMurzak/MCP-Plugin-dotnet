@@ -11,6 +11,7 @@
 using System.Linq;
 using System.Reflection;
 using System.Text.Json.Nodes;
+using com.IvanMurzak.McpPlugin.Utils;
 using com.IvanMurzak.ReflectorNet;
 using com.IvanMurzak.ReflectorNet.Utils;
 
@@ -23,26 +24,7 @@ namespace com.IvanMurzak.McpPlugin
             var schema = base.CreateInputSchema(reflector, methodInfo);
             if (schema == null) return null;
 
-            var parameters = methodInfo.GetParameters();
-            foreach (var param in parameters)
-            {
-                if (param?.GetCustomAttribute<RequestIDAttribute>() != null)
-                {
-                    // Remove from properties
-                    var properties = schema[JsonSchema.Properties]?.AsObject();
-                    if (properties != null && param.Name != null)
-                        properties.Remove(param.Name);
-
-                    // Remove from required
-                    var required = schema[JsonSchema.Required]?.AsArray();
-                    if (required != null)
-                    {
-                        var toRemove = required.FirstOrDefault(x => x?.GetValue<string>() == param.Name);
-                        if (toRemove != null)
-                            required.Remove(toRemove);
-                    }
-                }
-            }
+            ArgumentUtils.RemoveRequestIDParameters(schema, methodInfo);
 
             return schema;
         }
