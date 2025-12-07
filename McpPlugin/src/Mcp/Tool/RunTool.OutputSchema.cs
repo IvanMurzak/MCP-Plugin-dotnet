@@ -13,6 +13,7 @@ using System.Reflection;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Utils;
 using com.IvanMurzak.ReflectorNet;
 using com.IvanMurzak.ReflectorNet.Utils;
 
@@ -62,7 +63,8 @@ namespace com.IvanMurzak.McpPlugin
                             required: !isNullable
                         )
                     };
-                    return reflector.JsonSchema.GenerateSchema(reflector, types, justRef: false, defines: null);
+                    var schema = reflector.JsonSchema.GenerateSchema(reflector, types, justRef: false, defines: null);
+                    return JsonSchemaUtils.FixSerializedMemberSchema(schema);
                 }
 
                 // Ignore ResponseCallTool and its subclasses
@@ -76,7 +78,7 @@ namespace com.IvanMurzak.McpPlugin
                     return null;
             }
 
-            return base.CreateOutputSchema(reflector, methodInfo);
+            return JsonSchemaUtils.FixSerializedMemberSchema(base.CreateOutputSchema(reflector, methodInfo));
         }
     }
 }

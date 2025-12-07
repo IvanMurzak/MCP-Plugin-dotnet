@@ -576,7 +576,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var methodParams = method.GetParameters();
 
             // Act
-            var lookup = Utils.ParameterNameUtils.BuildParameterNameLookup(methodParams);
+            var lookup = ParameterNameUtils.BuildParameterNameLookup(methodParams);
 
             // Assert - Both "left" and "right" should be in the lookup (no conflicts)
             lookup.Should().NotBeNull();
