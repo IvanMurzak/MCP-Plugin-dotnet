@@ -1,4 +1,4 @@
-# MCP Plugin .NET
+# MCP Plugin for .NET
 
 [![NuGet](https://img.shields.io/nuget/v/com.IvanMurzak.McpPlugin?label=NuGet&labelColor=333A41)](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin/)
 [![netstandard2.1](https://img.shields.io/badge/.NET-netstandard2.1-blue?logoColor=white&labelColor=333A41)](https://github.com/IvanMurzak/MCP-Plugin-dotnet)
@@ -9,299 +9,181 @@
 [![License](https://img.shields.io/github/license/IvanMurzak/MCP-Plugin-dotnet?label=License&labelColor=333A41)](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/LICENSE)
 [![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
 
-## MCP Plugin
+## Overview
 
-**McpPlugin** is a .NET client-side library that enables .NET applications to integrate with Model Context Protocol (MCP) servers. It serves as a bridge between .NET applications and MCP servers, providing seamless communication over SignalR/ASP.NET Core.
+**MCP Plugin for .NET** is a comprehensive solution for integrating .NET applications with the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). It allows you to easily expose methods and data from your .NET applications as **Tools**, **Prompts**, and **Resources** to AI assistants (like Claude) and other MCP clients.
 
-### Key Features
+### The Problem: Independent Lifecycles
 
-- **Attribute-Based Registration**: Easily expose tools, prompts, and resources using `[McpPluginTool]`, `[McpPluginPrompt]`, and `[McpPluginResource]` attributes
-- **Automatic Schema Generation**: JSON schemas are automatically generated from method signatures
-- **Assembly Scanning**: Automatically discover and register components from assemblies
-- **Robust Connection Management**: Built-in reconnection logic with configurable retry policies
-- **Reactive Programming**: Event-driven architecture using R3 (Reactive Extensions)
-- **SignalR Integration**: Real-time bidirectional communication with MCP servers
-- **Dependency Injection**: First-class support for Microsoft.Extensions.DependencyInjection
-- **Type-Safe Communication**: Strongly-typed request/response models
+Standard MCP servers are typically designed to be launched as subprocesses by the client (e.g., Claude Desktop spawns a Python script). This works well for lightweight scripts but creates challenges for complex .NET applications like **Unity Engine**, **WPF Desktop Apps**, or **Game Servers**:
 
-### Architecture
+1. **Heavy Startup**: These applications are often too heavy to be spawned repeatedly by an MCP client.
+2. **Independent Lifecycle**: They often need to run independently (e.g., you are already working in the Unity Editor).
+3. **Live Context**: You want to interact with the *currently running* instance (e.g., "Add a cube to the current scene"), not start a new, empty instance.
 
-The library is structured in layers:
+### The Solution: The Bridge Pattern
 
-```text
-Application Layer (Your Code)
-        ↓
-McpPlugin (Facade & Entry Point)
-        ↓
-Manager Layer (Tool/Prompt/Resource Managers)
-        ↓
-Transport Layer (SignalR Hub Connections)
-        ↓
-SignalR/ASP.NET Core
+This project solves this by decoupling the MCP Server from your application using a **Bridge Architecture**:
+
+1. **McpPlugin (In-App)**: A library you add to your .NET application (e.g., Unity). It connects to the bridge.
+2. **McpPlugin.Server (Bridge)**: A lightweight server that the MCP Client (Claude) launches. It acts as a gateway.
+
+This enables **Bidirectional MCP Communication** with applications that have their own independent lifecycles.
+
+## Architecture
+
+The system uses a hub-and-spoke architecture where `McpPlugin.Server` acts as the central gateway.
+
+```mermaid
+graph LR
+    subgraph "Your .NET Apps"
+        A[Console App] -- SignalR --> S
+        B[Web App] -- SignalR --> S
+    end
+
+    subgraph "MCP Infrastructure"
+        S[McpPlugin.Server]
+    end
+
+    subgraph "AI / MCP Clients"
+        C[Claude Desktop] -- StdIO/HTTP --> S
+        D[MCP Inspector] -- StdIO/HTTP --> S
+    end
 ```
 
-### Core Components
+## Features
 
-#### McpPlugin
+- **Attribute-Based Registration**: Easily expose tools, prompts, and resources using `[McpPluginTool]`, `[McpPluginPrompt]`, and `[McpPluginResource]` attributes.
+- **Automatic Schema Generation**: JSON schemas are automatically generated from method signatures.
+- **Assembly Scanning**: Automatically discover and register components from assemblies.
+- **Real-time Communication**: Uses SignalR for bidirectional communication between your apps and the MCP server.
+- **Flexible Transport**: The server supports both `stdio` (for local AI agents) and `http` (for remote connections).
+- **Dependency Injection**: First-class support for `Microsoft.Extensions.DependencyInjection`.
 
-Main orchestration class ([McpPlugin.cs:21-207](McpPlugin/McpPlugin.cs#L21-L207)) that coordinates all managers and handles connection lifecycle. Available as a singleton for easy access.
+## Powered by ReflectorNet
 
-#### McpPluginBuilder
+This project is built on top of **[ReflectorNet](https://github.com/IvanMurzak/ReflectorNet)**, a sophisticated reflection toolkit designed for AI-driven environments. This enables:
 
-Fluent API builder ([McpPluginBuilder.cs:22-246](McpPlugin/Builder/McpPluginBuilder.cs#L22-L246)) for configuring the plugin:
+- **🤖 AI-Ready Interaction**: Designed for scenarios where inputs from LLMs might be partial or fuzzy.
+- **🔍 Fuzzy Matching**: Methods can be discovered and invoked even with incomplete names or parameters (configurable match levels).
+- **📄 Automatic JSON Schemas**: Generates precise JSON schemas for your C# types and methods, allowing LLMs to understand your code structure perfectly.
+- **📦 Type-Safe Serialization**: Preserves full type information, supporting complex nested objects and collections.
 
-- `WithTool()` - Register tool methods
-- `WithPrompt()` - Register prompt methods
-- `WithResource()` - Register resource handlers
-- `Build()` - Construct the configured plugin instance
+## Communication Protocol (SignalR)
 
-#### Manager Classes
+A key feature of this architecture is the use of **SignalR** for the connection between your application (`McpPlugin`) and the bridge (`McpPlugin.Server`).
 
-- **McpToolManager** ([McpToolManager.cs:26-204](McpPlugin/Mcp/McpToolManager.cs#L26-L204)) - Manages tool execution and lifecycle
-- **McpPromptManager** ([McpPromptManager.cs:23-166](McpPlugin/Mcp/McpPromptManager.cs#L23-L166)) - Manages prompt execution
-- **McpResourceManager** ([McpResourceManager.cs:26-223](McpPlugin/Mcp/McpResourceManager.cs#L26-L223)) - Manages resource content with URI-based routing
+- **Single Port**: All communication happens over a single, explicitly configured HTTP port (default: `8080`). No complex firewall rules or multiple socket connections are required.
+- **Bidirectional**: SignalR provides a persistent, real-time, bidirectional channel. The server can invoke tools on the client, and the client can send updates (like log messages or progress) to the server.
+- **Resilient**: The plugin includes built-in automatic reconnection logic. If the server restarts, your application will automatically re-establish the link.
 
-#### Connection Management
+**Default Connection:**
 
-- **ConnectionManager** ([ConnectionManager.cs:21-443](McpPlugin/Network/Connection/ConnectionManager.cs#L21-L443)) - Handles connection lifecycle with automatic reconnection
-- **HubConnectionProvider** ([HubConnectionProvider.cs:21-71](McpPlugin/Network/Connection/Provider/HubConnectionProvider.cs#L21-L71)) - Creates and configures SignalR connections
-- **McpManagerClientHub** - Handles bidirectional communication between client and server
+- **Server**: Listens on `http://localhost:8080`
+- **Hub Endpoint**: `/hub/mcp-server`
+- **Client**: Connects to `http://localhost:8080/hub/mcp-server`
 
-### Usage Example
+## Getting Started
+
+### 1. The Server (`McpPlugin.Server`)
+
+The server acts as a hub. You can run the provided `DemoWebApp` or host it in your own ASP.NET Core application.
+
+**Running the Demo Server:**
+
+```bash
+cd DemoWebApp
+dotnet run --port=11111 --client-transport=stdio
+```
+
+*Note: Use `--client-transport=stdio` if connecting from Claude Desktop, or `--client-transport=http` for HTTP-based clients.*
+
+**Hosting in your own Web App:**
 
 ```csharp
-// Configure and build the plugin
-var plugin = new McpPluginBuilder()
-    .WithTool("GetWeather", "Get weather for a city",
-        async (string city) => $"Weather in {city}: Sunny")
-    .WithToolsFromAssembly(typeof(MyTools).Assembly)
-    .Build();
+// Program.cs
+using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Server;
 
-// Connect to the MCP server
-await plugin.Connect();
+var builder = WebApplication.CreateBuilder(args);
 
-// Tool methods with [McpPluginTool] attribute are automatically discovered
-public class MyTools
+// 1. Prepare arguments (or load from config)
+var dataArguments = new DataArguments(args);
+
+// 2. Register MCP Server services
+builder.Services
+    .WithMcpServer(dataArguments.ClientTransport) // TransportMethod.stdio or TransportMethod.http
+    .WithMcpPluginServer(dataArguments);
+
+var app = builder.Build();
+
+// 3. Use MCP Server middleware
+app.UseMcpPluginServer(dataArguments);
+
+app.Run();
+```
+
+### 2. The Client App (`McpPlugin`)
+
+Add the `com.IvanMurzak.McpPlugin` package to your .NET application.
+
+**Defining Tools:**
+
+```csharp
+using com.IvanMurzak.McpPlugin;
+using System.ComponentModel;
+
+[McpPluginToolType]
+public static class MyTools
 {
-    [McpPluginTool(Title = "Calculate Sum", Description = "Adds two numbers")]
+    [McpPluginTool("calculate-sum", "Adds two numbers")]
+    [Description("Adds two numbers")]
     public static int Add(int a, int b) => a + b;
 }
 ```
 
-### Configuration
+**Connecting to the Server:**
 
-The plugin uses `ConnectionConfig` for server connection settings:
+```csharp
+using com.IvanMurzak.McpPlugin;
+using com.IvanMurzak.ReflectorNet;
 
-- **ServerUrl**: MCP server endpoint (default: configured via dependency injection)
-- **TimeoutMs**: Operation timeout in milliseconds
-- **Keep-Alive**: 30-second interval
-- **Server Timeout**: 5 minutes
-- **Retry Policy**: Fixed 10-second intervals with automatic reconnection
+// 1. Initialize Reflector (The core engine)
+var reflector = new Reflector();
 
-### Communication Model
+// 2. Configure and build the plugin
+var plugin = new McpPluginBuilder()
+    .WithConfigFromArgsOrEnv(args) // Loads config from args or environment variables
+    // Option A: Scan assemblies for [McpPluginTool], [McpPluginPrompt], [McpPluginResource]
+    .WithToolsFromAssembly(typeof(MyTools).Assembly)
+    .WithPromptsFromAssembly(typeof(MyTools).Assembly)
+    .WithResourcesFromAssembly(typeof(MyTools).Assembly)
+    // Option B: Manually register specific types
+    // .WithTools<MyTools>()
+    // Option C: Manually register specific methods
+    // .WithTool(typeof(MyTools).GetMethod("Add"))
+    .Build(reflector); // Pass reflector instance
 
-The plugin supports bidirectional communication:
-
-**Client → Server:**
-
-- `NotifyAboutUpdatedTools()` - Notify server of tool changes
-- `NotifyAboutUpdatedPrompts()` - Notify server of prompt changes
-- `NotifyAboutUpdatedResources()` - Notify server of resource changes
-
-**Server → Client:**
-
-- `RunCallTool` - Execute a tool with parameters
-- `RunListTool` - List available tools
-- `RunGetPrompt` - Get prompt content
-- `RunListPrompts` - List available prompts
-- `RunResourceContent` - Get resource content by URI
-- `RunListResources` - List available resources
-- `RunResourceTemplates` - List resource templates
-
-### Technology Stack
-
-- **.NET Standard 2.1** - Cross-platform support
-- **SignalR** - Real-time communication
-- **R3** - Reactive extensions for event handling
-- **ReflectorNet** - Reflection utilities for method invocation and schema generation
-- **System.Text.Json** - JSON serialization
-- **Microsoft.Extensions.DependencyInjection** - Service container
-
-### Target Framework
-
-netstandard2.1 - Compatible with .NET Core 3.0+, .NET 5+, and .NET Framework 4.8+
-
-## MCP Server
-
-**McpPlugin.Server** is a standalone .NET server application that acts as a bridge between Model Context Protocol (MCP) clients and .NET applications integrated with the McpPlugin library. It enables AI assistants to interact with .NET applications through the MCP standard.
-
-### Key Features
-
-- **Dual Transport Support**: Supports both STDIO and HTTP transport methods for MCP communication
-- **SignalR Bridge**: Real-time bidirectional communication with .NET applications via SignalR
-- **.NET Tool Package**: Installable as a global .NET tool for easy deployment
-- **Automatic Routing**: Routes MCP requests (tools, prompts, resources) to connected .NET applications
-- **Event-Driven Architecture**: Reactive notifications for dynamic tool/prompt/resource updates
-- **Session Management**: Per-session execution context for HTTP transport mode
-- **Robust Logging**: Comprehensive NLog-based logging with file rotation
-
-### Installation
-
-Install as a global .NET tool:
-
-```bash
-dotnet tool install --global com.IvanMurzak.McpPlugin.Server
+// 3. Connect to the MCP server
+await plugin.Connect();
 ```
 
-Or run directly:
+## Project Structure
 
-```bash
-dotnet run --project McpPlugin.Server
-```
+- **`McpPlugin`**: The client library for .NET applications. Contains the core logic for managing tools, prompts, and resources.
+- **`McpPlugin.Server`**: The server implementation that bridges SignalR clients to the MCP protocol.
+- **`McpPlugin.Common`**: Shared data structures, interfaces, and protocol definitions.
+- **`DemoConsoleApp`**: A sample client application demonstrating how to expose tools.
+- **`DemoWebApp`**: A sample server application demonstrating how to host the MCP bridge.
 
-### Usage
+## Configuration
 
-The server can be configured via command-line arguments:
+The plugin uses `ConnectionConfig` for server connection settings. You can configure it via code or environment variables.
 
-```bash
-mcp-plugin-server --port=8080 --client-transport=stdio --plugin-timeout=10000
-```
+- **ServerUrl**: The URL of the MCP Server (e.g., `http://localhost:5000/mcp`).
+- **TimeoutMs**: Operation timeout in milliseconds.
+- **Retry Policy**: Automatic reconnection logic is built-in.
 
-**Configuration Options:**
+## License
 
-- `--port` - Server port for SignalR connections (default: 8080)
-- `--client-transport` - MCP client transport: `stdio` or `http` (default: `stdio`)
-- `--plugin-timeout` - Plugin connection timeout in milliseconds (default: 10000)
-
-### Architecture
-
-```text
-MCP Client (AI Assistant)
-        ↓
-    STDIO/HTTP
-        ↓
-McpPlugin.Server (Bridge)
-        ↓
-    SignalR/ASP.NET Core
-        ↓
-.NET Application + McpPlugin
-```
-
-### Core Components
-
-#### McpServerService
-
-Hosted service ([McpServerService.cs](McpPlugin.Server/src/McpServerService.cs)) that manages the MCP server lifecycle and coordinates events between the MCP client and connected .NET applications.
-
-#### Routers
-
-Request routers forward MCP operations to connected applications:
-
-- **ToolRouter** - Routes `tools/call` and `tools/list` requests
-- **PromptRouter** - Routes `prompts/get` and `prompts/list` requests
-- **ResourceRouter** - Routes `resources/read`, `resources/list`, and `resources/templates` requests
-
-#### McpServerHub
-
-SignalR hub ([McpServerHub.cs](McpPlugin.Server/src/Hub/McpServerHub.cs)) that manages connections from .NET applications and handles:
-
-- Version handshake validation
-- Tool/prompt/resource update notifications
-- Request completion tracking
-
-### Transport Modes
-
-#### STDIO Transport
-
-Standard input/output communication for MCP clients:
-
-```bash
-mcp-plugin-server --client-transport stdio
-```
-
-- Console logs redirected to stderr to avoid polluting stdout
-- Ideal for Claude Desktop and similar MCP clients
-
-#### HTTP Transport
-
-HTTP-based communication with stateful sessions:
-
-```bash
-mcp-plugin-server --client-transport http --port 8080
-```
-
-- Per-session execution context
-- Stateless mode disabled for persistent connections
-- Accessible at `http://localhost:8080/` or `http://localhost:8080/mcp`
-
-### Configuration Files
-
-#### appsettings.json
-
-Basic ASP.NET Core configuration for logging and allowed hosts.
-
-#### NLog.config
-
-Comprehensive logging configuration:
-
-- File logging with automatic rotation (10 MB max per file)
-- Console logging with color-coded levels
-- Separate error log file for Error/Fatal levels
-- Microsoft-style log formatting
-
-#### server.json
-
-MCP server metadata configuration compatible with Model Context Protocol registry schema.
-
-### Technology Stack
-
-- **.NET 9.0** - Latest .NET framework with native AOT support potential
-- **ASP.NET Core** - Web framework for HTTP endpoints
-- **SignalR** - Real-time bidirectional communication
-- **ModelContextProtocol** (v0.3.0-preview.4) - Official MCP SDK
-- **ModelContextProtocol.AspNetCore** - ASP.NET Core integration for MCP
-- **R3** - Reactive extensions for event handling
-- **NLog** - Structured logging framework
-- **ReflectorNet** - Reflection utilities
-
-### Deployment
-
-The server is packaged as a .NET tool and can be:
-
-- Installed globally: `dotnet tool install -g com.IvanMurzak.McpPlugin.Server`
-- Run as executable: `mcp-plugin-server`
-- Containerized using the included Dockerfile
-- Integrated into CI/CD pipelines
-
-### Version Compatibility
-
-The server performs API version handshaking with connected plugins to ensure compatibility:
-
-- API Version: `1.0.0` (defined in `Consts.ApiVersion`)
-- Exact version match required for successful connection
-- Version mismatch errors logged and rejected
-
-### Endpoints
-
-**SignalR Hub:** `/mcp-remote-app` - Main SignalR endpoint for plugin connections
-
-**HTTP Transport Mode:**
-
-- `/` - Primary MCP endpoint
-- `/mcp` - Alternative MCP endpoint
-- `/help` - Informational endpoint with usage details
-
-### Example: Claude Desktop Integration
-
-Add to Claude Desktop configuration (`claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "dotnet-app": {
-      "command": "mcp-plugin-server",
-      "args": ["client-transport=stdio", "port=8080"]
-    }
-  }
-}
-```
+This project is licensed under the Apache-2.0 License. Copyright - Ivan Murzak.
