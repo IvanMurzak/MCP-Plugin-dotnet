@@ -33,31 +33,31 @@ $ErrorActionPreference = "Stop"
 # Version file locations (relative to script root)
 $VersionFiles = @(
     @{
-        Path        = "McpPlugin.Server/server.json"
+        Path        = "/../McpPlugin.Server/server.json"
         Pattern     = '"version":\s*"[\d\.]+"'
         Replace     = '"version": "{VERSION}"'
         Description = "Server JSON version (2 occurrences)"
     },
     @{
-        Path        = "McpPlugin.Common/McpPlugin.Common.csproj"
+        Path        = "/../McpPlugin.Common/McpPlugin.Common.csproj"
         Pattern     = '<Version>[\d\.]+</Version>'
         Replace     = '<Version>{VERSION}</Version>'
         Description = "Common csproj XML version"
     },
     @{
-        Path        = "McpPlugin.Server/McpPlugin.Server.csproj"
+        Path        = "/../McpPlugin.Server/McpPlugin.Server.csproj"
         Pattern     = '<Version>[\d\.]+</Version>'
         Replace     = '<Version>{VERSION}</Version>'
         Description = "Server csproj XML version"
     },
     @{
-        Path        = "McpPlugin/McpPlugin.csproj"
+        Path        = "/../McpPlugin/McpPlugin.csproj"
         Pattern     = '<Version>[\d\.]+</Version>'
         Replace     = '<Version>{VERSION}</Version>'
         Description = "Plugin csproj XML version"
     },
     @{
-        Path        = "McpPlugin.Common/src/Utils/Consts.cs"
+        Path        = "/../McpPlugin.Common/src/Utils/Consts.cs"
         Pattern     = 'public const string PluginVersion = "[\d\.]+"'
         Replace     = 'public const string PluginVersion = "{VERSION}"'
         Description = "Consts.cs PluginVersion constant"
@@ -83,9 +83,9 @@ function Test-SemanticVersion {
 
 function Get-CurrentVersion {
     # Extract current version from package.json
-    $packageJsonPath = Join-Path $PSScriptRoot "McpPlugin/McpPlugin.csproj"
+    $packageJsonPath = Join-Path $PSScriptRoot "/../McpPlugin/McpPlugin.csproj"
     if (-not (Test-Path $packageJsonPath)) {
-        throw "Could not find package.json at: $packageJsonPath"
+        throw "Could not find McpPlugin.csproj at: $packageJsonPath"
     }
 
     $content = Get-Content $packageJsonPath -Raw
@@ -93,7 +93,7 @@ function Get-CurrentVersion {
         return $Matches[1]
     }
 
-    throw "Could not extract current version from package.json"
+    throw "Could not extract current version from McpPlugin.csproj"
 }
 
 function Update-VersionFiles {
