@@ -69,7 +69,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 Annotations = new()
                 {
                     Title = response.Title
-                },
+                }
             };
         }
 
