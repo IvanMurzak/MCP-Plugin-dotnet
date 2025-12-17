@@ -14,6 +14,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Tests.Utils;
+using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Tests.Data.Other;
 using com.IvanMurzak.McpPlugin.Tests.Infrastructure;
 using com.IvanMurzak.ReflectorNet;
@@ -75,7 +76,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
         private static void CompareJsonElementsRecursive(string path, JsonElement actual, JsonElement expected)
         {
-            actual.ValueKind.Should().Be(expected.ValueKind, $"{path}: ValueKind mismatch");
+            actual.ValueKind.Should().Be(expected.ValueKind, $"{path}: ValueKind mismatch.");
 
             switch (expected.ValueKind)
             {
@@ -83,12 +84,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     var expectedProps = expected.EnumerateObject().ToList();
                     var actualProps = actual.EnumerateObject().ToList();
 
-                    actualProps.Count.Should().Be(expectedProps.Count, $"{path}: Object property count mismatch. Expected properties: {string.Join(", ", expectedProps.Select(p => p.Name))}. Actual properties: {string.Join(", ", actualProps.Select(p => p.Name))}");
+                    actualProps.Count.Should().Be(expectedProps.Count, $"{path}: Object property count mismatch. \n\rExpected properties: \n\r  {string.Join(",\n\r  ", expectedProps.Select(p => p.Name))}. \n\r\n\rActual properties: \n\r  {string.Join(",\n\r  ", actualProps.Select(p => p.Name))}");
 
                     foreach (var expectedProp in expectedProps)
                     {
                         var actualProp = actualProps.FirstOrDefault(p => p.Name == expectedProp.Name);
-                        actualProp.Should().NotBeNull($"{path}: Missing property '{expectedProp.Name}'");
+                        actualProp.Should().NotBeNull($"{path}: Missing property '{expectedProp.Name}'.\n\rExpected: {expected.ToPrettyJson()}\n\rActual: {actual.ToPrettyJson()}");
 
                         CompareJsonElementsRecursive($"{path}/{expectedProp.Name}", actualProp.Value, expectedProp.Value);
                     }
@@ -98,7 +99,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     var expectedArray = expected.EnumerateArray().ToList();
                     var actualArray = actual.EnumerateArray().ToList();
 
-                    actualArray.Count.Should().Be(expectedArray.Count, $"{path}: Array length mismatch");
+                    actualArray.Count.Should().Be(expectedArray.Count, $"{path}: Array length mismatch.\n\rExpected: {expected.ToPrettyJson()}\n\rActual: {actual.ToPrettyJson()}");
 
                     for (int i = 0; i < expectedArray.Count; i++)
                     {
@@ -107,31 +108,31 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     break;
 
                 case JsonValueKind.String:
-                    actual.GetString().Should().Be(expected.GetString(), $"{path}: String value mismatch");
+                    actual.GetString().Should().Be(expected.GetString(), $"{path}: String value mismatch.");
                     break;
 
                 case JsonValueKind.Number:
                     if (expected.TryGetInt32(out int expectedInt))
                     {
-                        actual.GetInt32().Should().Be(expectedInt, $"{path}: Integer value mismatch");
+                        actual.GetInt32().Should().Be(expectedInt, $"{path}: Integer value mismatch.");
                     }
                     else if (expected.TryGetInt64(out long expectedLong))
                     {
-                        actual.GetInt64().Should().Be(expectedLong, $"{path}: Long value mismatch");
+                        actual.GetInt64().Should().Be(expectedLong, $"{path}: Long value mismatch.");
                     }
                     else if (expected.TryGetDouble(out double expectedDouble))
                     {
-                        actual.GetDouble().Should().Be(expectedDouble, $"{path}: Double value mismatch");
+                        actual.GetDouble().Should().Be(expectedDouble, $"{path}: Double value mismatch.");
                     }
                     else
                     {
-                        actual.GetDecimal().Should().Be(expected.GetDecimal(), $"{path}: Decimal value mismatch");
+                        actual.GetDecimal().Should().Be(expected.GetDecimal(), $"{path}: Decimal value mismatch.");
                     }
                     break;
 
                 case JsonValueKind.True:
                 case JsonValueKind.False:
-                    actual.GetBoolean().Should().Be(expected.GetBoolean(), $"{path}: Boolean value mismatch");
+                    actual.GetBoolean().Should().Be(expected.GetBoolean(), $"{path}: Boolean value mismatch.");
                     break;
 
                 case JsonValueKind.Null:
@@ -139,11 +140,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     break;
 
                 default:
-                    throw new ArgumentException($"{path}: Unsupported JsonValueKind: {expected.ValueKind}");
+                    throw new ArgumentException($"{path}: Unsupported JsonValueKind: {expected.ValueKind}.");
             }
         }
 
-        private static async Task ValidateListToolSchema(Task<ResponseData<ResponseListTool[]>>? listToolTask, JsonElement? expectedInputSchema = null, JsonElement? expectedOutputSchema = null)
+        private async Task ValidateListToolSchema(Task<ResponseData<ResponseListTool[]>>? listToolTask, JsonElement? expectedInputSchema = null, JsonElement? expectedOutputSchema = null)
         {
             listToolTask.Should().NotBeNull();
 
@@ -152,8 +153,24 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             response.Value.Should().NotBeNull();
             response.Value!.Length.Should().Be(1);
 
+            _output.WriteLine("==================================");
+            _output.WriteLine("Validating InputSchema and OutputSchema...");
+            _output.WriteLine("Expected InputSchema:");
+            _output.WriteLine(expectedInputSchema?.ToPrettyJson() ?? "null");
+            _output.WriteLine("----------------------------------");
+            _output.WriteLine("Actual InputSchema:");
+            _output.WriteLine(response.Value![0].InputSchema.ToPrettyJson() ?? "null");
             CompareJsonElements(nameof(ResponseListTool.InputSchema), response.Value![0].InputSchema, expectedInputSchema);
+            _output.WriteLine("==================================");
+
+            _output.WriteLine("==================================");
+            _output.WriteLine("Expected OutputSchema:");
+            _output.WriteLine(expectedOutputSchema?.ToPrettyJson() ?? "null");
+            _output.WriteLine("----------------------------------");
+            _output.WriteLine("Actual OutputSchema:");
+            _output.WriteLine(response.Value![0].OutputSchema.ToPrettyJson() ?? "null");
             CompareJsonElements(nameof(ResponseListTool.OutputSchema), response.Value![0].OutputSchema, expectedOutputSchema);
+            _output.WriteLine("==================================");
         }
 
         IMcpPlugin? BuildMcpPluginWithTool(string toolName, string toolTitle)
@@ -335,8 +352,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     .BuildJsonElement(),
                 expectedOutputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
-                    .AddRefProperty(JsonSchema.Result, "System.Int32_Array", required: true)
-                    .AddArrayDefinition("System.Int32_Array", JsonSchema.Integer)
+                    .AddRefProperty(JsonSchema.Result, "System.Collections.Generic.List<System.Int32>", required: true)
+                    .AddArrayDefinition("System.Collections.Generic.List<System.Int32>", JsonSchema.Integer)
                     .BuildJsonElement());
         }
 
@@ -354,8 +371,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     .BuildJsonElement(),
                 expectedOutputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
-                    .AddRefProperty(JsonSchema.Result, "System.String_Array", required: true)
-                    .AddArrayDefinition("System.String_Array", JsonSchema.String)
+                    .AddRefProperty(JsonSchema.Result, "System.Collections.Generic.List<System.String>", required: true)
+                    .AddArrayDefinition("System.Collections.Generic.List<System.String>", JsonSchema.String)
                     .BuildJsonElement());
         }
     }
