@@ -10,6 +10,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json.Nodes;
 
 namespace com.IvanMurzak.McpPlugin.Common.Model
@@ -86,5 +87,91 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
                         MimeType = Consts.MimeType.TextPlain
                     }
                 });
+
+        /// <summary>
+        /// Creates a successful response containing image content.
+        /// </summary>
+        /// <param name="data">Raw image bytes</param>
+        /// <param name="mimeType">MIME type (e.g., "image/png", "image/jpeg"). Use Consts.MimeType constants.</param>
+        /// <param name="message">Optional text message to include alongside the image</param>
+        public static ResponseCallTool Image(byte[] data, string mimeType, string? message = null)
+        {
+            var content = new List<ContentBlock>
+            {
+                new ContentBlock()
+                {
+                    Type = "image",
+                    Data = Convert.ToBase64String(data),
+                    MimeType = mimeType
+                }
+            };
+
+            if (!string.IsNullOrEmpty(message))
+            {
+                content.Insert(0, new ContentBlock()
+                {
+                    Type = "text",
+                    Text = message,
+                    MimeType = Consts.MimeType.TextPlain
+                });
+            }
+
+            return new ResponseCallTool(
+                status: ResponseStatus.Success,
+                content: content);
+        }
+
+        /// <summary>
+        /// Creates a successful response containing audio content.
+        /// </summary>
+        /// <param name="data">Raw audio bytes</param>
+        /// <param name="mimeType">MIME type (e.g., "audio/wav", "audio/mpeg"). Use Consts.MimeType constants.</param>
+        /// <param name="message">Optional text message to include alongside the audio</param>
+        public static ResponseCallTool Audio(byte[] data, string mimeType, string? message = null)
+        {
+            var content = new List<ContentBlock>
+            {
+                new ContentBlock()
+                {
+                    Type = "audio",
+                    Data = Convert.ToBase64String(data),
+                    MimeType = mimeType
+                }
+            };
+
+            if (!string.IsNullOrEmpty(message))
+            {
+                content.Insert(0, new ContentBlock()
+                {
+                    Type = "text",
+                    Text = message,
+                    MimeType = Consts.MimeType.TextPlain
+                });
+            }
+
+            return new ResponseCallTool(
+                status: ResponseStatus.Success,
+                content: content);
+        }
+
+        /// <summary>
+        /// Creates a successful response with multiple content blocks.
+        /// Use this when returning mixed content (e.g., text + images + audio).
+        /// </summary>
+        /// <param name="contentBlocks">Array of content blocks to include</param>
+        public static ResponseCallTool WithContent(params ContentBlock[] contentBlocks)
+            => new ResponseCallTool(
+                status: ResponseStatus.Success,
+                content: contentBlocks.ToList());
+
+        /// <summary>
+        /// Creates a response with specified status and multiple content blocks.
+        /// </summary>
+        /// <param name="status">Response status</param>
+        /// <param name="contentBlocks">Array of content blocks to include</param>
+        public static ResponseCallTool WithContent(ResponseStatus status, params ContentBlock[] contentBlocks)
+            => new ResponseCallTool(
+                status: status,
+                content: contentBlocks.ToList());
     }
 }
