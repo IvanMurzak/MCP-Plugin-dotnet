@@ -84,12 +84,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     var expectedProps = expected.EnumerateObject().ToList();
                     var actualProps = actual.EnumerateObject().ToList();
 
-                    actualProps.Count.Should().Be(expectedProps.Count, $"{path}: Object property count mismatch. \n\rExpected properties: \n\r  {string.Join(",\n\r  ", expectedProps.Select(p => p.Name))}. \n\r\n\rActual properties: \n\r  {string.Join(",\n\r  ", actualProps.Select(p => p.Name))}");
+                    actualProps.Count.Should().Be(expectedProps.Count, $"{path}: Object property count mismatch. \r\nExpected properties: \r\n  {string.Join(",\r\n  ", expectedProps.Select(p => p.Name))}. \r\n\r\nActual properties: \r\n  {string.Join(",\r\n  ", actualProps.Select(p => p.Name))}");
 
                     foreach (var expectedProp in expectedProps)
                     {
                         var actualProp = actualProps.FirstOrDefault(p => p.Name == expectedProp.Name);
-                        actualProp.Should().NotBeNull($"{path}: Missing property '{expectedProp.Name}'.\n\rExpected: {expected.ToPrettyJson()}\n\rActual: {actual.ToPrettyJson()}");
+                        actualProp.Should().NotBeNull($"{path}: Missing property '{expectedProp.Name}'.\r\nExpected: {expected.ToPrettyJson()}\r\nActual: {actual.ToPrettyJson()}");
 
                         CompareJsonElementsRecursive($"{path}/{expectedProp.Name}", actualProp.Value, expectedProp.Value);
                     }
@@ -99,7 +99,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     var expectedArray = expected.EnumerateArray().ToList();
                     var actualArray = actual.EnumerateArray().ToList();
 
-                    actualArray.Count.Should().Be(expectedArray.Count, $"{path}: Array length mismatch.\n\rExpected: {expected.ToPrettyJson()}\n\rActual: {actual.ToPrettyJson()}");
+                    actualArray.Count.Should().Be(expectedArray.Count, $"{path}: Array length mismatch.\r\nExpected: {expected.ToPrettyJson()}\r\nActual: {actual.ToPrettyJson()}");
 
                     for (int i = 0; i < expectedArray.Count; i++)
                     {
