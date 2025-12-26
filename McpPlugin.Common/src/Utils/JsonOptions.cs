@@ -21,6 +21,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             PropertyNameCaseInsensitive = true,
             WriteIndented = true,
             AllowTrailingCommas = false,
+            // ReferenceHandler = ReferenceHandler.IgnoreCycles,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
             ReadCommentHandling = JsonCommentHandling.Skip,
             NumberHandling = JsonNumberHandling.AllowReadingFromString,
