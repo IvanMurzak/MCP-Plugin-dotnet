@@ -13,6 +13,7 @@ namespace com.IvanMurzak.McpPlugin.Common
     {
         public static class MimeType
         {
+            // Text types
             public const string TextPlain = "text/plain";
             public const string TextHtml = "text/html";
             public const string TextJson = "application/json";
@@ -21,6 +22,19 @@ namespace com.IvanMurzak.McpPlugin.Common
             public const string TextCsv = "text/csv";
             public const string TextMarkdown = "text/markdown";
             public const string TextJavascript = "application/javascript";
+
+            // Image types
+            public const string ImagePng = "image/png";
+            public const string ImageJpeg = "image/jpeg";
+            public const string ImageGif = "image/gif";
+            public const string ImageWebp = "image/webp";
+            public const string ImageSvg = "image/svg+xml";
+
+            // Audio types
+            public const string AudioMpeg = "audio/mpeg";
+            public const string AudioWav = "audio/wav";
+            public const string AudioOgg = "audio/ogg";
+            public const string AudioWebm = "audio/webm";
         }
     }
 }
