@@ -48,6 +48,16 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
             {
                 [JsonSchema.Result] = structuredContent
             };
+
+            // Update unstructured content text to match structured content format (wrap in "result")
+            if (structuredContent != null)
+            {
+                var textContent = Content?.FirstOrDefault(c => c.Type == Consts.ContentType.Text);
+                if (textContent != null)
+                {
+                    textContent.Text = StructuredContent?.ToJsonString();
+                }
+            }
         }
 
         public ResponseCallTool SetRequestID(string requestId)
@@ -57,7 +67,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         }
 
         public string? GetMessage() => Content
-            ?.FirstOrDefault(item => item.Type == "text" && !string.IsNullOrEmpty(item.Text))
+            ?.FirstOrDefault(item => item.Type == Consts.ContentType.Text && !string.IsNullOrEmpty(item.Text))
             ?.Text;
     }
 }

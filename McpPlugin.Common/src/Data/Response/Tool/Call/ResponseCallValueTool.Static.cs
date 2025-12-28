@@ -26,7 +26,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
                 {
                     new ContentBlock()
                     {
-                        Type = "text",
+                        Type = Consts.ContentType.Text,
                         Text = message,
                         MimeType = Consts.MimeType.TextPlain
                     }
@@ -39,7 +39,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
                 {
                     new ContentBlock()
                     {
-                        Type = "text",
+                        Type = Consts.ContentType.Text,
                         Text = message,
                         MimeType = Consts.MimeType.TextPlain
                     }
@@ -53,7 +53,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
                 {
                     new ContentBlock()
                     {
-                        Type = "text",
+                        Type = Consts.ContentType.Text,
                         Text = message, // needed for MCP backward compatibility: https://modelcontextprotocol.io/specification/2025-06-18/server/tools#structured-content
                         MimeType = Consts.MimeType.TextJson
                     }
@@ -66,7 +66,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
                 {
                     new ContentBlock()
                     {
-                        Type = "text",
+                        Type = Consts.ContentType.Text,
                         Text = message,
                         MimeType = Consts.MimeType.TextPlain
                     }

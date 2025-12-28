@@ -42,7 +42,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         {
             Content = new ContentBlock
             {
-                Type = "text",
+                Type = Consts.ContentType.Text,
                 Text = message,
                 MimeType = Consts.MimeType.TextPlain
             };
