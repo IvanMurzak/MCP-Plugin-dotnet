@@ -23,11 +23,12 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         {
             // none
         }
-        public ResponseCallValueTool(string requestId, ResponseStatus status, List<ContentBlock> content)
+        public ResponseCallValueTool(string requestId, ResponseStatus status, List<ContentBlock> content) : base(
+            requestId: requestId,
+            status: status,
+            content: content)
         {
-            RequestID = requestId;
-            Status = status;
-            Content = content;
+            // none
         }
         public ResponseCallValueTool(JsonNode? structuredContent, ResponseStatus status) : base(
             requestId: string.Empty,
