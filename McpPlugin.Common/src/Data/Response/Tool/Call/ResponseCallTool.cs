@@ -58,7 +58,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
                 {
                     Type = Consts.ContentType.Text,
                     Text = StructuredContent.ToJsonString(),
-                    MimeType = Consts.MimeType.TextPlain
+                    MimeType = Consts.MimeType.TextJson
                 }
             };
         }
