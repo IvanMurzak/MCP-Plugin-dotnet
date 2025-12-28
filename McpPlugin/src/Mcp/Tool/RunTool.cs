@@ -17,7 +17,6 @@ using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Utils;
 using com.IvanMurzak.ReflectorNet;
-using com.IvanMurzak.ReflectorNet.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin
@@ -99,18 +98,8 @@ namespace com.IvanMurzak.McpPlugin
                     .SetRequestID(requestId);
             }
 
-            var node = System.Text.Json.JsonSerializer.SerializeToNode(result, _reflector.JsonSerializerOptions);
-            var type = result.GetType();
-
-            if (TypeUtils.IsPrimitive(type))
-            {
-                return ResponseCallTool
-                    .SuccessStructured(node)
-                    .SetRequestID(requestId);
-            }
-
             return ResponseCallTool
-                .SuccessStructured(node)
+                .SuccessStructured(System.Text.Json.JsonSerializer.SerializeToNode(result, _reflector.JsonSerializerOptions))
                 .SetRequestID(requestId);
         }
 
