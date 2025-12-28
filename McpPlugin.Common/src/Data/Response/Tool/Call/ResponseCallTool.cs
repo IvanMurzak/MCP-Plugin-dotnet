@@ -25,39 +25,42 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         public ResponseCallTool() { }
         public ResponseCallTool(ResponseStatus status, List<ContentBlock> content) : this(
             requestId: string.Empty,
-            structuredContent: null,
             status: status,
             content: content)
         {
             // none
         }
-        public ResponseCallTool(JsonNode? structuredContent, ResponseStatus status, List<ContentBlock> content) : this(
-            requestId: string.Empty,
-            structuredContent: structuredContent,
-            status: status,
-            content: content)
-        {
-            // none
-        }
-        public ResponseCallTool(string requestId, JsonNode? structuredContent, ResponseStatus status, List<ContentBlock> content)
+        public ResponseCallTool(string requestId, ResponseStatus status, List<ContentBlock> content)
         {
             RequestID = requestId;
             Status = status;
             Content = content;
+        }
+        public ResponseCallTool(JsonNode? structuredContent, ResponseStatus status) : this(
+            requestId: string.Empty,
+            structuredContent: structuredContent,
+            status: status)
+        {
+            // none
+        }
+        public ResponseCallTool(string requestId, JsonNode? structuredContent, ResponseStatus status)
+        {
+            RequestID = requestId;
+            Status = status;
             StructuredContent = new JsonObject()
             {
                 [JsonSchema.Result] = structuredContent
             };
-
-            // Update unstructured content text to match structured content format (wrap in "result")
-            if (structuredContent != null)
+            // MCP backward compatibility: https://modelcontextprotocol.io/specification/2025-06-18/server/tools#structured-content
+            Content = new List<ContentBlock>
             {
-                var textContent = Content?.FirstOrDefault(c => c.Type == Consts.ContentType.Text);
-                if (textContent != null)
+                new ContentBlock()
                 {
-                    textContent.Text = StructuredContent?.ToJsonString();
+                    Type = Consts.ContentType.Text,
+                    Text = StructuredContent.ToJsonString(),
+                    MimeType = Consts.MimeType.TextPlain
                 }
-            }
+            };
         }
 
         public ResponseCallTool SetRequestID(string requestId)

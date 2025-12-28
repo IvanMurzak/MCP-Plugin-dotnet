@@ -18,25 +18,28 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         public ResponseCallValueTool() : base() { }
         public ResponseCallValueTool(ResponseStatus status, List<ContentBlock> content) : base(
             requestId: string.Empty,
-            structuredContent: null,
             status: status,
             content: content)
         {
             // none
         }
-        public ResponseCallValueTool(JsonNode? structuredContent, ResponseStatus status, List<ContentBlock> content) : base(
+        public ResponseCallValueTool(string requestId, ResponseStatus status, List<ContentBlock> content)
+        {
+            RequestID = requestId;
+            Status = status;
+            Content = content;
+        }
+        public ResponseCallValueTool(JsonNode? structuredContent, ResponseStatus status) : base(
             requestId: string.Empty,
             structuredContent: structuredContent,
-            status: status,
-            content: content)
+            status: status)
         {
             // none
         }
-        public ResponseCallValueTool(string requestId, JsonNode? structuredContent, ResponseStatus status, List<ContentBlock> content) : base(
+        public ResponseCallValueTool(string requestId, JsonNode? structuredContent, ResponseStatus status) : base(
             requestId: requestId,
             structuredContent: structuredContent,
-            status: status,
-            content: content)
+            status: status)
         {
             // none
         }
