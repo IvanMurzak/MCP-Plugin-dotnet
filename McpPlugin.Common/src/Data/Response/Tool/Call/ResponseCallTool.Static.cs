@@ -17,74 +17,67 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
     public partial class ResponseCallTool : IRequestID
     {
         public static ResponseCallTool Error(Exception exception)
-            => Error($"[Error] {exception?.Message}\n{exception?.StackTrace}");
+        {
+            return Error($"[Error] {exception?.Message}\n{exception?.StackTrace}");
+        }
 
         public static ResponseCallTool Error(string? message = null)
-            => new ResponseCallTool(
+        {
+            return new ResponseCallTool(
                 status: ResponseStatus.Error,
                 content: new List<ContentBlock>
                 {
                     new ContentBlock()
                     {
-                        Type = "text",
+                        Type = Consts.ContentType.Text,
                         Text = message,
                         MimeType = Consts.MimeType.TextPlain
                     }
                 });
+        }
 
         public static ResponseCallTool Success(string? message = null)
-            => new ResponseCallTool(
+        {
+            return new ResponseCallTool(
                 status: ResponseStatus.Success,
                 content: new List<ContentBlock>
                 {
                     new ContentBlock()
                     {
-                        Type = "text",
+                        Type = Consts.ContentType.Text,
                         Text = message,
                         MimeType = Consts.MimeType.TextPlain
                     }
                 });
+        }
 
-        public static ResponseCallTool SuccessStructured(JsonNode? structuredContent, string? message)
-            => new ResponseCallTool(
+        public static ResponseCallTool SuccessStructured(JsonNode? structuredContent)
+        {
+            return new ResponseCallTool(
                 structuredContent: structuredContent,
-                status: ResponseStatus.Success,
-                content: new List<ContentBlock>
-                {
-                    new ContentBlock()
-                    {
-                        Type = "text",
-                        Text = message, // needed for MCP backward compatibility: https://modelcontextprotocol.io/specification/2025-06-18/server/tools#structured-content
-                        MimeType = Consts.MimeType.TextJson
-                    }
-                });
+                status: ResponseStatus.Success);
+        }
 
-
-        public static ResponseCallTool ErrorStructured(JsonNode? structuredContent, string? message)
-            => new ResponseCallTool(
+        public static ResponseCallTool ErrorStructured(JsonNode? structuredContent)
+        {
+            return new ResponseCallTool(
                 structuredContent: structuredContent,
-                status: ResponseStatus.Error,
-                content: new List<ContentBlock>
-                {
-                    new ContentBlock()
-                    {
-                        Type = "text",
-                        Text = message, // needed for MCP backward compatibility: https://modelcontextprotocol.io/specification/2025-06-18/server/tools#structured-content
-                        MimeType = Consts.MimeType.TextJson
-                    }
-                });
+                status: ResponseStatus.Error);
+        }
 
         public static ResponseCallTool Processing(string? message = null)
-            => new ResponseCallTool(
+        {
+            return new ResponseCallTool(
                 status: ResponseStatus.Processing,
                 content: new List<ContentBlock>
                 {
                     new ContentBlock()
                     {
-                        Type = "text",
+                        Type = Consts.ContentType.Text,
                         Text = message,
                         MimeType = Consts.MimeType.TextPlain
                     }
                 });
+        }
     }
 }
