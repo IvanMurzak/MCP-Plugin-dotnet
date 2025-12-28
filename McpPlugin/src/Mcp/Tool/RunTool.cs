@@ -99,19 +99,18 @@ namespace com.IvanMurzak.McpPlugin
                     .SetRequestID(requestId);
             }
 
+            var node = System.Text.Json.JsonSerializer.SerializeToNode(result, _reflector.JsonSerializerOptions);
             var type = result.GetType();
+
             if (TypeUtils.IsPrimitive(type))
             {
                 return ResponseCallTool
-                    .SuccessStructured(System.Text.Json.JsonSerializer.SerializeToNode(result, _reflector.JsonSerializerOptions))
+                    .SuccessStructured(node)
                     .SetRequestID(requestId);
             }
 
-            var node = System.Text.Json.JsonSerializer.SerializeToNode(result, _reflector.JsonSerializerOptions);
-            var json = node?.ToJsonString(_reflector.JsonSerializerOptions);
-
             return ResponseCallTool
-                .SuccessStructured(structuredContent: node)
+                .SuccessStructured(node)
                 .SetRequestID(requestId);
         }
 
