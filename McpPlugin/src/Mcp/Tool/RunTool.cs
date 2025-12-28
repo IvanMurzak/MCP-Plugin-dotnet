@@ -94,28 +94,25 @@ namespace com.IvanMurzak.McpPlugin
 
             if (result == null)
             {
-                return ResponseCallTool.SuccessStructured(
-                        structuredContent: null,
-                        message: null)
+                return ResponseCallTool
+                    .Success()
                     .SetRequestID(requestId);
             }
 
             var type = result.GetType();
             if (TypeUtils.IsPrimitive(type))
             {
-                return ResponseCallTool.SuccessStructured(
-                        structuredContent: System.Text.Json.JsonSerializer.SerializeToNode(result, _reflector.JsonSerializerOptions),
-                        message: result.ToString())
+                return ResponseCallTool
+                    .SuccessStructured(System.Text.Json.JsonSerializer.SerializeToNode(result, _reflector.JsonSerializerOptions))
                     .SetRequestID(requestId);
             }
 
             var node = System.Text.Json.JsonSerializer.SerializeToNode(result, _reflector.JsonSerializerOptions);
             var json = node?.ToJsonString(_reflector.JsonSerializerOptions);
 
-            return ResponseCallTool.SuccessStructured(
-                structuredContent: node,
-                message: json ?? "[Success] null" // needed for MCP backward compatibility: https://modelcontextprotocol.io/specification/2025-06-18/server/tools#structured-content
-            ).SetRequestID(requestId);
+            return ResponseCallTool
+                .SuccessStructured(structuredContent: node)
+                .SetRequestID(requestId);
         }
 
         /// <summary>
@@ -142,27 +139,24 @@ namespace com.IvanMurzak.McpPlugin
             {
                 var errorMessage = $"Parameter validation failed for tool '{Title ?? this.Method?.Name}': {ex.Message}";
                 _logger?.LogError(ex, errorMessage);
-                return ResponseCallTool.ErrorStructured(
-                        structuredContent: null,
-                        message: errorMessage)
+                return ResponseCallTool
+                    .Error(errorMessage)
                     .SetRequestID(requestId);
             }
             catch (TargetParameterCountException ex)
             {
                 var errorMessage = $"Parameter count mismatch for tool '{Title ?? this.Method?.Name}'. Expected {this.Method?.GetParameters().Length} parameters, but received {parameters?.Length}";
                 _logger?.LogError(ex, errorMessage);
-                return ResponseCallTool.ErrorStructured(
-                        structuredContent: null,
-                        message: errorMessage)
+                return ResponseCallTool
+                    .Error(errorMessage)
                     .SetRequestID(requestId);
             }
             catch (Exception ex)
             {
                 var errorMessage = $"Tool execution failed for '{Title ?? this.Method?.Name}': {(ex.InnerException ?? ex).Message}";
                 _logger?.LogError(ex, $"{errorMessage}\n{ex.StackTrace}");
-                return ResponseCallTool.ErrorStructured(
-                        structuredContent: null,
-                        message: errorMessage)
+                return ResponseCallTool
+                    .Error(errorMessage)
                     .SetRequestID(requestId);
             }
         }
@@ -194,27 +188,24 @@ namespace com.IvanMurzak.McpPlugin
             {
                 var errorMessage = $"Parameter validation failed for tool '{Title ?? this.Method?.Name}': {ex.Message}";
                 _logger?.LogError(ex, errorMessage);
-                return ResponseCallTool.ErrorStructured(
-                        structuredContent: null,
-                        message: errorMessage)
+                return ResponseCallTool
+                    .Error(errorMessage)
                     .SetRequestID(requestId);
             }
             catch (JsonException ex)
             {
                 var errorMessage = $"JSON parameter parsing failed for tool '{Title ?? this.Method?.Name}': {ex.Message}";
                 _logger?.LogError(ex, errorMessage);
-                return ResponseCallTool.ErrorStructured(
-                        structuredContent: null,
-                        message: errorMessage)
+                return ResponseCallTool
+                    .Error(errorMessage)
                     .SetRequestID(requestId);
             }
             catch (Exception ex)
             {
                 var errorMessage = $"Tool execution failed for '{Title ?? this.Method?.Name}': {(ex.InnerException ?? ex).Message}";
                 _logger?.LogError(ex, $"{errorMessage}\n{ex.StackTrace}");
-                return ResponseCallTool.ErrorStructured(
-                        structuredContent: null,
-                        message: errorMessage)
+                return ResponseCallTool
+                    .Error(errorMessage)
                     .SetRequestID(requestId);
             }
         }
@@ -231,9 +222,8 @@ namespace com.IvanMurzak.McpPlugin
             {
                 var errorMessage = $"Request ID cannot be null or empty for tool '{Title ?? this.Method?.Name}'";
                 _logger?.LogError(errorMessage);
-                return ResponseCallTool.ErrorStructured(
-                        structuredContent: null,
-                        message: errorMessage)
+                return ResponseCallTool
+                    .Error(errorMessage)
                     .SetRequestID(requestId);
             }
 
@@ -241,9 +231,8 @@ namespace com.IvanMurzak.McpPlugin
             {
                 var errorMessage = $"Method information is not available for tool '{Title}'";
                 _logger?.LogError(errorMessage);
-                return ResponseCallTool.ErrorStructured(
-                        structuredContent: null,
-                        message: errorMessage)
+                return ResponseCallTool
+                    .Error(errorMessage)
                     .SetRequestID(requestId);
             }
 
@@ -252,9 +241,8 @@ namespace com.IvanMurzak.McpPlugin
             {
                 var errorMessage = $"Method '{this.Method.Name}' in tool '{Title}' is not accessible (must be public or protected)";
                 _logger?.LogError(errorMessage);
-                return ResponseCallTool.ErrorStructured(
-                        structuredContent: null,
-                        message: errorMessage)
+                return ResponseCallTool
+                    .Error(errorMessage)
                     .SetRequestID(requestId);
             }
 
