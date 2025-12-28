@@ -25,10 +25,14 @@ Standard MCP servers are typically designed to be launched as subprocesses by th
 
 This project solves this by decoupling the MCP Server from your application using a **Bridge Architecture**:
 
-1. **McpPlugin (In-App)**: A library you add to your .NET application (e.g., Unity). It connects to the bridge.
-2. **McpPlugin.Server (Bridge)**: A lightweight server that the MCP Client (Claude) launches. It acts as a gateway.
+1. **McpPlugin (In-App)**: A lightweight library you add to your .NET application (e.g., Unity, WPF, Console). It connects to the bridge via **SignalR**.
+2. **McpPlugin.Server (Bridge)**: A high-performance gateway that the MCP Client (Claude) launches. It acts as a persistent mediator.
 
-This enables **Bidirectional MCP Communication** with applications that have their own independent lifecycles.
+**Why SignalR?**
+
+- **Resilience**: Built-in automatic reconnection logic. If the bridge restarts, your app reconnects instantly.
+- **Simplicity**: Operates over a single HTTP port (default `8080`). No complex firewall rules.
+- **Bidirectional**: The bridge can invoke tools in your app, and your app can push updates (logs, progress) back to the bridge.
 
 ## Architecture
 
@@ -36,12 +40,13 @@ The system uses a hub-and-spoke architecture where `McpPlugin.Server` acts as th
 
 ```mermaid
 graph LR
-    subgraph "Your .NET Apps"
-        A[Console App] -- SignalR --> S
-        B[Web App] -- SignalR --> S
+    subgraph "Your .NET Apps (SignalR Clients)"
+        A[Unity Editor] -- SignalR --> S
+        B[WPF Desktop] -- SignalR --> S
+        E[Game Server] -- SignalR --> S
     end
 
-    subgraph "MCP Infrastructure"
+    subgraph "MCP Infrastructure (Bridge)"
         S[McpPlugin.Server]
     end
 
@@ -54,20 +59,14 @@ graph LR
 ## Features
 
 - **Attribute-Based Registration**: Easily expose tools, prompts, and resources using `[McpPluginTool]`, `[McpPluginPrompt]`, and `[McpPluginResource]` attributes.
-- **Automatic Schema Generation**: JSON schemas are automatically generated from method signatures.
-- **Assembly Scanning**: Automatically discover and register components from assemblies.
-- **Real-time Communication**: Uses SignalR for bidirectional communication between your apps and the MCP server.
-- **Flexible Transport**: The server supports both `stdio` (for local AI agents) and `http` (for remote connections).
+- **Powered by ReflectorNet**:
+  - **Complex Type Support**: Seamlessly handle nested objects, collections, and custom types in tool parameters.
+  - **Fuzzy Matching**: AI can find and call methods even with partial names or slightly mismatched signatures.
+  - **Automatic Schema Generation**: Precise JSON schemas are generated for your C# types to help LLMs understand your code perfectly.
+- **Real-time Bidirectional Communication**: Uses SignalR for a persistent, low-latency link between your apps and the bridge.
+- **Flexible Transport**: The bridge supports both `stdio` (for local AI agents like Claude Desktop) and `http` (for remote connections).
 - **Dependency Injection**: First-class support for `Microsoft.Extensions.DependencyInjection`.
-
-## Powered by ReflectorNet
-
-This project is built on top of **[ReflectorNet](https://github.com/IvanMurzak/ReflectorNet)**, a sophisticated reflection toolkit designed for AI-driven environments. This enables:
-
-- **🤖 AI-Ready Interaction**: Designed for scenarios where inputs from LLMs might be partial or fuzzy.
-- **🔍 Fuzzy Matching**: Methods can be discovered and invoked even with incomplete names or parameters (configurable match levels).
-- **📄 Automatic JSON Schemas**: Generates precise JSON schemas for your C# types and methods, allowing LLMs to understand your code structure perfectly.
-- **📦 Type-Safe Serialization**: Preserves full type information, supporting complex nested objects and collections.
+- **Assembly Scanning**: Automatically discover and register components from your entire project.
 
 ## Communication Protocol (SignalR)
 
@@ -103,6 +102,7 @@ dotnet run --port=11111 --client-transport=stdio
 ```csharp
 // Program.cs
 using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -127,18 +127,27 @@ app.Run();
 
 Add the `com.IvanMurzak.McpPlugin` package to your .NET application.
 
-**Defining Tools:**
+**Defining Tools, Prompts, and Resources:**
 
 ```csharp
 using com.IvanMurzak.McpPlugin;
 using System.ComponentModel;
 
 [McpPluginToolType]
-public static class MyTools
+public static class MyMcpComponents
 {
+    // --- Tools ---
     [McpPluginTool("calculate-sum", "Adds two numbers")]
     [Description("Adds two numbers")]
     public static int Add(int a, int b) => a + b;
+
+    // --- Prompts ---
+    [McpPluginPrompt("explain-code", "Explains a piece of code")]
+    public static string ExplainCode(string code) => $"The following code: {code} does X, Y, and Z.";
+
+    // --- Resources ---
+    [McpPluginResource("system-logs", "Returns the latest system logs", "logs://system")]
+    public static string GetLogs() => "Log entry 1: System started...";
 }
 ```
 
@@ -153,19 +162,76 @@ var reflector = new Reflector();
 
 // 2. Configure and build the plugin
 var plugin = new McpPluginBuilder()
-    .WithConfigFromArgsOrEnv(args) // Loads config from args or environment variables
+    .WithConfig(config => {
+        config.Host = "http://localhost:11111"; // Match your server port
+    })
     // Option A: Scan assemblies for [McpPluginTool], [McpPluginPrompt], [McpPluginResource]
-    .WithToolsFromAssembly(typeof(MyTools).Assembly)
-    .WithPromptsFromAssembly(typeof(MyTools).Assembly)
-    .WithResourcesFromAssembly(typeof(MyTools).Assembly)
-    // Option B: Manually register specific types
-    // .WithTools<MyTools>()
-    // Option C: Manually register specific methods
-    // .WithTool(typeof(MyTools).GetMethod("Add"))
-    .Build(reflector); // Pass reflector instance
+    .WithToolsFromAssembly(typeof(MyMcpComponents).Assembly)
+    .WithPromptsFromAssembly(typeof(MyMcpComponents).Assembly)
+    .WithResourcesFromAssembly(typeof(MyMcpComponents).Assembly)
+    .Build(reflector);
 
 // 3. Connect to the MCP server
 await plugin.Connect();
+```
+
+## Advanced Features
+
+### 🧩 Complex Type Support (via ReflectorNet)
+
+Unlike standard MCP implementations that struggle with complex .NET types, this plugin handles them natively. You can pass nested objects or collections as tool parameters:
+
+```csharp
+public class UserProfile {
+    public string Name { get; set; }
+    public List<string> Roles { get; set; }
+}
+
+[McpPluginTool("update-user")]
+public static void UpdateUser(UserProfile profile) {
+    // ReflectorNet automatically deserializes the JSON from the AI into this object
+}
+```
+
+### 🔍 Fuzzy Matching
+
+You can configure how strictly the AI must match your method names. This is useful when LLMs use slightly different terminology:
+
+```csharp
+var plugin = new McpPluginBuilder()
+    // ...
+    .Build(reflector);
+
+// Configure fuzzy matching level (1-6)
+// 6: Exact, 3: StartsWith (Case-Insensitive), 1: Contains (Case-Insensitive)
+plugin.MethodNameMatchLevel = 3;
+```
+
+## Configuration Reference
+
+### Server (`McpPlugin.Server`)
+
+| Argument / Env Var | Description | Default |
+| :--- | :--- | :--- |
+| `--port` / `MCP_SERVER_PORT` | The port the SignalR hub listens on. | `8080` |
+| `--client-transport` / `MCP_CLIENT_TRANSPORT` | `stdio` or `http`. | `http` |
+| `--plugin-timeout` / `MCP_PLUGIN_TIMEOUT` | Timeout for plugin operations (ms). | `30000` |
+
+### Plugin (`McpPlugin`)
+
+| Property | Description | Default |
+| :--- | :--- | :--- |
+| `Host` | The URL of the bridge server. | `http://localhost:8080` |
+| `TimeoutMs` | Operation timeout. | `30000` |
+| `KeepConnected` | Automatically reconnect if connection is lost. | `true` |
+
+## Docker Support
+
+You can run the bridge server in a Docker container:
+
+```bash
+docker build -t mcp-bridge -f McpPlugin.Server/Dockerfile .
+docker run -p 8080:8080 mcp-bridge --port=8080 --client-transport=http
 ```
 
 ## Project Structure
@@ -175,14 +241,6 @@ await plugin.Connect();
 - **`McpPlugin.Common`**: Shared data structures, interfaces, and protocol definitions.
 - **`DemoConsoleApp`**: A sample client application demonstrating how to expose tools.
 - **`DemoWebApp`**: A sample server application demonstrating how to host the MCP bridge.
-
-## Configuration
-
-The plugin uses `ConnectionConfig` for server connection settings. You can configure it via code or environment variables.
-
-- **ServerUrl**: The URL of the MCP Server (e.g., `http://localhost:5000/mcp`).
-- **TimeoutMs**: Operation timeout in milliseconds.
-- **Retry Policy**: Automatic reconnection logic is built-in.
 
 ## License
 

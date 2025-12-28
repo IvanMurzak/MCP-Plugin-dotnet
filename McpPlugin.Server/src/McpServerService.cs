@@ -35,9 +35,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly HubEventResourcesChange _eventAppResourcesChange;
         readonly CompositeDisposable _disposables = new();
 
-#pragma warning disable CS0618 // csharp-sdk.0.4.1-preview.1 has IMcpEndpoint marked as obsolete but not yet provided replacement
-        public IMcpEndpoint McpSessionOrServer => _mcpSession ?? _mcpServer ?? throw new InvalidOperationException($"{nameof(_mcpSession)} and {nameof(_mcpServer)} are both null.");
-#pragma warning restore CS0618
+        public McpSession McpSessionOrServer => _mcpSession ?? _mcpServer ?? throw new InvalidOperationException($"{nameof(_mcpSession)} and {nameof(_mcpServer)} are both null.");
 
         public IClientToolHub ToolRunner => _toolRunner;
         public IClientPromptHub PromptRunner => _promptRunner;
