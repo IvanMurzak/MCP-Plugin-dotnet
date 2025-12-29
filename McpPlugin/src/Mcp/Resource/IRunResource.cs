@@ -23,6 +23,6 @@ namespace com.IvanMurzak.McpPlugin
         IRunResourceContent RunGetContent { get; set; }
 
         [JsonIgnore]
-        IRunResourceContext RunListContext { get; set; }
+        IRunResourceList RunListContext { get; set; }
     }
 }

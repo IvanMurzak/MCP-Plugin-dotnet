@@ -22,34 +22,34 @@ namespace com.IvanMurzak.McpPlugin
     /// Provides functionality to execute methods dynamically, supporting both static and instance methods.
     /// Allows for parameter passing by position or by name, with support for default parameter values.
     /// </summary>
-    public partial class RunResourceContext : MethodWrapper, IRunResourceContext
+    public partial class RunResourceList : MethodWrapper, IRunResourceList
     {
         /// <summary>
         /// Initializes the Command with the target method information.
         /// </summary>
         /// <param name="type">The type containing the static method.</param>
-        public static RunResourceContext CreateFromStaticMethod(Reflector reflector, ILogger? logger, MethodInfo methodInfo)
-            => new RunResourceContext(reflector, logger, methodInfo);
+        public static RunResourceList CreateFromStaticMethod(Reflector reflector, ILogger? logger, MethodInfo methodInfo)
+            => new RunResourceList(reflector, logger, methodInfo);
 
         /// <summary>
         /// Initializes the Command with the target instance method information.
         /// </summary>
         /// <param name="targetInstance">The instance of the object containing the method.</param>
         /// <param name="methodInfo">The MethodInfo of the instance method to execute.</param>
-        public static RunResourceContext CreateFromInstanceMethod(Reflector reflector, ILogger? logger, object targetInstance, MethodInfo methodInfo)
-            => new RunResourceContext(reflector, logger, targetInstance, methodInfo);
+        public static RunResourceList CreateFromInstanceMethod(Reflector reflector, ILogger? logger, object targetInstance, MethodInfo methodInfo)
+            => new RunResourceList(reflector, logger, targetInstance, methodInfo);
 
         /// <summary>
         /// Initializes the Command with the target instance method information.
         /// </summary>
         /// <param name="targetInstance">The instance of the object containing the method.</param>
         /// <param name="methodInfo">The MethodInfo of the instance method to execute.</param>
-        public static RunResourceContext CreateFromClassMethod(Reflector reflector, ILogger? logger, Type targetType, MethodInfo methodInfo)
-            => new RunResourceContext(reflector, logger, targetType, methodInfo);
+        public static RunResourceList CreateFromClassMethod(Reflector reflector, ILogger? logger, Type targetType, MethodInfo methodInfo)
+            => new RunResourceList(reflector, logger, targetType, methodInfo);
 
-        public RunResourceContext(Reflector reflector, ILogger? logger, MethodInfo methodInfo) : base(reflector, logger, methodInfo) { }
-        public RunResourceContext(Reflector reflector, ILogger? logger, object targetInstance, MethodInfo methodInfo) : base(reflector, logger, targetInstance, methodInfo) { }
-        public RunResourceContext(Reflector reflector, ILogger? logger, Type targetType, MethodInfo methodInfo) : base(reflector, logger, targetType, methodInfo) { }
+        public RunResourceList(Reflector reflector, ILogger? logger, MethodInfo methodInfo) : base(reflector, logger, methodInfo) { }
+        public RunResourceList(Reflector reflector, ILogger? logger, object targetInstance, MethodInfo methodInfo) : base(reflector, logger, targetInstance, methodInfo) { }
+        public RunResourceList(Reflector reflector, ILogger? logger, Type targetType, MethodInfo methodInfo) : base(reflector, logger, targetType, methodInfo) { }
 
         /// <summary>
         /// Executes the target static method with the provided arguments.
