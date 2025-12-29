@@ -36,11 +36,11 @@ namespace com.IvanMurzak.McpPlugin.Server
                     options.Handlers.ListToolsHandler = ToolRouter.ListAll;
 
                     // Setup MCP resources
-                    // options.Capabilities.Resources ??= new();
-                    // options.Capabilities.Resources.ListChanged = true;
-                    // options.Handlers.ReadResourceHandler = ResourceRouter.Read;
-                    // options.Handlers.ListResourcesHandler = ResourceRouter.List;
-                    // options.Handlers.ListResourceTemplatesHandler = ResourceRouter.ListTemplates;
+                    options.Capabilities.Resources ??= new();
+                    options.Capabilities.Resources.ListChanged = true;
+                    options.Handlers.ReadResourceHandler = ResourceRouter.Read;
+                    options.Handlers.ListResourcesHandler = ResourceRouter.List;
+                    options.Handlers.ListResourceTemplatesHandler = ResourceRouter.ListTemplates;
 
                     // Setup MCP prompts
                     options.Capabilities.Prompts ??= new();
