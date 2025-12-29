@@ -31,12 +31,13 @@ namespace com.IvanMurzak.McpPlugin
         public bool Enabled { get; set; } = true;
         public string Name { get; protected set; }
         public string? Title { get; protected set; }
+        public Role Role { get; protected set; }
         public MethodInfo Method => _methodInfo;
 
         protected string? RequestID { get; set; }
 
         /// <summary>
-        /// Initializes the Command with the target method information.
+        /// Initializes the Prompt with the target method information.
         /// </summary>
         /// <param name="type">The type containing the static method.</param>
         public static RunPrompt CreateFromStaticMethod(Reflector reflector, string name, ILogger? logger, MethodInfo methodInfo, string? title = null)
@@ -46,7 +47,7 @@ namespace com.IvanMurzak.McpPlugin
             };
 
         /// <summary>
-        /// Initializes the Command with the target instance method information.
+        /// Initializes the Prompt with the target instance method information.
         /// </summary>
         /// <param name="targetInstance">The instance of the object containing the method.</param>
         /// <param name="methodInfo">The MethodInfo of the instance method to execute.</param>
@@ -57,7 +58,7 @@ namespace com.IvanMurzak.McpPlugin
             };
 
         /// <summary>
-        /// Initializes the Command with the target instance method information.
+        /// Initializes the Prompt with the target instance method information.
         /// </summary>
         /// <param name="targetInstance">The instance of the object containing the method.</param>
         /// <param name="methodInfo">The MethodInfo of the instance method to execute.</param>
@@ -70,16 +71,19 @@ namespace com.IvanMurzak.McpPlugin
         public RunPrompt(Reflector reflector, string name, ILogger? logger, MethodInfo methodInfo) : base(reflector, logger, methodInfo)
         {
             Name = name;
+            Role = methodInfo.GetCustomAttribute<McpPluginPromptAttribute>()?.Role ?? Role.User;
         }
 
         public RunPrompt(Reflector reflector, string name, ILogger? logger, object targetInstance, MethodInfo methodInfo) : base(reflector, logger, targetInstance, methodInfo)
         {
             Name = name;
+            Role = methodInfo.GetCustomAttribute<McpPluginPromptAttribute>()?.Role ?? Role.User;
         }
 
         public RunPrompt(Reflector reflector, string name, ILogger? logger, Type classType, MethodInfo methodInfo) : base(reflector, logger, classType, methodInfo)
         {
             Name = name;
+            Role = methodInfo.GetCustomAttribute<McpPluginPromptAttribute>()?.Role ?? Role.User;
         }
 
         protected override object? GetParameterValue(Reflector reflector, ParameterInfo paramInfo, object? value)
