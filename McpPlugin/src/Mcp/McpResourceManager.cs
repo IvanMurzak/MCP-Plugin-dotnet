@@ -118,7 +118,9 @@ namespace com.IvanMurzak.McpPlugin
 
             var runner = FindResourceContentRunner(data.Uri, _resources, out var uriTemplate)?.RunGetContent;
             if (runner == null || uriTemplate == null)
-                throw new ArgumentException($"No route matches the URI: {data.Uri}");
+            {
+                throw new ArgumentException($"No route matches the URI: {data.Uri}\nAvailable routes:\n{string.Join("\n", _resources.Values.Select(r => r.Route))}");
+            }
 
             _logger.LogInformation("Executing resource '{0}'.", data.Uri);
 
@@ -158,7 +160,10 @@ namespace com.IvanMurzak.McpPlugin
                 .Pack(data.RequestID)
                 .TaskFromResult();
         }
-        IRunResource? FindResourceContentRunner(string uri, IDictionary<string, IRunResource> resources, out string? uriTemplate)
+        #endregion
+
+        #region Utils
+        internal IRunResource? FindResourceContentRunner(string uri, IDictionary<string, IRunResource> resources, out string? uriTemplate)
         {
             foreach (var route in resources)
             {
@@ -171,9 +176,6 @@ namespace com.IvanMurzak.McpPlugin
             uriTemplate = null;
             return null;
         }
-        #endregion
-
-        #region Utils
         internal bool IsMatch(string uriTemplate, string uri)
         {
             // Convert pattern to regex
