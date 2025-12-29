@@ -174,7 +174,7 @@ namespace com.IvanMurzak.McpPlugin
         #endregion
 
         #region Utils
-        bool IsMatch(string uriTemplate, string uri)
+        internal bool IsMatch(string uriTemplate, string uri)
         {
             // Convert pattern to regex
             var regexPattern = "^" + Regex.Replace(uriTemplate, @"\{(\w+)\}", @"(?<$1>[^/]+)") + "(?:/.*)?$";
@@ -182,7 +182,7 @@ namespace com.IvanMurzak.McpPlugin
             return Regex.IsMatch(uri, regexPattern);
         }
 
-        IDictionary<string, object?> ParseUriParameters(string pattern, string uri)
+        internal IDictionary<string, object?> ParseUriParameters(string pattern, string uri)
         {
             var parameters = new Dictionary<string, object?>()
             {
