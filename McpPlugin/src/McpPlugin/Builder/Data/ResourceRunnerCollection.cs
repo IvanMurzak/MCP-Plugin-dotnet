@@ -41,8 +41,8 @@ namespace com.IvanMurzak.McpPlugin
                         ? RunResourceContent.CreateFromStaticMethod(reflector, _logger, method.GetContentMethod)
                         : RunResourceContent.CreateFromClassMethod(reflector, _logger, method.ClassType, method.GetContentMethod),
                     runnerListContext: method.ListResourcesMethod.IsStatic
-                        ? RunResourceContext.CreateFromStaticMethod(reflector, _logger, method.ListResourcesMethod)
-                        : RunResourceContext.CreateFromClassMethod(reflector, _logger, method.ClassType, method.ListResourcesMethod)
+                        ? RunResourceList.CreateFromStaticMethod(reflector, _logger, method.ListResourcesMethod)
+                        : RunResourceList.CreateFromClassMethod(reflector, _logger, method.ClassType, method.ListResourcesMethod)
                 );
             }
             return this;
