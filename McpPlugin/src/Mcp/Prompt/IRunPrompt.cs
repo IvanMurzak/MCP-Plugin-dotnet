@@ -22,6 +22,7 @@ namespace com.IvanMurzak.McpPlugin
         string Name { get; }
         string? Title { get; }
         string? Description { get; }
+        Role Role { get; }
         JsonNode? InputSchema { get; }
 
         /// <summary>
