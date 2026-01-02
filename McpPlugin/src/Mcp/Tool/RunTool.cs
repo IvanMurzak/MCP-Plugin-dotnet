@@ -65,7 +65,7 @@ namespace com.IvanMurzak.McpPlugin
                 _logger?.LogTrace("Injecting RequestID parameter: {RequestID}", RequestID);
                 return RequestID;
             }
-            return base.GetParameterValue(reflector, paramInfo, value);
+            return FixEnumConversion(paramInfo, base.GetParameterValue(reflector, paramInfo, value));
         }
         protected override object? GetParameterValue(Reflector reflector, ParameterInfo paramInfo, IReadOnlyDictionary<string, object?>? namedParameters)
         {
@@ -74,7 +74,8 @@ namespace com.IvanMurzak.McpPlugin
                 _logger?.LogTrace("Injecting RequestID parameter: {RequestID}", RequestID);
                 return RequestID;
             }
-            return base.GetParameterValue(reflector, paramInfo, namedParameters);
+
+            return FixEnumConversion(paramInfo, base.GetParameterValue(reflector, paramInfo, namedParameters));
         }
         protected override object? GetDefaultParameterValue(Reflector reflector, ParameterInfo methodParameter)
         {
@@ -83,7 +84,22 @@ namespace com.IvanMurzak.McpPlugin
                 _logger?.LogTrace("Injecting RequestID parameter: {RequestID}", RequestID);
                 return RequestID;
             }
-            return base.GetDefaultParameterValue(reflector, methodParameter);
+            return FixEnumConversion(methodParameter, base.GetDefaultParameterValue(reflector, methodParameter));
+        }
+
+        private object? FixEnumConversion(ParameterInfo paramInfo, object? value)
+        {
+            if (value != null)
+            {
+                var paramType = paramInfo.ParameterType;
+                var underlyingType = Nullable.GetUnderlyingType(paramType) ?? paramType;
+
+                if (underlyingType.IsEnum && value.GetType() != underlyingType)
+                {
+                    return Enum.ToObject(underlyingType, value);
+                }
+            }
+            return value;
         }
 
         protected ResponseCallTool ProcessInvokeResult(string requestId, object? result)

@@ -93,7 +93,7 @@ namespace com.IvanMurzak.McpPlugin
                 _logger?.LogTrace("Injecting RequestID parameter: {RequestID}", RequestID);
                 return RequestID;
             }
-            return base.GetParameterValue(reflector, paramInfo, value);
+            return FixEnumConversion(paramInfo, base.GetParameterValue(reflector, paramInfo, value));
         }
         protected override object? GetParameterValue(Reflector reflector, ParameterInfo paramInfo, IReadOnlyDictionary<string, object?>? namedParameters)
         {
@@ -102,7 +102,7 @@ namespace com.IvanMurzak.McpPlugin
                 _logger?.LogTrace("Injecting RequestID parameter: {RequestID}", RequestID);
                 return RequestID;
             }
-            return base.GetParameterValue(reflector, paramInfo, namedParameters);
+            return FixEnumConversion(paramInfo, base.GetParameterValue(reflector, paramInfo, namedParameters));
         }
         protected override object? GetDefaultParameterValue(Reflector reflector, ParameterInfo methodParameter)
         {
@@ -111,7 +111,22 @@ namespace com.IvanMurzak.McpPlugin
                 _logger?.LogTrace("Injecting RequestID parameter: {RequestID}", RequestID);
                 return RequestID;
             }
-            return base.GetDefaultParameterValue(reflector, methodParameter);
+            return FixEnumConversion(methodParameter, base.GetDefaultParameterValue(reflector, methodParameter));
+        }
+
+        private object? FixEnumConversion(ParameterInfo paramInfo, object? value)
+        {
+            if (value != null)
+            {
+                var paramType = paramInfo.ParameterType;
+                var underlyingType = Nullable.GetUnderlyingType(paramType) ?? paramType;
+
+                if (underlyingType.IsEnum && value.GetType() != underlyingType)
+                {
+                    return Enum.ToObject(underlyingType, value);
+                }
+            }
+            return value;
         }
 
         /// <summary>
@@ -147,19 +162,19 @@ namespace com.IvanMurzak.McpPlugin
             }
             catch (ArgumentException ex)
             {
-                var errorMessage = $"Parameter validation failed for tool '{Name ?? Method?.Name}': {ex.Message}";
+                var errorMessage = $"Parameter validation failed for prompt '{Name ?? Method?.Name}': {ex.Message}";
                 _logger?.LogError(ex, errorMessage);
                 return ResponseGetPrompt.Error(errorMessage).SetRequestID(requestId);
             }
             catch (TargetParameterCountException ex)
             {
-                var errorMessage = $"Parameter count mismatch for tool '{Name ?? Method?.Name}'. Expected {Method?.GetParameters().Length} parameters, but received {parameters?.Length}";
+                var errorMessage = $"Parameter count mismatch for prompt '{Name ?? Method?.Name}'. Expected {Method?.GetParameters().Length} parameters, but received {parameters?.Length}";
                 _logger?.LogError(ex, errorMessage);
                 return ResponseGetPrompt.Error(errorMessage).SetRequestID(requestId);
             }
             catch (Exception ex)
             {
-                var errorMessage = $"Tool execution failed for '{Name ?? Method?.Name}': {(ex.InnerException ?? ex).Message}";
+                var errorMessage = $"Prompt execution failed for '{Name ?? Method?.Name}': {(ex.InnerException ?? ex).Message}";
                 _logger?.LogError(ex, $"{errorMessage}\n{ex.StackTrace}");
                 return ResponseGetPrompt.Error(errorMessage).SetRequestID(requestId);
             }
@@ -201,26 +216,26 @@ namespace com.IvanMurzak.McpPlugin
             }
             catch (ArgumentException ex)
             {
-                var errorMessage = $"Parameter validation failed for tool '{Name ?? Method?.Name}': {ex.Message}";
+                var errorMessage = $"Parameter validation failed for prompt '{Name ?? Method?.Name}': {ex.Message}";
                 _logger?.LogError(ex, errorMessage);
                 return ResponseGetPrompt.Error(errorMessage).SetRequestID(requestId);
             }
             catch (JsonException ex)
             {
-                var errorMessage = $"JSON parameter parsing failed for tool '{Name ?? Method?.Name}': {ex.Message}";
+                var errorMessage = $"JSON parameter parsing failed for prompt '{Name ?? Method?.Name}': {ex.Message}";
                 _logger?.LogError(ex, errorMessage);
                 return ResponseGetPrompt.Error(errorMessage).SetRequestID(requestId);
             }
             catch (Exception ex)
             {
-                var errorMessage = $"Tool execution failed for '{Name ?? Method?.Name}': {(ex.InnerException ?? ex).Message}";
+                var errorMessage = $"Prompt execution failed for '{Name ?? Method?.Name}': {(ex.InnerException ?? ex).Message}";
                 _logger?.LogError(ex, $"{errorMessage}\n{ex.StackTrace}");
                 return ResponseGetPrompt.Error(errorMessage).SetRequestID(requestId);
             }
         }
 
         /// <summary>
-        /// Validates common parameters for tool execution.
+        /// Validates common parameters for prompt execution.
         /// </summary>
         /// <param name="requestId">The request identifier to validate.</param>
         /// <param name="parameters">Additional parameters for context.</param>
@@ -229,14 +244,14 @@ namespace com.IvanMurzak.McpPlugin
         {
             if (string.IsNullOrWhiteSpace(requestId))
             {
-                var errorMessage = $"Request ID cannot be null or empty for tool '{Name ?? Method?.Name}'";
+                var errorMessage = $"Request ID cannot be null or empty for prompt '{Name ?? Method?.Name}'";
                 _logger?.LogError(errorMessage);
                 return ResponseGetPrompt.Error(errorMessage);
             }
 
             if (Method == null)
             {
-                var errorMessage = $"Method information is not available for tool '{Name}'";
+                var errorMessage = $"Method information is not available for prompt '{Name}'";
                 _logger?.LogError(errorMessage);
                 return ResponseGetPrompt.Error(errorMessage).SetRequestID(requestId);
             }
@@ -244,7 +259,7 @@ namespace com.IvanMurzak.McpPlugin
             // Validate method is accessible
             if (!Method.IsPublic && !Method.IsFamily)
             {
-                var errorMessage = $"Method '{Method.Name}' in tool '{Name}' is not accessible (must be public or protected)";
+                var errorMessage = $"Method '{Method.Name}' in prompt '{Name}' is not accessible (must be public or protected)";
                 _logger?.LogError(errorMessage);
                 return ResponseGetPrompt.Error(errorMessage).SetRequestID(requestId);
             }
