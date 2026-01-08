@@ -95,7 +95,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                 {
                     unknown,
                     stdio,
-                    http
+                    streamableHttp
                 }
             }
         }

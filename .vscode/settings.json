@@ -8,6 +8,7 @@
         "Reconfig",
         "Scriptable",
         "signalr",
+        "streamable",
         "xunit"
     ],
     "editor.formatOnSave": true,
