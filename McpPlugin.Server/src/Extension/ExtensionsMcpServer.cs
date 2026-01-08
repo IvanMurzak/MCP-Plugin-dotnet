@@ -54,7 +54,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 // Configure STDIO transport
                 mcpServerBuilder = mcpServerBuilder.WithStdioServerTransport();
             }
-            else if (mcpClientTransport == Consts.MCP.Server.TransportMethod.http)
+            else if (mcpClientTransport == Consts.MCP.Server.TransportMethod.streamableHttp)
             {
                 // Configure HTTP transport
                 mcpServerBuilder = mcpServerBuilder.WithHttpTransport(options =>
@@ -108,7 +108,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             else
             {
                 throw new ArgumentException($"Unsupported transport method: {mcpClientTransport}. " +
-                    $"Supported methods are: {Consts.MCP.Server.TransportMethod.stdio}, {Consts.MCP.Server.TransportMethod.http}");
+                    $"Supported methods are: {Consts.MCP.Server.TransportMethod.stdio}, {Consts.MCP.Server.TransportMethod.streamableHttp}");
             }
             return mcpServerBuilder;
         }

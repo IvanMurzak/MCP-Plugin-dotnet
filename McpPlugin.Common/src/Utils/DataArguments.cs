@@ -29,7 +29,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         {
             Port = Consts.Hub.DefaultPort;
             PluginTimeoutMs = Consts.Hub.DefaultTimeoutMs;
-            ClientTransport = Consts.MCP.Server.TransportMethod.http;
+            ClientTransport = Consts.MCP.Server.TransportMethod.streamableHttp;
 
             ParseEnvironmentVariables(); // env variables - second priority
             ParseCommandLineArguments(args); // command line args - first priority (override previous values)

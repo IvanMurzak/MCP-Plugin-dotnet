@@ -36,7 +36,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             });
 
             // Setup MCP client -------------------------------------------------
-            if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.http)
+            if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.streamableHttp)
             {
                 // Map MCP endpoint
                 app.MapMcp("/");
