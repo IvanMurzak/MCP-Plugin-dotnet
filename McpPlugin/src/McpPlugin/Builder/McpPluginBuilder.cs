@@ -40,6 +40,11 @@ namespace com.IvanMurzak.McpPlugin
         public IServiceCollection Services => _services;
         public ServiceProvider? ServiceProvider { get; private set; }
 
+        public McpPluginBuilder(ILoggerProvider? loggerProvider = null, IServiceCollection? services = null)
+            : this(new Version(), loggerProvider, services)
+        {
+        }
+
         public McpPluginBuilder(Version version, ILoggerProvider? loggerProvider = null, IServiceCollection? services = null)
         {
             _loggerProvider = loggerProvider;
