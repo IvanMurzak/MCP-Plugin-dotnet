@@ -10,6 +10,7 @@
 
 using System;
 using Microsoft.Extensions.Logging;
+using com.IvanMurzak.McpPlugin.Common.Model;
 
 namespace com.IvanMurzak.McpPlugin
 {
@@ -18,5 +19,8 @@ namespace com.IvanMurzak.McpPlugin
         ILogger Logger { get; }
         IMcpManager McpManager { get; }
         IRemoteMcpManagerHub? RemoteMcpManagerHub { get; }
+        Common.Version Version { get; }
+        string BasePath { get; }
+        VersionHandshakeResponse? VersionHandshakeStatus { get; }
     }
 }

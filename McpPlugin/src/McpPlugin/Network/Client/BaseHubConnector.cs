@@ -29,6 +29,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly CancellationTokenSource _cancellationTokenSource = new();
 
         private readonly ThreadSafeBool _isDisposed = new(false);
+        private VersionHandshakeResponse _lastHandshakeResponse = new();
 
         /// <summary>
         /// Disposable for subscription on the HubConnection changes.
@@ -42,6 +43,7 @@ namespace com.IvanMurzak.McpPlugin
 
         public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _connectionManager.ConnectionState;
         public ReadOnlyReactiveProperty<bool> KeepConnected => _connectionManager.KeepConnected;
+        public VersionHandshakeResponse VersionHandshakeStatus => _lastHandshakeResponse;
 
         public BaseHubConnector(ILogger logger, Version apiVersion, string endpoint, IHubConnectionProvider hubConnectionProvider)
         {
@@ -193,6 +195,14 @@ namespace com.IvanMurzak.McpPlugin
                     Environment = _apiVersion.Environment
                 },
                 cancellationToken: cancellationToken);
+
+            _lastHandshakeResponse = handshakeResponse ?? new VersionHandshakeResponse
+            {
+                ApiVersion = "Unknown",
+                ServerVersion = "Unknown",
+                Compatible = false,
+                Message = "Handshake failed: No response"
+            };
 
             if (cancellationToken.IsCancellationRequested)
                 return;

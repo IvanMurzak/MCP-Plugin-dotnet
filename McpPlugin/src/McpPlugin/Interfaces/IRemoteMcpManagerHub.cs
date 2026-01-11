@@ -9,11 +9,12 @@
 */
 
 using com.IvanMurzak.McpPlugin.Common.Hub.Server;
+using com.IvanMurzak.McpPlugin.Common.Model;
 
 namespace com.IvanMurzak.McpPlugin
 {
     public interface IRemoteMcpManagerHub : IConnectServerHub, IServerMcpManager
     {
-
+        VersionHandshakeResponse VersionHandshakeStatus { get; }
     }
 }
