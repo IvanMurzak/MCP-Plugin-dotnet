@@ -34,7 +34,7 @@ namespace com.IvanMurzak.McpPlugin
         public IMcpManager McpManager { get; private set; }
         public IRemoteMcpManagerHub RemoteMcpManagerHub => _remoteMcpManagerHub;
         public Common.Version Version => _version;
-        public string BasePath => _basePath;
+        public string CurrentBaseDirectory => _basePath;
         public VersionHandshakeResponse? VersionHandshakeStatus => _remoteMcpManagerHub?.VersionHandshakeStatus;
         public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _remoteMcpManagerHub?.ConnectionState
             ?? new ReactiveProperty<HubConnectionState>(HubConnectionState.Disconnected);

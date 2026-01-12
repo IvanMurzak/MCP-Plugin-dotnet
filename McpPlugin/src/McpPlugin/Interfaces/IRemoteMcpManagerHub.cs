@@ -15,6 +15,9 @@ namespace com.IvanMurzak.McpPlugin
 {
     public interface IRemoteMcpManagerHub : IConnectServerHub, IServerMcpManager
     {
-        VersionHandshakeResponse VersionHandshakeStatus { get; }
+        /// <summary>
+        /// Gets the version handshake response status if a handshake has been performed; otherwise, null.
+        /// </summary>
+        VersionHandshakeResponse? VersionHandshakeStatus { get; }
     }
 }
