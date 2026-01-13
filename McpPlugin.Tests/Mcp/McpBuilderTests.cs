@@ -232,7 +232,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         }
 
         [Fact]
-        public void Build_WhenNotConnected_ShouldHaveDefaultVersionHandshakeStatus()
+        public void Build_WhenNotConnected_ShouldHaveNullVersionHandshakeStatus()
         {
             // Arrange
             var reflector = new Reflector();
@@ -242,8 +242,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var plugin = mcpPluginBuilder.Build(reflector);
 
             // Assert
-            plugin.VersionHandshakeStatus.Should().NotBeNull();
-            plugin.VersionHandshakeStatus.Should().BeEquivalentTo(new VersionHandshakeResponse());
+            plugin.VersionHandshakeStatus.Should().BeNull();
         }
 
         [Fact]
@@ -270,8 +269,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             // Act & Assert
             plugin.RemoteMcpManagerHub.Should().NotBeNull();
-            plugin.RemoteMcpManagerHub.VersionHandshakeStatus.Should().NotBeNull();
-            plugin.RemoteMcpManagerHub.VersionHandshakeStatus.Should().BeEquivalentTo(new VersionHandshakeResponse());
+            plugin.RemoteMcpManagerHub.VersionHandshakeStatus.Should().BeNull();
         }
     }
 }

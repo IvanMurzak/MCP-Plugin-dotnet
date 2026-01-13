@@ -29,7 +29,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly CancellationTokenSource _cancellationTokenSource = new();
 
         private readonly ThreadSafeBool _isDisposed = new(false);
-        private volatile VersionHandshakeResponse lastHandshakeResponse = new();
+        private volatile VersionHandshakeResponse? lastHandshakeResponse = null;
 
         /// <summary>
         /// Disposable for subscription on the HubConnection changes.
@@ -199,13 +199,7 @@ namespace com.IvanMurzak.McpPlugin
             if (cancellationToken.IsCancellationRequested)
                 return;
 
-            lastHandshakeResponse = handshakeResponse ?? new VersionHandshakeResponse
-            {
-                ApiVersion = "Unknown",
-                ServerVersion = "Unknown",
-                Compatible = false,
-                Message = "Handshake failed: No response"
-            };
+            lastHandshakeResponse = handshakeResponse;
 
             if (handshakeResponse != null && !handshakeResponse.Compatible)
             {
