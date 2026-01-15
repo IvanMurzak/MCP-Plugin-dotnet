@@ -136,6 +136,7 @@ namespace com.IvanMurzak.McpPlugin
         {
             _logger.LogDebug("Listing resources. [{Count}]", _resources.Count);
             var tasks = _resources.Values
+                .Where(resource => resource.Enabled)
                 .Select(resource => resource.RunListContext.Run());
 
             await Task.WhenAll(tasks);
