@@ -11,7 +11,7 @@
     <!-- NuGet Package Information -->
     <IsPackable>true</IsPackable>
     <PackageId>com.IvanMurzak.McpPlugin.Common</PackageId>
-    <Version>2.1.2</Version>
+    <Version>2.2.0</Version>
     <Authors>Ivan Murzak</Authors>
     <Company>Ivan Murzak</Company>
     <Copyright>Copyright © Ivan Murzak 2025</Copyright>
@@ -25,7 +25,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="com.IvanMurzak.ReflectorNet" Version="3.7.1" />
+    <PackageReference Include="com.IvanMurzak.ReflectorNet" Version="3.8.0" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.1" />
     <PackageReference Include="ModelContextProtocol" Version="0.5.0-preview.1" />
