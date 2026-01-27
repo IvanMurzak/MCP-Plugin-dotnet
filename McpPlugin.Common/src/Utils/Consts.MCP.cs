@@ -21,8 +21,8 @@ namespace com.IvanMurzak.McpPlugin.Common
 
                 public static partial class Args
                 {
-                    public const string McpServerEndpoint = "--mcp-server-endpoint";
-                    public const string McpServerTimeout = "--mcp-server-timeout";
+                    public const string McpServerEndpoint = "mcp-server-endpoint";
+                    public const string McpServerTimeout = "mcp-server-timeout";
                 }
 
                 public static class Env
@@ -35,9 +35,9 @@ namespace com.IvanMurzak.McpPlugin.Common
             {
                 public static partial class Args
                 {
-                    public const string Port = "--port";
-                    public const string PluginTimeout = "--plugin-timeout";
-                    public const string ClientTransportMethod = "--client-transport";
+                    public const string Port = "port";
+                    public const string PluginTimeout = "plugin-timeout";
+                    public const string ClientTransportMethod = "client-transport";
                 }
 
                 public static class Env
