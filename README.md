@@ -92,10 +92,10 @@ The server acts as a hub. You can run the provided `DemoWebApp` or host it in yo
 
 ```bash
 cd DemoWebApp
-dotnet run --port=11111 --client-transport=stdio
+dotnet run port=11111 client-transport=stdio
 ```
 
-*Note: Use `--client-transport=stdio` if connecting from Claude Desktop, or `--client-transport=http` for HTTP-based clients.*
+*Note: Use `client-transport=stdio` if connecting from Claude Desktop, or `client-transport=http` for HTTP-based clients.*
 
 **Hosting in your own Web App:**
 
@@ -213,9 +213,9 @@ plugin.MethodNameMatchLevel = 3;
 
 | Argument / Env Var | Description | Default |
 | :--- | :--- | :--- |
-| `--port` / `MCP_SERVER_PORT` | The port the SignalR hub listens on. | `8080` |
-| `--client-transport` / `MCP_CLIENT_TRANSPORT` | `stdio` or `http`. | `http` |
-| `--plugin-timeout` / `MCP_PLUGIN_TIMEOUT` | Timeout for plugin operations (ms). | `30000` |
+| `port` / `MCP_SERVER_PORT` | The port the SignalR hub listens on. | `8080` |
+| `client-transport` / `MCP_CLIENT_TRANSPORT` | `stdio` or `http`. | `http` |
+| `plugin-timeout` / `MCP_PLUGIN_TIMEOUT` | Timeout for plugin operations (ms). | `30000` |
 
 ### Plugin (`McpPlugin`)
 
@@ -231,7 +231,7 @@ You can run the bridge server in a Docker container:
 
 ```bash
 docker build -t mcp-bridge -f McpPlugin.Server/Dockerfile .
-docker run -p 8080:8080 mcp-bridge --port=8080 --client-transport=http
+docker run -p 8080:8080 mcp-bridge port=8080 client-transport=http
 ```
 
 ## Project Structure
