@@ -151,6 +151,23 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
         }
 
+        public Task<McpClientData> GetMcpClientData()
+        {
+            try
+            {
+                if (McpServerService.Instance == null)
+                {
+                    return Task.FromResult(new McpClientData { IsConnected = false });
+                }
+                return Task.FromResult(McpServerService.Instance.GetClientData());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting MCP Client Data");
+                return Task.FromResult(new McpClientData { IsConnected = false });
+            }
+        }
+
         protected virtual bool IsApiVersionCompatible(string pluginApiVersion, string serverApiVersion)
         {
             if (string.IsNullOrEmpty(pluginApiVersion) || string.IsNullOrEmpty(serverApiVersion))

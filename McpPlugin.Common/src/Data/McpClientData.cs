@@ -8,17 +8,22 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Threading.Tasks;
-using com.IvanMurzak.McpPlugin.Common.Model;
+using System.Text.Json.Serialization;
 
-namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
+namespace com.IvanMurzak.McpPlugin.Common.Model
 {
-    public interface IClientMcpManager : IClientDisconnectable
+    public class McpClientData
     {
-        IClientToolHub? ToolHub { get; }
-        IClientPromptHub? PromptHub { get; }
-        IClientResourceHub? ResourceHub { get; }
+        [JsonPropertyName("connectionId")]
+        public string? ConnectionId { get; set; }
 
-        Task OnMcpClientConnected(McpClientData clientData);
+        [JsonPropertyName("clientName")]
+        public string? ClientName { get; set; }
+
+        [JsonPropertyName("clientVersion")]
+        public string? ClientVersion { get; set; }
+
+        [JsonPropertyName("isConnected")]
+        public bool IsConnected { get; set; }
     }
 }

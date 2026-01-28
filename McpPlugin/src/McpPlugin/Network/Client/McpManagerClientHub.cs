@@ -45,6 +45,13 @@ namespace com.IvanMurzak.McpPlugin
 
         protected override void SubscribeOnServerEvents(HubConnection hubConnection, CompositeDisposable disposables)
         {
+            hubConnection.On<McpClientData>(nameof(IClientMcpManager.OnMcpClientConnected), data =>
+            {
+                _logger.LogDebug("{class}.{method}", nameof(IClientMcpManager), nameof(IClientMcpManager.OnMcpClientConnected));
+                return _mcpManager.OnMcpClientConnected(data);
+            })
+            .AddTo(_serverEventsDisposables);
+
             hubConnection.On(nameof(IClientMcpManager.ForceDisconnect), async () =>
             {
                 _logger.LogDebug("{class}.{method}", nameof(IClientMcpManager), nameof(IClientMcpManager.ForceDisconnect));
@@ -155,6 +162,12 @@ namespace com.IvanMurzak.McpPlugin
                 );
             }
             return _connectionManager.InvokeAsync<RequestToolCompletedData, ResponseData>(nameof(IServerMcpManager.NotifyToolRequestCompleted), request, cancellationToken);
+        }
+
+        public Task<McpClientData> GetMcpClientData()
+        {
+            _logger.LogTrace("{class}.{method}", nameof(IServerMcpManager), nameof(IServerMcpManager.GetMcpClientData));
+            return _connectionManager.InvokeAsync<McpClientData>(nameof(IServerMcpManager.GetMcpClientData), _cancellationTokenSource.Token);
         }
 
         #endregion

@@ -9,7 +9,9 @@
 */
 
 using System;
+using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
+using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.Logging;
 using R3;
@@ -21,6 +23,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly ILogger _logger;
         protected readonly Reflector _reflector;
         private readonly Subject<Unit> _onForceDisconnect = new();
+        private readonly Subject<McpClientData> _onClientConnected = new();
 
         readonly IToolManager? _tools;
         readonly IPromptManager? _prompts;
@@ -36,6 +39,7 @@ namespace com.IvanMurzak.McpPlugin
         public IClientResourceHub? ResourceHub => _resources;
 
         public Observable<Unit> OnForceDisconnect => _onForceDisconnect.AsObservable();
+        public Observable<McpClientData> OnClientConnected => _onClientConnected.AsObservable();
 
         public McpManager(
             ILogger<McpManager> logger,
@@ -52,6 +56,12 @@ namespace com.IvanMurzak.McpPlugin
             _tools = tools;
             _prompts = prompts;
             _resources = resources;
+        }
+
+        public Task OnMcpClientConnected(McpClientData clientData)
+        {
+            _onClientConnected.OnNext(clientData);
+            return Task.CompletedTask;
         }
 
         public void Dispose()

@@ -11,6 +11,7 @@
 using System;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NLog;
@@ -80,6 +81,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                                 server.Services!.GetRequiredService<HubEventToolsChange>(),
                                 server.Services!.GetRequiredService<HubEventPromptsChange>(),
                                 server.Services!.GetRequiredService<HubEventResourcesChange>(),
+                                server.Services!.GetRequiredService<IHubContext<McpServerHub, IClientMcpManager>>(),
                                 mcpServer: server,
                                 mcpSession: null
                             );

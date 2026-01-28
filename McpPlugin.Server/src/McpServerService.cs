@@ -12,7 +12,9 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
+using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.ReflectorNet;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol;
@@ -33,6 +35,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly HubEventToolsChange _eventAppToolsChange;
         readonly HubEventPromptsChange _eventAppPromptsChange;
         readonly HubEventResourcesChange _eventAppResourcesChange;
+        readonly IHubContext<McpServerHub, IClientMcpManager> _hubContext;
         readonly CompositeDisposable _disposables = new();
 
         public McpSession McpSessionOrServer => _mcpSession ?? _mcpServer ?? throw new InvalidOperationException($"{nameof(_mcpSession)} and {nameof(_mcpServer)} are both null.");
@@ -51,6 +54,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             HubEventToolsChange eventAppToolsChange,
             HubEventPromptsChange eventAppPromptsChange,
             HubEventResourcesChange eventAppResourcesChange,
+            IHubContext<McpServerHub, IClientMcpManager> hubContext,
             McpServer? mcpServer = null,
             McpSession? mcpSession = null)
         {
@@ -68,16 +72,46 @@ namespace com.IvanMurzak.McpPlugin.Server
             _eventAppToolsChange = eventAppToolsChange ?? throw new ArgumentNullException(nameof(eventAppToolsChange));
             _eventAppPromptsChange = eventAppPromptsChange ?? throw new ArgumentNullException(nameof(eventAppPromptsChange));
             _eventAppResourcesChange = eventAppResourcesChange ?? throw new ArgumentNullException(nameof(eventAppResourcesChange));
+            _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
 
             // if (Instance != null)
             //     throw new InvalidOperationException($"{typeof(McpServerService).Name} is already initialized.");
             Instance = this;
         }
 
+        public McpClientData GetClientData()
+        {
+            // var session = McpSessionOrServer;
+            return new McpClientData
+            {
+                IsConnected = true,
+                ClientName = "Unknown", // session.ClientInfo?.Name,
+                ClientVersion = "Unknown" // session.ClientInfo?.Version
+            };
+        }
+
+        public async Task NotifyClientConnectedAsync()
+        {
+            await _hubContext.Clients.All.OnMcpClientConnected(GetClientData());
+        }
+
         public Task StartAsync(CancellationToken cancellationToken)
         {
             _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(StartAsync));
             _disposables.Clear();
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(2000, cancellationToken);
+                    await NotifyClientConnectedAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error notifying client connected.");
+                }
+            }, cancellationToken);
 
             _eventAppToolsChange
                 .Subscribe(data =>
