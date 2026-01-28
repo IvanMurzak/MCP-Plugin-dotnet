@@ -20,5 +20,6 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
         IClientResourceHub? ResourceHub { get; }
 
         Task OnMcpClientConnected(McpClientData clientData);
+        Task OnMcpClientDisconnected();
     }
 }

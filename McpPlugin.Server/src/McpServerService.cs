@@ -95,6 +95,11 @@ namespace com.IvanMurzak.McpPlugin.Server
             await _hubContext.Clients.All.OnMcpClientConnected(GetClientData());
         }
 
+        public async Task NotifyClientDisconnectedAsync()
+        {
+            await _hubContext.Clients.All.OnMcpClientDisconnected();
+        }
+
         public Task StartAsync(CancellationToken cancellationToken)
         {
             _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(StartAsync));
@@ -140,13 +145,15 @@ namespace com.IvanMurzak.McpPlugin.Server
             return Task.CompletedTask;
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(StopAsync));
+
+            await NotifyClientDisconnectedAsync();
+
             _disposables.Clear();
             if (Instance == this)
                 Instance = null;
-            return Task.CompletedTask;
         }
 
         async void OnListToolUpdated(HubEventToolsChange.EventData eventData, CancellationToken cancellationToken)

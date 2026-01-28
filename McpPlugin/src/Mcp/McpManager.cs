@@ -24,6 +24,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly Reflector _reflector;
         private readonly Subject<Unit> _onForceDisconnect = new();
         private readonly Subject<McpClientData> _onClientConnected = new();
+        private readonly Subject<Unit> _onClientDisconnected = new();
 
         readonly IToolManager? _tools;
         readonly IPromptManager? _prompts;
@@ -40,6 +41,7 @@ namespace com.IvanMurzak.McpPlugin
 
         public Observable<Unit> OnForceDisconnect => _onForceDisconnect.AsObservable();
         public Observable<McpClientData> OnClientConnected => _onClientConnected.AsObservable();
+        public Observable<Unit> OnClientDisconnected => _onClientDisconnected.AsObservable();
 
         public McpManager(
             ILogger<McpManager> logger,
@@ -61,6 +63,12 @@ namespace com.IvanMurzak.McpPlugin
         public Task OnMcpClientConnected(McpClientData clientData)
         {
             _onClientConnected.OnNext(clientData);
+            return Task.CompletedTask;
+        }
+
+        public Task OnMcpClientDisconnected()
+        {
+            _onClientDisconnected.OnNext(Unit.Default);
             return Task.CompletedTask;
         }
 

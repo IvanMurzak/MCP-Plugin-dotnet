@@ -17,5 +17,6 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
     {
         // Task ForceDisconnect(); // Inherited from IClientDisconnectable
         Task OnMcpClientConnected(McpClientData clientData);
+        Task OnMcpClientDisconnected();
     }
 }

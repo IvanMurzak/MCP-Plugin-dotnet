@@ -47,14 +47,21 @@ namespace com.IvanMurzak.McpPlugin
         {
             hubConnection.On<McpClientData>(nameof(IClientMcpRpc.OnMcpClientConnected), data =>
             {
-                _logger.LogDebug("{class}.{method}", nameof(IClientMcpManager), nameof(IClientMcpManager.OnMcpClientConnected));
+                _logger.LogDebug("{class}.{method}", nameof(IClientMcpManager), nameof(IClientMcpRpc.OnMcpClientConnected));
                 return _mcpManager.OnMcpClientConnected(data);
+            })
+            .AddTo(_serverEventsDisposables);
+
+            hubConnection.On(nameof(IClientMcpRpc.OnMcpClientDisconnected), () =>
+            {
+                _logger.LogDebug("{class}.{method}", nameof(IClientMcpManager), nameof(IClientMcpRpc.OnMcpClientDisconnected));
+                return _mcpManager.OnMcpClientDisconnected();
             })
             .AddTo(_serverEventsDisposables);
 
             hubConnection.On(nameof(IClientMcpRpc.ForceDisconnect), async () =>
             {
-                _logger.LogDebug("{class}.{method}", nameof(IClientMcpManager), nameof(IClientMcpManager.ForceDisconnect));
+                _logger.LogDebug("{class}.{method}", nameof(IClientMcpManager), nameof(IClientMcpRpc.ForceDisconnect));
                 await _mcpManager.ForceDisconnect();
                 await _connectionManager.Disconnect();
             });
