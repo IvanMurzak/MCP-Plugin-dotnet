@@ -9,11 +9,13 @@
 */
 
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common.Model;
 
 namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
 {
-    public interface IClientDisconnectable
+    public interface IClientMcpRpc : IClientDisconnectable
     {
-        Task ForceDisconnect();
+        // Task ForceDisconnect(); // Inherited from IClientDisconnectable
+        Task OnMcpClientConnected(McpClientData clientData);
     }
 }

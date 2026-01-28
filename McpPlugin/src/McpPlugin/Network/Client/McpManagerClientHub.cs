@@ -45,17 +45,17 @@ namespace com.IvanMurzak.McpPlugin
 
         protected override void SubscribeOnServerEvents(HubConnection hubConnection, CompositeDisposable disposables)
         {
-            hubConnection.On<McpClientData>(nameof(IClientMcpManager.OnMcpClientConnected), data =>
+            hubConnection.On<McpClientData>(nameof(IClientMcpRpc.OnMcpClientConnected), data =>
             {
                 _logger.LogDebug("{class}.{method}", nameof(IClientMcpManager), nameof(IClientMcpManager.OnMcpClientConnected));
                 return _mcpManager.OnMcpClientConnected(data);
             })
             .AddTo(_serverEventsDisposables);
 
-            hubConnection.On(nameof(IClientMcpManager.ForceDisconnect), async () =>
+            hubConnection.On(nameof(IClientMcpRpc.ForceDisconnect), async () =>
             {
                 _logger.LogDebug("{class}.{method}", nameof(IClientMcpManager), nameof(IClientMcpManager.ForceDisconnect));
-                _mcpManager.ForceDisconnect();
+                await _mcpManager.ForceDisconnect();
                 await _connectionManager.Disconnect();
             });
 

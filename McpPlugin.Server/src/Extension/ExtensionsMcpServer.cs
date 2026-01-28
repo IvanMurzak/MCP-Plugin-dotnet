@@ -81,7 +81,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                                 server.Services!.GetRequiredService<HubEventToolsChange>(),
                                 server.Services!.GetRequiredService<HubEventPromptsChange>(),
                                 server.Services!.GetRequiredService<HubEventResourcesChange>(),
-                                server.Services!.GetRequiredService<IHubContext<McpServerHub, IClientMcpManager>>(),
+                                server.Services!.GetRequiredService<IHubContext<McpServerHub, IClientMcpRpc>>(),
                                 mcpServer: server,
                                 mcpSession: null
                             );

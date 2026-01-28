@@ -35,7 +35,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly HubEventToolsChange _eventAppToolsChange;
         readonly HubEventPromptsChange _eventAppPromptsChange;
         readonly HubEventResourcesChange _eventAppResourcesChange;
-        readonly IHubContext<McpServerHub, IClientMcpManager> _hubContext;
+        readonly IHubContext<McpServerHub, IClientMcpRpc> _hubContext;
         readonly CompositeDisposable _disposables = new();
 
         public McpSession McpSessionOrServer => _mcpSession ?? _mcpServer ?? throw new InvalidOperationException($"{nameof(_mcpSession)} and {nameof(_mcpServer)} are both null.");
@@ -54,7 +54,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             HubEventToolsChange eventAppToolsChange,
             HubEventPromptsChange eventAppPromptsChange,
             HubEventResourcesChange eventAppResourcesChange,
-            IHubContext<McpServerHub, IClientMcpManager> hubContext,
+            IHubContext<McpServerHub, IClientMcpRpc> hubContext,
             McpServer? mcpServer = null,
             McpSession? mcpSession = null)
         {

@@ -19,7 +19,7 @@ using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
-    public class McpServerHub : BaseHub<IClientMcpManager>, IServerMcpManager
+    public class McpServerHub : BaseHub<IClientMcpRpc>, IServerMcpManager
     {
         readonly Common.Version _version;
         readonly HubEventToolsChange _eventAppToolsChange;
