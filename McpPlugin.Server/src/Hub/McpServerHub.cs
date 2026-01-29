@@ -19,7 +19,7 @@ using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
-    public class McpServerHub : BaseHub<IClientMcpManager>, IServerMcpManager
+    public class McpServerHub : BaseHub<IClientMcpRpc>, IServerMcpManager
     {
         readonly Common.Version _version;
         readonly HubEventToolsChange _eventAppToolsChange;
@@ -148,6 +148,23 @@ namespace com.IvanMurzak.McpPlugin.Server
                     Compatible = false,
                     Message = $"Error during version handshake: {ex.Message}"
                 });
+            }
+        }
+
+        public Task<McpClientData> GetMcpClientData()
+        {
+            try
+            {
+                if (McpServerService.Instance == null)
+                {
+                    return Task.FromResult(new McpClientData { IsConnected = false });
+                }
+                return Task.FromResult(McpServerService.Instance.GetClientData());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting MCP Client Data");
+                return Task.FromResult(new McpClientData { IsConnected = false });
             }
         }
 

@@ -8,6 +8,7 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 using System;
+using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.ReflectorNet;
 using R3;
 
@@ -17,6 +18,8 @@ namespace com.IvanMurzak.McpPlugin
     {
         Reflector Reflector { get; }
         Observable<Unit> OnForceDisconnect { get; }
+        Observable<McpClientData> OnClientConnected { get; }
+        Observable<Unit> OnClientDisconnected { get; }
         IToolManager? ToolManager { get; }
         IPromptManager? PromptManager { get; }
         IResourceManager? ResourceManager { get; }

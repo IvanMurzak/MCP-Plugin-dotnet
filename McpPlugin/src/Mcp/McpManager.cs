@@ -9,7 +9,9 @@
 */
 
 using System;
+using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
+using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.Logging;
 using R3;
@@ -21,6 +23,8 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly ILogger _logger;
         protected readonly Reflector _reflector;
         private readonly Subject<Unit> _onForceDisconnect = new();
+        private readonly Subject<McpClientData> _onClientConnected = new();
+        private readonly Subject<Unit> _onClientDisconnected = new();
 
         readonly IToolManager? _tools;
         readonly IPromptManager? _prompts;
@@ -36,6 +40,8 @@ namespace com.IvanMurzak.McpPlugin
         public IClientResourceHub? ResourceHub => _resources;
 
         public Observable<Unit> OnForceDisconnect => _onForceDisconnect.AsObservable();
+        public Observable<McpClientData> OnClientConnected => _onClientConnected.AsObservable();
+        public Observable<Unit> OnClientDisconnected => _onClientDisconnected.AsObservable();
 
         public McpManager(
             ILogger<McpManager> logger,
@@ -54,6 +60,18 @@ namespace com.IvanMurzak.McpPlugin
             _resources = resources;
         }
 
+        public Task OnMcpClientConnected(McpClientData clientData)
+        {
+            _onClientConnected.OnNext(clientData);
+            return Task.CompletedTask;
+        }
+
+        public Task OnMcpClientDisconnected()
+        {
+            _onClientDisconnected.OnNext(Unit.Default);
+            return Task.CompletedTask;
+        }
+
         public void Dispose()
         {
             _logger.LogDebug("{method} called.", nameof(Dispose));
@@ -65,9 +83,10 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{method} completed.", nameof(Dispose));
         }
 
-        public void ForceDisconnect()
+        public Task ForceDisconnect()
         {
             _onForceDisconnect.OnNext(Unit.Default);
+            return Task.CompletedTask;
         }
     }
 }

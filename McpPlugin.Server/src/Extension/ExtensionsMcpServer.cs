@@ -9,8 +9,10 @@
 */
 
 using System;
+using System.Threading;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NLog;
@@ -80,6 +82,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                                 server.Services!.GetRequiredService<HubEventToolsChange>(),
                                 server.Services!.GetRequiredService<HubEventPromptsChange>(),
                                 server.Services!.GetRequiredService<HubEventResourcesChange>(),
+                                server.Services!.GetRequiredService<IHubContext<McpServerHub, IClientMcpRpc>>(),
                                 mcpServer: server,
                                 mcpSession: null
                             );
@@ -91,7 +94,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                             }
                             finally
                             {
-                                await service.StopAsync(cancellationToken);
+                                // Use CancellationToken.None to ensure cleanup completes
+                                // even if the session's cancellation token is already cancelled
+                                await service.StopAsync(CancellationToken.None);
                             }
                         }
                         catch (Exception ex)
