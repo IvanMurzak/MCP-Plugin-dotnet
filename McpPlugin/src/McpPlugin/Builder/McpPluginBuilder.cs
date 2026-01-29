@@ -36,6 +36,7 @@ namespace com.IvanMurzak.McpPlugin
         readonly Dictionary<string, IRunResource> _resourceRunners = new();
 
         bool isBuilt = false;
+        bool isLoggingConfigured = false;
 
         public IServiceCollection Services => _services;
         public ServiceProvider? ServiceProvider { get; private set; }
@@ -46,13 +47,12 @@ namespace com.IvanMurzak.McpPlugin
             _logger = loggerProvider?.CreateLogger(nameof(McpPluginBuilder));
             _services = services ?? new ServiceCollection();
 
+            // Only add logging provider if explicitly passed, don't add default logging here
+            // to avoid duplicate logging when AddLogging() is called later
             if (_loggerProvider != null)
             {
                 _services.AddLogging(builder => builder.AddProvider(_loggerProvider));
-            }
-            else
-            {
-                _services.AddLogging();
+                isLoggingConfigured = true;
             }
             _services.AddSingleton(version);
             _services.AddSingleton<IConnectionManager, ConnectionManager>();
@@ -220,7 +220,16 @@ namespace com.IvanMurzak.McpPlugin
             if (isBuilt)
                 throw new InvalidOperationException("The builder has already been built.");
 
-            _services.AddLogging(loggingBuilder);
+            _services.AddLogging(builder =>
+            {
+                // Clear existing providers to avoid duplicate logging
+                // when AddLogging is called after constructor or multiple times
+                if (isLoggingConfigured)
+                    builder.ClearProviders();
+
+                loggingBuilder(builder);
+            });
+            isLoggingConfigured = true;
             return this;
         }
 
@@ -246,6 +255,12 @@ namespace com.IvanMurzak.McpPlugin
 
             if (reflector == null)
                 throw new ArgumentNullException(nameof(reflector));
+
+            // Add default logging if not configured to ensure ILogger can be resolved
+            if (!isLoggingConfigured)
+            {
+                _services.AddLogging();
+            }
 
             _services.AddSingleton(reflector);
 
