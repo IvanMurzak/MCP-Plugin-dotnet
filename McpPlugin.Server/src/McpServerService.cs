@@ -59,7 +59,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             McpSession? mcpSession = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _logger.LogTrace("{0} Ctor.", GetType().GetTypeShortName());
+            _logger.LogTrace("{type} Ctor.", GetType().GetTypeShortName());
             _mcpServer = mcpServer;
             _mcpSession = mcpSession;
 
@@ -92,6 +92,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public async Task NotifyClientConnectedAsync()
         {
+            _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(NotifyClientConnectedAsync));
             await _hubContext.Clients.All.OnMcpClientConnected(GetClientData());
         }
 
