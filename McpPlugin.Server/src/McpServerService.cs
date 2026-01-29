@@ -97,6 +97,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public async Task NotifyClientDisconnectedAsync()
         {
+            _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(NotifyClientDisconnectedAsync));
             await _hubContext.Clients.All.OnMcpClientDisconnected();
         }
 
@@ -149,7 +150,14 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(StopAsync));
 
-            await NotifyClientDisconnectedAsync();
+            try
+            {
+                await NotifyClientDisconnectedAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "{type} Error notifying client disconnected.", GetType().GetTypeShortName());
+            }
 
             _disposables.Clear();
             if (Instance == this)

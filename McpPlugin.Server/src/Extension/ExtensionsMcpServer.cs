@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Threading;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using Microsoft.AspNetCore.SignalR;
@@ -93,7 +94,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                             }
                             finally
                             {
-                                await service.StopAsync(cancellationToken);
+                                // Use CancellationToken.None to ensure cleanup completes
+                                // even if the session's cancellation token is already cancelled
+                                await service.StopAsync(CancellationToken.None);
                             }
                         }
                         catch (Exception ex)
