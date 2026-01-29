@@ -38,7 +38,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly IHubContext<McpServerHub, IClientMcpRpc> _hubContext;
         readonly CompositeDisposable _disposables = new();
 
-        public McpSession McpSessionOrServer => _mcpSession ?? _mcpServer ?? throw new InvalidOperationException($"{nameof(_mcpSession)} and {nameof(_mcpServer)} are both null.");
+        public McpSession? McpSessionOrServer => _mcpSession ?? _mcpServer;
 
         public IClientToolHub ToolRunner => _toolRunner;
         public IClientPromptHub PromptRunner => _promptRunner;
@@ -83,8 +83,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             return new McpClientData
             {
-                IsConnected = true,
-                ConnectionId = McpSessionOrServer.SessionId,
+                IsConnected = McpSessionOrServer != null,
+                ConnectionId = McpSessionOrServer?.SessionId,
                 ClientName = _mcpServer?.ClientInfo?.Name,
                 ClientVersion = _mcpServer?.ClientInfo?.Version
             };
@@ -161,6 +161,12 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnListToolUpdated));
             try
             {
+                if (McpSessionOrServer == null)
+                {
+                    _logger.LogDebug("{type} {property} is null, cannot send tool list update notification.",
+                        GetType().GetTypeShortName(), nameof(McpSessionOrServer));
+                    return;
+                }
 #pragma warning disable CS0618 // Type or member is obsolete
                 await McpSessionOrServer.SendNotificationAsync(NotificationMethods.ToolListChangedNotification, cancellationToken);
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -175,6 +181,12 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnResourceUpdated));
             try
             {
+                if (McpSessionOrServer == null)
+                {
+                    _logger.LogDebug("{type} {property} is null, cannot send tool list update notification.",
+                        GetType().GetTypeShortName(), nameof(McpSessionOrServer));
+                    return;
+                }
 #pragma warning disable CS0618 // Type or member is obsolete
                 await McpSessionOrServer.SendNotificationAsync(NotificationMethods.ResourceUpdatedNotification, cancellationToken);
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -189,6 +201,12 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnListPromptsUpdated));
             try
             {
+                if (McpSessionOrServer == null)
+                {
+                    _logger.LogDebug("{type} {property} is null, cannot send prompt list update notification.",
+                        GetType().GetTypeShortName(), nameof(McpSessionOrServer));
+                    return;
+                }
 #pragma warning disable CS0618 // Type or member is obsolete
                 await McpSessionOrServer.SendNotificationAsync(NotificationMethods.PromptListChangedNotification, cancellationToken);
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -203,6 +221,12 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnListResourcesUpdated));
             try
             {
+                if (McpSessionOrServer == null)
+                {
+                    _logger.LogDebug("{type} {property} is null, cannot send resource list update notification.",
+                        GetType().GetTypeShortName(), nameof(McpSessionOrServer));
+                    return;
+                }
 #pragma warning disable CS0618 // Type or member is obsolete
                 await McpSessionOrServer.SendNotificationAsync(NotificationMethods.ResourceListChangedNotification, cancellationToken);
 #pragma warning restore CS0618 // Type or member is obsolete
