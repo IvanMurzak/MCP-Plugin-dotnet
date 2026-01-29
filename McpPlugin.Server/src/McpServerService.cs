@@ -81,12 +81,12 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public McpClientData GetClientData()
         {
-            // var session = McpSessionOrServer;
             return new McpClientData
             {
                 IsConnected = true,
-                ClientName = "Unknown", // session.ClientInfo?.Name,
-                ClientVersion = "Unknown" // session.ClientInfo?.Version
+                ConnectionId = McpSessionOrServer.SessionId,
+                ClientName = _mcpServer?.ClientInfo?.Name,
+                ClientVersion = _mcpServer?.ClientInfo?.Version
             };
         }
 
