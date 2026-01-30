@@ -20,7 +20,7 @@ using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public class McpPluginBuilder : IMcpPluginBuilder
+    public partial class McpPluginBuilder : IMcpPluginBuilder
     {
         readonly ILogger? _logger;
         readonly ILoggerProvider? _loggerProvider;
@@ -34,6 +34,19 @@ namespace com.IvanMurzak.McpPlugin
 
         readonly List<ResourceMethodData> _resourceMethods = new();
         readonly Dictionary<string, IRunResource> _resourceRunners = new();
+
+        // Ignore configuration for filtering assemblies, namespaces, and types
+        readonly McpPluginBuilderIgnoreConfig _ignoreConfig = new();
+
+        // Lazy assembly scanning - store assemblies to scan later
+        readonly List<Assembly> _toolAssemblies = new();
+        readonly List<Assembly> _promptAssemblies = new();
+        readonly List<Assembly> _resourceAssemblies = new();
+
+        // Lazy type scanning - store types to scan later
+        readonly List<Type> _toolTypes = new();
+        readonly List<Type> _promptTypes = new();
+        readonly List<Type> _resourceTypes = new();
 
         bool isBuilt = false;
 
@@ -71,26 +84,23 @@ namespace com.IvanMurzak.McpPlugin
         }
 
         #region Tool
-        public IMcpPluginBuilder WithTool(Type classType, MethodInfo method)
+        public McpPluginBuilder WithTool(Type classType, MethodInfo method)
         {
-            if (isBuilt)
-                throw new InvalidOperationException("The builder has already been built.");
+            ThrowIfBuilt();
 
             var attribute = method.GetCustomAttribute<McpPluginToolAttribute>();
             return WithTool(attribute!, classType, method);
         }
-        public IMcpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo method)
+        public McpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo method)
         {
-            if (isBuilt)
-                throw new InvalidOperationException("The builder has already been built.");
+            ThrowIfBuilt();
 
             var attribute = new McpPluginToolAttribute(name, title);
             return WithTool(attribute, classType, method);
         }
-        public IMcpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo method)
+        public McpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo method)
         {
-            if (isBuilt)
-                throw new InvalidOperationException("The builder has already been built.");
+            ThrowIfBuilt();
 
             if (attribute == null)
             {
@@ -109,10 +119,9 @@ namespace com.IvanMurzak.McpPlugin
             ));
             return this;
         }
-        public IMcpPluginBuilder AddTool(string name, IRunTool runner)
+        public McpPluginBuilder AddTool(string name, IRunTool runner)
         {
-            if (isBuilt)
-                throw new InvalidOperationException("The builder has already been built.");
+            ThrowIfBuilt();
 
             if (_toolRunners.ContainsKey(name))
                 throw new ArgumentException($"Tool with name '{name}' already exists.");
@@ -123,10 +132,9 @@ namespace com.IvanMurzak.McpPlugin
         #endregion
 
         #region Prompt
-        public IMcpPluginBuilder WithPrompt(string name, Type classType, MethodInfo methodInfo)
+        public McpPluginBuilder WithPrompt(string name, Type classType, MethodInfo methodInfo)
         {
-            if (isBuilt)
-                throw new InvalidOperationException("The builder has already been built.");
+            ThrowIfBuilt();
 
             var attribute = methodInfo.GetCustomAttribute<McpPluginPromptAttribute>();
             if (attribute == null)
@@ -146,10 +154,9 @@ namespace com.IvanMurzak.McpPlugin
             ));
             return this;
         }
-        public IMcpPluginBuilder AddPrompt(string name, IRunPrompt runner)
+        public McpPluginBuilder AddPrompt(string name, IRunPrompt runner)
         {
-            if (isBuilt)
-                throw new InvalidOperationException("The builder has already been built.");
+            ThrowIfBuilt();
 
             if (_promptRunners.ContainsKey(name))
                 throw new ArgumentException($"Prompt with name '{name}' already exists.");
@@ -160,10 +167,9 @@ namespace com.IvanMurzak.McpPlugin
         #endregion
 
         #region Resource
-        public IMcpPluginBuilder WithResource(Type classType, MethodInfo getContentMethod)
+        public McpPluginBuilder WithResource(Type classType, MethodInfo getContentMethod)
         {
-            if (isBuilt)
-                throw new InvalidOperationException("The builder has already been built.");
+            ThrowIfBuilt();
 
             var attribute = getContentMethod.GetCustomAttribute<McpPluginResourceAttribute>();
             if (attribute == null)
@@ -195,10 +201,9 @@ namespace com.IvanMurzak.McpPlugin
 
             return this;
         }
-        public IMcpPluginBuilder AddResource(IRunResource resourceParams)
+        public McpPluginBuilder AddResource(IRunResource resourceParams)
         {
-            if (isBuilt)
-                throw new InvalidOperationException("The builder has already been built.");
+            ThrowIfBuilt();
 
             if (_resourceRunners == null)
                 throw new ArgumentNullException(nameof(_resourceRunners));
@@ -215,25 +220,23 @@ namespace com.IvanMurzak.McpPlugin
         #endregion
 
         #region Other
-        public IMcpPluginBuilder AddLogging(Action<ILoggingBuilder> loggingBuilder)
+        public McpPluginBuilder AddLogging(Action<ILoggingBuilder> loggingBuilder)
         {
-            if (isBuilt)
-                throw new InvalidOperationException("The builder has already been built.");
+            ThrowIfBuilt();
 
             _services.AddLogging(loggingBuilder);
             return this;
         }
 
-        public IMcpPluginBuilder WithConfig(Action<ConnectionConfig> config)
+        public McpPluginBuilder WithConfig(Action<ConnectionConfig> config)
         {
-            if (isBuilt)
-                throw new InvalidOperationException("The builder has already been built.");
+            ThrowIfBuilt();
 
             _services.Configure(config);
             return this;
         }
 
-        public IMcpPluginBuilder WithConfigFromArgsOrEnv(string[]? args = null) => WithConfig(config =>
+        public McpPluginBuilder WithConfigFromArgsOrEnv(string[]? args = null) => WithConfig(config =>
         {
             config.Host = ConnectionConfig.GetEndpointFromArgsOrEnv(args);
             config.TimeoutMs = ConnectionConfig.GetTimeoutFromArgsOrEnv(args);
@@ -241,11 +244,16 @@ namespace com.IvanMurzak.McpPlugin
 
         public IMcpPlugin Build(Reflector reflector)
         {
-            if (isBuilt)
-                throw new InvalidOperationException("The builder has already been built.");
+            ThrowIfBuilt();
 
             if (reflector == null)
                 throw new ArgumentNullException(nameof(reflector));
+
+            // Process all assemblies with caching optimization
+            ProcessAllAssemblies();
+
+            // Clear cache to free memory
+            ClearAttributeCache();
 
             _services.AddSingleton(reflector);
 
@@ -265,6 +273,12 @@ namespace com.IvanMurzak.McpPlugin
             isBuilt = true;
 
             return ServiceProvider.GetRequiredService<IMcpPlugin>();
+        }
+
+        private void ThrowIfBuilt()
+        {
+            if (isBuilt)
+                throw new InvalidOperationException("The builder has already been built.");
         }
         #endregion
     }
