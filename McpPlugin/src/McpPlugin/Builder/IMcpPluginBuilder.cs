@@ -19,19 +19,24 @@ namespace com.IvanMurzak.McpPlugin
     public interface IMcpPluginBuilder
     {
         IServiceCollection Services { get; }
-        IMcpPluginBuilder WithTool(Type classType, MethodInfo method);
-        IMcpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo method);
-        IMcpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo method);
-        IMcpPluginBuilder AddTool(string name, IRunTool runner);
 
-        IMcpPluginBuilder WithPrompt(string name, Type classType, MethodInfo method);
-        IMcpPluginBuilder AddPrompt(string name, IRunPrompt runner);
+        // Tool methods
+        McpPluginBuilder WithTool(Type classType, MethodInfo method);
+        McpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo method);
+        McpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo method);
+        McpPluginBuilder AddTool(string name, IRunTool runner);
 
-        IMcpPluginBuilder WithResource(Type classType, MethodInfo getContentMethod);
-        IMcpPluginBuilder AddResource(IRunResource resourceParams);
+        // Prompt methods
+        McpPluginBuilder WithPrompt(string name, Type classType, MethodInfo method);
+        McpPluginBuilder AddPrompt(string name, IRunPrompt runner);
 
-        IMcpPluginBuilder AddLogging(Action<ILoggingBuilder> loggingBuilder);
-        IMcpPluginBuilder WithConfig(Action<ConnectionConfig> config);
+        // Resource methods
+        McpPluginBuilder WithResource(Type classType, MethodInfo getContentMethod);
+        McpPluginBuilder AddResource(IRunResource resourceParams);
+
+        // Configuration methods
+        McpPluginBuilder AddLogging(Action<ILoggingBuilder> loggingBuilder);
+        McpPluginBuilder WithConfig(Action<ConnectionConfig> config);
         IMcpPlugin Build(Reflector reflector);
     }
 }
