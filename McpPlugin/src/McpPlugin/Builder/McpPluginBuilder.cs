@@ -252,9 +252,6 @@ namespace com.IvanMurzak.McpPlugin
             // Process all assemblies with caching optimization
             ProcessAllAssemblies();
 
-            // Clear cache to free memory
-            ClearAttributeCache();
-
             _services.AddSingleton(reflector);
 
             _services.AddSingleton(new ToolRunnerCollection(reflector, _loggerProvider?.CreateLogger(nameof(ToolRunnerCollection)))

@@ -19,11 +19,6 @@ namespace com.IvanMurzak.McpPlugin
     {
         private const BindingFlags MethodBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
 
-        private void ClearAttributeCache()
-        {
-            // No-op - kept for API compatibility
-        }
-
         private void ProcessAllAssemblies()
         {
             // Collect all unique assemblies to scan once

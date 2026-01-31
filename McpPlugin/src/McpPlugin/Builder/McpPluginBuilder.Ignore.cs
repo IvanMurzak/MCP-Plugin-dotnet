@@ -58,7 +58,11 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
             foreach (var assembly in assemblies)
+            {
+                if (assembly == null)
+                    continue;
                 _ignoreConfig.IgnoredAssemblies.Add(assembly);
+            }
             _ignoreConfig.InvalidateCaches();
             return this;
         }
@@ -154,7 +158,11 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
             foreach (var assembly in assemblies)
+            {
+                if (assembly == null)
+                    continue;
                 _ignoreConfig.IgnoredAssemblies.Remove(assembly);
+            }
             _ignoreConfig.InvalidateCaches();
             return this;
         }
