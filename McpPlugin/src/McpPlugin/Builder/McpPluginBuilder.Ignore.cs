@@ -73,11 +73,16 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="assemblyNames">The assembly names or prefixes to ignore.</param>
         /// <returns>The current builder instance for method chaining.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
+        /// <exception cref="ArgumentException">Thrown if any assembly name to ignore is null or empty.</exception>
         public virtual IMcpPluginBuilder IgnoreAssemblies(params string[] assemblyNames)
         {
             ThrowIfBuilt();
             foreach (var name in assemblyNames)
+            {
+                if (string.IsNullOrEmpty(name))
+                    throw new ArgumentException("Assembly name to ignore cannot be null or empty.");
                 _ignoreConfig.IgnoredAssemblyNames.Add(name);
+            }
             _ignoreConfig.InvalidateCaches();
             return this;
         }
