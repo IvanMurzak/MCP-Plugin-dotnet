@@ -731,7 +731,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             // Act - Query counts first (populates both caches with ignored state)
             var assemblyCountBefore = builder.GetIgnoredAssembliesCount();
-            var typeCountBefore = builder.GetIgnoredTypesCount();
+            builder.GetIgnoredTypesCount();
 
             // Clear all ignores after caches are populated
             builder.ClearAllIgnored();
