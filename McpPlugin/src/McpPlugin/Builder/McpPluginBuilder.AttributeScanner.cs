@@ -128,7 +128,7 @@ namespace com.IvanMurzak.McpPlugin
                             throw new ArgumentException($"Prompt name cannot be null or empty. Type: {type.Name}, Method: {method.Name}");
                         WithPrompt(name: promptAttr.Name, classType: type, methodInfo: method);
                     }
-                    else if (processResource && attr is McpPluginResourceAttribute resourceAttr)
+                    else if (processResource && attr is McpPluginResourceAttribute)
                     {
                         WithResource(classType: type, getContentMethod: method);
                     }
