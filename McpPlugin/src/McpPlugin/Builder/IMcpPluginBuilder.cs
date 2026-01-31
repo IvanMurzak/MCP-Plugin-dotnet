@@ -21,13 +21,13 @@ namespace com.IvanMurzak.McpPlugin
         IServiceCollection Services { get; }
 
         // Tool methods
-        McpPluginBuilder WithTool(Type classType, MethodInfo method);
-        McpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo method);
-        McpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo method);
+        McpPluginBuilder WithTool(Type classType, MethodInfo methodInfo);
+        McpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo methodInfo);
+        McpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo methodInfo);
         McpPluginBuilder AddTool(string name, IRunTool runner);
 
         // Prompt methods
-        McpPluginBuilder WithPrompt(string name, Type classType, MethodInfo method);
+        McpPluginBuilder WithPrompt(string name, Type classType, MethodInfo methodInfo);
         McpPluginBuilder AddPrompt(string name, IRunPrompt runner);
 
         // Resource methods

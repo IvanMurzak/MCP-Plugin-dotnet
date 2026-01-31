@@ -14,8 +14,14 @@ using System.Reflection;
 
 namespace com.IvanMurzak.McpPlugin
 {
+    /// <summary>
+    /// Configuration for ignoring assemblies and namespaces during plugin building.
+    /// This class is thread-safe for concurrent read operations after configuration is complete.
+    /// </summary>
     public class McpPluginBuilderIgnoreConfig
     {
+        private readonly object _lock = new();
+
         internal HashSet<string> IgnoredAssemblyNames { get; } = new(StringComparer.Ordinal);
         internal HashSet<Assembly> IgnoredAssemblies { get; } = new();
         internal HashSet<string> IgnoredNamespaces { get; } = new();
@@ -26,12 +32,15 @@ namespace com.IvanMurzak.McpPlugin
 
         internal bool IsIgnored(Assembly assembly)
         {
-            if (_assemblyIgnoreCache.TryGetValue(assembly, out var cached))
-                return cached;
+            lock (_lock)
+            {
+                if (_assemblyIgnoreCache.TryGetValue(assembly, out var cached))
+                    return cached;
 
-            var result = CheckAssemblyIgnored(assembly);
-            _assemblyIgnoreCache[assembly] = result;
-            return result;
+                var result = CheckAssemblyIgnored(assembly);
+                _assemblyIgnoreCache[assembly] = result;
+                return result;
+            }
         }
 
         private bool CheckAssemblyIgnored(Assembly assembly)
@@ -59,12 +68,15 @@ namespace com.IvanMurzak.McpPlugin
             if (string.IsNullOrEmpty(typeNamespace))
                 return false;
 
-            if (_namespaceIgnoreCache.TryGetValue(typeNamespace, out var cached))
-                return cached;
+            lock (_lock)
+            {
+                if (_namespaceIgnoreCache.TryGetValue(typeNamespace, out var cached))
+                    return cached;
 
-            var result = CheckNamespaceIgnored(typeNamespace);
-            _namespaceIgnoreCache[typeNamespace] = result;
-            return result;
+                var result = CheckNamespaceIgnored(typeNamespace);
+                _namespaceIgnoreCache[typeNamespace] = result;
+                return result;
+            }
         }
 
         private bool CheckNamespaceIgnored(string typeNamespace)
@@ -83,8 +95,11 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         internal void InvalidateCaches()
         {
-            _assemblyIgnoreCache.Clear();
-            _namespaceIgnoreCache.Clear();
+            lock (_lock)
+            {
+                _assemblyIgnoreCache.Clear();
+                _namespaceIgnoreCache.Clear();
+            }
         }
     }
 }

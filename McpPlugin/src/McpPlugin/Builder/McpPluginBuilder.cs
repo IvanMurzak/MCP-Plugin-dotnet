@@ -84,37 +84,37 @@ namespace com.IvanMurzak.McpPlugin
         }
 
         #region Tool
-        public virtual McpPluginBuilder WithTool(Type classType, MethodInfo method)
+        public virtual McpPluginBuilder WithTool(Type classType, MethodInfo methodInfo)
         {
             ThrowIfBuilt();
 
-            var attribute = method.GetCustomAttribute<McpPluginToolAttribute>();
-            return WithTool(attribute!, classType, method);
+            var attribute = methodInfo.GetCustomAttribute<McpPluginToolAttribute>();
+            return WithTool(attribute!, classType, methodInfo);
         }
-        public virtual McpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo method)
+        public virtual McpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo methodInfo)
         {
             ThrowIfBuilt();
 
             var attribute = new McpPluginToolAttribute(name, title);
-            return WithTool(attribute, classType, method);
+            return WithTool(attribute, classType, methodInfo);
         }
-        public virtual McpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo method)
+        public virtual McpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo methodInfo)
         {
             ThrowIfBuilt();
 
             if (attribute == null)
             {
-                _logger?.LogWarning($"Method {classType.FullName}{method.Name} does not have a '{nameof(McpPluginToolAttribute)}'.");
+                _logger?.LogWarning($"Method {classType.FullName}{methodInfo.Name} does not have a '{nameof(McpPluginToolAttribute)}'.");
                 return this;
             }
 
             if (string.IsNullOrEmpty(attribute.Name))
-                throw new ArgumentException($"Tool name cannot be null or empty. Type: {classType.Name}, Method: {method.Name}");
+                throw new ArgumentException($"Tool name cannot be null or empty. Type: {classType.Name}, Method: {methodInfo.Name}");
 
             _toolMethods.Add(new ToolMethodData
             (
                 classType: classType,
-                methodInfo: method,
+                methodInfo: methodInfo,
                 attribute: attribute
             ));
             return this;
