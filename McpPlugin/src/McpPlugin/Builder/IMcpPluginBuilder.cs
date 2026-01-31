@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,22 +22,70 @@ namespace com.IvanMurzak.McpPlugin
         IServiceCollection Services { get; }
 
         // Tool methods
-        McpPluginBuilder WithTool(Type classType, MethodInfo methodInfo);
-        McpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo methodInfo);
-        McpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo methodInfo);
-        McpPluginBuilder AddTool(string name, IRunTool runner);
+        IMcpPluginBuilder WithTool(Type classType, MethodInfo methodInfo);
+        IMcpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo methodInfo);
+        IMcpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo methodInfo);
+        IMcpPluginBuilder AddTool(string name, IRunTool runner);
+        IMcpPluginBuilder WithTools<T>();
+        IMcpPluginBuilder WithTools(params Type[] targetTypes);
+        IMcpPluginBuilder WithTools(IEnumerable<Type> targetTypes);
+        IMcpPluginBuilder WithTools(Type classType);
+        IMcpPluginBuilder WithToolsFromAssembly(IEnumerable<Assembly> assemblies);
+        IMcpPluginBuilder WithToolsFromAssembly(Assembly? assembly = null);
 
         // Prompt methods
-        McpPluginBuilder WithPrompt(string name, Type classType, MethodInfo methodInfo);
-        McpPluginBuilder AddPrompt(string name, IRunPrompt runner);
+        IMcpPluginBuilder WithPrompt(string name, Type classType, MethodInfo methodInfo);
+        IMcpPluginBuilder AddPrompt(string name, IRunPrompt runner);
+        IMcpPluginBuilder WithPrompts<T>();
+        IMcpPluginBuilder WithPrompts(params Type[] targetTypes);
+        IMcpPluginBuilder WithPrompts(IEnumerable<Type> targetTypes);
+        IMcpPluginBuilder WithPrompts(Type classType);
+        IMcpPluginBuilder WithPromptsFromAssembly(IEnumerable<Assembly> assemblies);
+        IMcpPluginBuilder WithPromptsFromAssembly(Assembly? assembly = null);
 
         // Resource methods
-        McpPluginBuilder WithResource(Type classType, MethodInfo getContentMethod);
-        McpPluginBuilder AddResource(IRunResource resourceParams);
+        IMcpPluginBuilder WithResource(Type classType, MethodInfo getContentMethod);
+        IMcpPluginBuilder AddResource(IRunResource resourceParams);
+        IMcpPluginBuilder WithResources<T>();
+        IMcpPluginBuilder WithResources(params Type[] targetTypes);
+        IMcpPluginBuilder WithResources(IEnumerable<Type> targetTypes);
+        IMcpPluginBuilder WithResources(Type classType);
+        IMcpPluginBuilder WithResourcesFromAssembly(IEnumerable<Assembly> assemblies);
+        IMcpPluginBuilder WithResourcesFromAssembly(Assembly? assembly = null);
 
         // Configuration methods
-        McpPluginBuilder AddLogging(Action<ILoggingBuilder> loggingBuilder);
-        McpPluginBuilder WithConfig(Action<ConnectionConfig> config);
+        IMcpPluginBuilder AddLogging(Action<ILoggingBuilder> loggingBuilder);
+        IMcpPluginBuilder WithConfig(Action<ConnectionConfig> config);
+        IMcpPluginBuilder WithConfigFromArgsOrEnv(string[]? args = null);
         IMcpPlugin Build(Reflector reflector);
+
+        // Ignore Assembly methods
+        IMcpPluginBuilder IgnoreAssembly(Assembly assembly);
+        IMcpPluginBuilder IgnoreAssembly(string assemblyName);
+        IMcpPluginBuilder IgnoreAssemblies(IEnumerable<Assembly> assemblies);
+        IMcpPluginBuilder IgnoreAssemblies(params string[] assemblyNames);
+
+        // Ignore Namespace methods
+        IMcpPluginBuilder IgnoreNamespace(string namespaceName);
+        IMcpPluginBuilder IgnoreNamespaces(params string[] namespaceNames);
+
+        // Remove Ignored Assembly methods
+        IMcpPluginBuilder RemoveIgnoredAssembly(Assembly assembly);
+        IMcpPluginBuilder RemoveIgnoredAssembly(string assemblyName);
+        IMcpPluginBuilder RemoveIgnoredAssemblies(IEnumerable<Assembly> assemblies);
+        IMcpPluginBuilder RemoveIgnoredAssemblies(params string[] assemblyNames);
+
+        // Remove Ignored Namespace methods
+        IMcpPluginBuilder RemoveIgnoredNamespace(string namespaceName);
+        IMcpPluginBuilder RemoveIgnoredNamespaces(params string[] namespaceNames);
+
+        // Ignore counters
+        int GetIgnoredAssembliesCount();
+        int GetIgnoredTypesCount();
+
+        // Clear Ignored methods
+        IMcpPluginBuilder ClearIgnoredAssemblies();
+        IMcpPluginBuilder ClearIgnoredNamespaces();
+        IMcpPluginBuilder ClearAllIgnored();
     }
 }

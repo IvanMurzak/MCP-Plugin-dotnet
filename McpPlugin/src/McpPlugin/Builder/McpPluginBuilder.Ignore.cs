@@ -25,7 +25,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="assembly">The assembly to ignore.</param>
         /// <returns>The current builder instance for method chaining.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
-        public McpPluginBuilder IgnoreAssembly(Assembly assembly)
+        public virtual IMcpPluginBuilder IgnoreAssembly(Assembly assembly)
         {
             ThrowIfBuilt();
             _ignoreConfig.IgnoredAssemblies.Add(assembly);
@@ -40,7 +40,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="assemblyName">The assembly name or prefix to ignore.</param>
         /// <returns>The current builder instance for method chaining.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
-        public McpPluginBuilder IgnoreAssembly(string assemblyName)
+        public virtual IMcpPluginBuilder IgnoreAssembly(string assemblyName)
         {
             ThrowIfBuilt();
             _ignoreConfig.IgnoredAssemblyNames.Add(assemblyName);
@@ -54,7 +54,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="assemblies">The assemblies to ignore.</param>
         /// <returns>The current builder instance for method chaining.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
-        public McpPluginBuilder IgnoreAssemblies(IEnumerable<Assembly> assemblies)
+        public virtual IMcpPluginBuilder IgnoreAssemblies(IEnumerable<Assembly> assemblies)
         {
             ThrowIfBuilt();
             foreach (var assembly in assemblies)
@@ -73,7 +73,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="assemblyNames">The assembly names or prefixes to ignore.</param>
         /// <returns>The current builder instance for method chaining.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
-        public McpPluginBuilder IgnoreAssemblies(params string[] assemblyNames)
+        public virtual IMcpPluginBuilder IgnoreAssemblies(params string[] assemblyNames)
         {
             ThrowIfBuilt();
             foreach (var name in assemblyNames)
@@ -93,7 +93,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="namespaceName">The namespace or namespace prefix to ignore.</param>
         /// <returns>The current builder instance for method chaining.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
-        public McpPluginBuilder IgnoreNamespace(string namespaceName)
+        public virtual IMcpPluginBuilder IgnoreNamespace(string namespaceName)
         {
             ThrowIfBuilt();
             _ignoreConfig.IgnoredNamespaces.Add(namespaceName);
@@ -107,7 +107,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="namespaceNames">The namespaces or namespace prefixes to ignore.</param>
         /// <returns>The current builder instance for method chaining.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
-        public McpPluginBuilder IgnoreNamespaces(params string[] namespaceNames)
+        public virtual IMcpPluginBuilder IgnoreNamespaces(params string[] namespaceNames)
         {
             ThrowIfBuilt();
             foreach (var ns in namespaceNames)
@@ -126,7 +126,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="assembly">The assembly to stop ignoring.</param>
         /// <returns>The current builder instance for method chaining.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
-        public McpPluginBuilder RemoveIgnoredAssembly(Assembly assembly)
+        public virtual IMcpPluginBuilder RemoveIgnoredAssembly(Assembly assembly)
         {
             ThrowIfBuilt();
             _ignoreConfig.IgnoredAssemblies.Remove(assembly);
@@ -140,7 +140,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="assemblyName">The assembly name or prefix to stop ignoring.</param>
         /// <returns>The current builder instance for method chaining.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
-        public McpPluginBuilder RemoveIgnoredAssembly(string assemblyName)
+        public virtual IMcpPluginBuilder RemoveIgnoredAssembly(string assemblyName)
         {
             ThrowIfBuilt();
             _ignoreConfig.IgnoredAssemblyNames.Remove(assemblyName);
@@ -154,7 +154,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="assemblies">The assemblies to stop ignoring.</param>
         /// <returns>The current builder instance for method chaining.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
-        public McpPluginBuilder RemoveIgnoredAssemblies(IEnumerable<Assembly> assemblies)
+        public virtual IMcpPluginBuilder RemoveIgnoredAssemblies(IEnumerable<Assembly> assemblies)
         {
             ThrowIfBuilt();
             foreach (var assembly in assemblies)
@@ -173,7 +173,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="assemblyNames">The assembly names or prefixes to stop ignoring.</param>
         /// <returns>The current builder instance for method chaining.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
-        public McpPluginBuilder RemoveIgnoredAssemblies(params string[] assemblyNames)
+        public virtual IMcpPluginBuilder RemoveIgnoredAssemblies(params string[] assemblyNames)
         {
             ThrowIfBuilt();
             foreach (var name in assemblyNames)
@@ -192,7 +192,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="namespaceName">The namespace or namespace prefix to stop ignoring.</param>
         /// <returns>The current builder instance for method chaining.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
-        public McpPluginBuilder RemoveIgnoredNamespace(string namespaceName)
+        public virtual IMcpPluginBuilder RemoveIgnoredNamespace(string namespaceName)
         {
             ThrowIfBuilt();
             _ignoreConfig.IgnoredNamespaces.Remove(namespaceName);
@@ -206,7 +206,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="namespaceNames">The namespaces or namespace prefixes to stop ignoring.</param>
         /// <returns>The current builder instance for method chaining.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
-        public McpPluginBuilder RemoveIgnoredNamespaces(params string[] namespaceNames)
+        public virtual IMcpPluginBuilder RemoveIgnoredNamespaces(params string[] namespaceNames)
         {
             ThrowIfBuilt();
             foreach (var ns in namespaceNames)
@@ -224,7 +224,7 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         /// <returns>The current builder instance for method chaining.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
-        public McpPluginBuilder ClearIgnoredAssemblies()
+        public virtual IMcpPluginBuilder ClearIgnoredAssemblies()
         {
             ThrowIfBuilt();
             _ignoreConfig.IgnoredAssemblies.Clear();
@@ -238,7 +238,7 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         /// <returns>The current builder instance for method chaining.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
-        public McpPluginBuilder ClearIgnoredNamespaces()
+        public virtual IMcpPluginBuilder ClearIgnoredNamespaces()
         {
             ThrowIfBuilt();
             _ignoreConfig.IgnoredNamespaces.Clear();
@@ -252,7 +252,7 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         /// <returns>The current builder instance for method chaining.</returns>
         /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
-        public McpPluginBuilder ClearAllIgnored()
+        public virtual IMcpPluginBuilder ClearAllIgnored()
         {
             ThrowIfBuilt();
             _ignoreConfig.IgnoredAssemblies.Clear();
@@ -270,7 +270,7 @@ namespace com.IvanMurzak.McpPlugin
         /// Gets the count of registered assemblies that are currently ignored.
         /// </summary>
         /// <returns>The number of ignored assemblies.</returns>
-        public int GetIgnoredAssembliesCount()
+        public virtual int GetIgnoredAssembliesCount()
         {
             var uniqueAssemblies = new HashSet<Assembly>(_toolAssemblies);
             uniqueAssemblies.UnionWith(_promptAssemblies);
@@ -289,7 +289,7 @@ namespace com.IvanMurzak.McpPlugin
         /// Gets the count of registered types that are currently ignored due to namespace filtering.
         /// </summary>
         /// <returns>The number of ignored types.</returns>
-        public int GetIgnoredTypesCount()
+        public virtual int GetIgnoredTypesCount()
         {
             int count = 0;
 
