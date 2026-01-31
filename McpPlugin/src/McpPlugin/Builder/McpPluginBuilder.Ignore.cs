@@ -22,6 +22,7 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
             _ignoreConfig.IgnoredAssemblies.Add(assembly);
+            _ignoreConfig.InvalidateCaches();
             return this;
         }
 
@@ -29,6 +30,7 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
             _ignoreConfig.IgnoredAssemblyNames.Add(assemblyName);
+            _ignoreConfig.InvalidateCaches();
             return this;
         }
 
@@ -37,6 +39,7 @@ namespace com.IvanMurzak.McpPlugin
             ThrowIfBuilt();
             foreach (var assembly in assemblies)
                 _ignoreConfig.IgnoredAssemblies.Add(assembly);
+            _ignoreConfig.InvalidateCaches();
             return this;
         }
 
@@ -45,6 +48,7 @@ namespace com.IvanMurzak.McpPlugin
             ThrowIfBuilt();
             foreach (var name in assemblyNames)
                 _ignoreConfig.IgnoredAssemblyNames.Add(name);
+            _ignoreConfig.InvalidateCaches();
             return this;
         }
 
@@ -56,6 +60,7 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
             _ignoreConfig.IgnoredNamespaces.Add(namespaceName);
+            _ignoreConfig.InvalidateCaches();
             return this;
         }
 
@@ -64,6 +69,7 @@ namespace com.IvanMurzak.McpPlugin
             ThrowIfBuilt();
             foreach (var ns in namespaceNames)
                 _ignoreConfig.IgnoredNamespaces.Add(ns);
+            _ignoreConfig.InvalidateCaches();
             return this;
         }
 
@@ -75,6 +81,7 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
             _ignoreConfig.IgnoredAssemblies.Remove(assembly);
+            _ignoreConfig.InvalidateCaches();
             return this;
         }
 
@@ -82,6 +89,7 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
             _ignoreConfig.IgnoredAssemblyNames.Remove(assemblyName);
+            _ignoreConfig.InvalidateCaches();
             return this;
         }
 
@@ -90,6 +98,7 @@ namespace com.IvanMurzak.McpPlugin
             ThrowIfBuilt();
             foreach (var assembly in assemblies)
                 _ignoreConfig.IgnoredAssemblies.Remove(assembly);
+            _ignoreConfig.InvalidateCaches();
             return this;
         }
 
@@ -98,6 +107,7 @@ namespace com.IvanMurzak.McpPlugin
             ThrowIfBuilt();
             foreach (var name in assemblyNames)
                 _ignoreConfig.IgnoredAssemblyNames.Remove(name);
+            _ignoreConfig.InvalidateCaches();
             return this;
         }
 
@@ -109,6 +119,7 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
             _ignoreConfig.IgnoredNamespaces.Remove(namespaceName);
+            _ignoreConfig.InvalidateCaches();
             return this;
         }
 
@@ -117,6 +128,7 @@ namespace com.IvanMurzak.McpPlugin
             ThrowIfBuilt();
             foreach (var ns in namespaceNames)
                 _ignoreConfig.IgnoredNamespaces.Remove(ns);
+            _ignoreConfig.InvalidateCaches();
             return this;
         }
 
@@ -129,6 +141,7 @@ namespace com.IvanMurzak.McpPlugin
             ThrowIfBuilt();
             _ignoreConfig.IgnoredAssemblies.Clear();
             _ignoreConfig.IgnoredAssemblyNames.Clear();
+            _ignoreConfig.InvalidateCaches();
             return this;
         }
 
@@ -136,6 +149,7 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
             _ignoreConfig.IgnoredNamespaces.Clear();
+            _ignoreConfig.InvalidateCaches();
             return this;
         }
 
@@ -145,6 +159,7 @@ namespace com.IvanMurzak.McpPlugin
             _ignoreConfig.IgnoredAssemblies.Clear();
             _ignoreConfig.IgnoredAssemblyNames.Clear();
             _ignoreConfig.IgnoredNamespaces.Clear();
+            _ignoreConfig.InvalidateCaches();
             return this;
         }
 
@@ -171,6 +186,9 @@ namespace com.IvanMurzak.McpPlugin
         {
             int count = 0;
 
+            // Track all counted types to avoid double-counting
+            var countedTypes = new HashSet<Type>();
+
             // 1. Explicitly registered types
             var uniqueTypes = new HashSet<Type>(_toolTypes);
             uniqueTypes.UnionWith(_promptTypes);
@@ -178,7 +196,7 @@ namespace com.IvanMurzak.McpPlugin
 
             foreach (var type in uniqueTypes)
             {
-                if (_ignoreConfig.IsIgnored(type))
+                if (_ignoreConfig.IsIgnored(type) && countedTypes.Add(type))
                     count++;
             }
 
@@ -197,7 +215,7 @@ namespace com.IvanMurzak.McpPlugin
                 {
                     foreach (var type in assembly.GetExportedTypes())
                     {
-                        if (_ignoreConfig.IsIgnored(type))
+                        if (_ignoreConfig.IsIgnored(type) && countedTypes.Add(type))
                             count++;
                     }
                 }
