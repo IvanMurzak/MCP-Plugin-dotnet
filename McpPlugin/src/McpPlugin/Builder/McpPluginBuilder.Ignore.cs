@@ -18,6 +18,13 @@ namespace com.IvanMurzak.McpPlugin
     {
         #region Ignore Assembly
 
+        /// <summary>
+        /// Excludes the specified assembly from attribute scanning during build.
+        /// Types from this assembly will not be registered as tools, prompts, or resources.
+        /// </summary>
+        /// <param name="assembly">The assembly to ignore.</param>
+        /// <returns>The current builder instance for method chaining.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
         public McpPluginBuilder IgnoreAssembly(Assembly assembly)
         {
             ThrowIfBuilt();
@@ -26,6 +33,13 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
+        /// <summary>
+        /// Excludes assemblies matching the specified name prefix from attribute scanning during build.
+        /// Any assembly whose name starts with the provided string will be ignored.
+        /// </summary>
+        /// <param name="assemblyName">The assembly name or prefix to ignore.</param>
+        /// <returns>The current builder instance for method chaining.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
         public McpPluginBuilder IgnoreAssembly(string assemblyName)
         {
             ThrowIfBuilt();
@@ -34,6 +48,12 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
+        /// <summary>
+        /// Excludes multiple assemblies from attribute scanning during build.
+        /// </summary>
+        /// <param name="assemblies">The assemblies to ignore.</param>
+        /// <returns>The current builder instance for method chaining.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
         public McpPluginBuilder IgnoreAssemblies(IEnumerable<Assembly> assemblies)
         {
             ThrowIfBuilt();
@@ -43,6 +63,12 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
+        /// <summary>
+        /// Excludes assemblies matching the specified name prefixes from attribute scanning during build.
+        /// </summary>
+        /// <param name="assemblyNames">The assembly names or prefixes to ignore.</param>
+        /// <returns>The current builder instance for method chaining.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
         public McpPluginBuilder IgnoreAssemblies(params string[] assemblyNames)
         {
             ThrowIfBuilt();
@@ -56,6 +82,13 @@ namespace com.IvanMurzak.McpPlugin
 
         #region Ignore Namespace
 
+        /// <summary>
+        /// Excludes types in the specified namespace (and sub-namespaces) from attribute scanning during build.
+        /// Types whose namespace starts with the provided string will be ignored.
+        /// </summary>
+        /// <param name="namespaceName">The namespace or namespace prefix to ignore.</param>
+        /// <returns>The current builder instance for method chaining.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
         public McpPluginBuilder IgnoreNamespace(string namespaceName)
         {
             ThrowIfBuilt();
@@ -64,6 +97,12 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
+        /// <summary>
+        /// Excludes types in the specified namespaces (and their sub-namespaces) from attribute scanning during build.
+        /// </summary>
+        /// <param name="namespaceNames">The namespaces or namespace prefixes to ignore.</param>
+        /// <returns>The current builder instance for method chaining.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
         public McpPluginBuilder IgnoreNamespaces(params string[] namespaceNames)
         {
             ThrowIfBuilt();
@@ -77,6 +116,12 @@ namespace com.IvanMurzak.McpPlugin
 
         #region Remove Ignored Assembly
 
+        /// <summary>
+        /// Removes a previously ignored assembly, allowing it to be scanned again.
+        /// </summary>
+        /// <param name="assembly">The assembly to stop ignoring.</param>
+        /// <returns>The current builder instance for method chaining.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
         public McpPluginBuilder RemoveIgnoredAssembly(Assembly assembly)
         {
             ThrowIfBuilt();
@@ -85,6 +130,12 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
+        /// <summary>
+        /// Removes a previously ignored assembly name pattern, allowing matching assemblies to be scanned again.
+        /// </summary>
+        /// <param name="assemblyName">The assembly name or prefix to stop ignoring.</param>
+        /// <returns>The current builder instance for method chaining.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
         public McpPluginBuilder RemoveIgnoredAssembly(string assemblyName)
         {
             ThrowIfBuilt();
@@ -93,6 +144,12 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
+        /// <summary>
+        /// Removes multiple previously ignored assemblies, allowing them to be scanned again.
+        /// </summary>
+        /// <param name="assemblies">The assemblies to stop ignoring.</param>
+        /// <returns>The current builder instance for method chaining.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
         public McpPluginBuilder RemoveIgnoredAssemblies(IEnumerable<Assembly> assemblies)
         {
             ThrowIfBuilt();
@@ -102,6 +159,12 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
+        /// <summary>
+        /// Removes multiple previously ignored assembly name patterns, allowing matching assemblies to be scanned again.
+        /// </summary>
+        /// <param name="assemblyNames">The assembly names or prefixes to stop ignoring.</param>
+        /// <returns>The current builder instance for method chaining.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
         public McpPluginBuilder RemoveIgnoredAssemblies(params string[] assemblyNames)
         {
             ThrowIfBuilt();
@@ -115,6 +178,12 @@ namespace com.IvanMurzak.McpPlugin
 
         #region Remove Ignored Namespace
 
+        /// <summary>
+        /// Removes a previously ignored namespace, allowing types in that namespace to be scanned again.
+        /// </summary>
+        /// <param name="namespaceName">The namespace or namespace prefix to stop ignoring.</param>
+        /// <returns>The current builder instance for method chaining.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
         public McpPluginBuilder RemoveIgnoredNamespace(string namespaceName)
         {
             ThrowIfBuilt();
@@ -123,6 +192,12 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
+        /// <summary>
+        /// Removes multiple previously ignored namespaces, allowing types in those namespaces to be scanned again.
+        /// </summary>
+        /// <param name="namespaceNames">The namespaces or namespace prefixes to stop ignoring.</param>
+        /// <returns>The current builder instance for method chaining.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
         public McpPluginBuilder RemoveIgnoredNamespaces(params string[] namespaceNames)
         {
             ThrowIfBuilt();
@@ -136,6 +211,11 @@ namespace com.IvanMurzak.McpPlugin
 
         #region Clear Ignored
 
+        /// <summary>
+        /// Clears all ignored assemblies (both by instance and by name), allowing all assemblies to be scanned.
+        /// </summary>
+        /// <returns>The current builder instance for method chaining.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
         public McpPluginBuilder ClearIgnoredAssemblies()
         {
             ThrowIfBuilt();
@@ -145,6 +225,11 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
+        /// <summary>
+        /// Clears all ignored namespaces, allowing all namespaces to be scanned.
+        /// </summary>
+        /// <returns>The current builder instance for method chaining.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
         public McpPluginBuilder ClearIgnoredNamespaces()
         {
             ThrowIfBuilt();
@@ -153,6 +238,12 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
+        /// <summary>
+        /// Clears all ignore configurations (assemblies, assembly names, and namespaces),
+        /// allowing everything to be scanned.
+        /// </summary>
+        /// <returns>The current builder instance for method chaining.</returns>
+        /// <exception cref="InvalidOperationException">Thrown if the builder has already been built.</exception>
         public McpPluginBuilder ClearAllIgnored()
         {
             ThrowIfBuilt();
@@ -167,6 +258,10 @@ namespace com.IvanMurzak.McpPlugin
 
         #region Statistics
 
+        /// <summary>
+        /// Gets the count of registered assemblies that are currently ignored.
+        /// </summary>
+        /// <returns>The number of ignored assemblies.</returns>
         public int GetIgnoredAssembliesCount()
         {
             var uniqueAssemblies = new HashSet<Assembly>(_toolAssemblies);
@@ -182,6 +277,10 @@ namespace com.IvanMurzak.McpPlugin
             return count;
         }
 
+        /// <summary>
+        /// Gets the count of registered types that are currently ignored due to namespace filtering.
+        /// </summary>
+        /// <returns>The number of ignored types.</returns>
         public int GetIgnoredTypesCount()
         {
             int count = 0;
