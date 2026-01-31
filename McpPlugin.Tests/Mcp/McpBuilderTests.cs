@@ -106,7 +106,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 name: "",
                 title: "title",
                 classType: typeof(TestTool),
-                method: method!);
+                methodInfo: method!);
 
             // Assert
             act.Should().Throw<ArgumentException>()

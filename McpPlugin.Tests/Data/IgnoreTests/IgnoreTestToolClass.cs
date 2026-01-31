@@ -7,26 +7,20 @@
 │  See the LICENSE file in the project root for more information.        │
 └────────────────────────────────────────────────────────────────────────┘
 */
-namespace com.IvanMurzak.McpPlugin.Common
+
+namespace com.IvanMurzak.McpPlugin.Tests.Data.Ignored
 {
-    public static partial class Consts
+    [McpPluginToolType]
+    internal class IgnoreTestToolClass
     {
-        public const string ApiVersion = "2.0.0";
-        public const string PluginVersion = "2.5.0";
+        [McpPluginTool("ignore-test-tool", "Test tool for ignore tests")]
+        public static string TestTool() => "test";
+    }
 
-        public static class Guid
-        {
-            public const string Zero = "00000000-0000-0000-0000-000000000000";
-        }
-
-        public static partial class Command
-        {
-            public static partial class ResponseCode
-            {
-                public const string Success = "[Success]";
-                public const string Error = "[Error]";
-                public const string Cancel = "[Cancel]";
-            }
-        }
+    [McpPluginPromptType]
+    internal class IgnoreTestPromptClass
+    {
+        [McpPluginPrompt(Name = "ignore-test-prompt")]
+        public static string TestPrompt() => "test prompt";
     }
 }

@@ -53,7 +53,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             mcpPluginBuilder.WithPrompt(
                 name: promptName,
                 classType: classType,
-                method: method);
+                methodInfo: method);
 
             return mcpPluginBuilder.Build(reflector)!;
         }
