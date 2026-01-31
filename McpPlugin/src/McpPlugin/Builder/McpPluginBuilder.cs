@@ -22,33 +22,33 @@ namespace com.IvanMurzak.McpPlugin
 {
     public partial class McpPluginBuilder : IMcpPluginBuilder
     {
-        readonly ILogger? _logger;
-        readonly ILoggerProvider? _loggerProvider;
-        readonly IServiceCollection _services;
+        protected readonly ILogger? _logger;
+        protected readonly ILoggerProvider? _loggerProvider;
+        protected readonly IServiceCollection _services;
 
-        readonly List<ToolMethodData> _toolMethods = new();
-        readonly Dictionary<string, IRunTool> _toolRunners = new();
+        protected readonly List<ToolMethodData> _toolMethods = new();
+        protected readonly Dictionary<string, IRunTool> _toolRunners = new();
 
-        readonly List<PromptMethodData> _promptMethods = new();
-        readonly Dictionary<string, IRunPrompt> _promptRunners = new();
+        protected readonly List<PromptMethodData> _promptMethods = new();
+        protected readonly Dictionary<string, IRunPrompt> _promptRunners = new();
 
-        readonly List<ResourceMethodData> _resourceMethods = new();
-        readonly Dictionary<string, IRunResource> _resourceRunners = new();
+        protected readonly List<ResourceMethodData> _resourceMethods = new();
+        protected readonly Dictionary<string, IRunResource> _resourceRunners = new();
 
         // Ignore configuration for filtering assemblies, namespaces, and types
-        readonly McpPluginBuilderIgnoreConfig _ignoreConfig = new();
+        protected readonly McpPluginBuilderIgnoreConfig _ignoreConfig = new();
 
         // Lazy assembly scanning - store assemblies to scan later
-        readonly List<Assembly> _toolAssemblies = new();
-        readonly List<Assembly> _promptAssemblies = new();
-        readonly List<Assembly> _resourceAssemblies = new();
+        protected readonly List<Assembly> _toolAssemblies = new();
+        protected readonly List<Assembly> _promptAssemblies = new();
+        protected readonly List<Assembly> _resourceAssemblies = new();
 
         // Lazy type scanning - store types to scan later
-        readonly List<Type> _toolTypes = new();
-        readonly List<Type> _promptTypes = new();
-        readonly List<Type> _resourceTypes = new();
+        protected readonly List<Type> _toolTypes = new();
+        protected readonly List<Type> _promptTypes = new();
+        protected readonly List<Type> _resourceTypes = new();
 
-        bool isBuilt = false;
+        protected bool isBuilt = false;
 
         public IServiceCollection Services => _services;
         public ServiceProvider? ServiceProvider { get; private set; }
@@ -84,21 +84,21 @@ namespace com.IvanMurzak.McpPlugin
         }
 
         #region Tool
-        public McpPluginBuilder WithTool(Type classType, MethodInfo method)
+        public virtual McpPluginBuilder WithTool(Type classType, MethodInfo method)
         {
             ThrowIfBuilt();
 
             var attribute = method.GetCustomAttribute<McpPluginToolAttribute>();
             return WithTool(attribute!, classType, method);
         }
-        public McpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo method)
+        public virtual McpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo method)
         {
             ThrowIfBuilt();
 
             var attribute = new McpPluginToolAttribute(name, title);
             return WithTool(attribute, classType, method);
         }
-        public McpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo method)
+        public virtual McpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo method)
         {
             ThrowIfBuilt();
 
@@ -119,7 +119,7 @@ namespace com.IvanMurzak.McpPlugin
             ));
             return this;
         }
-        public McpPluginBuilder AddTool(string name, IRunTool runner)
+        public virtual McpPluginBuilder AddTool(string name, IRunTool runner)
         {
             ThrowIfBuilt();
 
@@ -132,7 +132,7 @@ namespace com.IvanMurzak.McpPlugin
         #endregion
 
         #region Prompt
-        public McpPluginBuilder WithPrompt(string name, Type classType, MethodInfo methodInfo)
+        public virtual McpPluginBuilder WithPrompt(string name, Type classType, MethodInfo methodInfo)
         {
             ThrowIfBuilt();
 
@@ -154,7 +154,7 @@ namespace com.IvanMurzak.McpPlugin
             ));
             return this;
         }
-        public McpPluginBuilder AddPrompt(string name, IRunPrompt runner)
+        public virtual McpPluginBuilder AddPrompt(string name, IRunPrompt runner)
         {
             ThrowIfBuilt();
 
@@ -167,7 +167,7 @@ namespace com.IvanMurzak.McpPlugin
         #endregion
 
         #region Resource
-        public McpPluginBuilder WithResource(Type classType, MethodInfo getContentMethod)
+        public virtual McpPluginBuilder WithResource(Type classType, MethodInfo getContentMethod)
         {
             ThrowIfBuilt();
 
@@ -201,7 +201,7 @@ namespace com.IvanMurzak.McpPlugin
 
             return this;
         }
-        public McpPluginBuilder AddResource(IRunResource resourceParams)
+        public virtual McpPluginBuilder AddResource(IRunResource resourceParams)
         {
             ThrowIfBuilt();
 
@@ -220,7 +220,7 @@ namespace com.IvanMurzak.McpPlugin
         #endregion
 
         #region Other
-        public McpPluginBuilder AddLogging(Action<ILoggingBuilder> loggingBuilder)
+        public virtual McpPluginBuilder AddLogging(Action<ILoggingBuilder> loggingBuilder)
         {
             ThrowIfBuilt();
 
@@ -228,7 +228,7 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
-        public McpPluginBuilder WithConfig(Action<ConnectionConfig> config)
+        public virtual McpPluginBuilder WithConfig(Action<ConnectionConfig> config)
         {
             ThrowIfBuilt();
 
@@ -236,13 +236,13 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
-        public McpPluginBuilder WithConfigFromArgsOrEnv(string[]? args = null) => WithConfig(config =>
+        public virtual McpPluginBuilder WithConfigFromArgsOrEnv(string[]? args = null) => WithConfig(config =>
         {
             config.Host = ConnectionConfig.GetEndpointFromArgsOrEnv(args);
             config.TimeoutMs = ConnectionConfig.GetTimeoutFromArgsOrEnv(args);
         });
 
-        public IMcpPlugin Build(Reflector reflector)
+        public virtual IMcpPlugin Build(Reflector reflector)
         {
             ThrowIfBuilt();
 
@@ -275,7 +275,7 @@ namespace com.IvanMurzak.McpPlugin
             return ServiceProvider.GetRequiredService<IMcpPlugin>();
         }
 
-        private void ThrowIfBuilt()
+        protected virtual void ThrowIfBuilt()
         {
             if (isBuilt)
                 throw new InvalidOperationException("The builder has already been built.");

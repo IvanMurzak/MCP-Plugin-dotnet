@@ -16,7 +16,7 @@ namespace com.IvanMurzak.McpPlugin
 {
     public class McpPluginBuilderIgnoreConfig
     {
-        internal HashSet<string> IgnoredAssemblyNames { get; } = new(StringComparer.OrdinalIgnoreCase);
+        internal HashSet<string> IgnoredAssemblyNames { get; } = new(StringComparer.Ordinal);
         internal HashSet<Assembly> IgnoredAssemblies { get; } = new();
         internal HashSet<string> IgnoredNamespaces { get; } = new();
 
@@ -75,6 +75,16 @@ namespace com.IvanMurzak.McpPlugin
                     return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// Invalidates all cached ignore lookups. Must be called whenever
+        /// the ignore lists (assemblies, assembly names, or namespaces) are mutated.
+        /// </summary>
+        internal void InvalidateCaches()
+        {
+            _assemblyIgnoreCache.Clear();
+            _namespaceIgnoreCache.Clear();
         }
     }
 }
