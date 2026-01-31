@@ -84,21 +84,21 @@ namespace com.IvanMurzak.McpPlugin
         }
 
         #region Tool
-        public virtual McpPluginBuilder WithTool(Type classType, MethodInfo methodInfo)
+        public virtual IMcpPluginBuilder WithTool(Type classType, MethodInfo methodInfo)
         {
             ThrowIfBuilt();
 
             var attribute = methodInfo.GetCustomAttribute<McpPluginToolAttribute>();
             return WithTool(attribute!, classType, methodInfo);
         }
-        public virtual McpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo methodInfo)
+        public virtual IMcpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo methodInfo)
         {
             ThrowIfBuilt();
 
             var attribute = new McpPluginToolAttribute(name, title);
             return WithTool(attribute, classType, methodInfo);
         }
-        public virtual McpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo methodInfo)
+        public virtual IMcpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo methodInfo)
         {
             ThrowIfBuilt();
 
@@ -119,7 +119,7 @@ namespace com.IvanMurzak.McpPlugin
             ));
             return this;
         }
-        public virtual McpPluginBuilder AddTool(string name, IRunTool runner)
+        public virtual IMcpPluginBuilder AddTool(string name, IRunTool runner)
         {
             ThrowIfBuilt();
 
@@ -132,7 +132,7 @@ namespace com.IvanMurzak.McpPlugin
         #endregion
 
         #region Prompt
-        public virtual McpPluginBuilder WithPrompt(string name, Type classType, MethodInfo methodInfo)
+        public virtual IMcpPluginBuilder WithPrompt(string name, Type classType, MethodInfo methodInfo)
         {
             ThrowIfBuilt();
 
@@ -154,7 +154,7 @@ namespace com.IvanMurzak.McpPlugin
             ));
             return this;
         }
-        public virtual McpPluginBuilder AddPrompt(string name, IRunPrompt runner)
+        public virtual IMcpPluginBuilder AddPrompt(string name, IRunPrompt runner)
         {
             ThrowIfBuilt();
 
@@ -167,7 +167,7 @@ namespace com.IvanMurzak.McpPlugin
         #endregion
 
         #region Resource
-        public virtual McpPluginBuilder WithResource(Type classType, MethodInfo getContentMethod)
+        public virtual IMcpPluginBuilder WithResource(Type classType, MethodInfo getContentMethod)
         {
             ThrowIfBuilt();
 
@@ -201,7 +201,7 @@ namespace com.IvanMurzak.McpPlugin
 
             return this;
         }
-        public virtual McpPluginBuilder AddResource(IRunResource resourceParams)
+        public virtual IMcpPluginBuilder AddResource(IRunResource resourceParams)
         {
             ThrowIfBuilt();
 
@@ -220,7 +220,7 @@ namespace com.IvanMurzak.McpPlugin
         #endregion
 
         #region Other
-        public virtual McpPluginBuilder AddLogging(Action<ILoggingBuilder> loggingBuilder)
+        public virtual IMcpPluginBuilder AddLogging(Action<ILoggingBuilder> loggingBuilder)
         {
             ThrowIfBuilt();
 
@@ -228,7 +228,7 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
-        public virtual McpPluginBuilder WithConfig(Action<ConnectionConfig> config)
+        public virtual IMcpPluginBuilder WithConfig(Action<ConnectionConfig> config)
         {
             ThrowIfBuilt();
 
@@ -236,7 +236,7 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
-        public virtual McpPluginBuilder WithConfigFromArgsOrEnv(string[]? args = null) => WithConfig(config =>
+        public virtual IMcpPluginBuilder WithConfigFromArgsOrEnv(string[]? args = null) => WithConfig(config =>
         {
             config.Host = ConnectionConfig.GetEndpointFromArgsOrEnv(args);
             config.TimeoutMs = ConnectionConfig.GetTimeoutFromArgsOrEnv(args);

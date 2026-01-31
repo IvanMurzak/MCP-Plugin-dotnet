@@ -17,10 +17,10 @@ namespace com.IvanMurzak.McpPlugin
 {
     public partial class McpPluginBuilder
     {
-        public McpPluginBuilder WithPrompts(params Type[] targetTypes)
+        public virtual IMcpPluginBuilder WithPrompts(params Type[] targetTypes)
             => WithPrompts(targetTypes.AsEnumerable());
 
-        public McpPluginBuilder WithPrompts(IEnumerable<Type> targetTypes)
+        public virtual IMcpPluginBuilder WithPrompts(IEnumerable<Type> targetTypes)
         {
             if (targetTypes == null)
                 throw new ArgumentNullException(nameof(targetTypes));
@@ -31,10 +31,10 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
-        public McpPluginBuilder WithPrompts<T>()
+        public virtual IMcpPluginBuilder WithPrompts<T>()
             => WithPrompts(typeof(T));
 
-        public McpPluginBuilder WithPrompts(Type classType)
+        public virtual IMcpPluginBuilder WithPrompts(Type classType)
         {
             if (classType == null)
                 throw new ArgumentNullException(nameof(classType));
@@ -46,7 +46,7 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
-        public McpPluginBuilder WithPromptsFromAssembly(IEnumerable<Assembly> assemblies)
+        public virtual IMcpPluginBuilder WithPromptsFromAssembly(IEnumerable<Assembly> assemblies)
         {
             if (assemblies == null)
                 throw new ArgumentNullException(nameof(assemblies));
@@ -57,7 +57,7 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
-        public McpPluginBuilder WithPromptsFromAssembly(Assembly? assembly = null)
+        public virtual IMcpPluginBuilder WithPromptsFromAssembly(Assembly? assembly = null)
         {
             ThrowIfBuilt();
             assembly ??= Assembly.GetCallingAssembly();

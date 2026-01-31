@@ -17,10 +17,10 @@ namespace com.IvanMurzak.McpPlugin
 {
     public partial class McpPluginBuilder
     {
-        public McpPluginBuilder WithTools(params Type[] targetTypes)
+        public virtual IMcpPluginBuilder WithTools(params Type[] targetTypes)
             => WithTools(targetTypes.AsEnumerable());
 
-        public McpPluginBuilder WithTools(IEnumerable<Type> targetTypes)
+        public virtual IMcpPluginBuilder WithTools(IEnumerable<Type> targetTypes)
         {
             if (targetTypes == null)
                 throw new ArgumentNullException(nameof(targetTypes));
@@ -31,10 +31,10 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
-        public McpPluginBuilder WithTools<T>()
+        public virtual IMcpPluginBuilder WithTools<T>()
             => WithTools(typeof(T));
 
-        public McpPluginBuilder WithTools(Type classType)
+        public virtual IMcpPluginBuilder WithTools(Type classType)
         {
             if (classType == null)
                 throw new ArgumentNullException(nameof(classType));
@@ -46,7 +46,7 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
-        public McpPluginBuilder WithToolsFromAssembly(IEnumerable<Assembly> assemblies)
+        public virtual IMcpPluginBuilder WithToolsFromAssembly(IEnumerable<Assembly> assemblies)
         {
             if (assemblies == null)
                 throw new ArgumentNullException(nameof(assemblies));
@@ -57,7 +57,7 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
-        public McpPluginBuilder WithToolsFromAssembly(Assembly? assembly = null)
+        public virtual IMcpPluginBuilder WithToolsFromAssembly(Assembly? assembly = null)
         {
             ThrowIfBuilt();
             assembly ??= Assembly.GetCallingAssembly();
