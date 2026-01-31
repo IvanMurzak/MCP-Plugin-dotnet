@@ -125,7 +125,7 @@ namespace com.IvanMurzak.McpPlugin
                     {
                         if (string.IsNullOrEmpty(toolAttr.Name))
                             throw new ArgumentException($"Tool name cannot be null or empty. Type: {type.Name}, Method: {method.Name}");
-                        WithTool(toolAttr, classType: type, method: method);
+                        WithTool(toolAttr, classType: type, methodInfo: method);
                     }
                     else if (processPrompt && attr is McpPluginPromptAttribute promptAttr)
                     {
