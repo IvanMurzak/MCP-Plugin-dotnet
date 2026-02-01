@@ -45,12 +45,27 @@ namespace com.IvanMurzak.McpPlugin
 
         protected override void SubscribeOnServerEvents(HubConnection hubConnection, CompositeDisposable disposables)
         {
-            hubConnection.On(nameof(IClientMcpManager.ForceDisconnect), async () =>
+            hubConnection.On<McpClientData>(nameof(IClientMcpRpc.OnMcpClientConnected), data =>
             {
-                _logger.LogDebug("{class}.{method}", nameof(IClientMcpManager), nameof(IClientMcpManager.ForceDisconnect));
-                _mcpManager.ForceDisconnect();
+                _logger.LogDebug("{class}.{method}", nameof(IClientMcpRpc), nameof(IClientMcpRpc.OnMcpClientConnected));
+                return _mcpManager.OnMcpClientConnected(data);
+            })
+            .AddTo(_serverEventsDisposables);
+
+            hubConnection.On(nameof(IClientMcpRpc.OnMcpClientDisconnected), () =>
+            {
+                _logger.LogDebug("{class}.{method}", nameof(IClientMcpRpc), nameof(IClientMcpRpc.OnMcpClientDisconnected));
+                return _mcpManager.OnMcpClientDisconnected();
+            })
+            .AddTo(_serverEventsDisposables);
+
+            hubConnection.On(nameof(IClientMcpRpc.ForceDisconnect), async () =>
+            {
+                _logger.LogDebug("{class}.{method}", nameof(IClientMcpRpc), nameof(IClientMcpRpc.ForceDisconnect));
+                await _mcpManager.ForceDisconnect();
                 await _connectionManager.Disconnect();
-            });
+            })
+            .AddTo(_serverEventsDisposables);
 
             // Tool events -------------------------------------------------------------
 
@@ -155,6 +170,18 @@ namespace com.IvanMurzak.McpPlugin
                 );
             }
             return _connectionManager.InvokeAsync<RequestToolCompletedData, ResponseData>(nameof(IServerMcpManager.NotifyToolRequestCompleted), request, cancellationToken);
+        }
+
+        public Task<McpClientData> GetMcpClientData()
+        {
+            _logger.LogTrace("{class}.{method}", nameof(IServerMcpManager), nameof(IServerMcpManager.GetMcpClientData));
+            return _connectionManager.InvokeAsync<McpClientData>(nameof(IServerMcpManager.GetMcpClientData), _cancellationTokenSource.Token);
+        }
+
+        public Task<McpServerData> GetMcpServerData()
+        {
+            _logger.LogTrace("{class}.{method}", nameof(IServerMcpManager), nameof(IServerMcpManager.GetMcpServerData));
+            return _connectionManager.InvokeAsync<McpServerData>(nameof(IServerMcpManager.GetMcpServerData), _cancellationTokenSource.Token);
         }
 
         #endregion

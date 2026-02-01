@@ -9,8 +9,13 @@
 */
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
+using com.IvanMurzak.McpPlugin.Common.Utils;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NLog;
@@ -19,9 +24,46 @@ namespace com.IvanMurzak.McpPlugin.Server
 {
     public static class ExtensionsMcpServer
     {
+        private static readonly TimeSpan ConnectionHealthCheckInterval = TimeSpan.FromSeconds(5);
+
+        /// <summary>
+        /// Monitors the HTTP connection health and cancels the session when disconnection is detected.
+        /// This is necessary because context.RequestAborted may not fire reliably in all disconnect scenarios.
+        /// </summary>
+        private static async Task MonitorConnectionHealthAsync(
+            HttpContext context,
+            CancellationTokenSource linkedCts,
+            Logger? logger)
+        {
+            try
+            {
+                while (!linkedCts.Token.IsCancellationRequested)
+                {
+                    await Task.Delay(ConnectionHealthCheckInterval, linkedCts.Token);
+
+                    // Check if the request has been aborted
+                    if (context.RequestAborted.IsCancellationRequested)
+                    {
+                        logger?.Debug("Connection health monitor detected RequestAborted. Cancelling session.");
+                        await linkedCts.CancelAsync();
+                        return;
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when the session ends normally
+            }
+            catch (Exception ex)
+            {
+                logger?.Debug(ex, "Connection health monitor encountered an error. Cancelling session.");
+                try { await linkedCts.CancelAsync(); } catch { /* Ignore */ }
+            }
+        }
+
         public static IMcpServerBuilder WithMcpServer(
             this IServiceCollection services,
-            Consts.MCP.Server.TransportMethod mcpClientTransport,
+            DataArguments dataArguments,
             Logger? logger = null)
         {
             // Setup MCP Server -------------------------------------------------------------
@@ -49,12 +91,12 @@ namespace com.IvanMurzak.McpPlugin.Server
                     options.Handlers.ListPromptsHandler = PromptRouter.List;
                 });
 
-            if (mcpClientTransport == Consts.MCP.Server.TransportMethod.stdio)
+            if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.stdio)
             {
                 // Configure STDIO transport
                 mcpServerBuilder = mcpServerBuilder.WithStdioServerTransport();
             }
-            else if (mcpClientTransport == Consts.MCP.Server.TransportMethod.streamableHttp)
+            else if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.streamableHttp)
             {
                 // Configure HTTP transport
                 mcpServerBuilder = mcpServerBuilder.WithHttpTransport(options =>
@@ -65,49 +107,71 @@ namespace com.IvanMurzak.McpPlugin.Server
                     options.PerSessionExecutionContext = true;
                     options.RunSessionHandler = async (context, server, cancellationToken) =>
                     {
-                        var connectionGuid = Guid.NewGuid();
+                        logger?.Debug("-------------------------------------------------\nRunning session handler for HTTP transport. Session ID: {sessionId}",
+                            server.SessionId);
+
+                        var mcpClientSessionId = server.SessionId ?? throw new InvalidOperationException("MCP Server session ID is not available.");
+
+                        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                            cancellationToken,
+                            context.RequestAborted);
+                        var linkedToken = linkedCts.Token;
+
+                        // Start a background task to monitor connection health.
+                        // This ensures we detect disconnection even if context.RequestAborted doesn't fire.
+                        var connectionMonitorTask = MonitorConnectionHealthAsync(context, linkedCts, logger);
+
                         try
                         {
-                            // This is where you can run logic before a session starts
-                            // For example, you can log the session start or initialize resources
-                            logger?.Debug($"----------\nRunning session handler for HTTP transport. Connection guid: {connectionGuid}");
-
+                            var services = server.Services ?? throw new InvalidOperationException("MCP Server services are not available.");
                             var service = new McpServerService(
-                                server.Services!.GetRequiredService<ILogger<McpServerService>>(),
-                                server.Services!.GetRequiredService<IClientToolHub>(),
-                                server.Services!.GetRequiredService<IClientPromptHub>(),
-                                server.Services!.GetRequiredService<IClientResourceHub>(),
-                                server.Services!.GetRequiredService<HubEventToolsChange>(),
-                                server.Services!.GetRequiredService<HubEventPromptsChange>(),
-                                server.Services!.GetRequiredService<HubEventResourcesChange>(),
+                                services.GetRequiredService<ILogger<McpServerService>>(),
+                                services.GetRequiredService<Common.Version>(),
+                                dataArguments,
+                                services.GetRequiredService<IClientToolHub>(),
+                                services.GetRequiredService<IClientPromptHub>(),
+                                services.GetRequiredService<IClientResourceHub>(),
+                                services.GetRequiredService<HubEventToolsChange>(),
+                                services.GetRequiredService<HubEventPromptsChange>(),
+                                services.GetRequiredService<HubEventResourcesChange>(),
+                                services.GetRequiredService<IHubContext<McpServerHub, IClientMcpRpc>>(),
                                 mcpServer: server,
                                 mcpSession: null
                             );
 
                             try
                             {
-                                await service.StartAsync(cancellationToken);
-                                await server.RunAsync(cancellationToken);
+                                await service.StartAsync(linkedToken);
+                                await server.RunAsync(linkedToken);
+                                logger?.Debug("MCP Server completed for HTTP transport. Session ID: {sessionId}",
+                                    mcpClientSessionId);
                             }
                             finally
                             {
-                                await service.StopAsync(cancellationToken);
+                                // Use CancellationToken.None to ensure cleanup completes
+                                // even if the session's cancellation token is already cancelled
+                                await service.StopAsync(CancellationToken.None);
                             }
                         }
                         catch (Exception ex)
                         {
-                            logger?.Error(ex, $"Error occurred while processing HTTP transport session. Connection guid: {connectionGuid}.");
+                            logger?.Error(ex, $"Error occurred while processing HTTP transport session. Session ID: {mcpClientSessionId}.");
                         }
                         finally
                         {
-                            logger?.Debug($"Session handler for HTTP transport completed. Connection guid: {connectionGuid}\n----------");
+                            // Cancel the linked token to stop the connection monitor task
+                            if (!linkedCts.IsCancellationRequested)
+                                await linkedCts.CancelAsync();
+                            try { await connectionMonitorTask; } catch { /* Ignore cancellation exceptions */ }
+
+                            logger?.Debug($"-------------------------------------------------\nSession handler for HTTP transport completed. Session ID: {mcpClientSessionId}\n------------------------");
                         }
                     };
                 });
             }
             else
             {
-                throw new ArgumentException($"Unsupported transport method: {mcpClientTransport}. " +
+                throw new ArgumentException($"Unsupported transport method: {dataArguments.ClientTransport}. " +
                     $"Supported methods are: {Consts.MCP.Server.TransportMethod.stdio}, {Consts.MCP.Server.TransportMethod.streamableHttp}");
             }
             return mcpServerBuilder;

@@ -11,8 +11,12 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
+using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.ReflectorNet;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol;
@@ -33,9 +37,12 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly HubEventToolsChange _eventAppToolsChange;
         readonly HubEventPromptsChange _eventAppPromptsChange;
         readonly HubEventResourcesChange _eventAppResourcesChange;
+        readonly IHubContext<McpServerHub, IClientMcpRpc> _hubContext;
+        readonly Common.Version _version;
+        readonly IDataArguments _dataArguments;
         readonly CompositeDisposable _disposables = new();
 
-        public McpSession McpSessionOrServer => _mcpSession ?? _mcpServer ?? throw new InvalidOperationException($"{nameof(_mcpSession)} and {nameof(_mcpServer)} are both null.");
+        public McpSession? McpSessionOrServer => _mcpSession ?? _mcpServer;
 
         public IClientToolHub ToolRunner => _toolRunner;
         public IClientPromptHub PromptRunner => _promptRunner;
@@ -45,33 +52,76 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public McpServerService(
             ILogger<McpServerService> logger,
+            Common.Version version,
+            IDataArguments dataArguments,
             IClientToolHub toolRunner,
             IClientPromptHub promptRunner,
             IClientResourceHub resourceRunner,
             HubEventToolsChange eventAppToolsChange,
             HubEventPromptsChange eventAppPromptsChange,
             HubEventResourcesChange eventAppResourcesChange,
+            IHubContext<McpServerHub, IClientMcpRpc> hubContext,
             McpServer? mcpServer = null,
             McpSession? mcpSession = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _logger.LogTrace("{0} Ctor.", GetType().GetTypeShortName());
+            _logger.LogTrace("{type} Ctor.", GetType().GetTypeShortName());
             _mcpServer = mcpServer;
             _mcpSession = mcpSession;
 
             if (_mcpSession == null && _mcpServer == null)
                 throw new InvalidOperationException($"{nameof(mcpSession)} and {nameof(mcpServer)} are both null.");
 
+            _version = version ?? throw new ArgumentNullException(nameof(version));
+            _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
             _toolRunner = toolRunner ?? throw new ArgumentNullException(nameof(toolRunner));
             _promptRunner = promptRunner ?? throw new ArgumentNullException(nameof(promptRunner));
             _resourceRunner = resourceRunner ?? throw new ArgumentNullException(nameof(resourceRunner));
             _eventAppToolsChange = eventAppToolsChange ?? throw new ArgumentNullException(nameof(eventAppToolsChange));
             _eventAppPromptsChange = eventAppPromptsChange ?? throw new ArgumentNullException(nameof(eventAppPromptsChange));
             _eventAppResourcesChange = eventAppResourcesChange ?? throw new ArgumentNullException(nameof(eventAppResourcesChange));
+            _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
 
             // if (Instance != null)
             //     throw new InvalidOperationException($"{typeof(McpServerService).Name} is already initialized.");
             Instance = this;
+        }
+
+        public McpClientData GetClientData()
+        {
+            return new McpClientData
+            {
+                IsConnected = _mcpServer?.ClientInfo != null,
+                SessionId = McpSessionOrServer?.SessionId,
+                ClientTitle = _mcpServer?.ClientInfo?.Title,
+                ClientName = _mcpServer?.ClientInfo?.Name,
+                ClientVersion = _mcpServer?.ClientInfo?.Version,
+                ClientDescription = _mcpServer?.ClientInfo?.Description,
+                ClientWebsiteUrl = _mcpServer?.ClientInfo?.WebsiteUrl
+            };
+        }
+
+        public McpServerData GetServerData()
+        {
+            return new McpServerData
+            {
+                IsAiAgentConnected = _mcpServer?.ClientInfo != null,
+                ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                ServerApiVersion = _version.Api,
+                ServerTransport = _dataArguments.ClientTransport
+            };
+        }
+
+        public async Task NotifyClientConnectedAsync()
+        {
+            _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(NotifyClientConnectedAsync));
+            await _hubContext.Clients.All.OnMcpClientConnected(GetClientData());
+        }
+
+        public async Task NotifyClientDisconnectedAsync()
+        {
+            _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(NotifyClientDisconnectedAsync));
+            await _hubContext.Clients.All.OnMcpClientDisconnected();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -103,16 +153,43 @@ namespace com.IvanMurzak.McpPlugin.Server
                 })
                 .AddTo(_disposables);
 
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(2000, cancellationToken); // Wait a bit to ensure connection is fully established
+                    await NotifyClientConnectedAsync();
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogWarning("{type} {method} was cancelled.",
+                        GetType().GetTypeShortName(), nameof(NotifyClientConnectedAsync));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error notifying client connected.");
+                }
+            }, cancellationToken);
+
             return Task.CompletedTask;
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(StopAsync));
+
+            try
+            {
+                await NotifyClientDisconnectedAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "{type} Error notifying client disconnected.", GetType().GetTypeShortName());
+            }
+
             _disposables.Clear();
             if (Instance == this)
                 Instance = null;
-            return Task.CompletedTask;
         }
 
         async void OnListToolUpdated(HubEventToolsChange.EventData eventData, CancellationToken cancellationToken)
@@ -120,6 +197,12 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnListToolUpdated));
             try
             {
+                if (McpSessionOrServer == null)
+                {
+                    _logger.LogDebug("{type} {property} is null, cannot send tool list update notification.",
+                        GetType().GetTypeShortName(), nameof(McpSessionOrServer));
+                    return;
+                }
 #pragma warning disable CS0618 // Type or member is obsolete
                 await McpSessionOrServer.SendNotificationAsync(NotificationMethods.ToolListChangedNotification, cancellationToken);
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -134,6 +217,12 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnResourceUpdated));
             try
             {
+                if (McpSessionOrServer == null)
+                {
+                    _logger.LogDebug("{type} {property} is null, cannot send resource update notification.",
+                        GetType().GetTypeShortName(), nameof(McpSessionOrServer));
+                    return;
+                }
 #pragma warning disable CS0618 // Type or member is obsolete
                 await McpSessionOrServer.SendNotificationAsync(NotificationMethods.ResourceUpdatedNotification, cancellationToken);
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -148,6 +237,12 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnListPromptsUpdated));
             try
             {
+                if (McpSessionOrServer == null)
+                {
+                    _logger.LogDebug("{type} {property} is null, cannot send prompt list update notification.",
+                        GetType().GetTypeShortName(), nameof(McpSessionOrServer));
+                    return;
+                }
 #pragma warning disable CS0618 // Type or member is obsolete
                 await McpSessionOrServer.SendNotificationAsync(NotificationMethods.PromptListChangedNotification, cancellationToken);
 #pragma warning restore CS0618 // Type or member is obsolete
@@ -162,6 +257,12 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnListResourcesUpdated));
             try
             {
+                if (McpSessionOrServer == null)
+                {
+                    _logger.LogDebug("{type} {property} is null, cannot send resource list update notification.",
+                        GetType().GetTypeShortName(), nameof(McpSessionOrServer));
+                    return;
+                }
 #pragma warning disable CS0618 // Type or member is obsolete
                 await McpSessionOrServer.SendNotificationAsync(NotificationMethods.ResourceListChangedNotification, cancellationToken);
 #pragma warning restore CS0618 // Type or member is obsolete

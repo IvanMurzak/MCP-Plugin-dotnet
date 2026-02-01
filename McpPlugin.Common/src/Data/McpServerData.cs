@@ -8,15 +8,23 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Threading.Tasks;
-using com.IvanMurzak.McpPlugin.Common.Model;
+using System.Text.Json.Serialization;
 
-namespace com.IvanMurzak.McpPlugin.Common.Hub.Server
+namespace com.IvanMurzak.McpPlugin.Common.Model
 {
-    public interface IServerMcpManager : IServerToolHub, IServerPromptHub, IServerResourceHub
+    public class McpServerData
     {
-        Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request);
-        Task<McpClientData> GetMcpClientData();
-        Task<McpServerData> GetMcpServerData();
+        [JsonPropertyName("serverVersion")]
+        public string? ServerVersion { get; set; }
+
+        [JsonPropertyName("serverApiVersion")]
+        public string? ServerApiVersion { get; set; }
+
+        [JsonPropertyName("serverTransport")]
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public Consts.MCP.Server.TransportMethod ServerTransport { get; set; }
+
+        [JsonPropertyName("isAiAgentConnected")]
+        public bool IsAiAgentConnected { get; set; }
     }
 }

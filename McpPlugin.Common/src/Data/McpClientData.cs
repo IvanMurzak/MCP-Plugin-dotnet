@@ -8,15 +8,31 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Threading.Tasks;
-using com.IvanMurzak.McpPlugin.Common.Model;
+using System.Text.Json.Serialization;
 
-namespace com.IvanMurzak.McpPlugin.Common.Hub.Server
+namespace com.IvanMurzak.McpPlugin.Common.Model
 {
-    public interface IServerMcpManager : IServerToolHub, IServerPromptHub, IServerResourceHub
+    public class McpClientData
     {
-        Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request);
-        Task<McpClientData> GetMcpClientData();
-        Task<McpServerData> GetMcpServerData();
+        [JsonPropertyName("isConnected")]
+        public bool IsConnected { get; set; }
+
+        [JsonPropertyName("sessionId")]
+        public string? SessionId { get; set; }
+
+        [JsonPropertyName("clientTitle")]
+        public string? ClientTitle { get; set; }
+
+        [JsonPropertyName("clientName")]
+        public string? ClientName { get; set; }
+
+        [JsonPropertyName("clientVersion")]
+        public string? ClientVersion { get; set; }
+
+        [JsonPropertyName("clientDescription")]
+        public string? ClientDescription { get; set; }
+
+        [JsonPropertyName("clientWebsiteUrl")]
+        public string? ClientWebsiteUrl { get; set; }
     }
 }
