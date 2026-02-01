@@ -168,6 +168,23 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
         }
 
+        public Task<McpServerData> GetMcpServerData()
+        {
+            try
+            {
+                if (McpServerService.Instance == null)
+                {
+                    return Task.FromResult(new McpServerData { IsAiAgentConnected = false });
+                }
+                return Task.FromResult(McpServerService.Instance.GetServerData());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting MCP Server Data");
+                return Task.FromResult(new McpServerData { IsAiAgentConnected = false });
+            }
+        }
+
         protected virtual bool IsApiVersionCompatible(string pluginApiVersion, string serverApiVersion)
         {
             if (string.IsNullOrEmpty(pluginApiVersion) || string.IsNullOrEmpty(serverApiVersion))
