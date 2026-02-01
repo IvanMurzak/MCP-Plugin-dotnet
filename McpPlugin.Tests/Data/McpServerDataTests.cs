@@ -24,24 +24,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var serverData = new McpServerData();
 
             // Assert
-            serverData.ServerName.Should().BeNull();
             serverData.ServerVersion.Should().BeNull();
             serverData.ServerApiVersion.Should().BeNull();
             serverData.ServerTransport.Should().Be(Consts.MCP.Server.TransportMethod.unknown);
             serverData.IsAiAgentConnected.Should().BeFalse();
-        }
-
-        [Fact]
-        public void McpServerData_CanSetServerName()
-        {
-            // Arrange
-            var serverData = new McpServerData();
-
-            // Act
-            serverData.ServerName = "TestServer";
-
-            // Assert
-            serverData.ServerName.Should().Be("TestServer");
         }
 
         [Fact]
@@ -107,7 +93,6 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             // Act
             var serverData = new McpServerData
             {
-                ServerName = "McpPlugin",
                 ServerVersion = "1.0.0",
                 ServerApiVersion = "1.0.0",
                 ServerTransport = Consts.MCP.Server.TransportMethod.stdio,
@@ -115,7 +100,6 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             };
 
             // Assert
-            serverData.ServerName.Should().Be("McpPlugin");
             serverData.ServerVersion.Should().Be("1.0.0");
             serverData.ServerApiVersion.Should().Be("1.0.0");
             serverData.ServerTransport.Should().Be(Consts.MCP.Server.TransportMethod.stdio);
@@ -128,7 +112,6 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             // Arrange
             var serverData = new McpServerData
             {
-                ServerName = "TestServer",
                 ServerVersion = "1.0.0",
                 ServerApiVersion = "2.0.0",
                 ServerTransport = Consts.MCP.Server.TransportMethod.stdio,
@@ -139,7 +122,6 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var json = JsonSerializer.Serialize(serverData);
 
             // Assert
-            json.Should().Contain("\"serverName\":");
             json.Should().Contain("\"serverVersion\":");
             json.Should().Contain("\"serverApiVersion\":");
             json.Should().Contain("\"serverTransport\":");
@@ -192,7 +174,6 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             // Arrange
             var original = new McpServerData
             {
-                ServerName = "McpPlugin",
                 ServerVersion = "1.2.3",
                 ServerApiVersion = "1.0.0",
                 ServerTransport = Consts.MCP.Server.TransportMethod.streamableHttp,
@@ -205,8 +186,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
 
             // Assert
             deserialized.Should().NotBeNull();
-            deserialized!.ServerName.Should().Be(original.ServerName);
-            deserialized.ServerVersion.Should().Be(original.ServerVersion);
+            deserialized!.ServerVersion.Should().Be(original.ServerVersion);
             deserialized.ServerApiVersion.Should().Be(original.ServerApiVersion);
             deserialized.ServerTransport.Should().Be(original.ServerTransport);
             deserialized.IsAiAgentConnected.Should().Be(original.IsAiAgentConnected);
