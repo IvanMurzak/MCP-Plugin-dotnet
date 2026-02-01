@@ -8,13 +8,13 @@
     "source": "github",
     "subfolder": "McpPlugin.Server"
   },
-  "version": "2.5.0",
+  "version": "2.6.0",
   "packages": [
     {
       "registry_type": "oci",
       "registry_base_url": "https://docker.io",
       "identifier": "ivanmurzakdev/mcp-plugin-server",
-      "version": "2.5.0",
+      "version": "2.6.0",
       "transport": {
         "type": "stdio"
       },
