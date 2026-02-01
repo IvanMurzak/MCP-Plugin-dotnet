@@ -183,7 +183,6 @@ namespace com.IvanMurzak.McpPlugin.Server
                     return Task.FromResult(new McpServerData
                     {
                         IsAiAgentConnected = false,
-                        ServerName = Consts.MCP.Server.DefaultServerName,
                         ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
                         ServerApiVersion = _version.Api,
                         ServerTransport = _dataArguments.ClientTransport
@@ -194,7 +193,13 @@ namespace com.IvanMurzak.McpPlugin.Server
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting MCP Server Data");
-                return Task.FromResult(new McpServerData { IsAiAgentConnected = false });
+                return Task.FromResult(new McpServerData
+                {
+                    IsAiAgentConnected = false,
+                    ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                    ServerApiVersion = _version.Api,
+                    ServerTransport = _dataArguments.ClientTransport
+                });
             }
         }
 

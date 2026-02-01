@@ -91,10 +91,13 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             return new McpClientData
             {
-                IsConnected = McpSessionOrServer != null,
-                ConnectionId = McpSessionOrServer?.SessionId,
+                IsConnected = _mcpServer?.ClientInfo != null,
+                SessionId = McpSessionOrServer?.SessionId,
+                ClientTitle = _mcpServer?.ClientInfo?.Title,
                 ClientName = _mcpServer?.ClientInfo?.Name,
-                ClientVersion = _mcpServer?.ClientInfo?.Version
+                ClientVersion = _mcpServer?.ClientInfo?.Version,
+                ClientDescription = _mcpServer?.ClientInfo?.Description,
+                ClientWebsiteUrl = _mcpServer?.ClientInfo?.WebsiteUrl
             };
         }
 
@@ -102,8 +105,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             return new McpServerData
             {
-                IsAiAgentConnected = McpSessionOrServer != null,
-                ServerName = Consts.MCP.Server.DefaultServerName,
+                IsAiAgentConnected = _mcpServer?.ClientInfo != null,
                 ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
                 ServerApiVersion = _version.Api,
                 ServerTransport = _dataArguments.ClientTransport
@@ -126,23 +128,6 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(StartAsync));
             _disposables.Clear();
-
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await NotifyClientConnectedAsync();
-                }
-                catch (OperationCanceledException)
-                {
-                    _logger.LogWarning("{type} {method} was cancelled.",
-                        GetType().GetTypeShortName(), nameof(NotifyClientConnectedAsync));
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error notifying client connected.");
-                }
-            }, cancellationToken);
 
             _eventAppToolsChange
                 .Subscribe(data =>
@@ -167,6 +152,24 @@ namespace com.IvanMurzak.McpPlugin.Server
                     OnListResourcesUpdated(data, cancellationToken);
                 })
                 .AddTo(_disposables);
+
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(2000, cancellationToken); // Wait a bit to ensure connection is fully established
+                    await NotifyClientConnectedAsync();
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogWarning("{type} {method} was cancelled.",
+                        GetType().GetTypeShortName(), nameof(NotifyClientConnectedAsync));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error notifying client connected.");
+                }
+            }, cancellationToken);
 
             return Task.CompletedTask;
         }

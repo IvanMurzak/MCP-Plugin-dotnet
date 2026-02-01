@@ -14,8 +14,14 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
 {
     public class McpClientData
     {
-        [JsonPropertyName("connectionId")]
-        public string? ConnectionId { get; set; }
+        [JsonPropertyName("isConnected")]
+        public bool IsConnected { get; set; }
+
+        [JsonPropertyName("sessionId")]
+        public string? SessionId { get; set; }
+
+        [JsonPropertyName("clientTitle")]
+        public string? ClientTitle { get; set; }
 
         [JsonPropertyName("clientName")]
         public string? ClientName { get; set; }
@@ -23,7 +29,10 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         [JsonPropertyName("clientVersion")]
         public string? ClientVersion { get; set; }
 
-        [JsonPropertyName("isConnected")]
-        public bool IsConnected { get; set; }
+        [JsonPropertyName("clientDescription")]
+        public string? ClientDescription { get; set; }
+
+        [JsonPropertyName("clientWebsiteUrl")]
+        public string? ClientWebsiteUrl { get; set; }
     }
 }

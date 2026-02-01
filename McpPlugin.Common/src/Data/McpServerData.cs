@@ -14,9 +14,6 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
 {
     public class McpServerData
     {
-        [JsonPropertyName("serverName")]
-        public string? ServerName { get; set; }
-
         [JsonPropertyName("serverVersion")]
         public string? ServerVersion { get; set; }
 

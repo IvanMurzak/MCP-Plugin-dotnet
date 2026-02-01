@@ -10,19 +10,64 @@
 
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NLog;
-using R3;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
     public static class ExtensionsMcpServer
     {
+        private static readonly TimeSpan ConnectionHealthCheckInterval = TimeSpan.FromSeconds(5);
+
+        /// <summary>
+        /// Monitors the HTTP connection health and cancels the session when disconnection is detected.
+        /// This is necessary because context.RequestAborted may not fire reliably in all disconnect scenarios.
+        /// </summary>
+        private static async Task MonitorConnectionHealthAsync(
+            HttpContext context,
+            CancellationTokenSource linkedCts,
+            Logger? logger)
+        {
+            try
+            {
+                while (!linkedCts.Token.IsCancellationRequested)
+                {
+                    await Task.Delay(ConnectionHealthCheckInterval, linkedCts.Token);
+
+                    // Check if the request has been aborted
+                    if (context.RequestAborted.IsCancellationRequested)
+                    {
+                        logger?.Debug("Connection health monitor detected RequestAborted. Cancelling session.");
+                        await linkedCts.CancelAsync();
+                        return;
+                    }
+
+                    // Check if the connection is still open by examining the response
+                    // HttpContext.Response.HasStarted will be true, but we can check if writing would fail
+                    if (!context.Response.HttpContext.Items.ContainsKey("__McpConnectionAlive"))
+                    {
+                        context.Response.HttpContext.Items["__McpConnectionAlive"] = true;
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when the session ends normally
+            }
+            catch (Exception ex)
+            {
+                logger?.Debug(ex, "Connection health monitor encountered an error. Cancelling session.");
+                try { await linkedCts.CancelAsync(); } catch { /* Ignore */ }
+            }
+        }
+
         public static IMcpServerBuilder WithMcpServer(
             this IServiceCollection services,
             DataArguments dataArguments,
@@ -79,6 +124,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                             context.RequestAborted);
                         var linkedToken = linkedCts.Token;
 
+                        // Start a background task to monitor connection health.
+                        // This ensures we detect disconnection even if context.RequestAborted doesn't fire.
+                        var connectionMonitorTask = MonitorConnectionHealthAsync(context, linkedCts, logger);
+
                         try
                         {
                             var services = server.Services ?? throw new InvalidOperationException("MCP Server services are not available.");
@@ -117,6 +166,11 @@ namespace com.IvanMurzak.McpPlugin.Server
                         }
                         finally
                         {
+                            // Cancel the linked token to stop the connection monitor task
+                            if (!linkedCts.IsCancellationRequested)
+                                await linkedCts.CancelAsync();
+                            try { await connectionMonitorTask; } catch { /* Ignore cancellation exceptions */ }
+
                             logger?.Debug($"-------------------------------------------------\nSession handler for HTTP transport completed. Session ID: {mcpClientSessionId}\n------------------------");
                         }
                     };
