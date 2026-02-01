@@ -64,7 +64,8 @@ namespace com.IvanMurzak.McpPlugin
                 _logger.LogDebug("{class}.{method}", nameof(IClientMcpManager), nameof(IClientMcpRpc.ForceDisconnect));
                 await _mcpManager.ForceDisconnect();
                 await _connectionManager.Disconnect();
-            });
+            })
+            .AddTo(_serverEventsDisposables);
 
             // Tool events -------------------------------------------------------------
 

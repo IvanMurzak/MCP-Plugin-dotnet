@@ -17,6 +17,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NLog;
+using R3;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
@@ -24,7 +25,7 @@ namespace com.IvanMurzak.McpPlugin.Server
     {
         public static IMcpServerBuilder WithMcpServer(
             this IServiceCollection services,
-            Consts.MCP.Server.TransportMethod mcpClientTransport,
+            DataArguments dataArguments,
             Logger? logger = null)
         {
             // Setup MCP Server -------------------------------------------------------------
@@ -52,12 +53,12 @@ namespace com.IvanMurzak.McpPlugin.Server
                     options.Handlers.ListPromptsHandler = PromptRouter.List;
                 });
 
-            if (mcpClientTransport == Consts.MCP.Server.TransportMethod.stdio)
+            if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.stdio)
             {
                 // Configure STDIO transport
                 mcpServerBuilder = mcpServerBuilder.WithStdioServerTransport();
             }
-            else if (mcpClientTransport == Consts.MCP.Server.TransportMethod.streamableHttp)
+            else if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.streamableHttp)
             {
                 // Configure HTTP transport
                 mcpServerBuilder = mcpServerBuilder.WithHttpTransport(options =>
@@ -68,32 +69,40 @@ namespace com.IvanMurzak.McpPlugin.Server
                     options.PerSessionExecutionContext = true;
                     options.RunSessionHandler = async (context, server, cancellationToken) =>
                     {
-                        var connectionGuid = Guid.NewGuid();
+                        logger?.Debug("-------------------------------------------------\nRunning session handler for HTTP transport. Session ID: {sessionId}",
+                            server.SessionId);
+
+                        var mcpClientSessionId = server.SessionId ?? throw new InvalidOperationException("MCP Server session ID is not available.");
+
+                        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+                            cancellationToken,
+                            context.RequestAborted);
+                        var linkedToken = linkedCts.Token;
+
                         try
                         {
-                            // This is where you can run logic before a session starts
-                            // For example, you can log the session start or initialize resources
-                            logger?.Debug($"----------\nRunning session handler for HTTP transport. Connection guid: {connectionGuid}");
-
+                            var services = server.Services ?? throw new InvalidOperationException("MCP Server services are not available.");
                             var service = new McpServerService(
-                                server.Services!.GetRequiredService<ILogger<McpServerService>>(),
-                                server.Services!.GetRequiredService<Common.Version>(),
-                                server.Services!.GetRequiredService<IDataArguments>(),
-                                server.Services!.GetRequiredService<IClientToolHub>(),
-                                server.Services!.GetRequiredService<IClientPromptHub>(),
-                                server.Services!.GetRequiredService<IClientResourceHub>(),
-                                server.Services!.GetRequiredService<HubEventToolsChange>(),
-                                server.Services!.GetRequiredService<HubEventPromptsChange>(),
-                                server.Services!.GetRequiredService<HubEventResourcesChange>(),
-                                server.Services!.GetRequiredService<IHubContext<McpServerHub, IClientMcpRpc>>(),
+                                services.GetRequiredService<ILogger<McpServerService>>(),
+                                services.GetRequiredService<Common.Version>(),
+                                dataArguments,
+                                services.GetRequiredService<IClientToolHub>(),
+                                services.GetRequiredService<IClientPromptHub>(),
+                                services.GetRequiredService<IClientResourceHub>(),
+                                services.GetRequiredService<HubEventToolsChange>(),
+                                services.GetRequiredService<HubEventPromptsChange>(),
+                                services.GetRequiredService<HubEventResourcesChange>(),
+                                services.GetRequiredService<IHubContext<McpServerHub, IClientMcpRpc>>(),
                                 mcpServer: server,
                                 mcpSession: null
                             );
 
                             try
                             {
-                                await service.StartAsync(cancellationToken);
-                                await server.RunAsync(cancellationToken);
+                                await service.StartAsync(linkedToken);
+                                await server.RunAsync(linkedToken);
+                                logger?.Debug("MCP Server completed for HTTP transport. Session ID: {sessionId}",
+                                    mcpClientSessionId);
                             }
                             finally
                             {
@@ -104,18 +113,18 @@ namespace com.IvanMurzak.McpPlugin.Server
                         }
                         catch (Exception ex)
                         {
-                            logger?.Error(ex, $"Error occurred while processing HTTP transport session. Connection guid: {connectionGuid}.");
+                            logger?.Error(ex, $"Error occurred while processing HTTP transport session. Session ID: {mcpClientSessionId}.");
                         }
                         finally
                         {
-                            logger?.Debug($"Session handler for HTTP transport completed. Connection guid: {connectionGuid}\n----------");
+                            logger?.Debug($"-------------------------------------------------\nSession handler for HTTP transport completed. Session ID: {mcpClientSessionId}\n------------------------");
                         }
                     };
                 });
             }
             else
             {
-                throw new ArgumentException($"Unsupported transport method: {mcpClientTransport}. " +
+                throw new ArgumentException($"Unsupported transport method: {dataArguments.ClientTransport}. " +
                     $"Supported methods are: {Consts.MCP.Server.TransportMethod.stdio}, {Consts.MCP.Server.TransportMethod.streamableHttp}");
             }
             return mcpServerBuilder;

@@ -15,6 +15,7 @@ using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Hub.Server;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Common.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server
@@ -22,6 +23,7 @@ namespace com.IvanMurzak.McpPlugin.Server
     public class McpServerHub : BaseHub<IClientMcpRpc>, IServerMcpManager
     {
         readonly Common.Version _version;
+        readonly IDataArguments _dataArguments;
         readonly HubEventToolsChange _eventAppToolsChange;
         readonly HubEventPromptsChange _eventAppPromptsChange;
         readonly HubEventResourcesChange _eventAppResourcesChange;
@@ -30,6 +32,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         public McpServerHub(
             ILogger<McpServerHub> logger,
             Common.Version version,
+            IDataArguments dataArguments,
             HubEventToolsChange eventAppToolsChange,
             HubEventPromptsChange eventAppPromptsChange,
             HubEventResourcesChange eventAppResourcesChange,
@@ -37,6 +40,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             : base(logger)
         {
             _version = version ?? throw new ArgumentNullException(nameof(version));
+            _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
             _eventAppToolsChange = eventAppToolsChange ?? throw new ArgumentNullException(nameof(eventAppToolsChange));
             _eventAppPromptsChange = eventAppPromptsChange ?? throw new ArgumentNullException(nameof(eventAppPromptsChange));
             _eventAppResourcesChange = eventAppResourcesChange ?? throw new ArgumentNullException(nameof(eventAppResourcesChange));
@@ -155,11 +159,11 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             try
             {
-                if (McpServerService.Instance == null)
-                {
+                var service = McpServerService.Instance;
+                if (service == null)
                     return Task.FromResult(new McpClientData { IsConnected = false });
-                }
-                return Task.FromResult(McpServerService.Instance.GetClientData());
+
+                return Task.FromResult(service.GetClientData());
             }
             catch (Exception ex)
             {
@@ -172,11 +176,20 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             try
             {
-                if (McpServerService.Instance == null)
+                var service = McpServerService.Instance;
+                if (service == null)
                 {
-                    return Task.FromResult(new McpServerData { IsAiAgentConnected = false });
+                    // Return server data with transport info even when no AI agent is connected
+                    return Task.FromResult(new McpServerData
+                    {
+                        IsAiAgentConnected = false,
+                        ServerName = Consts.MCP.Server.DefaultServerName,
+                        ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                        ServerApiVersion = _version.Api,
+                        ServerTransport = _dataArguments.ClientTransport
+                    });
                 }
-                return Task.FromResult(McpServerService.Instance.GetServerData());
+                return Task.FromResult(service.GetServerData());
             }
             catch (Exception ex)
             {

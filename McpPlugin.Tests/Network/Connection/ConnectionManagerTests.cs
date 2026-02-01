@@ -739,6 +739,286 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
 
         #endregion
 
+        #region InvokeAsync Tests
+
+        [Fact]
+        public async Task InvokeAsync_WhenDisposed_ReturnsDefault()
+        {
+            // Arrange
+            var mockConnection = CreateMockHubConnection();
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .ReturnsAsync(mockConnection);
+
+            var connectionManager = new ConnectionManager(
+                _logger,
+                _testVersion,
+                _testEndpoint,
+                _mockHubConnectionProvider.Object
+            );
+
+            // Dispose the connection manager
+            await connectionManager.DisposeAsync();
+
+            // Act
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            var result = await connectionManager.InvokeAsync<string>("TestMethod", cts.Token);
+
+            // Assert
+            result.Should().BeNull("InvokeAsync should return default when disposed");
+        }
+
+        [Fact]
+        public async Task InvokeAsync_WhenConnectionNotEstablished_ReturnsDefault()
+        {
+            // Arrange
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .ReturnsAsync((HubConnection)null!);
+
+            var connectionManager = new ConnectionManager(
+                _logger,
+                _testVersion,
+                _testEndpoint,
+                _mockHubConnectionProvider.Object
+            );
+
+            // Act
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            var result = await connectionManager.InvokeAsync<string>("TestMethod", cts.Token);
+
+            // Assert
+            result.Should().BeNull("InvokeAsync should return default when connection cannot be established");
+        }
+
+        [Fact]
+        public async Task InvokeAsync_WhenCancellationTokenAlreadyCanceled_ReturnsDefault()
+        {
+            // Arrange
+            var mockConnection = CreateMockHubConnection();
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .ReturnsAsync(mockConnection);
+
+            var connectionManager = new ConnectionManager(
+                _logger,
+                _testVersion,
+                _testEndpoint,
+                _mockHubConnectionProvider.Object
+            );
+
+            var cts = new CancellationTokenSource();
+            cts.Cancel(); // Cancel before calling InvokeAsync
+
+            // Act
+            var result = await connectionManager.InvokeAsync<string>("TestMethod", cts.Token);
+
+            // Assert
+            result.Should().BeNull("InvokeAsync should return default when cancellation token is already canceled");
+        }
+
+        [Fact]
+        public async Task InvokeAsync_WhenCanceledDuringConnection_ReturnsDefault()
+        {
+            // Arrange
+            var cts = new CancellationTokenSource();
+            var connectionStarted = new TaskCompletionSource<bool>();
+
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .Returns(async () =>
+                {
+                    connectionStarted.SetResult(true);
+                    await Task.Delay(Timeout.Infinite, cts.Token); // Will be canceled
+                    return CreateMockHubConnection();
+                });
+
+            var connectionManager = new ConnectionManager(
+                _logger,
+                _testVersion,
+                _testEndpoint,
+                _mockHubConnectionProvider.Object
+            );
+
+            // First call Connect to enable _continueToReconnect
+            var connectTask = Task.Run(async () => await connectionManager.Connect(cts.Token));
+
+            await EnsureConnectionStartedAsync(connectionStarted.Task);
+
+            // Now start InvokeAsync which will wait for the ongoing connection
+            var invokeTask = Task.Run(async () => await connectionManager.InvokeAsync<string>("TestMethod", cts.Token));
+
+            await Task.Delay(50); // Allow InvokeAsync to start waiting
+            cts.Cancel(); // Cancel during connection
+
+            var connectResult = await connectTask;
+            var invokeResult = await invokeTask;
+
+            // Assert
+            connectResult.Should().BeFalse("Connect should return false when canceled");
+            invokeResult.Should().BeNull("InvokeAsync should return default when canceled during connection");
+        }
+
+        [Fact]
+        public async Task InvokeAsync_WhenProviderThrows_ReturnsDefault()
+        {
+            // Arrange
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .ThrowsAsync(new InvalidOperationException("Failed to create connection"));
+
+            var connectionManager = new ConnectionManager(
+                _logger,
+                _testVersion,
+                _testEndpoint,
+                _mockHubConnectionProvider.Object
+            );
+
+            // Act
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var result = await connectionManager.InvokeAsync<int>("TestMethod", cts.Token);
+
+            // Assert
+            result.Should().Be(0, "InvokeAsync should return default(int) when provider throws");
+        }
+
+        [Fact]
+        public async Task InvokeAsync_WhenHubConnectionIsNull_ReturnsDefault()
+        {
+            // Arrange
+            // Create a connection that returns null initially
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .ReturnsAsync((HubConnection)null!);
+
+            var connectionManager = new ConnectionManager(
+                _logger,
+                _testVersion,
+                _testEndpoint,
+                _mockHubConnectionProvider.Object
+            );
+
+            // Act
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            var result = await connectionManager.InvokeAsync<bool>("TestMethod", cts.Token);
+
+            // Assert
+            result.Should().BeFalse("InvokeAsync should return default(bool) when hub connection is null");
+        }
+
+        [Fact]
+        public async Task InvokeAsync_WithShortTimeout_ReturnsDefault()
+        {
+            // Arrange
+            var connectionStarted = new TaskCompletionSource<bool>();
+            var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
+
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .Returns(async () =>
+                {
+                    connectionStarted.TrySetResult(true);
+                    // Simulate a long operation that will be interrupted by timeout
+                    await Task.Delay(TimeSpan.FromSeconds(10), cts.Token);
+                    return CreateMockHubConnection();
+                });
+
+            var connectionManager = new ConnectionManager(
+                _logger,
+                _testVersion,
+                _testEndpoint,
+                _mockHubConnectionProvider.Object
+            );
+
+            // Act - Use very short timeout
+            var result = await connectionManager.InvokeAsync<string>("TestMethod", cts.Token);
+
+            // Assert
+            result.Should().BeNull("InvokeAsync should return default when timeout occurs");
+        }
+
+        [Fact]
+        public async Task InvokeAsync_MultipleCallsWhileDisposed_AllReturnDefault()
+        {
+            // Arrange
+            var mockConnection = CreateMockHubConnection();
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .ReturnsAsync(mockConnection);
+
+            var connectionManager = new ConnectionManager(
+                _logger,
+                _testVersion,
+                _testEndpoint,
+                _mockHubConnectionProvider.Object
+            );
+
+            // Dispose the connection manager
+            await connectionManager.DisposeAsync();
+
+            // Act - Make multiple calls after disposal
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            var task1 = connectionManager.InvokeAsync<string>("Method1", cts.Token);
+            var task2 = connectionManager.InvokeAsync<string>("Method2", cts.Token);
+            var task3 = connectionManager.InvokeAsync<string>("Method3", cts.Token);
+
+            var results = await Task.WhenAll(task1, task2, task3);
+
+            // Assert
+            results.Should().AllSatisfy(r => r.Should().BeNull("all InvokeAsync calls should return default when disposed"));
+        }
+
+        [Fact]
+        public async Task InvokeAsync_WhenDisposedDuringInvocation_HandlesGracefully()
+        {
+            // Arrange
+            var connectionStarted = new TaskCompletionSource<bool>();
+            var allowConnectionToComplete = new TaskCompletionSource<bool>();
+
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .Returns(async () =>
+                {
+                    connectionStarted.TrySetResult(true);
+                    await allowConnectionToComplete.Task;
+                    return CreateMockHubConnection();
+                });
+
+            var connectionManager = new ConnectionManager(
+                _logger,
+                _testVersion,
+                _testEndpoint,
+                _mockHubConnectionProvider.Object
+            );
+
+            // First start a Connect call to enable _continueToReconnect and begin connection
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            var connectTask = Task.Run(async () => await connectionManager.Connect(cts.Token));
+
+            await EnsureConnectionStartedAsync(connectionStarted.Task);
+
+            // Now start InvokeAsync which will wait for the ongoing connection
+            var invokeTask = Task.Run(async () => await connectionManager.InvokeAsync<string>("TestMethod", cts.Token));
+
+            await Task.Delay(50); // Allow InvokeAsync to start waiting
+
+            // Dispose while connection is in progress
+            var disposeTask = connectionManager.DisposeAsync();
+
+            // Allow connection to complete
+            allowConnectionToComplete.SetResult(true);
+
+            await disposeTask;
+            var connectResult = await connectTask;
+            var invokeResult = await invokeTask;
+
+            // Assert
+            connectResult.Should().BeFalse("Connect should return false when disposed");
+            invokeResult.Should().BeNull("InvokeAsync should return default when disposed during invocation");
+        }
+
+        #endregion
+
         #region Helper Methods
 
         /// <summary>

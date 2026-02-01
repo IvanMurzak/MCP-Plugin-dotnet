@@ -131,8 +131,12 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 try
                 {
-                    await Task.Delay(2000, cancellationToken);
                     await NotifyClientConnectedAsync();
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogWarning("{type} {method} was cancelled.",
+                        GetType().GetTypeShortName(), nameof(NotifyClientConnectedAsync));
                 }
                 catch (Exception ex)
                 {
@@ -212,7 +216,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 if (McpSessionOrServer == null)
                 {
-                    _logger.LogDebug("{type} {property} is null, cannot send tool list update notification.",
+                    _logger.LogDebug("{type} {property} is null, cannot send resource update notification.",
                         GetType().GetTypeShortName(), nameof(McpSessionOrServer));
                     return;
                 }
