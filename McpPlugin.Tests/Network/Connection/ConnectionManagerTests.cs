@@ -807,7 +807,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                 _mockHubConnectionProvider.Object
             );
 
-            var cts = new CancellationTokenSource();
+            using var cts = new CancellationTokenSource();
             cts.Cancel(); // Cancel before calling InvokeAsync
 
             // Act
@@ -821,7 +821,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
         public async Task InvokeAsync_WhenCanceledDuringConnection_ReturnsDefault()
         {
             // Arrange
-            var cts = new CancellationTokenSource();
+            using var cts = new CancellationTokenSource();
             var connectionStarted = new TaskCompletionSource<bool>();
 
             _mockHubConnectionProvider
@@ -911,7 +911,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
         {
             // Arrange
             var connectionStarted = new TaskCompletionSource<bool>();
-            var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
+            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
 
             _mockHubConnectionProvider
                 .Setup(x => x.CreateConnectionAsync(_testEndpoint))
