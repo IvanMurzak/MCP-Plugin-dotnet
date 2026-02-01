@@ -48,13 +48,6 @@ namespace com.IvanMurzak.McpPlugin.Server
                         await linkedCts.CancelAsync();
                         return;
                     }
-
-                    // Check if the connection is still open by examining the response
-                    // HttpContext.Response.HasStarted will be true, but we can check if writing would fail
-                    if (!context.Response.HttpContext.Items.ContainsKey("__McpConnectionAlive"))
-                    {
-                        context.Response.HttpContext.Items["__McpConnectionAlive"] = true;
-                    }
                 }
             }
             catch (OperationCanceledException)
