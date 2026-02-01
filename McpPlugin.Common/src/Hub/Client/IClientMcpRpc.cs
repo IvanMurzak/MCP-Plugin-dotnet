@@ -11,12 +11,12 @@
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 
-namespace com.IvanMurzak.McpPlugin.Common.Hub.Server
+namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
 {
-    public interface IServerMcpManager : IServerToolHub, IServerPromptHub, IServerResourceHub
+    public interface IClientMcpRpc : IClientDisconnectable
     {
-        Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request);
-        Task<McpClientData> GetMcpClientData();
-        Task<McpServerData> GetMcpServerData();
+        // Task ForceDisconnect(); // Inherited from IClientDisconnectable
+        Task OnMcpClientConnected(McpClientData clientData);
+        Task OnMcpClientDisconnected();
     }
 }

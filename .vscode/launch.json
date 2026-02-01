@@ -2,6 +2,23 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Launch Demo Web App (http) 59479",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net9.0/DemoWebApp.dll",
+            "args": [
+                "port=59479",
+                "client-transport=http"
+            ],
+            "cwd": "${workspaceFolder}/DemoWebApp",
+            "stopAtEntry": false,
+            "console": "internalConsole",
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        },
+        {
             "name": "Launch Demo Web App (http)",
             "type": "coreclr",
             "request": "launch",

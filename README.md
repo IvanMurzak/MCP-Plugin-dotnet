@@ -112,7 +112,7 @@ var dataArguments = new DataArguments(args);
 
 // 2. Register MCP Server services
 builder.Services
-    .WithMcpServer(dataArguments.ClientTransport) // TransportMethod.stdio or TransportMethod.http
+    .WithMcpServer(dataArguments) // Configures transport based on dataArguments.ClientTransport
     .WithMcpPluginServer(dataArguments);
 
 var app = builder.Build();

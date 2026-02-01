@@ -66,7 +66,7 @@ namespace com.IvanMurzak.McpPlugin.DemoWebApp
 
                 // Setup MCP Plugin ---------------------------------------------------------------
                 builder.Services
-                    .WithMcpServer(dataArguments.ClientTransport, logger)
+                    .WithMcpServer(dataArguments, logger)
                     .WithMcpPluginServer(dataArguments);
 
                 builder.WebHost.UseKestrel(options =>

@@ -8,6 +8,9 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common.Model;
+
 namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
 {
     public interface IClientMcpManager : IClientDisconnectable
@@ -15,5 +18,8 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
         IClientToolHub? ToolHub { get; }
         IClientPromptHub? PromptHub { get; }
         IClientResourceHub? ResourceHub { get; }
+
+        Task OnMcpClientConnected(McpClientData clientData);
+        Task OnMcpClientDisconnected();
     }
 }
