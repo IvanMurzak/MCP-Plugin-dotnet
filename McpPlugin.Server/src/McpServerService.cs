@@ -11,8 +11,10 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
@@ -36,6 +38,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly HubEventPromptsChange _eventAppPromptsChange;
         readonly HubEventResourcesChange _eventAppResourcesChange;
         readonly IHubContext<McpServerHub, IClientMcpRpc> _hubContext;
+        readonly Common.Version _version;
+        readonly IDataArguments _dataArguments;
         readonly CompositeDisposable _disposables = new();
 
         public McpSession? McpSessionOrServer => _mcpSession ?? _mcpServer;
@@ -48,6 +52,8 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public McpServerService(
             ILogger<McpServerService> logger,
+            Common.Version version,
+            IDataArguments dataArguments,
             IClientToolHub toolRunner,
             IClientPromptHub promptRunner,
             IClientResourceHub resourceRunner,
@@ -66,6 +72,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (_mcpSession == null && _mcpServer == null)
                 throw new InvalidOperationException($"{nameof(mcpSession)} and {nameof(mcpServer)} are both null.");
 
+            _version = version ?? throw new ArgumentNullException(nameof(version));
+            _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
             _toolRunner = toolRunner ?? throw new ArgumentNullException(nameof(toolRunner));
             _promptRunner = promptRunner ?? throw new ArgumentNullException(nameof(promptRunner));
             _resourceRunner = resourceRunner ?? throw new ArgumentNullException(nameof(resourceRunner));
@@ -87,6 +95,18 @@ namespace com.IvanMurzak.McpPlugin.Server
                 ConnectionId = McpSessionOrServer?.SessionId,
                 ClientName = _mcpServer?.ClientInfo?.Name,
                 ClientVersion = _mcpServer?.ClientInfo?.Version
+            };
+        }
+
+        public McpServerData GetServerData()
+        {
+            return new McpServerData
+            {
+                IsAiAgentConnected = McpSessionOrServer != null,
+                ServerName = Consts.MCP.Server.DefaultServerName,
+                ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                ServerApiVersion = _version.Api,
+                ServerTransport = _dataArguments.ClientTransport
             };
         }
 

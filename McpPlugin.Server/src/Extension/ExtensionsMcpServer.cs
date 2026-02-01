@@ -12,6 +12,7 @@ using System;
 using System.Threading;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
+using com.IvanMurzak.McpPlugin.Common.Utils;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -76,6 +77,8 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                             var service = new McpServerService(
                                 server.Services!.GetRequiredService<ILogger<McpServerService>>(),
+                                server.Services!.GetRequiredService<Common.Version>(),
+                                server.Services!.GetRequiredService<IDataArguments>(),
                                 server.Services!.GetRequiredService<IClientToolHub>(),
                                 server.Services!.GetRequiredService<IClientPromptHub>(),
                                 server.Services!.GetRequiredService<IClientResourceHub>(),

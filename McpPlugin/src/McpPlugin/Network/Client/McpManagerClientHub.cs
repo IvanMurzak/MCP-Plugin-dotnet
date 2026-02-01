@@ -177,6 +177,12 @@ namespace com.IvanMurzak.McpPlugin
             return _connectionManager.InvokeAsync<McpClientData>(nameof(IServerMcpManager.GetMcpClientData), _cancellationTokenSource.Token);
         }
 
+        public Task<McpServerData> GetMcpServerData()
+        {
+            _logger.LogTrace("{class}.{method}", nameof(IServerMcpManager), nameof(IServerMcpManager.GetMcpServerData));
+            return _connectionManager.InvokeAsync<McpServerData>(nameof(IServerMcpManager.GetMcpServerData), _cancellationTokenSource.Token);
+        }
+
         #endregion
     }
 }
