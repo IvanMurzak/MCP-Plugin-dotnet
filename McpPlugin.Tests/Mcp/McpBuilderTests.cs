@@ -283,7 +283,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var plugin = mcpPluginBuilder.Build(reflector);
 
             // Assert
-            plugin.ToolCallCount.Should().Be(0);
+            plugin.ToolCallsCount.Should().Be(0UL);
         }
 
         [Fact]
@@ -296,7 +296,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             // Act & Assert
             plugin.McpManager.ToolManager.Should().NotBeNull();
-            plugin.McpManager.ToolManager.ToolCallCount.Should().Be(0);
+            plugin.McpManager.ToolManager.ToolCallsCount.Should().Be(0UL);
         }
     }
 }

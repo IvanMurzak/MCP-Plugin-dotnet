@@ -10,6 +10,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -31,7 +32,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly ILogger _logger;
         protected readonly Reflector _reflector;
         protected readonly CompositeDisposable _disposables = new();
-        private long _toolCallCount = 0;
+        private ulong toolCallsCount = 0;
 
         readonly ToolRunnerCollection _tools;
         readonly Subject<Unit> _onToolsUpdated = new();
@@ -40,7 +41,7 @@ namespace com.IvanMurzak.McpPlugin
         public Observable<Unit> OnToolsUpdated => _onToolsUpdated;
 
         public IEnumerable<IRunTool> GetAllTools() => _tools.Values.ToList();
-        public long ToolCallCount => Interlocked.Read(ref _toolCallCount);
+        public ulong ToolCallsCount => (ulong)Interlocked.Read(ref Unsafe.As<ulong, long>(ref toolCallsCount));
 
         public McpToolManager(ILogger<McpToolManager> logger, Reflector reflector, ToolRunnerCollection tools)
         {
@@ -114,7 +115,7 @@ namespace com.IvanMurzak.McpPlugin
         public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool data) => RunCallTool(data, default);
         public async Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool data, CancellationToken cancellationToken = default)
         {
-            Interlocked.Increment(ref _toolCallCount);
+            Interlocked.Increment(ref Unsafe.As<ulong, long>(ref toolCallsCount));
             if (data == null)
                 return ResponseData<ResponseCallTool>.Error(Common.Consts.Guid.Zero, "Tool data is null.")
                     .Log(_logger);

@@ -39,16 +39,16 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var toolManager = plugin.McpManager.ToolManager!;
 
             // Verify initial state
-            toolManager.ToolCallCount.Should().Be(0);
-            plugin.ToolCallCount.Should().Be(0);
+            toolManager.ToolCallsCount.Should().Be(0UL);
+            plugin.ToolCallsCount.Should().Be(0UL);
 
             // Act
             var request = new RequestCallTool("testTool", new Dictionary<string, JsonElement>());
             await toolManager.RunCallTool(request);
 
             // Assert
-            toolManager.ToolCallCount.Should().Be(1);
-            plugin.ToolCallCount.Should().Be(1);
+            toolManager.ToolCallsCount.Should().Be(1UL);
+            plugin.ToolCallsCount.Should().Be(1UL);
         }
 
         [Fact]
@@ -72,8 +72,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             await toolManager.RunCallTool(request);
 
             // Assert
-            toolManager.ToolCallCount.Should().Be(3);
-            plugin.ToolCallCount.Should().Be(3);
+            toolManager.ToolCallsCount.Should().Be(3UL);
+            plugin.ToolCallsCount.Should().Be(3UL);
         }
 
         [Fact]
@@ -100,8 +100,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             await toolManager.RunCallTool(request1);
 
             // Assert - should count all calls regardless of which tool
-            toolManager.ToolCallCount.Should().Be(3);
-            plugin.ToolCallCount.Should().Be(3);
+            toolManager.ToolCallsCount.Should().Be(3UL);
+            plugin.ToolCallsCount.Should().Be(3UL);
         }
 
         [Fact]
@@ -119,8 +119,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             await toolManager.RunCallTool(request);
 
             // Assert - counter should still increment even if tool not found
-            toolManager.ToolCallCount.Should().Be(1);
-            plugin.ToolCallCount.Should().Be(1);
+            toolManager.ToolCallsCount.Should().Be(1UL);
+            plugin.ToolCallsCount.Should().Be(1UL);
         }
 
         [Fact]
@@ -147,8 +147,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             await Task.WhenAll(tasks);
 
             // Assert
-            toolManager.ToolCallCount.Should().Be(100);
-            plugin.ToolCallCount.Should().Be(100);
+            toolManager.ToolCallsCount.Should().Be(100UL);
+            plugin.ToolCallsCount.Should().Be(100UL);
         }
 
         private class TestToolClass

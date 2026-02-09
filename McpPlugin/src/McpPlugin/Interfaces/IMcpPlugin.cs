@@ -34,6 +34,6 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// Gets the total number of tool calls made.
         /// </summary>
-        long ToolCallCount => 0;
+        ulong ToolCallsCount => 0;
     }
 }
