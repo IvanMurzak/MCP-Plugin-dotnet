@@ -36,6 +36,7 @@ namespace com.IvanMurzak.McpPlugin
         public Common.Version Version => _version;
         public string CurrentBaseDirectory => _basePath;
         public VersionHandshakeResponse? VersionHandshakeStatus => _remoteMcpManagerHub?.VersionHandshakeStatus;
+        public ulong ToolCallsCount => McpManager.ToolManager?.ToolCallsCount ?? 0;
         public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _remoteMcpManagerHub?.ConnectionState
             ?? new ReactiveProperty<HubConnectionState>(HubConnectionState.Disconnected);
         public ReadOnlyReactiveProperty<bool> KeepConnected => _remoteMcpManagerHub?.KeepConnected

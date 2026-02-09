@@ -271,5 +271,32 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             plugin.RemoteMcpManagerHub.Should().NotBeNull();
             plugin.RemoteMcpManagerHub.VersionHandshakeStatus.Should().BeNull();
         }
+
+        [Fact]
+        public void Build_ShouldHaveToolCallCountProperty()
+        {
+            // Arrange
+            var reflector = new Reflector();
+            var mcpPluginBuilder = new McpPluginBuilder(_version);
+
+            // Act
+            var plugin = mcpPluginBuilder.Build(reflector);
+
+            // Assert
+            plugin.ToolCallsCount.Should().Be(0UL);
+        }
+
+        [Fact]
+        public void ToolManager_ShouldHaveToolCallCountProperty()
+        {
+            // Arrange
+            var reflector = new Reflector();
+            var mcpPluginBuilder = new McpPluginBuilder(_version);
+            var plugin = mcpPluginBuilder.Build(reflector);
+
+            // Act & Assert
+            plugin.McpManager.ToolManager.Should().NotBeNull();
+            plugin.McpManager.ToolManager.ToolCallsCount.Should().Be(0UL);
+        }
     }
 }
