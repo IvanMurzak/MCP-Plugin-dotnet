@@ -31,5 +31,9 @@ namespace com.IvanMurzak.McpPlugin
         /// Gets the version handshake response status if a handshake has been performed; otherwise, null.
         /// </summary>
         VersionHandshakeResponse? VersionHandshakeStatus { get; }
+        /// <summary>
+        /// Gets the total number of tool calls made.
+        /// </summary>
+        long ToolCallCount => 0;
     }
 }

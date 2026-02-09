@@ -20,6 +20,7 @@ namespace com.IvanMurzak.McpPlugin
         Observable<Unit> OnToolsUpdated { get; }
         int EnabledToolsCount { get; }
         int TotalToolsCount { get; }
+        long ToolCallCount => 0;
         IEnumerable<IRunTool> GetAllTools();
         bool HasTool(string name);
         bool AddTool(string name, IRunTool runner);
