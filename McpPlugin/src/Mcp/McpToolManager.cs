@@ -10,8 +10,8 @@
 
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -27,7 +27,7 @@ namespace com.IvanMurzak.McpPlugin
 {
     public class McpToolManager : IToolManager
     {
-        static readonly JsonElement EmptyInputSchema = JsonDocument.Parse("{\"type\":\"object\"}").RootElement;
+        static readonly JsonElement EmptyInputSchema = JsonDocument.Parse("{ \"type\": \"object\", \"additionalProperties\": false }").RootElement;
 
         protected readonly ILogger _logger;
         protected readonly Reflector _reflector;
