@@ -21,6 +21,19 @@ namespace com.IvanMurzak.McpPlugin
         int EnabledToolsCount { get; }
         int TotalToolsCount { get; }
         ulong ToolCallsCount => 0;
+        
+        /// <summary>
+        /// Gets the total token count for all enabled tools.
+        /// This is calculated as the sum of TokenCount for each enabled tool.
+        /// 
+        /// <para>
+        /// <b>Note:</b> This property recalculates the sum on each access by iterating through all enabled tools.
+        /// For typical use cases with a reasonable number of tools, this should be performant. If called very
+        /// frequently in performance-critical paths, consider caching the result.
+        /// </para>
+        /// </summary>
+        int EnabledToolsTokenCount { get; }
+        
         IEnumerable<IRunTool> GetAllTools();
         bool HasTool(string name);
         bool AddTool(string name, IRunTool runner);
