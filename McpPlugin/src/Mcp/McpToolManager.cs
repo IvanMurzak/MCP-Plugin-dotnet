@@ -61,6 +61,15 @@ namespace com.IvanMurzak.McpPlugin
         #region Tools
         public int EnabledToolsCount => _tools.Count(kvp => kvp.Value.Enabled);
         public int TotalToolsCount => _tools.Count;
+        
+        /// <summary>
+        /// Gets the total token count for all enabled tools.
+        /// This is calculated as the sum of TokenCount for each enabled tool.
+        /// </summary>
+        public int EnabledToolsTokenCount => _tools
+            .Where(kvp => kvp.Value.Enabled)
+            .Sum(kvp => kvp.Value.TokenCount);
+        
         public bool HasTool(string name) => _tools.ContainsKey(name);
         public bool AddTool(string name, IRunTool runner)
         {

@@ -24,6 +24,11 @@ namespace com.IvanMurzak.McpPlugin
         string? Description { get; }
         JsonNode? InputSchema { get; }
         JsonNode? OutputSchema { get; }
+        
+        /// <summary>
+        /// Gets the semantic token count for this tool based on its JSON schema (including description).
+        /// </summary>
+        int TokenCount { get; }
 
         /// <summary>
         /// Executes the target method with named parameters.
