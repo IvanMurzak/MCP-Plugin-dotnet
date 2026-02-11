@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -42,15 +43,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var tools = toolManager.GetAllTools();
 
             // Act
-            IRunTool? tool = null;
-            foreach (var t in tools)
-            {
-                if (t.Name == "simpleTool")
-                {
-                    tool = t;
-                    break;
-                }
-            }
+            var tool = tools.Where(t => t.Name == "simpleTool").FirstOrDefault();
 
             // Assert
             tool.Should().NotBeNull();
@@ -102,15 +95,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var toolManager = plugin.McpManager.ToolManager!;
             var tools = toolManager.GetAllTools();
 
-            IRunTool? tool = null;
-            foreach (var t in tools)
-            {
-                if (t.Name == "testTool")
-                {
-                    tool = t;
-                    break;
-                }
-            }
+            var tool = tools.Where(t => t.Name == "testTool").FirstOrDefault();
 
             // Act - Call TokenCount multiple times
             var count1 = tool!.TokenCount;
@@ -120,6 +105,16 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             // Assert - All calls should return the same cached value
             count1.Should().Be(count2);
             count2.Should().Be(count3);
+            
+            // Verify caching by checking that the private field is populated using reflection
+            var runTool = tool as RunTool;
+            runTool.Should().NotBeNull();
+            var cacheField = typeof(RunTool).GetField("_cachedTokenCount", BindingFlags.NonPublic | BindingFlags.Instance);
+            cacheField.Should().NotBeNull();
+            var cachedValue = cacheField!.GetValue(runTool);
+            cachedValue.Should().NotBeNull();
+            ((int?)cachedValue).Should().HaveValue();
+            ((int?)cachedValue)!.Value.Should().Be(count1);
         }
 
         [Fact]
@@ -147,14 +142,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             
             // Verify it's the sum by checking individual tools
             var tools = toolManager.GetAllTools();
-            int expectedSum = 0;
-            foreach (var tool in tools)
-            {
-                if (tool.Enabled)
-                {
-                    expectedSum += tool.TokenCount;
-                }
-            }
+            int expectedSum = tools.Where(tool => tool.Enabled).Sum(tool => tool.TokenCount);
             
             totalTokens.Should().Be(expectedSum);
         }
@@ -182,13 +170,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             // Assert - Should only count the enabled tool
             var tools = toolManager.GetAllTools();
-            IRunTool? enabledTool = null;
-            IRunTool? disabledTool = null;
-            foreach (var t in tools)
-            {
-                if (t.Name == "enabledTool") enabledTool = t;
-                if (t.Name == "disabledTool") disabledTool = t;
-            }
+            var enabledTool = tools.Where(t => t.Name == "enabledTool").FirstOrDefault();
+            var disabledTool = tools.Where(t => t.Name == "disabledTool").FirstOrDefault();
             
             enabledTool.Should().NotBeNull();
             disabledTool.Should().NotBeNull();
@@ -267,13 +250,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var tools = toolManager.GetAllTools();
 
             // Act
-            IRunTool? toolWithDescription = null;
-            IRunTool? toolWithoutDescription = null;
-            foreach (var t in tools)
-            {
-                if (t.Name == "withDescription") toolWithDescription = t;
-                if (t.Name == "withoutDescription") toolWithoutDescription = t;
-            }
+            var toolWithDescription = tools.Where(t => t.Name == "withDescription").FirstOrDefault();
+            var toolWithoutDescription = tools.Where(t => t.Name == "withoutDescription").FirstOrDefault();
 
             // Assert - Tool with description should have higher token count
             toolWithDescription.Should().NotBeNull();

@@ -47,7 +47,7 @@ namespace com.IvanMurzak.McpPlugin
 
         /// <summary>
         /// Calculates the semantic token count for this tool.
-        /// The calculation is based on the JSON Schema including name, title, description, and input schema.
+        /// The calculation is based on the JSON Schema including name, title, description, input schema, and output schema.
         /// Uses a simple approximation: characters / 4 for semantic tokens (common for many LLM tokenizers).
         /// </summary>
         private int CalculateTokenCount()
