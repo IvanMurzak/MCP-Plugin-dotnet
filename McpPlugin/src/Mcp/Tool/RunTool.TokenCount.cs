@@ -54,33 +54,32 @@ namespace com.IvanMurzak.McpPlugin
         {
             try
             {
-                // Build a JSON string representing the tool's schema efficiently
-                var jsonParts = new List<string>();
-                
+                // Build a JSON representation of the tool's schema using JsonObject
+                var jsonObject = new JsonObject();
+
                 // Add basic tool information
                 if (!string.IsNullOrEmpty(Name))
-                    jsonParts.Add($"\"name\":\"{Name}\"");
-                    
+                    jsonObject["name"] = Name;
+
                 if (!string.IsNullOrEmpty(Title))
-                    jsonParts.Add($"\"title\":\"{Title}\"");
-                    
+                    jsonObject["title"] = Title;
+
                 if (!string.IsNullOrEmpty(Description))
-                    jsonParts.Add($"\"description\":\"{Description}\"");
-                
-                // Add schemas by serializing them directly (more efficient than cloning)
+                    jsonObject["description"] = Description;
+
+                // Add schemas directly as JSON nodes
                 if (InputSchema != null)
-                    jsonParts.Add($"\"inputSchema\":{InputSchema.ToJsonString()}");
-                
+                    jsonObject["inputSchema"] = InputSchema;
+
                 if (OutputSchema != null)
-                    jsonParts.Add($"\"outputSchema\":{OutputSchema.ToJsonString()}");
-                
-                // Combine all parts
-                var jsonString = "{" + string.Join(",", jsonParts) + "}";
-                
+                    jsonObject["outputSchema"] = OutputSchema;
+
+                // Serialize to JSON string (ensures proper escaping)
+                var jsonString = jsonObject.ToJsonString();
+
                 // Calculate tokens: using a common approximation of 1 token per 4 characters
                 // This is a reasonable estimate for English text and JSON structures
                 var tokenCount = (int)Math.Ceiling(jsonString.Length / 4.0);
-                
                 return tokenCount;
             }
             catch (Exception ex)
