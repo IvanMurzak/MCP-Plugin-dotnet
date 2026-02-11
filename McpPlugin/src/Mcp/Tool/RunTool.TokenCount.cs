@@ -9,9 +9,8 @@
 */
 
 using System;
-using System.Collections.Generic;
-using System.Text.Json;
 using System.Text.Json.Nodes;
+using com.IvanMurzak.ReflectorNet.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin
@@ -24,11 +23,11 @@ namespace com.IvanMurzak.McpPlugin
         /// Gets the semantic token count for this tool based on its JSON schema (including description).
         /// The token count is calculated from the JSON representation of the tool's input schema and description.
         /// This value is cached after the first calculation.
-        /// 
+        ///
         /// <para>
         /// <b>Note:</b> This uses a simplified approximation of 1 token per 4 characters, which is a common
         /// heuristic but may not accurately reflect actual LLM tokenization. Different models use different
-        /// tokenizers (e.g., GPT uses tiktoken, Claude uses a different tokenization scheme). 
+        /// tokenizers (e.g., GPT uses tiktoken, Claude uses a different tokenization scheme).
         /// This approximation provides a reasonable estimate for planning and capacity management but should
         /// not be relied upon for exact token accounting.
         /// </para>

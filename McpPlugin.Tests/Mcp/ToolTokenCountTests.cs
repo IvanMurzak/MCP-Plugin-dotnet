@@ -8,14 +8,10 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
-using System.Text.Json;
-using System.Threading.Tasks;
-using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.ReflectorNet;
 using FluentAssertions;
 using Xunit;
@@ -35,9 +31,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var reflector = new Reflector();
             var mcpPluginBuilder = new McpPluginBuilder(_version);
             var method = typeof(TestToolClass).GetMethod(nameof(TestToolClass.SimpleMethod));
-            
+
             mcpPluginBuilder.WithTool("simpleTool", "Simple Tool", typeof(TestToolClass), method!);
-            
+
             var plugin = mcpPluginBuilder.Build(reflector);
             var toolManager = plugin.McpManager.ToolManager!;
             var tools = toolManager.GetAllTools();
@@ -58,10 +54,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var mcpPluginBuilder = new McpPluginBuilder(_version);
             var simpleMethod = typeof(TestToolClass).GetMethod(nameof(TestToolClass.SimpleMethod));
             var complexMethod = typeof(TestToolClass).GetMethod(nameof(TestToolClass.ComplexMethod));
-            
+
             mcpPluginBuilder.WithTool("simpleTool", "Simple Tool", typeof(TestToolClass), simpleMethod!);
             mcpPluginBuilder.WithTool("complexTool", "Complex Tool", typeof(TestToolClass), complexMethod!);
-            
+
             var plugin = mcpPluginBuilder.Build(reflector);
             var toolManager = plugin.McpManager.ToolManager!;
             var tools = toolManager.GetAllTools();
@@ -88,9 +84,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var reflector = new Reflector();
             var mcpPluginBuilder = new McpPluginBuilder(_version);
             var method = typeof(TestToolClass).GetMethod(nameof(TestToolClass.SimpleMethod));
-            
+
             mcpPluginBuilder.WithTool("testTool", "Test Tool", typeof(TestToolClass), method!);
-            
+
             var plugin = mcpPluginBuilder.Build(reflector);
             var toolManager = plugin.McpManager.ToolManager!;
             var tools = toolManager.GetAllTools();
@@ -105,7 +101,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             // Assert - All calls should return the same cached value
             count1.Should().Be(count2);
             count2.Should().Be(count3);
-            
+
             // Verify caching by checking that the private field is populated using reflection
             var runTool = tool as RunTool;
             runTool.Should().NotBeNull();
@@ -126,11 +122,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var method1 = typeof(TestToolClass).GetMethod(nameof(TestToolClass.SimpleMethod));
             var method2 = typeof(TestToolClass).GetMethod(nameof(TestToolClass.ComplexMethod));
             var method3 = typeof(TestToolClass).GetMethod(nameof(TestToolClass.AnotherMethod));
-            
+
             mcpPluginBuilder.WithTool("tool1", "Tool 1", typeof(TestToolClass), method1!);
             mcpPluginBuilder.WithTool("tool2", "Tool 2", typeof(TestToolClass), method2!);
             mcpPluginBuilder.WithTool("tool3", "Tool 3", typeof(TestToolClass), method3!);
-            
+
             var plugin = mcpPluginBuilder.Build(reflector);
             var toolManager = plugin.McpManager.ToolManager!;
 
@@ -139,11 +135,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             // Assert
             totalTokens.Should().BeGreaterThan(0);
-            
+
             // Verify it's the sum by checking individual tools
             var tools = toolManager.GetAllTools();
             int expectedSum = tools.Where(tool => tool.Enabled).Sum(tool => tool.TokenCount);
-            
+
             totalTokens.Should().Be(expectedSum);
         }
 
@@ -155,13 +151,13 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var mcpPluginBuilder = new McpPluginBuilder(_version);
             var method1 = typeof(TestToolClass).GetMethod(nameof(TestToolClass.SimpleMethod));
             var method2 = typeof(TestToolClass).GetMethod(nameof(TestToolClass.ComplexMethod));
-            
+
             mcpPluginBuilder.WithTool("enabledTool", "Enabled Tool", typeof(TestToolClass), method1!);
             mcpPluginBuilder.WithTool("disabledTool", "Disabled Tool", typeof(TestToolClass), method2!);
-            
+
             var plugin = mcpPluginBuilder.Build(reflector);
             var toolManager = plugin.McpManager.ToolManager!;
-            
+
             // Disable one tool
             toolManager.SetToolEnabled("disabledTool", false);
 
@@ -172,7 +168,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var tools = toolManager.GetAllTools();
             var enabledTool = tools.Where(t => t.Name == "enabledTool").FirstOrDefault();
             var disabledTool = tools.Where(t => t.Name == "disabledTool").FirstOrDefault();
-            
+
             enabledTool.Should().NotBeNull();
             disabledTool.Should().NotBeNull();
             totalTokens.Should().Be(enabledTool!.TokenCount);
@@ -186,12 +182,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var reflector = new Reflector();
             var mcpPluginBuilder = new McpPluginBuilder(_version);
             var method = typeof(TestToolClass).GetMethod(nameof(TestToolClass.SimpleMethod));
-            
+
             mcpPluginBuilder.WithTool("testTool", "Test Tool", typeof(TestToolClass), method!);
-            
+
             var plugin = mcpPluginBuilder.Build(reflector);
             var toolManager = plugin.McpManager.ToolManager!;
-            
+
             // Disable all tools
             toolManager.SetToolEnabled("testTool", false);
 
@@ -210,20 +206,20 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var mcpPluginBuilder = new McpPluginBuilder(_version);
             var method1 = typeof(TestToolClass).GetMethod(nameof(TestToolClass.SimpleMethod));
             var method2 = typeof(TestToolClass).GetMethod(nameof(TestToolClass.ComplexMethod));
-            
+
             mcpPluginBuilder.WithTool("tool1", "Tool 1", typeof(TestToolClass), method1!);
             mcpPluginBuilder.WithTool("tool2", "Tool 2", typeof(TestToolClass), method2!);
-            
+
             var plugin = mcpPluginBuilder.Build(reflector);
             var toolManager = plugin.McpManager.ToolManager!;
 
             // Act - Get initial count
             var initialCount = toolManager.EnabledToolsTokenCount;
-            
+
             // Disable one tool
             toolManager.SetToolEnabled("tool1", false);
             var countAfterDisable = toolManager.EnabledToolsTokenCount;
-            
+
             // Re-enable the tool
             toolManager.SetToolEnabled("tool1", true);
             var countAfterReEnable = toolManager.EnabledToolsTokenCount;
@@ -241,10 +237,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var mcpPluginBuilder = new McpPluginBuilder(_version);
             var methodWithDescription = typeof(TestToolClass).GetMethod(nameof(TestToolClass.MethodWithDescription));
             var methodWithoutDescription = typeof(TestToolClass).GetMethod(nameof(TestToolClass.SimpleMethod));
-            
+
             mcpPluginBuilder.WithTool("withDescription", "With Description", typeof(TestToolClass), methodWithDescription!);
             mcpPluginBuilder.WithTool("withoutDescription", "Without Description", typeof(TestToolClass), methodWithoutDescription!);
-            
+
             var plugin = mcpPluginBuilder.Build(reflector);
             var toolManager = plugin.McpManager.ToolManager!;
             var tools = toolManager.GetAllTools();
@@ -256,7 +252,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             // Assert - Tool with description should have higher token count
             toolWithDescription.Should().NotBeNull();
             toolWithoutDescription.Should().NotBeNull();
-            
+
             // Note: This assertion might be fragile depending on the schema generation,
             // but in general, a method with a description should have more tokens
             if (!string.IsNullOrEmpty(toolWithDescription!.Description))
@@ -270,8 +266,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             public static string SimpleMethod() => "simple result";
 
             public static string ComplexMethod(
-                string param1, 
-                int param2, 
+                string param1,
+                int param2,
                 bool param3,
                 ComplexType complexParam) => "complex result";
 
