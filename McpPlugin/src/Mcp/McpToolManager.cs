@@ -65,6 +65,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// Gets the total token count for all enabled tools.
         /// This is calculated as the sum of TokenCount for each enabled tool.
+        /// Recalculates on each access but should be performant for typical tool counts.
         /// </summary>
         public int EnabledToolsTokenCount => _tools
             .Where(kvp => kvp.Value.Enabled)

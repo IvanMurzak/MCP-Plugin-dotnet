@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
@@ -23,6 +24,14 @@ namespace com.IvanMurzak.McpPlugin
         /// Gets the semantic token count for this tool based on its JSON schema (including description).
         /// The token count is calculated from the JSON representation of the tool's input schema and description.
         /// This value is cached after the first calculation.
+        /// 
+        /// <para>
+        /// <b>Note:</b> This uses a simplified approximation of 1 token per 4 characters, which is a common
+        /// heuristic but may not accurately reflect actual LLM tokenization. Different models use different
+        /// tokenizers (e.g., GPT uses tiktoken, Claude uses a different tokenization scheme). 
+        /// This approximation provides a reasonable estimate for planning and capacity management but should
+        /// not be relied upon for exact token accounting.
+        /// </para>
         /// </summary>
         public int TokenCount
         {
@@ -45,32 +54,28 @@ namespace com.IvanMurzak.McpPlugin
         {
             try
             {
-                // Create a JSON object representing the tool's schema
-                var toolSchema = new JsonObject();
+                // Build a JSON string representing the tool's schema efficiently
+                var jsonParts = new List<string>();
                 
                 // Add basic tool information
                 if (!string.IsNullOrEmpty(Name))
-                    toolSchema["name"] = Name;
+                    jsonParts.Add($"\"name\":\"{Name}\"");
                     
                 if (!string.IsNullOrEmpty(Title))
-                    toolSchema["title"] = Title;
+                    jsonParts.Add($"\"title\":\"{Title}\"");
                     
                 if (!string.IsNullOrEmpty(Description))
-                    toolSchema["description"] = Description;
+                    jsonParts.Add($"\"description\":\"{Description}\"");
                 
-                // Add input schema
+                // Add schemas by serializing them directly (more efficient than cloning)
                 if (InputSchema != null)
-                    toolSchema["inputSchema"] = InputSchema.DeepClone();
+                    jsonParts.Add($"\"inputSchema\":{InputSchema.ToJsonString()}");
                 
-                // Add output schema if present
                 if (OutputSchema != null)
-                    toolSchema["outputSchema"] = OutputSchema.DeepClone();
+                    jsonParts.Add($"\"outputSchema\":{OutputSchema.ToJsonString()}");
                 
-                // Serialize to JSON string
-                var jsonString = toolSchema.ToJsonString(new JsonSerializerOptions 
-                { 
-                    WriteIndented = false 
-                });
+                // Combine all parts
+                var jsonString = "{" + string.Join(",", jsonParts) + "}";
                 
                 // Calculate tokens: using a common approximation of 1 token per 4 characters
                 // This is a reasonable estimate for English text and JSON structures
