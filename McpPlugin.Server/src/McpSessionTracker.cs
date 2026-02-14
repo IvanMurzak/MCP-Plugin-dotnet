@@ -9,6 +9,9 @@
 */
 
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 
@@ -16,11 +19,9 @@ namespace com.IvanMurzak.McpPlugin.Server
 {
     public class McpSessionTracker : IMcpSessionTracker
     {
-        readonly object _lock = new();
         readonly IDataArguments _dataArguments;
         readonly Common.Version _version;
-        McpClientData? _clientData;
-        McpServerData? _serverData;
+        readonly ConcurrentDictionary<string, (McpClientData ClientData, McpServerData ServerData)> _sessions = new();
 
         public McpSessionTracker(IDataArguments dataArguments, Common.Version version)
         {
@@ -30,42 +31,35 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public McpClientData GetClientData()
         {
-            lock (_lock)
-            {
-                return _clientData ?? new McpClientData { IsConnected = false };
-            }
+            var entry = _sessions.Values.FirstOrDefault(x => x.ClientData.IsConnected);
+            return entry.ClientData ?? new McpClientData { IsConnected = false };
         }
 
         public McpServerData GetServerData()
         {
-            lock (_lock)
+            var hasAnyConnected = _sessions.Values.Any(x => x.ServerData.IsAiAgentConnected);
+            return new McpServerData
             {
-                return _serverData ?? new McpServerData
-                {
-                    IsAiAgentConnected = false,
-                    ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
-                    ServerApiVersion = _version.Api,
-                    ServerTransport = _dataArguments.ClientTransport
-                };
-            }
+                IsAiAgentConnected = hasAnyConnected,
+                ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                ServerApiVersion = _version.Api,
+                ServerTransport = _dataArguments.ClientTransport
+            };
         }
 
-        public void Update(McpClientData clientData, McpServerData serverData)
+        public IReadOnlyList<McpClientData> GetAllClientData()
         {
-            lock (_lock)
-            {
-                _clientData = clientData;
-                _serverData = serverData;
-            }
+            return _sessions.Values.Select(x => x.ClientData).ToList();
         }
 
-        public void Clear()
+        public void Update(string sessionId, McpClientData clientData, McpServerData serverData)
         {
-            lock (_lock)
-            {
-                _clientData = null;
-                _serverData = null;
-            }
+            _sessions[sessionId] = (clientData, serverData);
+        }
+
+        public void Remove(string sessionId)
+        {
+            _sessions.TryRemove(sessionId, out _);
         }
     }
 }

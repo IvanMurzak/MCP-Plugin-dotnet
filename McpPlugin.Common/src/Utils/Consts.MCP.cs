@@ -23,12 +23,14 @@ namespace com.IvanMurzak.McpPlugin.Common
                 {
                     public const string McpServerEndpoint = "mcp-server-endpoint";
                     public const string McpServerTimeout = "mcp-server-timeout";
+                    public const string McpPluginToken = "mcp-plugin-token";
                 }
 
                 public static class Env
                 {
                     public const string McpServerEndpoint = "MCP_SERVER_ENDPOINT";
                     public const string McpServerTimeout = "MCP_SERVER_TIMEOUT";
+                    public const string McpPluginToken = "MCP_PLUGIN_TOKEN";
                 }
             }
             public static class Server
@@ -38,6 +40,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string Port = "port";
                     public const string PluginTimeout = "plugin-timeout";
                     public const string ClientTransportMethod = "client-transport";
+                    public const string Token = "token";
                 }
 
                 public static class Env
@@ -45,6 +48,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string Port = "MCP_PLUGIN_PORT";
                     public const string PluginTimeout = "MCP_PLUGIN_CLIENT_TIMEOUT";
                     public const string ClientTransportMethod = "MCP_PLUGIN_CLIENT_TRANSPORT";
+                    public const string Token = "MCP_PLUGIN_TOKEN";
                 }
 
                 public const string DefaultBodyPath = "mcpServers";

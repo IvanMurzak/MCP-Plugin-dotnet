@@ -41,7 +41,11 @@ namespace com.IvanMurzak.McpPlugin
                 var connectionConfig = _serviceProvider.GetRequiredService<IOptions<ConnectionConfig>>().Value;
 
                 var hubConnectionBuilder = new HubConnectionBuilder()
-                    .WithUrl(connectionConfig.Host + endpoint)
+                    .WithUrl(connectionConfig.Host + endpoint, options =>
+                    {
+                        if (!string.IsNullOrEmpty(connectionConfig.Token))
+                            options.AccessTokenProvider = () => Task.FromResult<string?>(connectionConfig.Token);
+                    })
                     .WithAutomaticReconnect(new FixedRetryPolicy(TimeSpan.FromSeconds(10)))
                     .WithKeepAliveInterval(TimeSpan.FromSeconds(30))
                     .WithServerTimeout(TimeSpan.FromMinutes(5))

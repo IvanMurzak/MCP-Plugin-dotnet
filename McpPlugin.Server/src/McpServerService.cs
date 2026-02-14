@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
@@ -38,6 +39,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly Common.Version _version;
         readonly IDataArguments _dataArguments;
         readonly CompositeDisposable _disposables = new();
+        string _sessionId = "unknown";
 
         public McpSession? McpSessionOrServer => _mcpSession ?? _mcpServer;
 
@@ -136,7 +138,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                 })
                 .AddTo(_disposables);
 
-            _sessionTracker.Update(GetClientData(), GetServerData());
+            _sessionId = McpSessionTokenContext.CurrentToken
+                      ?? McpSessionOrServer?.SessionId
+                      ?? "stdio";
+            _sessionTracker.Update(_sessionId, GetClientData(), GetServerData());
 
             _ = Task.Run(async () =>
             {
@@ -173,7 +178,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
 
             _disposables.Clear();
-            _sessionTracker.Clear();
+            _sessionTracker.Remove(_sessionId);
         }
 
         async void OnListToolUpdated(HubEventToolsChange.EventData eventData, CancellationToken cancellationToken)

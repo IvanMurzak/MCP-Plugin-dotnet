@@ -38,7 +38,16 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public override Task OnConnectedAsync()
         {
-            ClientUtils.AddClient(GetType(), Context.ConnectionId, _logger);
+            var httpContext = Context.GetHttpContext();
+            var token = httpContext?.Request.Query["access_token"].FirstOrDefault();
+            if (string.IsNullOrEmpty(token))
+            {
+                var authHeader = httpContext?.Request.Headers["Authorization"].FirstOrDefault();
+                if (authHeader != null && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                    token = authHeader.Substring("Bearer ".Length).Trim();
+            }
+
+            ClientUtils.AddClient(GetType(), Context.ConnectionId, _logger, token);
             return base.OnConnectedAsync();
         }
 

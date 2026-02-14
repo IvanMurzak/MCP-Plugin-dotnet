@@ -30,6 +30,10 @@ namespace com.IvanMurzak.McpPlugin.Server
         static readonly ConcurrentDictionary<Type, ConcurrentDictionary<string, bool>> ConnectedClients = new();
         static readonly ConcurrentDictionary<Type, string> LastSuccessfulClients = new();
 
+        // Token-based routing: maps token → connectionId for 1:1 plugin-client pairing
+        static readonly ConcurrentDictionary<string, string> TokenToConnectionId = new();
+        static readonly ConcurrentDictionary<string, string> ConnectionIdToToken = new();
+
         static IEnumerable<string> AllConnections => ConnectedClients.TryGetValue(typeof(McpServerHub), out var clients)
             ? clients?.Keys ?? new string[0]
             : Enumerable.Empty<string>();
@@ -60,8 +64,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         //     ? clients?.FirstOrDefault().Key
         //     : null;
 
-        public static void AddClient<T>(string connectionId, ILogger? logger) => AddClient(typeof(T), connectionId, logger);
-        public static void AddClient(Type type, string connectionId, ILogger? logger)
+        public static void AddClient<T>(string connectionId, ILogger? logger, string? token = null) => AddClient(typeof(T), connectionId, logger, token);
+        public static void AddClient(Type type, string connectionId, ILogger? logger, string? token = null)
         {
             var clients = ConnectedClients.GetOrAdd(type, _ => new());
             if (clients.TryAdd(connectionId, true))
@@ -71,6 +75,13 @@ namespace com.IvanMurzak.McpPlugin.Server
             else
             {
                 logger?.LogWarning($"Client '{connectionId}' is already connected to {type.Name}.");
+            }
+
+            if (!string.IsNullOrEmpty(token))
+            {
+                TokenToConnectionId[token] = connectionId;
+                ConnectionIdToToken[connectionId] = token;
+                logger?.LogInformation("Token mapping added: token -> connectionId '{0}'", connectionId);
             }
         }
         public static void RemoveClient<T>(string connectionId, ILogger? logger) => RemoveClient(typeof(T), connectionId, logger);
@@ -91,6 +102,20 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 logger?.LogWarning($"No connected clients found for {type.Name}.");
             }
+
+            if (ConnectionIdToToken.TryRemove(connectionId, out var removedToken))
+            {
+                TokenToConnectionId.TryRemove(removedToken, out _);
+                logger?.LogInformation("Token mapping removed for connectionId '{0}'", connectionId);
+            }
+        }
+
+        public static string? GetConnectionIdByToken(string? token)
+        {
+            if (string.IsNullOrEmpty(token))
+                return null;
+
+            return TokenToConnectionId.TryGetValue(token, out var connectionId) ? connectionId : null;
         }
 
         public static async Task<ResponseData<TResponse>> InvokeAsync<TRequest, TResponse, THub>(
@@ -99,6 +124,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             string methodName,
             TRequest request,
             IDataArguments dataArguments,
+            string? token = null,
             CancellationToken cancellationToken = default)
             where TRequest : IRequestID
             where THub : Hub
@@ -122,7 +148,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 {
                     retryCount++;
 
-                    var connectionId = GetBestConnectionId(typeof(McpServerHub), retryCount - 1);
+                    var connectionId = GetConnectionIdByToken(token) ?? GetBestConnectionId(typeof(McpServerHub), retryCount - 1);
                     var client = string.IsNullOrEmpty(connectionId)
                         ? null
                         : hubContext.Clients.Client(connectionId);

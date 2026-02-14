@@ -24,6 +24,12 @@ namespace com.IvanMurzak.McpPlugin
         public virtual int TimeoutMs { get; set; } = Consts.Hub.DefaultTimeoutMs;
         public virtual bool KeepConnected { get; set; } = true;
 
+        /// <summary>
+        /// Token for authorization when connecting to the MCP server via SignalR.
+        /// Set via command line arg 'mcp-plugin-token' or environment variable 'MCP_PLUGIN_TOKEN'.
+        /// </summary>
+        public virtual string? Token { get; set; }
+
         public ConnectionConfig() { }
 
         public static ConnectionConfig Default => new ConnectionConfig()
@@ -84,6 +90,10 @@ namespace com.IvanMurzak.McpPlugin
             var timeout = Environment.GetEnvironmentVariable(Consts.MCP.Plugin.Env.McpServerTimeout);
             if (timeout != null && int.TryParse(timeout, out var parsedEnvTimeoutMs))
                 TimeoutMs = parsedEnvTimeoutMs;
+
+            var token = Environment.GetEnvironmentVariable(Consts.MCP.Plugin.Env.McpPluginToken);
+            if (token != null)
+                Token = token;
         }
         void ParseCommandLineArguments(string[] args)
         {
@@ -100,6 +110,10 @@ namespace com.IvanMurzak.McpPlugin
             var argPluginTimeout = commandLineArgs.GetValueOrDefault(Consts.MCP.Plugin.Args.McpServerTimeout.TrimStart('-'));
             if (argPluginTimeout != null && int.TryParse(argPluginTimeout, out var timeoutMs))
                 TimeoutMs = timeoutMs;
+
+            var argToken = commandLineArgs.GetValueOrDefault(Consts.MCP.Plugin.Args.McpPluginToken.TrimStart('-'));
+            if (argToken != null)
+                Token = argToken;
         }
 
         public override string ToString()

@@ -12,7 +12,9 @@ using System;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.ReflectorNet;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace com.IvanMurzak.McpPlugin.Server
@@ -54,6 +56,16 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             mcpServerBuilder.Services.AddSingleton<IDataArguments>(dataArguments);
             mcpServerBuilder.Services.AddSingleton(version);
+
+            mcpServerBuilder.Services.AddAuthentication(TokenAuthenticationHandler.SchemeName)
+                .AddScheme<TokenAuthenticationOptions, TokenAuthenticationHandler>(
+                    TokenAuthenticationHandler.SchemeName,
+                    options =>
+                    {
+                        options.ServerToken = dataArguments.Token;
+                        options.RequireToken = !string.IsNullOrEmpty(dataArguments.Token);
+                    });
+            mcpServerBuilder.Services.AddAuthorization();
 
             mcpServerBuilder.Services.AddRouting();
             if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.stdio)
