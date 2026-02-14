@@ -162,7 +162,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             try
             {
-                return Task.FromResult(_sessionTracker.GetClientData());
+                var clientData = _sessionTracker.GetClientData() ?? throw new Exception("Client data is null");
+                return Task.FromResult(clientData);
             }
             catch (Exception ex)
             {
@@ -175,7 +176,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             try
             {
-                return Task.FromResult(_sessionTracker.GetServerData());
+                var serverData = _sessionTracker.GetServerData() ?? throw new Exception("Server data is null");
+                return Task.FromResult(serverData);
             }
             catch (Exception ex)
             {
