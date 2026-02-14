@@ -11,7 +11,6 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
@@ -188,8 +187,6 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
 
             _disposables.Clear();
-            if (Instance == this)
-                Instance = null;
         }
 
         async void OnListToolUpdated(HubEventToolsChange.EventData eventData, CancellationToken cancellationToken)
