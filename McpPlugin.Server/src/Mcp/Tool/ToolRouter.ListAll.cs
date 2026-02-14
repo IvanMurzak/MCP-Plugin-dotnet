@@ -29,10 +29,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             var logger = LogManager.GetCurrentClassLogger();
             logger.Trace("ListAll");
 
-            var toolRunner = request.Services?.GetRequiredService<IClientToolHub>();
-            if (toolRunner == null)
-                return new ListToolsResult().SetError($"[Error] '{nameof(toolRunner)}' is null");
+            if (request.Services == null)
+                return new ListToolsResult().SetError("[Error] 'request.Services' is null");
 
+            var toolRunner = request.Services.GetRequiredService<IClientToolHub>();
             logger.Trace("Using ToolRunner: {0}", toolRunner.GetType().GetTypeShortName());
 
             var requestData = new RequestListTool();

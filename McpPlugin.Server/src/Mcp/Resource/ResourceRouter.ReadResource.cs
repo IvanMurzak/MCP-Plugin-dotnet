@@ -29,7 +29,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (request?.Params?.Uri == null)
                 return new ReadResourceResult().SetError("null", "[Error] Request or Uri is null");
 
-            var resourceRunner = request.Services?.GetRequiredService<IClientResourceHub>();
+            if (request.Services == null)
+                return new ReadResourceResult().SetError(request.Params.Uri, "[Error] Services is null");
+
+            var resourceRunner = request.Services.GetRequiredService<IClientResourceHub>();
             if (resourceRunner == null)
                 return new ReadResourceResult().SetError(request.Params.Uri, $"[Error] '{nameof(resourceRunner)}' is null");
 

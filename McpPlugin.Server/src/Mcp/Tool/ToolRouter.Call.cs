@@ -39,10 +39,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (request.Params.Arguments == null)
                 return new CallToolResult().SetError("[Error] Request.Params.Arguments is null");
 
-            var toolRunner = request.Services?.GetRequiredService<IClientToolHub>();
-            if (toolRunner == null)
-                return new CallToolResult().SetError($"[Error] '{nameof(toolRunner)}' is null");
+            if (request.Services == null)
+                return new CallToolResult().SetError("[Error] Request.Services is null");
 
+            var toolRunner = request.Services.GetRequiredService<IClientToolHub>();
             logger.Trace("Using ToolRunner: {0}", toolRunner.GetType().GetTypeShortName());
 
             var argumentsDict = request.Params.Arguments as IReadOnlyDictionary<string, JsonElement>

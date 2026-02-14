@@ -23,7 +23,10 @@ namespace com.IvanMurzak.McpPlugin.Server
     {
         public static async ValueTask<ListResourceTemplatesResult> ListTemplates(RequestContext<ListResourceTemplatesRequestParams> request, CancellationToken cancellationToken)
         {
-            var resourceRunner = request.Services?.GetRequiredService<IClientResourceHub>();
+            if (request.Services == null)
+                return new ListResourceTemplatesResult().SetError("[Error] 'Services' is null");
+
+            var resourceRunner = request.Services.GetRequiredService<IClientResourceHub>();
             if (resourceRunner == null)
                 return new ListResourceTemplatesResult().SetError($"[Error] '{nameof(resourceRunner)}' is null");
 

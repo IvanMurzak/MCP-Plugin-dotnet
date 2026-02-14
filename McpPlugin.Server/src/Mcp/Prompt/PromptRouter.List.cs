@@ -30,7 +30,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             var logger = LogManager.GetCurrentClassLogger();
             logger.Trace("List");
 
-            var promptRunner = request.Services?.GetRequiredService<IClientPromptHub>();
+            if (request.Services == null)
+                return new ListPromptsResult().SetError("[Error] 'Services' is null");
+
+            var promptRunner = request.Services.GetRequiredService<IClientPromptHub>();
             if (promptRunner == null)
                 return new ListPromptsResult().SetError($"[Error] '{nameof(promptRunner)}' is null");
 
