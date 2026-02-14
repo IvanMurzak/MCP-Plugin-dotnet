@@ -30,36 +30,26 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly ILogger<McpServerService> _logger;
         readonly McpServer? _mcpServer;
         readonly McpSession? _mcpSession; // Should be replaced with McpSession class, but for now it doesn't work in csharp-sdk.0.4.1-preview.1
-        readonly IClientToolHub _toolRunner;
-        readonly IClientPromptHub _promptRunner;
-        readonly IClientResourceHub _resourceRunner;
         readonly HubEventToolsChange _eventAppToolsChange;
         readonly HubEventPromptsChange _eventAppPromptsChange;
         readonly HubEventResourcesChange _eventAppResourcesChange;
         readonly IHubContext<McpServerHub, IClientMcpRpc> _hubContext;
+        readonly IMcpSessionTracker _sessionTracker;
         readonly Common.Version _version;
         readonly IDataArguments _dataArguments;
         readonly CompositeDisposable _disposables = new();
 
         public McpSession? McpSessionOrServer => _mcpSession ?? _mcpServer;
 
-        public IClientToolHub ToolRunner => _toolRunner;
-        public IClientPromptHub PromptRunner => _promptRunner;
-        public IClientResourceHub ResourceRunner => _resourceRunner;
-
-        public static McpServerService? Instance { get; private set; }
-
         public McpServerService(
             ILogger<McpServerService> logger,
             Common.Version version,
             IDataArguments dataArguments,
-            IClientToolHub toolRunner,
-            IClientPromptHub promptRunner,
-            IClientResourceHub resourceRunner,
             HubEventToolsChange eventAppToolsChange,
             HubEventPromptsChange eventAppPromptsChange,
             HubEventResourcesChange eventAppResourcesChange,
             IHubContext<McpServerHub, IClientMcpRpc> hubContext,
+            IMcpSessionTracker sessionTracker,
             McpServer? mcpServer = null,
             McpSession? mcpSession = null)
         {
@@ -73,17 +63,11 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             _version = version ?? throw new ArgumentNullException(nameof(version));
             _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
-            _toolRunner = toolRunner ?? throw new ArgumentNullException(nameof(toolRunner));
-            _promptRunner = promptRunner ?? throw new ArgumentNullException(nameof(promptRunner));
-            _resourceRunner = resourceRunner ?? throw new ArgumentNullException(nameof(resourceRunner));
             _eventAppToolsChange = eventAppToolsChange ?? throw new ArgumentNullException(nameof(eventAppToolsChange));
             _eventAppPromptsChange = eventAppPromptsChange ?? throw new ArgumentNullException(nameof(eventAppPromptsChange));
             _eventAppResourcesChange = eventAppResourcesChange ?? throw new ArgumentNullException(nameof(eventAppResourcesChange));
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
-
-            // if (Instance != null)
-            //     throw new InvalidOperationException($"{typeof(McpServerService).Name} is already initialized.");
-            Instance = this;
+            _sessionTracker = sessionTracker ?? throw new ArgumentNullException(nameof(sessionTracker));
         }
 
         public McpClientData GetClientData()
@@ -152,6 +136,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                 })
                 .AddTo(_disposables);
 
+            _sessionTracker.Update(GetClientData(), GetServerData());
+
             _ = Task.Run(async () =>
             {
                 try
@@ -187,6 +173,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
 
             _disposables.Clear();
+            _sessionTracker.Clear();
         }
 
         async void OnListToolUpdated(HubEventToolsChange.EventData eventData, CancellationToken cancellationToken)

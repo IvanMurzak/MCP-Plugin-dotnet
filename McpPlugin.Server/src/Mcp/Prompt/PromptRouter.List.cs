@@ -12,9 +12,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.ReflectorNet;
+using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using NLog;
@@ -28,11 +30,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             var logger = LogManager.GetCurrentClassLogger();
             logger.Trace("List");
 
-            var mcpServerService = McpServerService.Instance;
-            if (mcpServerService == null)
-                return new ListPromptsResult().SetError($"[Error] '{nameof(mcpServerService)}' is null");
-
-            var promptRunner = mcpServerService.PromptRunner;
+            var promptRunner = request.Services?.GetRequiredService<IClientPromptHub>();
             if (promptRunner == null)
                 return new ListPromptsResult().SetError($"[Error] '{nameof(promptRunner)}' is null");
 

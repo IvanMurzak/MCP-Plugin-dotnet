@@ -128,13 +128,11 @@ namespace com.IvanMurzak.McpPlugin.Server
                                 services.GetRequiredService<ILogger<McpServerService>>(),
                                 services.GetRequiredService<Common.Version>(),
                                 dataArguments,
-                                services.GetRequiredService<IClientToolHub>(),
-                                services.GetRequiredService<IClientPromptHub>(),
-                                services.GetRequiredService<IClientResourceHub>(),
                                 services.GetRequiredService<HubEventToolsChange>(),
                                 services.GetRequiredService<HubEventPromptsChange>(),
                                 services.GetRequiredService<HubEventResourcesChange>(),
                                 services.GetRequiredService<IHubContext<McpServerHub, IClientMcpRpc>>(),
+                                services.GetRequiredService<IMcpSessionTracker>(),
                                 mcpServer: server,
                                 mcpSession: null
                             );
