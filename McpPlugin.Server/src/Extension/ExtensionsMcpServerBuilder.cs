@@ -63,6 +63,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             mcpServerBuilder.Services.AddSingleton<HubEventPromptsChange>();
             mcpServerBuilder.Services.AddSingleton<HubEventResourcesChange>();
             mcpServerBuilder.Services.AddSingleton<IRequestTrackingService, RequestTrackingService>();
+            mcpServerBuilder.Services.AddSingleton<IMcpSessionTracker, McpSessionTracker>();
 
             mcpServerBuilder.Services.AddSingleton<RemoteToolRunner>();
             mcpServerBuilder.Services.AddSingleton<IClientToolHub>(sp => sp.GetRequiredService<RemoteToolRunner>());

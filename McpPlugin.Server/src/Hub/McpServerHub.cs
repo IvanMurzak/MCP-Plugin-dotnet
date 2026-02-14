@@ -28,6 +28,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly HubEventPromptsChange _eventAppPromptsChange;
         readonly HubEventResourcesChange _eventAppResourcesChange;
         readonly IRequestTrackingService _requestTrackingService;
+        readonly IMcpSessionTracker _sessionTracker;
 
         public McpServerHub(
             ILogger<McpServerHub> logger,
@@ -36,7 +37,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             HubEventToolsChange eventAppToolsChange,
             HubEventPromptsChange eventAppPromptsChange,
             HubEventResourcesChange eventAppResourcesChange,
-            IRequestTrackingService requestTrackingService)
+            IRequestTrackingService requestTrackingService,
+            IMcpSessionTracker sessionTracker)
             : base(logger)
         {
             _version = version ?? throw new ArgumentNullException(nameof(version));
@@ -45,6 +47,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _eventAppPromptsChange = eventAppPromptsChange ?? throw new ArgumentNullException(nameof(eventAppPromptsChange));
             _eventAppResourcesChange = eventAppResourcesChange ?? throw new ArgumentNullException(nameof(eventAppResourcesChange));
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
+            _sessionTracker = sessionTracker ?? throw new ArgumentNullException(nameof(sessionTracker));
         }
 
         public Task<ResponseData> NotifyAboutUpdatedTools(RequestToolsUpdated request) => NotifyAboutUpdatedTools(request, default);
@@ -159,11 +162,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             try
             {
-                var service = McpServerService.Instance;
-                if (service == null)
-                    return Task.FromResult(new McpClientData { IsConnected = false });
-
-                return Task.FromResult(service.GetClientData());
+                var clientData = _sessionTracker.GetClientData() ?? throw new Exception("Client data is null");
+                return Task.FromResult(clientData);
             }
             catch (Exception ex)
             {
@@ -176,19 +176,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             try
             {
-                var service = McpServerService.Instance;
-                if (service == null)
-                {
-                    // Return server data with transport info even when no AI agent is connected
-                    return Task.FromResult(new McpServerData
-                    {
-                        IsAiAgentConnected = false,
-                        ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
-                        ServerApiVersion = _version.Api,
-                        ServerTransport = _dataArguments.ClientTransport
-                    });
-                }
-                return Task.FromResult(service.GetServerData());
+                var serverData = _sessionTracker.GetServerData() ?? throw new Exception("Server data is null");
+                return Task.FromResult(serverData);
             }
             catch (Exception ex)
             {

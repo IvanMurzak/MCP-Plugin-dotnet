@@ -12,7 +12,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -22,11 +24,10 @@ namespace com.IvanMurzak.McpPlugin.Server
     {
         public static async ValueTask<ListResourcesResult> List(RequestContext<ListResourcesRequestParams> request, CancellationToken cancellationToken)
         {
-            var mcpServerService = McpServerService.Instance;
-            if (mcpServerService == null)
-                return new ListResourcesResult().SetError("[Error] 'McpServerService' is null");
+            if (request.Services == null)
+                return new ListResourcesResult().SetError("[Error] 'Services' is null");
 
-            var resourceRunner = mcpServerService.ResourceRunner;
+            var resourceRunner = request.Services.GetService<IClientResourceHub>();
             if (resourceRunner == null)
                 return new ListResourcesResult().SetError($"[Error] '{nameof(resourceRunner)}' is null");
 
