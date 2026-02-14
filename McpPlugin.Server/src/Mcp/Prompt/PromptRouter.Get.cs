@@ -44,7 +44,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (request.Services == null)
                 return new GetPromptResult().SetError("[Error] Request.Services is null");
 
-            var promptRunner = request.Services.GetRequiredService<IClientPromptHub>();
+            var promptRunner = request.Services.GetService<IClientPromptHub>();
             if (promptRunner == null)
                 return new GetPromptResult().SetError($"[Error] '{nameof(promptRunner)}' is null");
 

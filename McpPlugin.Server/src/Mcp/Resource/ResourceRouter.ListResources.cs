@@ -27,7 +27,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (request.Services == null)
                 return new ListResourcesResult().SetError("[Error] 'Services' is null");
 
-            var resourceRunner = request.Services.GetRequiredService<IClientResourceHub>();
+            var resourceRunner = request.Services.GetService<IClientResourceHub>();
             if (resourceRunner == null)
                 return new ListResourcesResult().SetError($"[Error] '{nameof(resourceRunner)}' is null");
 

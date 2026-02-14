@@ -8,15 +8,25 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+using System;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Common.Utils;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
     public class McpSessionTracker : IMcpSessionTracker
     {
         readonly object _lock = new();
+        readonly IDataArguments _dataArguments;
+        readonly Common.Version _version;
         McpClientData? _clientData;
         McpServerData? _serverData;
+
+        public McpSessionTracker(IDataArguments dataArguments, Common.Version version)
+        {
+            _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
+            _version = version ?? throw new ArgumentNullException(nameof(version));
+        }
 
         public McpClientData GetClientData()
         {
@@ -30,7 +40,13 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             lock (_lock)
             {
-                return _serverData ?? new McpServerData { IsAiAgentConnected = false };
+                return _serverData ?? new McpServerData
+                {
+                    IsAiAgentConnected = false,
+                    ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                    ServerApiVersion = _version.Api,
+                    ServerTransport = _dataArguments.ClientTransport
+                };
             }
         }
 
