@@ -18,6 +18,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         int Port { get; }
         int PluginTimeoutMs { get; }
         Consts.MCP.Server.TransportMethod ClientTransport { get; }
+        Consts.MCP.Server.DeploymentMode Deployment { get; }
         string? Token { get; }
     }
     public class DataArguments : IDataArguments
@@ -25,6 +26,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         public int Port { get; private set; } = 8080;
         public int PluginTimeoutMs { get; private set; }
         public Consts.MCP.Server.TransportMethod ClientTransport { get; private set; }
+        public Consts.MCP.Server.DeploymentMode Deployment { get; private set; }
         public string? Token { get; private set; }
 
         public DataArguments(string[] args)
@@ -35,6 +37,10 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
 
             ParseEnvironmentVariables(); // env variables - second priority
             ParseCommandLineArguments(args); // command line args - first priority (override previous values)
+
+            // Auto-detect deployment mode if not explicitly set
+            if (Deployment == Consts.MCP.Server.DeploymentMode.unknown)
+                Deployment = Consts.MCP.Server.DeploymentMode.local;
         }
 
         void ParseEnvironmentVariables()
@@ -62,6 +68,12 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var envToken = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.Token);
             if (envToken != null)
                 Token = envToken;
+
+            // --- Deployment mode ---
+
+            var envDeployment = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.DeploymentMode);
+            if (envDeployment != null && Enum.TryParse(envDeployment, true, out Consts.MCP.Server.DeploymentMode parsedEnvDeployment))
+                Deployment = parsedEnvDeployment;
         }
         void ParseCommandLineArguments(string[] args)
         {
@@ -90,6 +102,12 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var argToken = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.Token.TrimStart('-'));
             if (argToken != null)
                 Token = argToken;
+
+            // --- Deployment mode ---
+
+            var argDeployment = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.DeploymentMode.TrimStart('-'));
+            if (argDeployment != null && Enum.TryParse(argDeployment, true, out Consts.MCP.Server.DeploymentMode parsedArgDeployment))
+                Deployment = parsedArgDeployment;
         }
     }
 }

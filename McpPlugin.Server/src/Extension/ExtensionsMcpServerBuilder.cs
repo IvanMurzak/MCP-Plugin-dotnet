@@ -13,6 +13,8 @@ using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
+using com.IvanMurzak.McpPlugin.Server.Strategy;
+using com.IvanMurzak.McpPlugin.Server.Transport;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,6 +23,17 @@ namespace com.IvanMurzak.McpPlugin.Server
 {
     public static class ExtensionsMcpServerBuilder
     {
+        private static T? GetRegisteredSingleton<T>(IServiceCollection services) where T : class
+        {
+            foreach (var descriptor in services)
+            {
+                if (descriptor.ServiceType == typeof(T)
+                    && descriptor.ImplementationInstance is T instance)
+                    return instance;
+            }
+            return null;
+        }
+
         public static IMcpServerBuilder WithMcpPluginServer(
             this IMcpServerBuilder mcpServerBuilder,
             DataArguments dataArguments,
@@ -57,18 +70,30 @@ namespace com.IvanMurzak.McpPlugin.Server
             mcpServerBuilder.Services.AddSingleton<IDataArguments>(dataArguments);
             mcpServerBuilder.Services.AddSingleton(version);
 
+            // Configure authentication using the connection strategy
+            var strategy = GetRegisteredSingleton<IMcpConnectionStrategy>(mcpServerBuilder.Services);
             mcpServerBuilder.Services.AddAuthentication(TokenAuthenticationHandler.SchemeName)
                 .AddScheme<TokenAuthenticationOptions, TokenAuthenticationHandler>(
                     TokenAuthenticationHandler.SchemeName,
                     options =>
                     {
-                        options.ServerToken = dataArguments.Token;
-                        options.RequireToken = !string.IsNullOrEmpty(dataArguments.Token);
+                        if (strategy != null)
+                            strategy.ConfigureAuthentication(options, dataArguments);
+                        else
+                        {
+                            options.ServerToken = dataArguments.Token;
+                            options.RequireToken = !string.IsNullOrEmpty(dataArguments.Token);
+                        }
                     });
             mcpServerBuilder.Services.AddAuthorization();
 
             mcpServerBuilder.Services.AddRouting();
-            if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.stdio)
+
+            // Configure transport-specific services
+            var transport = GetRegisteredSingleton<ITransportLayer>(mcpServerBuilder.Services);
+            if (transport != null)
+                transport.ConfigureServices(mcpServerBuilder.Services, dataArguments);
+            else if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.stdio)
                 mcpServerBuilder.Services.AddHostedService<McpServerService>();
 
             mcpServerBuilder.Services.AddSingleton<HubEventToolsChange>();
@@ -85,8 +110,6 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             mcpServerBuilder.Services.AddSingleton<RemoteResourceRunner>();
             mcpServerBuilder.Services.AddSingleton<IClientResourceHub>(sp => sp.GetRequiredService<RemoteResourceRunner>());
-
-            // builder.AddMcpRunner();
 
             return mcpServerBuilder;
         }
