@@ -26,12 +26,14 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (dataArguments == null)
                 throw new ArgumentNullException(nameof(dataArguments));
 
+            // Setup routing ----------------------------------------------------
+            app.UseRouting();
+
             // Setup auth -------------------------------------------------------
             app.UseAuthentication();
             app.UseAuthorization();
 
             // Setup SignalR ----------------------------------------------------
-            app.UseRouting();
             app.MapHub<McpServerHub>(Consts.Hub.RemoteApp, options =>
             {
                 options.Transports = HttpTransports.All;

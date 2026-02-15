@@ -118,6 +118,14 @@ namespace com.IvanMurzak.McpPlugin.Server
             return TokenToConnectionId.TryGetValue(token, out var connectionId) ? connectionId : null;
         }
 
+        public static string? GetTokenByConnectionId(string? connectionId)
+        {
+            if (string.IsNullOrEmpty(connectionId))
+                return null;
+
+            return ConnectionIdToToken.TryGetValue(connectionId, out var token) ? token : null;
+        }
+
         public static async Task<ResponseData<TResponse>> InvokeAsync<TRequest, TResponse, THub>(
             ILogger logger,
             IHubContext<THub> hubContext,

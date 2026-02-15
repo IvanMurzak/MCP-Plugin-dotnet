@@ -165,7 +165,13 @@ namespace com.IvanMurzak.McpPlugin.Server
                 _logger.LogTrace("{method}. {guid}.",
                     nameof(IServerMcpManager.GetMcpClientData), _guid);
 
-                var clientData = _sessionTracker.GetClientData() ?? throw new Exception("Client data is null");
+                var token = ClientUtils.GetTokenByConnectionId(Context.ConnectionId);
+                var clientData = token != null
+                    ? _sessionTracker.GetClientData(token)
+                    : _sessionTracker.GetClientData();
+
+                if (clientData == null)
+                    throw new Exception("Client data is null");
 
                 _logger.LogDebug("{method}. {guid}. ClientData, isConnected: {isConnected}, clientName: {clientName}",
                     nameof(IServerMcpManager.GetMcpClientData), _guid, clientData.IsConnected, clientData.ClientName);
@@ -186,7 +192,13 @@ namespace com.IvanMurzak.McpPlugin.Server
                 _logger.LogTrace("{method}. {guid}.",
                     nameof(IServerMcpManager.GetMcpServerData), _guid);
 
-                var serverData = _sessionTracker.GetServerData() ?? throw new Exception("Server data is null");
+                var token = ClientUtils.GetTokenByConnectionId(Context.ConnectionId);
+                var serverData = token != null
+                    ? _sessionTracker.GetServerData(token)
+                    : _sessionTracker.GetServerData();
+
+                if (serverData == null)
+                    throw new Exception("Server data is null");
 
                 _logger.LogDebug("{method}. {guid}. ServerData, isAiAgentConnected: {isAiAgentConnected}, serverVersion: {serverVersion}, serverApiVersion: {serverApiVersion}, serverTransport: {serverTransport}",
                     nameof(IServerMcpManager.GetMcpServerData), _guid, serverData.IsAiAgentConnected, serverData.ServerVersion, serverData.ServerApiVersion, serverData.ServerTransport);

@@ -38,12 +38,34 @@ namespace com.IvanMurzak.McpPlugin.Server
             return entry.ClientData ?? new McpClientData { IsConnected = false };
         }
 
+        public McpClientData GetClientData(string sessionId)
+        {
+            if (_sessions.TryGetValue(sessionId, out var entry))
+                return entry.ClientData;
+
+            return new McpClientData { IsConnected = false };
+        }
+
         public McpServerData GetServerData()
         {
-            var hasAnyConnected = _sessions.Values.Any(x => x.ServerData.IsAiAgentConnected);
+            var entry = _sessions.Values.FirstOrDefault(x => x.ServerData.IsAiAgentConnected);
+            return entry.ServerData ?? new McpServerData
+            {
+                IsAiAgentConnected = false,
+                ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                ServerApiVersion = _version.Api,
+                ServerTransport = _dataArguments.ClientTransport
+            };
+        }
+
+        public McpServerData GetServerData(string sessionId)
+        {
+            if (_sessions.TryGetValue(sessionId, out var entry))
+                return entry.ServerData;
+
             return new McpServerData
             {
-                IsAiAgentConnected = hasAnyConnected,
+                IsAiAgentConnected = false,
                 ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
                 ServerApiVersion = _version.Api,
                 ServerTransport = _dataArguments.ClientTransport
@@ -57,8 +79,13 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public void Update(string sessionId, McpClientData clientData, McpServerData serverData)
         {
-            var isNew = !_sessions.ContainsKey(sessionId);
-            _sessions[sessionId] = (clientData, serverData);
+            var value = (clientData, serverData);
+            var isNew = true;
+            _sessions.AddOrUpdate(sessionId, value, (_, _) =>
+            {
+                isNew = false;
+                return value;
+            });
             _logger.LogDebug("Session {action}. Key: {sessionId}, IsConnected: {isConnected}, ClientName: {clientName}, TotalSessions: {total}.",
                 isNew ? "added" : "updated", sessionId, clientData.IsConnected, clientData.ClientName, _sessions.Count);
         }

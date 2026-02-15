@@ -16,7 +16,9 @@ namespace com.IvanMurzak.McpPlugin.Server
     public interface IMcpSessionTracker
     {
         McpClientData GetClientData();
+        McpClientData GetClientData(string sessionId);
         McpServerData GetServerData();
+        McpServerData GetServerData(string sessionId);
         IReadOnlyList<McpClientData> GetAllClientData();
         void Update(string sessionId, McpClientData clientData, McpServerData serverData);
         void Remove(string sessionId);
