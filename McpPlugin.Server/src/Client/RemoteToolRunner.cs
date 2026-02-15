@@ -15,6 +15,7 @@ using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using R3;
@@ -56,6 +57,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                         methodName: nameof(IClientToolHub.RunCallTool),
                         request: request,
                         dataArguments: _dataArguments,
+                        token: McpSessionTokenContext.CurrentToken,
                         cancellationToken: cancellationToken);
 
                     return responseData.Value ?? ResponseCallTool.Error("Response data is null");
@@ -79,6 +81,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 methodName: nameof(IClientToolHub.RunListTool),
                 request: request,
                 dataArguments: _dataArguments,
+                token: McpSessionTokenContext.CurrentToken,
                 cancellationToken: cancellationToken);
 
             if (response.Status == ResponseStatus.Error)

@@ -8,19 +8,22 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Collections.Generic;
-using com.IvanMurzak.McpPlugin.Common.Model;
+using System.Threading;
 
-namespace com.IvanMurzak.McpPlugin.Server
+namespace com.IvanMurzak.McpPlugin.Server.Auth
 {
-    public interface IMcpSessionTracker
+    /// <summary>
+    /// Provides ambient access to the current MCP session's auth token.
+    /// Set in RunSessionHandler, flows via AsyncLocal through PerSessionExecutionContext.
+    /// </summary>
+    public static class McpSessionTokenContext
     {
-        McpClientData GetClientData();
-        McpClientData GetClientData(string sessionId);
-        McpServerData GetServerData();
-        McpServerData GetServerData(string sessionId);
-        IReadOnlyList<McpClientData> GetAllClientData();
-        void Update(string sessionId, McpClientData clientData, McpServerData serverData);
-        void Remove(string sessionId);
+        static readonly AsyncLocal<string?> _currentToken = new();
+
+        public static string? CurrentToken
+        {
+            get => _currentToken.Value;
+            set => _currentToken.Value = value;
+        }
     }
 }

@@ -9,63 +9,93 @@
 */
 
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
     public class McpSessionTracker : IMcpSessionTracker
     {
-        readonly object _lock = new();
+        readonly ILogger<McpSessionTracker> _logger;
         readonly IDataArguments _dataArguments;
         readonly Common.Version _version;
-        McpClientData? _clientData;
-        McpServerData? _serverData;
+        readonly ConcurrentDictionary<string, (McpClientData ClientData, McpServerData ServerData)> _sessions = new();
 
-        public McpSessionTracker(IDataArguments dataArguments, Common.Version version)
+        public McpSessionTracker(ILogger<McpSessionTracker> logger, IDataArguments dataArguments, Common.Version version)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
             _version = version ?? throw new ArgumentNullException(nameof(version));
         }
 
         public McpClientData GetClientData()
         {
-            lock (_lock)
-            {
-                return _clientData ?? new McpClientData { IsConnected = false };
-            }
+            var entry = _sessions.Values.FirstOrDefault(x => x.ClientData.IsConnected);
+            return entry.ClientData ?? new McpClientData { IsConnected = false };
+        }
+
+        public McpClientData GetClientData(string sessionId)
+        {
+            if (_sessions.TryGetValue(sessionId, out var entry))
+                return entry.ClientData;
+
+            return new McpClientData { IsConnected = false };
         }
 
         public McpServerData GetServerData()
         {
-            lock (_lock)
+            var entry = _sessions.Values.FirstOrDefault(x => x.ServerData.IsAiAgentConnected);
+            return entry.ServerData ?? new McpServerData
             {
-                return _serverData ?? new McpServerData
-                {
-                    IsAiAgentConnected = false,
-                    ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
-                    ServerApiVersion = _version.Api,
-                    ServerTransport = _dataArguments.ClientTransport
-                };
-            }
+                IsAiAgentConnected = false,
+                ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                ServerApiVersion = _version.Api,
+                ServerTransport = _dataArguments.ClientTransport
+            };
         }
 
-        public void Update(McpClientData clientData, McpServerData serverData)
+        public McpServerData GetServerData(string sessionId)
         {
-            lock (_lock)
+            if (_sessions.TryGetValue(sessionId, out var entry))
+                return entry.ServerData;
+
+            return new McpServerData
             {
-                _clientData = clientData;
-                _serverData = serverData;
-            }
+                IsAiAgentConnected = false,
+                ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                ServerApiVersion = _version.Api,
+                ServerTransport = _dataArguments.ClientTransport
+            };
         }
 
-        public void Clear()
+        public IReadOnlyList<McpClientData> GetAllClientData()
         {
-            lock (_lock)
+            return _sessions.Values.Select(x => x.ClientData).ToList();
+        }
+
+        public void Update(string sessionId, McpClientData clientData, McpServerData serverData)
+        {
+            var value = (clientData, serverData);
+            var isNew = true;
+            _sessions.AddOrUpdate(sessionId, value, (_, _) =>
             {
-                _clientData = null;
-                _serverData = null;
-            }
+                isNew = false;
+                return value;
+            });
+            _logger.LogDebug("Session {action}. Key: {sessionId}, IsConnected: {isConnected}, ClientName: {clientName}, TotalSessions: {total}.",
+                isNew ? "added" : "updated", sessionId, clientData.IsConnected, clientData.ClientName, _sessions.Count);
+        }
+
+        public void Remove(string sessionId)
+        {
+            if (_sessions.TryRemove(sessionId, out _))
+                _logger.LogDebug("Session removed. Key: {sessionId}, TotalSessions: {total}.", sessionId, _sessions.Count);
+            else
+                _logger.LogDebug("Session not found for removal. Key: {sessionId}, TotalSessions: {total}.", sessionId, _sessions.Count);
         }
     }
 }

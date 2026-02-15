@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
@@ -120,6 +121,11 @@ namespace com.IvanMurzak.McpPlugin.Server
                         // Start a background task to monitor connection health.
                         // This ensures we detect disconnection even if context.RequestAborted doesn't fire.
                         var connectionMonitorTask = MonitorConnectionHealthAsync(context, linkedCts, logger);
+
+                        // Extract Bearer token from the HTTP request for token-based routing
+                        var authHeader = context.Request.Headers["Authorization"].ToString();
+                        if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                            McpSessionTokenContext.CurrentToken = authHeader.Substring("Bearer ".Length).Trim();
 
                         try
                         {

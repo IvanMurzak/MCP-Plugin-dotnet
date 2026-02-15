@@ -18,12 +18,14 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         int Port { get; }
         int PluginTimeoutMs { get; }
         Consts.MCP.Server.TransportMethod ClientTransport { get; }
+        string? Token { get; }
     }
     public class DataArguments : IDataArguments
     {
         public int Port { get; private set; } = 8080;
         public int PluginTimeoutMs { get; private set; }
         public Consts.MCP.Server.TransportMethod ClientTransport { get; private set; }
+        public string? Token { get; private set; }
 
         public DataArguments(string[] args)
         {
@@ -54,6 +56,12 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var envClientTransport = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.ClientTransportMethod);
             if (envClientTransport != null && Enum.TryParse(envClientTransport, out Consts.MCP.Server.TransportMethod parsedEnvTransport))
                 ClientTransport = parsedEnvTransport;
+
+            // --- Token ---
+
+            var envToken = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.Token);
+            if (envToken != null)
+                Token = envToken;
         }
         void ParseCommandLineArguments(string[] args)
         {
@@ -76,6 +84,12 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var argClientTransport = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.ClientTransportMethod.TrimStart('-'));
             if (argClientTransport != null && Enum.TryParse(argClientTransport, out Consts.MCP.Server.TransportMethod parsedArgTransport))
                 ClientTransport = parsedArgTransport;
+
+            // --- Token ---
+
+            var argToken = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.Token.TrimStart('-'));
+            if (argToken != null)
+                Token = argToken;
         }
     }
 }
