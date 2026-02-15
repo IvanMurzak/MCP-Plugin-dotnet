@@ -142,7 +142,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             _sessionId = McpSessionTokenContext.CurrentToken
                       ?? McpSessionOrServer?.SessionId
-                      ?? "stdio";
+                      ?? Common.Consts.MCP.Server.TransportMethod.stdio.ToString();
             _sessionTracker.Update(_sessionId, GetClientData(), GetServerData());
             _logger.LogDebug("{type} Session tracked. Key: {sessionId}.", GetType().GetTypeShortName(), _sessionId);
 
