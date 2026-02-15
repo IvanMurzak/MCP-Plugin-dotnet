@@ -100,13 +100,21 @@ namespace com.IvanMurzak.McpPlugin.Server
         public async Task NotifyClientConnectedAsync()
         {
             _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(NotifyClientConnectedAsync));
-            await _hubContext.Clients.All.OnMcpClientConnected(GetClientData());
+            var connectionId = ClientUtils.GetConnectionIdByToken(_sessionId);
+            if (connectionId != null)
+                await _hubContext.Clients.Client(connectionId).OnMcpClientConnected(GetClientData());
+            else
+                await _hubContext.Clients.All.OnMcpClientConnected(GetClientData());
         }
 
         public async Task NotifyClientDisconnectedAsync()
         {
             _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(NotifyClientDisconnectedAsync));
-            await _hubContext.Clients.All.OnMcpClientDisconnected();
+            var connectionId = ClientUtils.GetConnectionIdByToken(_sessionId);
+            if (connectionId != null)
+                await _hubContext.Clients.Client(connectionId).OnMcpClientDisconnected();
+            else
+                await _hubContext.Clients.All.OnMcpClientDisconnected();
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
