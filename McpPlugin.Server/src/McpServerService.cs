@@ -112,6 +112,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         public Task StartAsync(CancellationToken cancellationToken)
         {
             _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(StartAsync));
+            _logger.LogDebug("{type} MCP Client connected. SessionId: {sessionId}, ClientName: {clientName}, ClientTitle: {clientTitle}.",
+                GetType().GetTypeShortName(), McpSessionOrServer?.SessionId, _mcpServer?.ClientInfo?.Name, _mcpServer?.ClientInfo?.Title);
             _disposables.Clear();
 
             _eventAppToolsChange
@@ -142,12 +144,17 @@ namespace com.IvanMurzak.McpPlugin.Server
                       ?? McpSessionOrServer?.SessionId
                       ?? "stdio";
             _sessionTracker.Update(_sessionId, GetClientData(), GetServerData());
+            _logger.LogDebug("{type} Session tracked. Key: {sessionId}.", GetType().GetTypeShortName(), _sessionId);
 
             _ = Task.Run(async () =>
             {
                 try
                 {
                     await Task.Delay(2000, cancellationToken); // Wait a bit to ensure connection is fully established
+
+                    // Update session tracker with fresh data after MCP initialize handshake has completed
+                    _sessionTracker.Update(_sessionId, GetClientData(), GetServerData());
+
                     await NotifyClientConnectedAsync();
                 }
                 catch (OperationCanceledException)
@@ -167,6 +174,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(StopAsync));
+            _logger.LogDebug("{type} MCP Client disconnected. SessionId: {sessionId}.", GetType().GetTypeShortName(), _sessionId);
 
             try
             {
@@ -179,6 +187,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             _disposables.Clear();
             _sessionTracker.Remove(_sessionId);
+            _logger.LogDebug("{type} Session removed. Key: {sessionId}.", GetType().GetTypeShortName(), _sessionId);
         }
 
         async void OnListToolUpdated(HubEventToolsChange.EventData eventData, CancellationToken cancellationToken)

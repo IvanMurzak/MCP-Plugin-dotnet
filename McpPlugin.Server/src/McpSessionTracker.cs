@@ -14,17 +14,20 @@ using System.Collections.Generic;
 using System.Linq;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
     public class McpSessionTracker : IMcpSessionTracker
     {
+        readonly ILogger<McpSessionTracker> _logger;
         readonly IDataArguments _dataArguments;
         readonly Common.Version _version;
         readonly ConcurrentDictionary<string, (McpClientData ClientData, McpServerData ServerData)> _sessions = new();
 
-        public McpSessionTracker(IDataArguments dataArguments, Common.Version version)
+        public McpSessionTracker(ILogger<McpSessionTracker> logger, IDataArguments dataArguments, Common.Version version)
         {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
             _version = version ?? throw new ArgumentNullException(nameof(version));
         }
@@ -54,12 +57,18 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public void Update(string sessionId, McpClientData clientData, McpServerData serverData)
         {
+            var isNew = !_sessions.ContainsKey(sessionId);
             _sessions[sessionId] = (clientData, serverData);
+            _logger.LogDebug("Session {action}. Key: {sessionId}, IsConnected: {isConnected}, ClientName: {clientName}, TotalSessions: {total}.",
+                isNew ? "added" : "updated", sessionId, clientData.IsConnected, clientData.ClientName, _sessions.Count);
         }
 
         public void Remove(string sessionId)
         {
-            _sessions.TryRemove(sessionId, out _);
+            if (_sessions.TryRemove(sessionId, out _))
+                _logger.LogDebug("Session removed. Key: {sessionId}, TotalSessions: {total}.", sessionId, _sessions.Count);
+            else
+                _logger.LogDebug("Session not found for removal. Key: {sessionId}, TotalSessions: {total}.", sessionId, _sessions.Count);
         }
     }
 }

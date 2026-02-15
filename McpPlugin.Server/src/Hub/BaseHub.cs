@@ -48,11 +48,14 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
 
             ClientUtils.AddClient(GetType(), Context.ConnectionId, _logger, token);
+            _logger.LogDebug("{guid} MCP Plugin connected. ConnectionId: {connectionId}, Token: {hasToken}.",
+                _guid, Context.ConnectionId, !string.IsNullOrEmpty(token) ? "present" : "absent");
             return base.OnConnectedAsync();
         }
 
         public override Task OnDisconnectedAsync(Exception? exception)
         {
+            _logger.LogDebug("{guid} MCP Plugin disconnected. ConnectionId: {connectionId}.", _guid, Context.ConnectionId);
             ClientUtils.RemoveClient(GetType(), Context.ConnectionId, _logger);
             return base.OnDisconnectedAsync(exception);
         }
