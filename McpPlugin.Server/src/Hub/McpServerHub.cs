@@ -16,6 +16,7 @@ using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Hub.Server;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Strategy;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server
@@ -38,8 +39,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             HubEventPromptsChange eventAppPromptsChange,
             HubEventResourcesChange eventAppResourcesChange,
             IRequestTrackingService requestTrackingService,
-            IMcpSessionTracker sessionTracker)
-            : base(logger)
+            IMcpSessionTracker sessionTracker,
+            IMcpConnectionStrategy strategy)
+            : base(logger, strategy)
         {
             _version = version ?? throw new ArgumentNullException(nameof(version));
             _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
@@ -165,10 +167,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 _logger.LogTrace("{method}. {guid}.",
                     nameof(IServerMcpManager.GetMcpClientData), _guid);
 
-                var token = ClientUtils.GetTokenByConnectionId(Context.ConnectionId);
-                var clientData = token != null
-                    ? _sessionTracker.GetClientData(token)
-                    : _sessionTracker.GetClientData();
+                var clientData = _strategy.GetClientData(Context.ConnectionId, _sessionTracker);
 
                 if (clientData == null)
                     throw new Exception("Client data is null");
@@ -192,10 +191,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 _logger.LogTrace("{method}. {guid}.",
                     nameof(IServerMcpManager.GetMcpServerData), _guid);
 
-                var token = ClientUtils.GetTokenByConnectionId(Context.ConnectionId);
-                var serverData = token != null
-                    ? _sessionTracker.GetServerData(token)
-                    : _sessionTracker.GetServerData();
+                var serverData = _strategy.GetServerData(Context.ConnectionId, _sessionTracker);
 
                 if (serverData == null)
                     throw new Exception("Server data is null");

@@ -15,6 +15,7 @@ using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
+using com.IvanMurzak.McpPlugin.Server.Strategy;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
@@ -75,6 +76,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                             services.GetRequiredService<HubEventResourcesChange>(),
                             services.GetRequiredService<IHubContext<McpServerHub, IClientMcpRpc>>(),
                             services.GetRequiredService<IMcpSessionTracker>(),
+                            services.GetRequiredService<IMcpConnectionStrategy>(),
                             mcpServer: server,
                             mcpSession: null
                         );

@@ -10,8 +10,10 @@
 
 using System;
 using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
+using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server.Strategy
 {
@@ -36,6 +38,50 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         {
             options.ServerToken = dataArguments.Token;
             options.RequireToken = true;
+        }
+
+        public void OnPluginConnected(Type hubType, string connectionId, string? token,
+            ILogger logger, Action<string> disconnectClient)
+        {
+            // REMOTE mode: allow multiple connections, no disconnection
+            ClientUtils.AddClient(hubType, connectionId, logger, token);
+        }
+
+        public void OnPluginDisconnected(Type hubType, string connectionId, ILogger logger)
+        {
+            ClientUtils.RemoveClient(hubType, connectionId, logger);
+        }
+
+        public string? ResolveConnectionId(string? token, int retryOffset)
+        {
+            // REMOTE mode: prefer token-based routing, fallback to round-robin as safety net
+            return ClientUtils.GetConnectionIdByToken(token)
+                ?? ClientUtils.GetBestConnectionId(typeof(McpServerHub), retryOffset);
+        }
+
+        public bool ShouldNotifySession(string pluginConnectionId, string sessionId)
+        {
+            // REMOTE mode: only notify the MCP session paired with this plugin
+            var pluginToken = ClientUtils.GetTokenByConnectionId(pluginConnectionId);
+            if (pluginToken == null)
+                return false;
+            return string.Equals(pluginToken, sessionId, StringComparison.Ordinal);
+        }
+
+        public McpClientData GetClientData(string? connectionId, IMcpSessionTracker sessionTracker)
+        {
+            var token = ClientUtils.GetTokenByConnectionId(connectionId);
+            if (token != null)
+                return sessionTracker.GetClientData(token);
+            return sessionTracker.GetClientData();
+        }
+
+        public McpServerData GetServerData(string? connectionId, IMcpSessionTracker sessionTracker)
+        {
+            var token = ClientUtils.GetTokenByConnectionId(connectionId);
+            if (token != null)
+                return sessionTracker.GetServerData(token);
+            return sessionTracker.GetServerData();
         }
     }
 }

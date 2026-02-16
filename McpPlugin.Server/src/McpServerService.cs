@@ -15,6 +15,7 @@ using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
+using com.IvanMurzak.McpPlugin.Server.Strategy;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
@@ -36,6 +37,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly HubEventResourcesChange _eventAppResourcesChange;
         readonly IHubContext<McpServerHub, IClientMcpRpc> _hubContext;
         readonly IMcpSessionTracker _sessionTracker;
+        readonly IMcpConnectionStrategy _strategy;
         readonly Common.Version _version;
         readonly IDataArguments _dataArguments;
         readonly CompositeDisposable _disposables = new();
@@ -52,6 +54,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             HubEventResourcesChange eventAppResourcesChange,
             IHubContext<McpServerHub, IClientMcpRpc> hubContext,
             IMcpSessionTracker sessionTracker,
+            IMcpConnectionStrategy strategy,
             McpServer? mcpServer = null,
             McpSession? mcpSession = null)
         {
@@ -70,6 +73,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _eventAppResourcesChange = eventAppResourcesChange ?? throw new ArgumentNullException(nameof(eventAppResourcesChange));
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
             _sessionTracker = sessionTracker ?? throw new ArgumentNullException(nameof(sessionTracker));
+            _strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
         }
 
         public McpClientData GetClientData()
@@ -127,6 +131,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             _eventAppToolsChange
                 .Subscribe(data =>
                 {
+                    if (!_strategy.ShouldNotifySession(data.ConnectionId, _sessionId))
+                        return;
                     _logger.LogTrace("{type} EventAppToolsChange. ConnectionId: {connectionId}", GetType().GetTypeShortName(), data.ConnectionId);
                     OnListToolUpdated(data, cancellationToken);
                 })
@@ -135,6 +141,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             _eventAppPromptsChange
                 .Subscribe(data =>
                 {
+                    if (!_strategy.ShouldNotifySession(data.ConnectionId, _sessionId))
+                        return;
                     _logger.LogTrace("{type} EventAppPromptsChange. ConnectionId: {connectionId}", GetType().GetTypeShortName(), data.ConnectionId);
                     OnListPromptsUpdated(data, cancellationToken);
                 })
@@ -143,6 +151,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             _eventAppResourcesChange
                 .Subscribe(data =>
                 {
+                    if (!_strategy.ShouldNotifySession(data.ConnectionId, _sessionId))
+                        return;
                     _logger.LogTrace("{type} EventAppResourcesChange. ConnectionId: {connectionId}", GetType().GetTypeShortName(), data.ConnectionId);
                     OnListResourcesUpdated(data, cancellationToken);
                 })
