@@ -61,7 +61,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 Common.Model.Role.Assistant => Role.Assistant,
                 _ => throw new ArgumentOutOfRangeException(nameof(promptMessage.Role), $"Invalid role value: {promptMessage.Role}")
             },
-            Content = promptMessage.Content.ToTextContent()
+            Content = promptMessage.Content.ToContent()
         };
 
         public static PromptArgument ToPromptArgument(this Common.Model.ResponsePromptArgument promptArgument) => new PromptArgument()
