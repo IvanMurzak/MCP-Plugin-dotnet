@@ -106,7 +106,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 name: "",
                 title: "title",
                 classType: typeof(TestTool),
-                method: method!);
+                methodInfo: method!);
 
             // Assert
             act.Should().Throw<ArgumentException>()
@@ -161,6 +161,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             public JsonNode InputSchema => JsonNode.Parse("{}")!;
             public JsonNode OutputSchema => JsonNode.Parse("{}")!;
             public bool Enabled { get; set; } = true;
+            public int TokenCount => 100; // Mock token count
             public Task<ResponseCallTool> Run(RequestCallTool request) => throw new NotImplementedException();
             public Task<ResponseCallTool> Run(string name, IReadOnlyDictionary<string, JsonElement>? arguments, CancellationToken cancellationToken = default) => throw new NotImplementedException();
         }
@@ -199,6 +200,104 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             {
                 _logs.Add(formatter(state, exception));
             }
+        }
+
+        [Fact]
+        public void Build_ShouldHaveVersionProperty()
+        {
+            // Arrange
+            var reflector = new Reflector();
+            var mcpPluginBuilder = new McpPluginBuilder(_version);
+
+            // Act
+            var plugin = mcpPluginBuilder.Build(reflector);
+
+            // Assert
+            plugin.Version.Should().NotBeNull();
+            plugin.Version.Should().Be(_version);
+        }
+
+        [Fact]
+        public void Build_ShouldHaveCurrentBaseDirectoryProperty()
+        {
+            // Arrange
+            var reflector = new Reflector();
+            var mcpPluginBuilder = new McpPluginBuilder(_version);
+
+            // Act
+            var plugin = mcpPluginBuilder.Build(reflector);
+
+            // Assert
+            plugin.CurrentBaseDirectory.Should().NotBeNull();
+            plugin.CurrentBaseDirectory.Should().NotBeNullOrEmpty();
+        }
+
+        [Fact]
+        public void Build_WhenNotConnected_ShouldHaveNullVersionHandshakeStatus()
+        {
+            // Arrange
+            var reflector = new Reflector();
+            var mcpPluginBuilder = new McpPluginBuilder(_version);
+
+            // Act
+            var plugin = mcpPluginBuilder.Build(reflector);
+
+            // Assert
+            plugin.VersionHandshakeStatus.Should().BeNull();
+        }
+
+        [Fact]
+        public void Build_RemoteMcpManagerHub_ShouldNotBeNull()
+        {
+            // Arrange
+            var reflector = new Reflector();
+            var mcpPluginBuilder = new McpPluginBuilder(_version);
+
+            // Act
+            var plugin = mcpPluginBuilder.Build(reflector);
+
+            // Assert
+            plugin.RemoteMcpManagerHub.Should().NotBeNull();
+        }
+
+        [Fact]
+        public void RemoteMcpManagerHub_ShouldHaveVersionHandshakeStatusProperty()
+        {
+            // Arrange
+            var reflector = new Reflector();
+            var mcpPluginBuilder = new McpPluginBuilder(_version);
+            var plugin = mcpPluginBuilder.Build(reflector);
+
+            // Act & Assert
+            plugin.RemoteMcpManagerHub.Should().NotBeNull();
+            plugin.RemoteMcpManagerHub.VersionHandshakeStatus.Should().BeNull();
+        }
+
+        [Fact]
+        public void Build_ShouldHaveToolCallCountProperty()
+        {
+            // Arrange
+            var reflector = new Reflector();
+            var mcpPluginBuilder = new McpPluginBuilder(_version);
+
+            // Act
+            var plugin = mcpPluginBuilder.Build(reflector);
+
+            // Assert
+            plugin.ToolCallsCount.Should().Be(0UL);
+        }
+
+        [Fact]
+        public void ToolManager_ShouldHaveToolCallCountProperty()
+        {
+            // Arrange
+            var reflector = new Reflector();
+            var mcpPluginBuilder = new McpPluginBuilder(_version);
+            var plugin = mcpPluginBuilder.Build(reflector);
+
+            // Act & Assert
+            plugin.McpManager.ToolManager.Should().NotBeNull();
+            plugin.McpManager.ToolManager.ToolCallsCount.Should().Be(0UL);
         }
     }
 }

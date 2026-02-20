@@ -114,6 +114,22 @@ namespace com.IvanMurzak.McpPlugin
                 hubConnection.InvokeAsync<TResult>(methodName, input, cancellationToken));
         }
 
+        public async Task<TResult> InvokeAsync<TResult>(string methodName, CancellationToken cancellationToken = default)
+        {
+            if (_isDisposed.Value)
+            {
+                _logger.LogWarning("{class}[{guid}] {method} called but already disposed, ignored.",
+                    nameof(ConnectionManager), _guid, nameof(InvokeAsync));
+                return default!; // already disposed
+            }
+
+            if (!await EnsureConnection(cancellationToken))
+                return default!;
+
+            return await ExecuteHubMethodAsync(methodName, hubConnection =>
+                hubConnection.InvokeAsync<TResult>(methodName, cancellationToken));
+        }
+
         public void Dispose()
         {
             if (!_isDisposed.TrySetTrue())

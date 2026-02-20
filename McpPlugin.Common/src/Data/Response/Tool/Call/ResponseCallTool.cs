@@ -25,28 +25,41 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         public ResponseCallTool() { }
         public ResponseCallTool(ResponseStatus status, List<ContentBlock> content) : this(
             requestId: string.Empty,
-            structuredContent: null,
             status: status,
             content: content)
         {
             // none
         }
-        public ResponseCallTool(JsonNode? structuredContent, ResponseStatus status, List<ContentBlock> content) : this(
-            requestId: string.Empty,
-            structuredContent: structuredContent,
-            status: status,
-            content: content)
-        {
-            // none
-        }
-        public ResponseCallTool(string requestId, JsonNode? structuredContent, ResponseStatus status, List<ContentBlock> content)
+        public ResponseCallTool(string requestId, ResponseStatus status, List<ContentBlock> content)
         {
             RequestID = requestId;
             Status = status;
             Content = content;
+        }
+        public ResponseCallTool(JsonNode? structuredContent, ResponseStatus status) : this(
+            requestId: string.Empty,
+            structuredContent: structuredContent,
+            status: status)
+        {
+            // none
+        }
+        public ResponseCallTool(string requestId, JsonNode? structuredContent, ResponseStatus status)
+        {
+            RequestID = requestId;
+            Status = status;
             StructuredContent = new JsonObject()
             {
                 [JsonSchema.Result] = structuredContent
+            };
+            // MCP backward compatibility: https://modelcontextprotocol.io/specification/2025-06-18/server/tools#structured-content
+            Content = new List<ContentBlock>
+            {
+                new ContentBlock()
+                {
+                    Type = Consts.ContentType.Text,
+                    Text = StructuredContent.ToJsonString(),
+                    MimeType = Consts.MimeType.TextJson
+                }
             };
         }
 
@@ -57,7 +70,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         }
 
         public string? GetMessage() => Content
-            ?.FirstOrDefault(item => item.Type == "text" && !string.IsNullOrEmpty(item.Text))
+            ?.FirstOrDefault(item => item.Type == Consts.ContentType.Text && !string.IsNullOrEmpty(item.Text))
             ?.Text;
     }
 }

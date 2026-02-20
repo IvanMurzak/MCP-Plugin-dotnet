@@ -11,7 +11,9 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -27,11 +29,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (request?.Params?.Uri == null)
                 return new ReadResourceResult().SetError("null", "[Error] Request or Uri is null");
 
-            var mcpServerService = McpServerService.Instance;
-            if (mcpServerService == null)
-                return new ReadResourceResult().SetError(request.Params.Uri, "[Error] 'McpServerService' is null");
+            if (request.Services == null)
+                return new ReadResourceResult().SetError(request.Params.Uri, "[Error] Services is null");
 
-            var resourceRunner = mcpServerService.ResourceRunner;
+            var resourceRunner = request.Services.GetService<IClientResourceHub>();
             if (resourceRunner == null)
                 return new ReadResourceResult().SetError(request.Params.Uri, $"[Error] '{nameof(resourceRunner)}' is null");
 

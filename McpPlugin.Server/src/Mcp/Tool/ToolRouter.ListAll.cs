@@ -11,9 +11,11 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.ReflectorNet;
+using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using NLog;
@@ -27,14 +29,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             var logger = LogManager.GetCurrentClassLogger();
             logger.Trace("ListAll");
 
-            var mcpServerService = McpServerService.Instance;
-            if (mcpServerService == null)
-                return new ListToolsResult().SetError($"[Error] '{nameof(mcpServerService)}' is null");
+            if (request.Services == null)
+                return new ListToolsResult().SetError("[Error] 'request.Services' is null");
 
-            var toolRunner = mcpServerService.ToolRunner;
-            if (toolRunner == null)
-                return new ListToolsResult().SetError($"[Error] '{nameof(toolRunner)}' is null");
-
+            var toolRunner = request.Services.GetRequiredService<IClientToolHub>();
             logger.Trace("Using ToolRunner: {0}", toolRunner.GetType().GetTypeShortName());
 
             var requestData = new RequestListTool();

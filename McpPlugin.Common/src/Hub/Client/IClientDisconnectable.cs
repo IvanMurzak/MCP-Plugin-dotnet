@@ -8,10 +8,12 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+using System.Threading.Tasks;
+
 namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
 {
     public interface IClientDisconnectable
     {
-        void ForceDisconnect();
+        Task ForceDisconnect();
     }
 }

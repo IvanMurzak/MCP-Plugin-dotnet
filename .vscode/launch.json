@@ -2,14 +2,31 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Launch Demo Web App (http) 59479",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net9.0/DemoWebApp.dll",
+            "args": [
+                "port=59479",
+                "client-transport=http"
+            ],
+            "cwd": "${workspaceFolder}/DemoWebApp",
+            "stopAtEntry": false,
+            "console": "internalConsole",
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            }
+        },
+        {
             "name": "Launch Demo Web App (http)",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net9.0/DemoWebApp.dll",
             "args": [
-                "--port=11111",
-                "--client-transport=http"
+                "port=11111",
+                "client-transport=http"
             ],
             "cwd": "${workspaceFolder}/DemoWebApp",
             "stopAtEntry": false,
@@ -25,8 +42,8 @@
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net9.0/DemoWebApp.dll",
             "args": [
-                "--port=11111",
-                "--client-transport=stdio"
+                "port=11111",
+                "client-transport=stdio"
             ],
             "cwd": "${workspaceFolder}/DemoWebApp",
             "stopAtEntry": false,
@@ -42,8 +59,8 @@
             "preLaunchTask": "build",
             "program": "${workspaceFolder}/DemoConsoleApp/bin/Debug/net9.0/DemoConsoleApp.dll",
             "args": [
-                "--mcp-server-endpoint=http://localhost:11111",
-                "--mcp-server-timeout=5000"
+                "mcp-server-endpoint=http://localhost:11111",
+                "mcp-server-timeout=5000"
             ],
             "cwd": "${workspaceFolder}/DemoConsoleApp",
             "stopAtEntry": false,

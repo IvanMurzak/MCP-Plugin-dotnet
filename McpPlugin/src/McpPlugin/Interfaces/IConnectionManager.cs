@@ -23,5 +23,6 @@ namespace com.IvanMurzak.McpPlugin
         CancellationToken ConnectionCancellationToken { get; }
         Task InvokeAsync<TInput>(string methodName, TInput input, CancellationToken cancellationToken = default);
         Task<TResult> InvokeAsync<TInput, TResult>(string methodName, TInput input, CancellationToken cancellationToken = default);
+        Task<TResult> InvokeAsync<TResult>(string methodName, CancellationToken cancellationToken = default);
     }
 }

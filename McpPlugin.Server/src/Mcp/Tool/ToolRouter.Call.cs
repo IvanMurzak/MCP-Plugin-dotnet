@@ -8,15 +8,15 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.ReflectorNet;
+using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using NLog;
@@ -39,16 +39,11 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (request.Params.Arguments == null)
                 return new CallToolResult().SetError("[Error] Request.Params.Arguments is null");
 
-            var mcpServerService = McpServerService.Instance;
-            if (mcpServerService == null)
-                return new CallToolResult().SetError($"[Error] '{nameof(mcpServerService)}' instance is null");
+            if (request.Services == null)
+                return new CallToolResult().SetError("[Error] Request.Services is null");
 
-            var toolRunner = mcpServerService.ToolRunner; // if has local tool
-
-            logger.Trace("Using ToolRunner: {0}", toolRunner?.GetType().GetTypeShortName());
-
-            if (toolRunner == null)
-                return new CallToolResult().SetError($"[Error] '{nameof(toolRunner)}' is null");
+            var toolRunner = request.Services.GetRequiredService<IClientToolHub>();
+            logger.Trace("Using ToolRunner: {0}", toolRunner.GetType().GetTypeShortName());
 
             var argumentsDict = request.Params.Arguments as IReadOnlyDictionary<string, JsonElement>
                 ?? new Dictionary<string, JsonElement>();

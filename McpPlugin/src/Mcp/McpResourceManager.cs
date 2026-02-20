@@ -118,7 +118,9 @@ namespace com.IvanMurzak.McpPlugin
 
             var runner = FindResourceContentRunner(data.Uri, _resources, out var uriTemplate)?.RunGetContent;
             if (runner == null || uriTemplate == null)
-                throw new ArgumentException($"No route matches the URI: {data.Uri}");
+            {
+                throw new ArgumentException($"No route matches the URI: {data.Uri}\nAvailable routes:\n{string.Join("\n", _resources.Values.Select(r => r.Route))}");
+            }
 
             _logger.LogInformation("Executing resource '{0}'.", data.Uri);
 
@@ -134,6 +136,7 @@ namespace com.IvanMurzak.McpPlugin
         {
             _logger.LogDebug("Listing resources. [{Count}]", _resources.Count);
             var tasks = _resources.Values
+                .Where(resource => resource.Enabled)
                 .Select(resource => resource.RunListContext.Run());
 
             await Task.WhenAll(tasks);
@@ -158,7 +161,10 @@ namespace com.IvanMurzak.McpPlugin
                 .Pack(data.RequestID)
                 .TaskFromResult();
         }
-        IRunResource? FindResourceContentRunner(string uri, IDictionary<string, IRunResource> resources, out string? uriTemplate)
+        #endregion
+
+        #region Utils
+        internal IRunResource? FindResourceContentRunner(string uri, IDictionary<string, IRunResource> resources, out string? uriTemplate)
         {
             foreach (var route in resources)
             {
@@ -171,10 +177,7 @@ namespace com.IvanMurzak.McpPlugin
             uriTemplate = null;
             return null;
         }
-        #endregion
-
-        #region Utils
-        bool IsMatch(string uriTemplate, string uri)
+        internal bool IsMatch(string uriTemplate, string uri)
         {
             // Convert pattern to regex
             var regexPattern = "^" + Regex.Replace(uriTemplate, @"\{(\w+)\}", @"(?<$1>[^/]+)") + "(?:/.*)?$";
@@ -182,7 +185,7 @@ namespace com.IvanMurzak.McpPlugin
             return Regex.IsMatch(uri, regexPattern);
         }
 
-        IDictionary<string, object?> ParseUriParameters(string pattern, string uri)
+        internal IDictionary<string, object?> ParseUriParameters(string pattern, string uri)
         {
             var parameters = new Dictionary<string, object?>()
             {

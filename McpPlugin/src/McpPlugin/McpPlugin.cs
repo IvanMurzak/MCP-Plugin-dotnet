@@ -13,6 +13,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Common.Model;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using R3;
@@ -26,10 +27,16 @@ namespace com.IvanMurzak.McpPlugin
         private readonly CompositeDisposable _disposables = new();
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly ThreadSafeBool _isDisposed = new(false);
+        private readonly Common.Version _version;
+        private readonly string _basePath;
 
         public ILogger Logger => _logger;
         public IMcpManager McpManager { get; private set; }
         public IRemoteMcpManagerHub RemoteMcpManagerHub => _remoteMcpManagerHub;
+        public Common.Version Version => _version;
+        public string CurrentBaseDirectory => _basePath;
+        public VersionHandshakeResponse? VersionHandshakeStatus => _remoteMcpManagerHub?.VersionHandshakeStatus;
+        public ulong ToolCallsCount => McpManager.ToolManager?.ToolCallsCount ?? 0;
         public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _remoteMcpManagerHub?.ConnectionState
             ?? new ReactiveProperty<HubConnectionState>(HubConnectionState.Disconnected);
         public ReadOnlyReactiveProperty<bool> KeepConnected => _remoteMcpManagerHub?.KeepConnected
@@ -38,7 +45,8 @@ namespace com.IvanMurzak.McpPlugin
         public McpPlugin(
             ILogger<McpPlugin> logger,
             IMcpManager mcpManager,
-            IRemoteMcpManagerHub remoteMcpManagerHub)
+            IRemoteMcpManagerHub remoteMcpManagerHub,
+            Common.Version version)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("{class} Ctor.", nameof(McpPlugin));
@@ -47,6 +55,8 @@ namespace com.IvanMurzak.McpPlugin
             _cancellationTokenSource = _disposables.ToCancellationTokenSource();
 
             _remoteMcpManagerHub = remoteMcpManagerHub ?? throw new ArgumentNullException(nameof(remoteMcpManagerHub));
+            _version = version ?? throw new ArgumentNullException(nameof(version));
+            _basePath = AppDomain.CurrentDomain.BaseDirectory;
             _remoteMcpManagerHub.ConnectionState
                 .Where(state => state == HubConnectionState.Connected)
                 .Where(state => !_cancellationTokenSource.Token.IsCancellationRequested)

@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -26,11 +27,12 @@ namespace com.IvanMurzak.McpPlugin
 {
     public class McpToolManager : IToolManager
     {
-        static readonly JsonElement EmptyInputSchema = JsonDocument.Parse("{\"type\":\"object\"}").RootElement;
+        static readonly JsonElement EmptyInputSchema = JsonDocument.Parse("{ \"type\": \"object\", \"additionalProperties\": false }").RootElement;
 
         protected readonly ILogger _logger;
         protected readonly Reflector _reflector;
         protected readonly CompositeDisposable _disposables = new();
+        private ulong toolCallsCount = 0;
 
         readonly ToolRunnerCollection _tools;
         readonly Subject<Unit> _onToolsUpdated = new();
@@ -39,6 +41,7 @@ namespace com.IvanMurzak.McpPlugin
         public Observable<Unit> OnToolsUpdated => _onToolsUpdated;
 
         public IEnumerable<IRunTool> GetAllTools() => _tools.Values.ToList();
+        public ulong ToolCallsCount => (ulong)Interlocked.Read(ref Unsafe.As<ulong, long>(ref toolCallsCount));
 
         public McpToolManager(ILogger<McpToolManager> logger, Reflector reflector, ToolRunnerCollection tools)
         {
@@ -58,6 +61,16 @@ namespace com.IvanMurzak.McpPlugin
         #region Tools
         public int EnabledToolsCount => _tools.Count(kvp => kvp.Value.Enabled);
         public int TotalToolsCount => _tools.Count;
+        
+        /// <summary>
+        /// Gets the total token count for all enabled tools.
+        /// This is calculated as the sum of TokenCount for each enabled tool.
+        /// Recalculates on each access but should be performant for typical tool counts.
+        /// </summary>
+        public int EnabledToolsTokenCount => _tools
+            .Where(kvp => kvp.Value.Enabled)
+            .Sum(kvp => kvp.Value.TokenCount);
+        
         public bool HasTool(string name) => _tools.ContainsKey(name);
         public bool AddTool(string name, IRunTool runner)
         {
@@ -112,6 +125,7 @@ namespace com.IvanMurzak.McpPlugin
         public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool data) => RunCallTool(data, default);
         public async Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool data, CancellationToken cancellationToken = default)
         {
+            Interlocked.Increment(ref Unsafe.As<ulong, long>(ref toolCallsCount));
             if (data == null)
                 return ResponseData<ResponseCallTool>.Error(Common.Consts.Guid.Zero, "Tool data is null.")
                     .Log(_logger);

@@ -9,11 +9,15 @@
 */
 
 using com.IvanMurzak.McpPlugin.Common.Hub.Server;
+using com.IvanMurzak.McpPlugin.Common.Model;
 
 namespace com.IvanMurzak.McpPlugin
 {
     public interface IRemoteMcpManagerHub : IConnectServerHub, IServerMcpManager
     {
-
+        /// <summary>
+        /// Gets the version handshake response status if a handshake has been performed; otherwise, null.
+        /// </summary>
+        VersionHandshakeResponse? VersionHandshakeStatus { get; }
     }
 }

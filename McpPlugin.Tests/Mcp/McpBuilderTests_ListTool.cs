@@ -187,7 +187,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 name: toolName,
                 title: toolTitle,
                 classType: classType,
-                method: method);
+                methodInfo: method);
 
             return mcpPluginBuilder.Build(reflector);
         }
@@ -206,7 +206,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 name: toolName,
                 title: toolTitle,
                 classType: classType,
-                method: method);
+                methodInfo: method);
 
             var mcpPlugin = mcpPluginBuilder.Build(reflector);
 

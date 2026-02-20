@@ -15,32 +15,39 @@ using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Hub.Server;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Common.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
-    public class McpServerHub : BaseHub<IClientMcpManager>, IServerMcpManager
+    public class McpServerHub : BaseHub<IClientMcpRpc>, IServerMcpManager
     {
         readonly Common.Version _version;
+        readonly IDataArguments _dataArguments;
         readonly HubEventToolsChange _eventAppToolsChange;
         readonly HubEventPromptsChange _eventAppPromptsChange;
         readonly HubEventResourcesChange _eventAppResourcesChange;
         readonly IRequestTrackingService _requestTrackingService;
+        readonly IMcpSessionTracker _sessionTracker;
 
         public McpServerHub(
             ILogger<McpServerHub> logger,
             Common.Version version,
+            IDataArguments dataArguments,
             HubEventToolsChange eventAppToolsChange,
             HubEventPromptsChange eventAppPromptsChange,
             HubEventResourcesChange eventAppResourcesChange,
-            IRequestTrackingService requestTrackingService)
+            IRequestTrackingService requestTrackingService,
+            IMcpSessionTracker sessionTracker)
             : base(logger)
         {
             _version = version ?? throw new ArgumentNullException(nameof(version));
+            _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
             _eventAppToolsChange = eventAppToolsChange ?? throw new ArgumentNullException(nameof(eventAppToolsChange));
             _eventAppPromptsChange = eventAppPromptsChange ?? throw new ArgumentNullException(nameof(eventAppPromptsChange));
             _eventAppResourcesChange = eventAppResourcesChange ?? throw new ArgumentNullException(nameof(eventAppResourcesChange));
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
+            _sessionTracker = sessionTracker ?? throw new ArgumentNullException(nameof(sessionTracker));
         }
 
         public Task<ResponseData> NotifyAboutUpdatedTools(RequestToolsUpdated request) => NotifyAboutUpdatedTools(request, default);
@@ -147,6 +154,66 @@ namespace com.IvanMurzak.McpPlugin.Server
                     ServerVersion = "Unknown",
                     Compatible = false,
                     Message = $"Error during version handshake: {ex.Message}"
+                });
+            }
+        }
+
+        public Task<McpClientData> GetMcpClientData()
+        {
+            try
+            {
+                _logger.LogTrace("{method}. {guid}.",
+                    nameof(IServerMcpManager.GetMcpClientData), _guid);
+
+                var token = ClientUtils.GetTokenByConnectionId(Context.ConnectionId);
+                var clientData = token != null
+                    ? _sessionTracker.GetClientData(token)
+                    : _sessionTracker.GetClientData();
+
+                if (clientData == null)
+                    throw new Exception("Client data is null");
+
+                _logger.LogDebug("{method}. {guid}. ClientData, isConnected: {isConnected}, clientName: {clientName}",
+                    nameof(IServerMcpManager.GetMcpClientData), _guid, clientData.IsConnected, clientData.ClientName);
+
+                return Task.FromResult(clientData);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting MCP Client Data");
+                return Task.FromResult(new McpClientData { IsConnected = false });
+            }
+        }
+
+        public Task<McpServerData> GetMcpServerData()
+        {
+            try
+            {
+                _logger.LogTrace("{method}. {guid}.",
+                    nameof(IServerMcpManager.GetMcpServerData), _guid);
+
+                var token = ClientUtils.GetTokenByConnectionId(Context.ConnectionId);
+                var serverData = token != null
+                    ? _sessionTracker.GetServerData(token)
+                    : _sessionTracker.GetServerData();
+
+                if (serverData == null)
+                    throw new Exception("Server data is null");
+
+                _logger.LogDebug("{method}. {guid}. ServerData, isAiAgentConnected: {isAiAgentConnected}, serverVersion: {serverVersion}, serverApiVersion: {serverApiVersion}, serverTransport: {serverTransport}",
+                    nameof(IServerMcpManager.GetMcpServerData), _guid, serverData.IsAiAgentConnected, serverData.ServerVersion, serverData.ServerApiVersion, serverData.ServerTransport);
+
+                return Task.FromResult(serverData);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting MCP Server Data");
+                return Task.FromResult(new McpServerData
+                {
+                    IsAiAgentConnected = false,
+                    ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                    ServerApiVersion = _version.Api,
+                    ServerTransport = _dataArguments.ClientTransport
                 });
             }
         }

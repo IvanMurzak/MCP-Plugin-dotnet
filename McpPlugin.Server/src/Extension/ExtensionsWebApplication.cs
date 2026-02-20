@@ -26,8 +26,14 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (dataArguments == null)
                 throw new ArgumentNullException(nameof(dataArguments));
 
-            // Setup SignalR ----------------------------------------------------
+            // Setup routing ----------------------------------------------------
             app.UseRouting();
+
+            // Setup auth -------------------------------------------------------
+            app.UseAuthentication();
+            app.UseAuthorization();
+
+            // Setup SignalR ----------------------------------------------------
             app.MapHub<McpServerHub>(Consts.Hub.RemoteApp, options =>
             {
                 options.Transports = HttpTransports.All;
@@ -36,11 +42,18 @@ namespace com.IvanMurzak.McpPlugin.Server
             });
 
             // Setup MCP client -------------------------------------------------
-            if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.http)
+            if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.streamableHttp)
             {
-                // Map MCP endpoint
-                app.MapMcp("/");
-                app.MapMcp("/mcp");
+                if (!string.IsNullOrEmpty(dataArguments.Token))
+                {
+                    app.MapMcp("/").RequireAuthorization();
+                    app.MapMcp("/mcp").RequireAuthorization();
+                }
+                else
+                {
+                    app.MapMcp("/");
+                    app.MapMcp("/mcp");
+                }
             }
 
             return app;

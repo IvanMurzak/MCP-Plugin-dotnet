@@ -24,9 +24,9 @@ namespace com.IvanMurzak.McpPlugin
         public IRunResourceContent RunGetContent { get; set; }
 
         [JsonIgnore]
-        public IRunResourceContext RunListContext { get; set; }
+        public IRunResourceList RunListContext { get; set; }
 
-        public RunResource(string route, string name, IRunResourceContent runnerGetContent, IRunResourceContext runnerListContext, string? description = null, string? mimeType = null)
+        public RunResource(string route, string name, IRunResourceContent runnerGetContent, IRunResourceList runnerListContext, string? description = null, string? mimeType = null)
         {
             Route = route;
             Name = name;

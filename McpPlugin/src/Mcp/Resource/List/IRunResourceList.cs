@@ -13,7 +13,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public interface IRunResourceContext
+    public interface IRunResourceList
     {
         /// <summary>
         /// Executes the target static method with the provided arguments.
