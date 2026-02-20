@@ -91,23 +91,11 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         {
             var content = new List<ContentBlock>
             {
-                new ContentBlock()
-                {
-                    Type = "image",
-                    Data = Convert.ToBase64String(data),
-                    MimeType = mimeType
-                }
+                ContentBlock.CreateImage(data, mimeType)
             };
 
             if (!string.IsNullOrEmpty(message))
-            {
-                content.Insert(0, new ContentBlock()
-                {
-                    Type = "text",
-                    Text = message,
-                    MimeType = Consts.MimeType.TextPlain
-                });
-            }
+                content.Insert(0, ContentBlock.CreateText(message));
 
             return new ResponseCallTool(
                 status: ResponseStatus.Success,
@@ -124,23 +112,11 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         {
             var content = new List<ContentBlock>
             {
-                new ContentBlock()
-                {
-                    Type = "audio",
-                    Data = Convert.ToBase64String(data),
-                    MimeType = mimeType
-                }
+                ContentBlock.CreateAudio(data, mimeType)
             };
 
             if (!string.IsNullOrEmpty(message))
-            {
-                content.Insert(0, new ContentBlock()
-                {
-                    Type = "text",
-                    Text = message,
-                    MimeType = Consts.MimeType.TextPlain
-                });
-            }
+                content.Insert(0, ContentBlock.CreateText(message));
 
             return new ResponseCallTool(
                 status: ResponseStatus.Success,
