@@ -52,7 +52,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 {
                     Uri = response.Uri,
                     MimeType = response.MimeType,
-                    Blob = response.Blob
+                    Blob = Convert.FromBase64String(response.Blob)
                 };
 
             throw new InvalidOperationException("Resource contents is null");
