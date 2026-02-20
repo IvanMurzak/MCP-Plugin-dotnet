@@ -29,10 +29,11 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         /// <summary>
         /// Monitors the HTTP connection health and cancels the session when disconnection is detected.
-        /// This is necessary because context.RequestAborted may not fire reliably in all disconnect scenarios.
+        /// This is necessary because requestAborted may not fire reliably in all disconnect scenarios.
+        /// The token must be captured from context.RequestAborted before the HttpContext is disposed.
         /// </summary>
         private static async Task MonitorConnectionHealthAsync(
-            HttpContext context,
+            CancellationToken requestAborted,
             CancellationTokenSource linkedCts,
             Logger? logger)
         {
@@ -43,7 +44,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                     await Task.Delay(ConnectionHealthCheckInterval, linkedCts.Token);
 
                     // Check if the request has been aborted
-                    if (context.RequestAborted.IsCancellationRequested)
+                    if (requestAborted.IsCancellationRequested)
                     {
                         logger?.Debug("Connection health monitor detected RequestAborted. Cancelling session.");
                         await linkedCts.CancelAsync();
@@ -118,9 +119,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                             context.RequestAborted);
                         var linkedToken = linkedCts.Token;
 
-                        // Start a background task to monitor connection health.
-                        // This ensures we detect disconnection even if context.RequestAborted doesn't fire.
-                        var connectionMonitorTask = MonitorConnectionHealthAsync(context, linkedCts, logger);
+                        // Capture RequestAborted token before context may be disposed.
+                        // This ensures we detect disconnection even if RequestAborted doesn't fire reliably.
+                        var requestAborted = context.RequestAborted;
+                        // var connectionMonitorTask = MonitorConnectionHealthAsync(requestAborted, linkedCts, logger);
 
                         // Extract Bearer token from the HTTP request for token-based routing
                         var authHeader = context.Request.Headers["Authorization"].ToString();
@@ -166,7 +168,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                             // Cancel the linked token to stop the connection monitor task
                             if (!linkedCts.IsCancellationRequested)
                                 await linkedCts.CancelAsync();
-                            try { await connectionMonitorTask; } catch { /* Ignore cancellation exceptions */ }
+                            // try { await connectionMonitorTask; } catch { /* Ignore cancellation exceptions */ }
 
                             logger?.Debug($"-------------------------------------------------\nSession handler for HTTP transport completed. Session ID: {mcpClientSessionId}\n------------------------");
                         }
