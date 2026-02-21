@@ -68,6 +68,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                     options.Stateless = false;
                     options.PerSessionExecutionContext = true;
+                    options.IdleTimeout = TimeSpan.FromSeconds(30);
                     options.RunSessionHandler = async (context, server, cancellationToken) =>
                     {
                         logger?.Debug("-------------------------------------------------\nRunning session handler for HTTP transport. Session ID: {sessionId}",
