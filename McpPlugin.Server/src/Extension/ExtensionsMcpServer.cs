@@ -15,7 +15,6 @@ using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -25,43 +24,6 @@ namespace com.IvanMurzak.McpPlugin.Server
 {
     public static class ExtensionsMcpServer
     {
-        private static readonly TimeSpan ConnectionHealthCheckInterval = TimeSpan.FromSeconds(5);
-
-        /// <summary>
-        /// Monitors the HTTP connection health and cancels the session when disconnection is detected.
-        /// This is necessary because context.RequestAborted may not fire reliably in all disconnect scenarios.
-        /// </summary>
-        private static async Task MonitorConnectionHealthAsync(
-            HttpContext context,
-            CancellationTokenSource linkedCts,
-            Logger? logger)
-        {
-            try
-            {
-                while (!linkedCts.Token.IsCancellationRequested)
-                {
-                    await Task.Delay(ConnectionHealthCheckInterval, linkedCts.Token);
-
-                    // Check if the request has been aborted
-                    if (context.RequestAborted.IsCancellationRequested)
-                    {
-                        logger?.Debug("Connection health monitor detected RequestAborted. Cancelling session.");
-                        await linkedCts.CancelAsync();
-                        return;
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected when the session ends normally
-            }
-            catch (Exception ex)
-            {
-                logger?.Debug(ex, "Connection health monitor encountered an error. Cancelling session.");
-                try { await linkedCts.CancelAsync(); } catch { /* Ignore */ }
-            }
-        }
-
         public static IMcpServerBuilder WithMcpServer(
             this IServiceCollection services,
             DataArguments dataArguments,
@@ -113,15 +75,6 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                         var mcpClientSessionId = server.SessionId ?? throw new InvalidOperationException("MCP Server session ID is not available.");
 
-                        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
-                            cancellationToken,
-                            context.RequestAborted);
-                        var linkedToken = linkedCts.Token;
-
-                        // Start a background task to monitor connection health.
-                        // This ensures we detect disconnection even if context.RequestAborted doesn't fire.
-                        var connectionMonitorTask = MonitorConnectionHealthAsync(context, linkedCts, logger);
-
                         // Extract Bearer token from the HTTP request for token-based routing
                         var authHeader = context.Request.Headers["Authorization"].ToString();
                         if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
@@ -145,8 +98,8 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                             try
                             {
-                                await service.StartAsync(linkedToken);
-                                await server.RunAsync(linkedToken);
+                                await service.StartAsync(cancellationToken);
+                                await server.RunAsync(cancellationToken);
                                 logger?.Debug("MCP Server completed for HTTP transport. Session ID: {sessionId}",
                                     mcpClientSessionId);
                             }
@@ -163,11 +116,6 @@ namespace com.IvanMurzak.McpPlugin.Server
                         }
                         finally
                         {
-                            // Cancel the linked token to stop the connection monitor task
-                            if (!linkedCts.IsCancellationRequested)
-                                await linkedCts.CancelAsync();
-                            try { await connectionMonitorTask; } catch { /* Ignore cancellation exceptions */ }
-
                             logger?.Debug($"-------------------------------------------------\nSession handler for HTTP transport completed. Session ID: {mcpClientSessionId}\n------------------------");
                         }
                     };
