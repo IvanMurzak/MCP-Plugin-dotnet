@@ -77,7 +77,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             IsError = response.Status == ResponseStatus.Error,
             Content = response.Content
-                .Select(x => x.ToTextContent())
+                .Select(x => x.ToContent())
                 .ToList(),
             StructuredContent = response.StructuredContent
         };
