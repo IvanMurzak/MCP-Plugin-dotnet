@@ -38,7 +38,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             ParseEnvironmentVariables(); // env variables - second priority
             ParseCommandLineArguments(args); // command line args - first priority (override previous values)
 
-            // Auto-detect deployment mode if not explicitly set
+            // Default to 'none' authorization if not explicitly set
             if (Authorization == Consts.MCP.Server.AuthOption.unknown)
                 Authorization = Consts.MCP.Server.AuthOption.none;
         }
