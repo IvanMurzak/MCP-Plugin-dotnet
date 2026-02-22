@@ -16,6 +16,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Strategy;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
@@ -38,7 +39,14 @@ namespace com.IvanMurzak.McpPlugin.Server
             ? clients?.Keys ?? new string[0]
             : Enumerable.Empty<string>();
 
-        static string? GetBestConnectionId(Type type, int offset = 0)
+        public static IEnumerable<string> GetAllConnectionIds(Type hubType)
+        {
+            if (ConnectedClients.TryGetValue(hubType, out var clients))
+                return clients.Keys.ToList();
+            return Enumerable.Empty<string>();
+        }
+
+        public static string? GetBestConnectionId(Type type, int offset = 0)
         {
             var clients = default(ConcurrentDictionary<string, bool>);
             if (offset == 0)
@@ -132,6 +140,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             string methodName,
             TRequest request,
             IDataArguments dataArguments,
+            IMcpConnectionStrategy strategy,
             string? token = null,
             CancellationToken cancellationToken = default)
             where TRequest : IRequestID
@@ -156,7 +165,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 {
                     retryCount++;
 
-                    var connectionId = GetConnectionIdByToken(token) ?? GetBestConnectionId(typeof(McpServerHub), retryCount - 1);
+                    var connectionId = strategy.ResolveConnectionId(token, retryCount - 1);
                     var client = string.IsNullOrEmpty(connectionId)
                         ? null
                         : hubContext.Clients.Client(connectionId);

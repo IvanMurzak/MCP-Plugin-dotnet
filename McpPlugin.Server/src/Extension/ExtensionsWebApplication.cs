@@ -11,8 +11,10 @@
 using System;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Transport;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Connections;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
@@ -41,20 +43,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                 options.TransportMaxBufferSize = 1024 * 1024 * 10; // 10 MB
             });
 
-            // Setup MCP client -------------------------------------------------
-            if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.streamableHttp)
-            {
-                if (!string.IsNullOrEmpty(dataArguments.Token))
-                {
-                    app.MapMcp("/").RequireAuthorization();
-                    app.MapMcp("/mcp").RequireAuthorization();
-                }
-                else
-                {
-                    app.MapMcp("/");
-                    app.MapMcp("/mcp");
-                }
-            }
+            // Delegate MCP endpoint mapping to transport layer
+            var transport = app.Services.GetRequiredService<ITransportLayer>();
+            transport.ConfigureApp(app, dataArguments);
 
             return app;
         }
