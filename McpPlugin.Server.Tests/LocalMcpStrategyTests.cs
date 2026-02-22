@@ -29,7 +29,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void DeploymentMode_ReturnsLocal()
         {
-            _strategy.DeploymentMode.Should().Be(Consts.MCP.Server.DeploymentMode.local);
+            _strategy.DeploymentMode.Should().Be(Consts.MCP.Server.AuthOption.none);
         }
 
         [Fact]

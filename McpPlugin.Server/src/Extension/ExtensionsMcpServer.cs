@@ -27,7 +27,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             var strategyFactory = new McpStrategyFactory();
 
             var transport = transportFactory.Create(dataArguments.ClientTransport);
-            var strategy = strategyFactory.Create(dataArguments.Deployment);
+            var strategy = strategyFactory.Create(dataArguments.Authorization);
 
             // Validate configuration for the selected deployment mode
             strategy.Validate(dataArguments);

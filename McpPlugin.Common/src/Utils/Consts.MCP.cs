@@ -41,7 +41,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string PluginTimeout = "plugin-timeout";
                     public const string ClientTransportMethod = "client-transport";
                     public const string Token = "token";
-                    public const string DeploymentMode = "deployment-mode";
+                    public const string Authorization = "authorization";
                 }
 
                 public static class Env
@@ -50,7 +50,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string PluginTimeout = "MCP_PLUGIN_CLIENT_TIMEOUT";
                     public const string ClientTransportMethod = "MCP_PLUGIN_CLIENT_TRANSPORT";
                     public const string Token = "MCP_PLUGIN_TOKEN";
-                    public const string DeploymentMode = "MCP_DEPLOYMENT_MODE";
+                    public const string Authorization = "MCP_AUTHORIZATION";
                 }
 
                 public const string DefaultBodyPath = "mcpServers";
@@ -104,11 +104,11 @@ namespace com.IvanMurzak.McpPlugin.Common
                     streamableHttp
                 }
 
-                public enum DeploymentMode
+                public enum AuthOption
                 {
                     unknown,
-                    local,
-                    remote
+                    none,
+                    required
                 }
             }
         }

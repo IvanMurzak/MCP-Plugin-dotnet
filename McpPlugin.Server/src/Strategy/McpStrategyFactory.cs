@@ -15,20 +15,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 {
     public interface IMcpStrategyFactory
     {
-        IMcpConnectionStrategy Create(Consts.MCP.Server.DeploymentMode mode);
+        IMcpConnectionStrategy Create(Consts.MCP.Server.AuthOption mode);
     }
 
     public class McpStrategyFactory : IMcpStrategyFactory
     {
-        public IMcpConnectionStrategy Create(Consts.MCP.Server.DeploymentMode mode)
+        public IMcpConnectionStrategy Create(Consts.MCP.Server.AuthOption mode)
         {
             return mode switch
             {
-                Consts.MCP.Server.DeploymentMode.local => new LocalMcpStrategy(),
-                Consts.MCP.Server.DeploymentMode.remote => new RemoteMcpStrategy(),
+                Consts.MCP.Server.AuthOption.none => new LocalMcpStrategy(),
+                Consts.MCP.Server.AuthOption.required => new RemoteMcpStrategy(),
                 _ => throw new ArgumentException(
                     $"Unsupported deployment mode: {mode}. " +
-                    $"Supported modes are: {Consts.MCP.Server.DeploymentMode.local}, {Consts.MCP.Server.DeploymentMode.remote}")
+                    $"Supported modes are: {Consts.MCP.Server.AuthOption.none}, {Consts.MCP.Server.AuthOption.required}")
             };
         }
     }

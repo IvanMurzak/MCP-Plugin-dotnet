@@ -20,8 +20,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 {
     public class LocalMcpStrategy : IMcpConnectionStrategy
     {
-        public Consts.MCP.Server.DeploymentMode DeploymentMode
-            => Consts.MCP.Server.DeploymentMode.local;
+        public Consts.MCP.Server.AuthOption DeploymentMode
+            => Consts.MCP.Server.AuthOption.none;
 
         public bool AllowMultipleConnections => false;
 

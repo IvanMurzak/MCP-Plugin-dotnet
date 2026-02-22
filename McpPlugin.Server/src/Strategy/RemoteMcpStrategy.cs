@@ -19,8 +19,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 {
     public class RemoteMcpStrategy : IMcpConnectionStrategy
     {
-        public Consts.MCP.Server.DeploymentMode DeploymentMode
-            => Consts.MCP.Server.DeploymentMode.remote;
+        public Consts.MCP.Server.AuthOption DeploymentMode
+            => Consts.MCP.Server.AuthOption.required;
 
         public bool AllowMultipleConnections => true;
 

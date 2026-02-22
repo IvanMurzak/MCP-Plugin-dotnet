@@ -24,29 +24,29 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         public void Create_Local_ReturnsLocalMcpStrategy()
         {
             // Act
-            var strategy = _factory.Create(Consts.MCP.Server.DeploymentMode.local);
+            var strategy = _factory.Create(Consts.MCP.Server.AuthOption.none);
 
             // Assert
             strategy.Should().BeOfType<LocalMcpStrategy>();
-            strategy.DeploymentMode.Should().Be(Consts.MCP.Server.DeploymentMode.local);
+            strategy.DeploymentMode.Should().Be(Consts.MCP.Server.AuthOption.none);
         }
 
         [Fact]
         public void Create_Remote_ReturnsRemoteMcpStrategy()
         {
             // Act
-            var strategy = _factory.Create(Consts.MCP.Server.DeploymentMode.remote);
+            var strategy = _factory.Create(Consts.MCP.Server.AuthOption.required);
 
             // Assert
             strategy.Should().BeOfType<RemoteMcpStrategy>();
-            strategy.DeploymentMode.Should().Be(Consts.MCP.Server.DeploymentMode.remote);
+            strategy.DeploymentMode.Should().Be(Consts.MCP.Server.AuthOption.required);
         }
 
         [Fact]
         public void Create_Unknown_ThrowsArgumentException()
         {
             // Act
-            Action act = () => _factory.Create(Consts.MCP.Server.DeploymentMode.unknown);
+            Action act = () => _factory.Create(Consts.MCP.Server.AuthOption.unknown);
 
             // Assert
             act.Should().Throw<ArgumentException>()
