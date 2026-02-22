@@ -31,6 +31,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         {
         }
 
+        protected override Task HandleChallengeAsync(AuthenticationProperties properties)
+        {
+            Response.StatusCode = 401;
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            Response.Headers.WWWAuthenticate =
+                $"Bearer realm=\"Unity MCP Server\", resource=\"{baseUrl}\"";
+            return Task.CompletedTask;
+        }
+
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             // If no plugins have connected with tokens and no server token is configured,
@@ -59,6 +68,21 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 var principal = new ClaimsPrincipal(identity);
                 var ticket = new AuthenticationTicket(principal, SchemeName);
                 return Task.FromResult(AuthenticateResult.Success(ticket));
+            }
+
+            // Check registered client access tokens (DCR flow, RFC 7591)
+            var registeredClientId = ClientRegistrationStore.TryGetClientIdByAccessToken(token);
+            if (registeredClientId != null)
+            {
+                var registeredClaims = new[]
+                {
+                    new Claim(TokenClaimType, token),
+                    new Claim("client_id", registeredClientId)
+                };
+                var registeredIdentity  = new ClaimsIdentity(registeredClaims, SchemeName);
+                var registeredPrincipal = new ClaimsPrincipal(registeredIdentity);
+                var registeredTicket    = new AuthenticationTicket(registeredPrincipal, SchemeName);
+                return Task.FromResult(AuthenticateResult.Success(registeredTicket));
             }
 
             // Fallback: check against server-configured token
