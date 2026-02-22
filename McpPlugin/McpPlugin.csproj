@@ -37,7 +37,7 @@
     <ProjectReference Include="./../McpPlugin.Common/McpPlugin.Common.csproj" />
     <PackageReference Include="com.IvanMurzak.ReflectorNet" Version="3.12.1" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.3" />
-    <PackageReference Include="ModelContextProtocol" Version="0.9.0-preview.1" />
+    <PackageReference Include="ModelContextProtocol" Version="0.9.0-preview.2" />
     <PackageReference Include="R3" Version="1.3.0" />
   </ItemGroup>
 
