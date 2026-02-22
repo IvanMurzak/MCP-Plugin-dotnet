@@ -28,7 +28,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // Assert
             strategy.Should().BeOfType<LocalMcpStrategy>();
-            strategy.DeploymentMode.Should().Be(Consts.MCP.Server.AuthOption.none);
+            strategy.AuthOption.Should().Be(Consts.MCP.Server.AuthOption.none);
         }
 
         [Fact]
@@ -39,7 +39,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // Assert
             strategy.Should().BeOfType<RemoteMcpStrategy>();
-            strategy.DeploymentMode.Should().Be(Consts.MCP.Server.AuthOption.required);
+            strategy.AuthOption.Should().Be(Consts.MCP.Server.AuthOption.required);
         }
 
         [Fact]

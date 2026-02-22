@@ -19,7 +19,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 {
     public interface IMcpConnectionStrategy
     {
-        Consts.MCP.Server.AuthOption DeploymentMode { get; }
+        Consts.MCP.Server.AuthOption AuthOption { get; }
 
         /// <summary>
         /// Whether this deployment mode allows multiple simultaneous plugin connections.

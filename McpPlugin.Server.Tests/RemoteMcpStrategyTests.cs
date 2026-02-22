@@ -29,7 +29,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void DeploymentMode_ReturnsRemote()
         {
-            _strategy.DeploymentMode.Should().Be(Consts.MCP.Server.AuthOption.required);
+            _strategy.AuthOption.Should().Be(Consts.MCP.Server.AuthOption.required);
         }
 
         [Fact]
