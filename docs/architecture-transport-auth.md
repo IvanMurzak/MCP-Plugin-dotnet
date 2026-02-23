@@ -136,7 +136,7 @@ All 4 combinations work. The table shows the expected use case for each.
 |------------------|------------|-----------|-----------------------------------------------------------------------------------------------|
 | `stdio`          | `none`     | —         | **Local dev, single user.** Claude Desktop spawns the server as a subprocess. Simple setup, no auth needed. |
 | `stdio`          | `none`     | set       | Local dev with optional transport-level token protection. One plugin, one Claude session.     |
-| `stdio`          | `required` | required  | Secure connection between MCP server and MCP plugin. Single MCP client via Stdio, because it is single-session by nature.    |
+| `stdio`          | `required` | required  | Secure connection between MCP server and MCP plugin only. Does not impact MCP client.         |
 | `streamableHttp` | `none`     | —         | **Local HTTP server, single plugin.** Useful for testing HTTP transport without auth.         |
 | `streamableHttp` | `none`     | set       | Single plugin via HTTP with a basic shared secret for protection.                             |
 | `streamableHttp` | `required` | required  | **Multi-tenant / remote deployment.** Many .NET apps each connect with their own unique token. Each is isolated to its own Claude session. |
@@ -169,16 +169,16 @@ Both singletons are registered in DI and flow through the entire server:
 
 ```bash
 # Local development (stdio, no auth) — typical Claude Desktop config
-dotnet run --client-transport=stdio
+dotnet run client-transport=stdio
 
 # Local HTTP server without auth
-dotnet run --client-transport=streamableHttp --port=8080
+dotnet run client-transport=streamableHttp port=8080
 
 # Local HTTP server with a static token
-dotnet run --client-transport=streamableHttp --port=8080 --token=mySecret
+dotnet run client-transport=streamableHttp port=8080 token=mySecret
 
 # Multi-tenant remote deployment
-dotnet run --client-transport=streamableHttp --port=8080 --authorization=required --token=sharedSecret
+dotnet run client-transport=streamableHttp port=8080 authorization=required token=sharedSecret
 ```
 
 For remote multi-tenant use, each .NET plugin provides **its own** Bearer token when connecting:
