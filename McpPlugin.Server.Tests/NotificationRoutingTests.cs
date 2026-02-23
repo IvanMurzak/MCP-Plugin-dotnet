@@ -25,6 +25,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
     /// Verifies that when a token-mapped plugin exists, notifications target only that
     /// connection rather than broadcasting to all.
     /// </summary>
+    [Collection("McpPlugin.Server")]
     public class NotificationRoutingTests
     {
         readonly ILogger _logger = new Mock<ILogger>().Object;

@@ -36,7 +36,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             Response.StatusCode = 401;
             var baseUrl = $"{Request.Scheme}://{Request.Host}";
             Response.Headers.WWWAuthenticate =
-                $"Bearer realm=\"Unity MCP Server\", resource=\"{baseUrl}\"";
+                $"Bearer realm=\"MCP Plugin Server\", resource=\"{baseUrl}\"";
             return Task.CompletedTask;
         }
 
@@ -79,9 +79,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                     new Claim(TokenClaimType, token),
                     new Claim("client_id", registeredClientId)
                 };
-                var registeredIdentity  = new ClaimsIdentity(registeredClaims, SchemeName);
+                var registeredIdentity = new ClaimsIdentity(registeredClaims, SchemeName);
                 var registeredPrincipal = new ClaimsPrincipal(registeredIdentity);
-                var registeredTicket    = new AuthenticationTicket(registeredPrincipal, SchemeName);
+                var registeredTicket = new AuthenticationTicket(registeredPrincipal, SchemeName);
                 return Task.FromResult(AuthenticateResult.Success(registeredTicket));
             }
 

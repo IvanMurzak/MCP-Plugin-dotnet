@@ -22,6 +22,7 @@ using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tests
 {
+    [Collection("McpPlugin.Server")]
     public class NoAuthMcpStrategyTests
     {
         private readonly NoAuthMcpStrategy _strategy = new();

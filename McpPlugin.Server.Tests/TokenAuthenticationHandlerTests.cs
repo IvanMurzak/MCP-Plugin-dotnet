@@ -21,6 +21,7 @@ using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tests
 {
+    [Collection("McpPlugin.Server")]
     public class TokenAuthenticationHandlerTests
     {
         static string UniqueId() => Guid.NewGuid().ToString("N");
