@@ -19,13 +19,14 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using NLog;
 
 namespace com.IvanMurzak.McpPlugin.Server.Transport
 {
     public class StreamableHttpTransportLayer : ITransportLayer
     {
+        private const int DefaultTokenExpirationSeconds = 3600;
+
         public Consts.MCP.Server.TransportMethod TransportMethod
             => Consts.MCP.Server.TransportMethod.streamableHttp;
 
@@ -110,7 +111,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
         {
             if (!string.IsNullOrEmpty(dataArguments.Token))
             {
-                // MCP 2025-03-26: OAuth 2.0 Protected Resource Metadata (RFC 9728)
+                // MCP: OAuth 2.0 Protected Resource Metadata (RFC 9728)
                 // Tells clients that this server is its own authorization server
                 app.MapGet("/.well-known/oauth-protected-resource", async (HttpContext ctx) =>
                 {
@@ -122,7 +123,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                     }).ExecuteAsync(ctx);
                 }).AllowAnonymous();
 
-                // MCP 2025-03-26: OAuth 2.0 Authorization Server Metadata (RFC 8414)
+                // MCP: OAuth 2.0 Authorization Server Metadata (RFC 8414)
                 // Describes the token and registration endpoints so clients can authenticate
                 app.MapGet("/.well-known/oauth-authorization-server", async (HttpContext ctx) =>
                 {
@@ -137,7 +138,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                     }).ExecuteAsync(ctx);
                 }).AllowAnonymous();
 
-                // MCP 2025-03-26: Dynamic Client Registration (RFC 7591)
+                // MCP: Dynamic Client Registration (RFC 7591)
                 // Open registration — any client can self-register and receive unique credentials
                 app.MapPost("/oauth/register", async (HttpContext ctx) =>
                 {
@@ -153,22 +154,22 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                     var client = ClientRegistrationStore.Register(clientName);
                     await Results.Json(new
                     {
-                        client_id            = client.ClientId,
-                        client_secret        = client.ClientSecret,
-                        client_id_issued_at  = client.IssuedAt.ToUnixTimeSeconds(),
-                        grant_types          = new[] { "client_credentials" },
+                        client_id = client.ClientId,
+                        client_secret = client.ClientSecret,
+                        client_id_issued_at = client.IssuedAt.ToUnixTimeSeconds(),
+                        grant_types = new[] { "client_credentials" },
                         token_endpoint_auth_method = "client_secret_post"
                     }, statusCode: 201).ExecuteAsync(ctx);
                 }).AllowAnonymous();
 
-                // MCP 2025-03-26: Token endpoint — two authentication paths:
+                // MCP: Token endpoint — two authentication paths:
                 //   Path A (DCR): client_id + registered client_secret → unique access_token
                 //   Path B (legacy): client_secret == --token → returns --token as access_token
                 app.MapPost("/oauth/token", async (HttpContext ctx) =>
                 {
-                    var form         = await ctx.Request.ReadFormAsync();
-                    var grantType    = form["grant_type"].ToString();
-                    var clientId     = form["client_id"].ToString();
+                    var form = await ctx.Request.ReadFormAsync();
+                    var grantType = form["grant_type"].ToString();
+                    var clientId = form["client_id"].ToString();
                     var clientSecret = form["client_secret"].ToString();
 
                     IResult result;
@@ -181,7 +182,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                         // Path A: registered client (DCR flow)
                         var accessToken = ClientRegistrationStore.IssueAccessToken(clientId, clientSecret);
                         result = accessToken != null
-                            ? Results.Ok(new { access_token = accessToken, token_type = "Bearer", expires_in = 3600 })
+                            ? Results.Ok(new
+                            {
+                                access_token = accessToken,
+                                token_type = "Bearer",
+                                expires_in = DefaultTokenExpirationSeconds
+                            })
                             : Results.Json(new { error = "invalid_client" }, statusCode: 401);
                     }
                     else
@@ -189,7 +195,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                         // Path B: legacy — client_secret == --token (backward compat)
                         result = string.IsNullOrEmpty(clientSecret) || clientSecret != dataArguments.Token
                             ? Results.Json(new { error = "invalid_client" }, statusCode: 401)
-                            : Results.Ok(new { access_token = dataArguments.Token, token_type = "Bearer", expires_in = 3600 });
+                            : Results.Ok(new
+                            {
+                                access_token = dataArguments.Token,
+                                token_type = "Bearer",
+                                expires_in = DefaultTokenExpirationSeconds
+                            });
                     }
 
                     await result.ExecuteAsync(ctx);
