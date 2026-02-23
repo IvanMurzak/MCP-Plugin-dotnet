@@ -161,8 +161,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                               ?? _routingToken
                               ?? Common.Consts.MCP.Server.TransportMethod.stdio.ToString();
 
-            _sessionTracker.AddRef(_physicalSessionId);
             _sessionTracker.Update(_physicalSessionId, _routingToken, GetClientData(), GetServerData());
+            _sessionTracker.AddRef(_physicalSessionId);
             _logger.LogDebug("{type} Session tracked. PhysicalId: {physicalId}, RoutingToken: {hasToken}.",
                 GetType().GetTypeShortName(), _physicalSessionId, _routingToken != null ? "present" : "absent");
 

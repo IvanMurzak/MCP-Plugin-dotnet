@@ -46,7 +46,16 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
 
             _strategy.OnPluginConnected(GetType(), Context.ConnectionId, token, _logger,
-                (id, reason) => Clients.Client(id)?.ForceDisconnect(reason));
+                (id, reason) =>
+                {
+                    var client = Clients.Client(id);
+                    if (client == null)
+                    {
+                        _logger.LogWarning("{guid} ForceDisconnect skipped: no SignalR connection found for ConnectionId: {connectionId}. Client may have already disconnected.", _guid, id);
+                        return;
+                    }
+                    client.ForceDisconnect(reason);
+                });
 
             _logger.LogDebug("{guid} MCP Plugin connected. ConnectionId: {connectionId}, Token: {hasToken}.",
                 _guid, Context.ConnectionId, !string.IsNullOrEmpty(token) ? "present" : "absent");

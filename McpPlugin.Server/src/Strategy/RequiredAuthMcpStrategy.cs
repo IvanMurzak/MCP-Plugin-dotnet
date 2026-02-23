@@ -21,7 +21,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
     public class RequiredAuthMcpStrategy : IMcpConnectionStrategy
     {
         // Set once at startup by ConfigureAuthentication; null means dynamic-pairing mode.
-        private string? _serverToken;
+        // volatile ensures the write in ConfigureAuthentication is visible to all threads
+        // that subsequently read it in OnPluginConnected (multiple SignalR threads).
+        private volatile string? _serverToken;
 
         public Consts.MCP.Server.AuthOption AuthOption
             => Consts.MCP.Server.AuthOption.required;
@@ -37,7 +39,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 
         public void ConfigureAuthentication(TokenAuthenticationOptions options, DataArguments dataArguments)
         {
-            // Store for use in OnPluginConnected — SignalR hub has no [Authorize], so we enforce manually.
+            // Store the configured server token so OnPluginConnected can apply the same rules used by
+            // TokenAuthenticationHandler (via streamableHttp's RequireAuthorization) and handle plugin/client pairing.
             _serverToken = dataArguments.Token;
             // ServerToken may be null — means "accept any token, pair by equality"
             options.ServerToken = dataArguments.Token;

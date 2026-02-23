@@ -70,11 +70,11 @@ Designed for **multiple independent plugins** each owning a specific MCP client 
 
 ### Core properties
 
-| Property                   | `NoAuthMcpStrategy`           | `RequiredAuthMcpStrategy`         |
-|----------------------------|-------------------------------|-----------------------------------|
-| `AuthOption`               | `none`                        | `required`                        |
-| `AllowMultipleConnections` | `false`                       | `true`                            |
-| Token required?            | No (optional)                 | No — plugins must provide a token |
+| Property                   | `NoAuthMcpStrategy`           | `RequiredAuthMcpStrategy`          |
+|----------------------------|-------------------------------|------------------------------------|
+| `AuthOption`               | `none`                        | `required`                         |
+| `AllowMultipleConnections` | `false`                       | `true`                             |
+| Token required?            | No (optional)                 | Yes — plugins must provide a token |
 
 ### `Validate(dataArguments)`
 

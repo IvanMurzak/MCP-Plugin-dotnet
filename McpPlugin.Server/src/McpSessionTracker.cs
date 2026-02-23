@@ -158,6 +158,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         public bool Remove(string physicalId)
         {
             bool isLast;
+            bool sessionRemoved = false;
             lock (_refCountLock)
             {
                 if (_refCounts.TryGetValue(physicalId, out var count) && count > 1)
@@ -168,6 +169,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 else
                 {
                     _refCounts.Remove(physicalId);
+                    sessionRemoved = _sessions.TryRemove(physicalId, out _);
                     isLast = true;
                 }
             }
@@ -179,7 +181,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 return false;
             }
 
-            if (_sessions.TryRemove(physicalId, out _))
+            if (sessionRemoved)
                 _logger.LogDebug("Session removed. PhysicalId: {physicalId}, TotalSessions: {total}.", physicalId, _sessions.Count);
             else
                 _logger.LogDebug("Session not found for removal. PhysicalId: {physicalId}, TotalSessions: {total}.", physicalId, _sessions.Count);

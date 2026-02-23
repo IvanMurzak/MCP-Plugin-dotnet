@@ -23,6 +23,9 @@ namespace com.IvanMurzak.McpPlugin
     {
         protected readonly ILogger _logger;
         protected readonly Reflector _reflector;
+        // Volatile ensures the reference write is visible to all threads without CPU/JIT caching.
+        // Thread-safety contract: arrays are never mutated after assignment — only replaced atomically.
+        // Readers always observe either the previous or next snapshot, never a torn state.
         private volatile IReadOnlyList<McpClientData> _activeClients = Array.Empty<McpClientData>();
         private readonly Subject<Unit> _onForceDisconnect = new();
         private readonly Subject<McpClientData> _onClientConnected = new();

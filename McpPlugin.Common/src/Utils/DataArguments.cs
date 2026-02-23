@@ -26,7 +26,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         public int Port { get; private set; } = 8080;
         public int PluginTimeoutMs { get; private set; }
         public Consts.MCP.Server.TransportMethod ClientTransport { get; private set; }
-        public Consts.MCP.Server.AuthOption Authorization { get; private set; }
+        public Consts.MCP.Server.AuthOption Authorization { get; private set; } = Consts.MCP.Server.AuthOption.none;
         public string? Token { get; private set; }
 
         public DataArguments(string[] args)

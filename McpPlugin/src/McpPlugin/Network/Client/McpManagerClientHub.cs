@@ -27,6 +27,13 @@ namespace com.IvanMurzak.McpPlugin
     {
         readonly IClientMcpManager _mcpManager;
 
+        /// <summary>
+        /// Incremented each time a live server notification (connect/disconnect) is received.
+        /// Used to detect whether state changed during the async initial-data fetch, so we
+        /// can skip applying a stale snapshot.
+        /// </summary>
+        private volatile int _liveNotificationEpoch = 0;
+
         public McpManagerClientHub(
             ILogger<McpManagerClientHub> logger,
             Version apiVersion,
@@ -48,6 +55,7 @@ namespace com.IvanMurzak.McpPlugin
             hubConnection.On<McpClientData, McpClientData[]>(nameof(IClientMcpRpc.OnMcpClientConnected), (connectedClient, allActiveClients) =>
             {
                 _logger.LogDebug("{class}.{method}", nameof(IClientMcpRpc), nameof(IClientMcpRpc.OnMcpClientConnected));
+                Interlocked.Increment(ref _liveNotificationEpoch);
                 return _mcpManager.OnMcpClientConnected(connectedClient, allActiveClients);
             })
             .AddTo(_serverEventsDisposables);
@@ -55,6 +63,7 @@ namespace com.IvanMurzak.McpPlugin
             hubConnection.On<McpClientData, McpClientData[]>(nameof(IClientMcpRpc.OnMcpClientDisconnected), (disconnectedClient, remainingClients) =>
             {
                 _logger.LogDebug("{class}.{method}", nameof(IClientMcpRpc), nameof(IClientMcpRpc.OnMcpClientDisconnected));
+                Interlocked.Increment(ref _liveNotificationEpoch);
                 return _mcpManager.OnMcpClientDisconnected(disconnectedClient, remainingClients);
             })
             .AddTo(_serverEventsDisposables);
@@ -196,9 +205,20 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{class}.{method} Fetching initial MCP client data snapshot.",
                 nameof(McpManagerClientHub), nameof(OnConnectedAsync));
 
+            // Capture epoch before the async gap so we can detect any live notifications
+            // (OnMcpClientConnected / OnMcpClientDisconnected) that arrive while we wait.
+            var epochBeforeFetch = _liveNotificationEpoch;
             var allClients = await GetMcpClientData();
+
             if (cancellationToken.IsCancellationRequested)
                 return;
+
+            if (_liveNotificationEpoch != epochBeforeFetch)
+            {
+                _logger.LogDebug("{class}.{method} Discarding stale initial snapshot: live notifications received during fetch.",
+                    nameof(McpManagerClientHub), nameof(OnConnectedAsync));
+                return;
+            }
 
             if (allClients != null && allClients.Length > 0)
                 await _mcpManager.OnInitialClientData(allClients);
