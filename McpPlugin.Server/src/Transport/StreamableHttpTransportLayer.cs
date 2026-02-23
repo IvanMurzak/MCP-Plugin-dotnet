@@ -145,10 +145,18 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                     string? clientName = null;
                     if (ctx.Request.ContentType?.Contains("application/json") == true)
                     {
-                        using var doc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
-                        if (doc.RootElement.TryGetProperty("client_name", out var nameProp)
-                            && nameProp.ValueKind == System.Text.Json.JsonValueKind.String)
-                            clientName = nameProp.GetString();
+                        try
+                        {
+                            using var doc = await System.Text.Json.JsonDocument.ParseAsync(ctx.Request.Body);
+                            if (doc.RootElement.TryGetProperty("client_name", out var nameProp)
+                                && nameProp.ValueKind == System.Text.Json.JsonValueKind.String)
+                                clientName = nameProp.GetString();
+                        }
+                        catch (System.Text.Json.JsonException)
+                        {
+                            await Results.Json(new { error = "invalid_request", error_description = "Malformed JSON body." }, statusCode: 400).ExecuteAsync(ctx);
+                            return;
+                        }
                     }
 
                     var client = ClientRegistrationStore.Register(clientName);
