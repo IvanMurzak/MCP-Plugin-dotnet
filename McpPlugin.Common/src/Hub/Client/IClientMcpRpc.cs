@@ -16,7 +16,17 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
     public interface IClientMcpRpc : IClientDisconnectable
     {
         // Task ForceDisconnect(); // Inherited from IClientDisconnectable
-        Task OnMcpClientConnected(McpClientData clientData);
-        Task OnMcpClientDisconnected();
+
+        /// <summary>
+        /// Fired when an MCP client connects. Carries the newly connected client's data and
+        /// the complete list of all currently active clients (including the new one).
+        /// </summary>
+        Task OnMcpClientConnected(McpClientData connectedClient, McpClientData[] allActiveClients);
+
+        /// <summary>
+        /// Fired when an MCP client disconnects. Carries the disconnected client's data and
+        /// the complete list of clients still active after the disconnection.
+        /// </summary>
+        Task OnMcpClientDisconnected(McpClientData disconnectedClient, McpClientData[] remainingClients);
     }
 }

@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
@@ -104,21 +105,27 @@ namespace com.IvanMurzak.McpPlugin.Server
         public async Task NotifyClientConnectedAsync()
         {
             _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(NotifyClientConnectedAsync));
+            var connectedClient = GetClientData();
+            var allActiveClients = _sessionTracker.GetAllClientData().ToArray();
             var connectionId = ClientUtils.GetConnectionIdByToken(_sessionId);
             if (connectionId != null)
-                await _hubContext.Clients.Client(connectionId).OnMcpClientConnected(GetClientData());
+                await _hubContext.Clients.Client(connectionId).OnMcpClientConnected(connectedClient, allActiveClients);
             else
-                await _hubContext.Clients.All.OnMcpClientConnected(GetClientData());
+                await _hubContext.Clients.All.OnMcpClientConnected(connectedClient, allActiveClients);
         }
 
         public async Task NotifyClientDisconnectedAsync()
         {
             _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(NotifyClientDisconnectedAsync));
+            // Session was already removed from the tracker by StopAsync before this call,
+            // so GetAllClientData() returns the remaining clients (this session excluded).
+            var disconnectedClient = GetClientData();
+            var remainingClients = _sessionTracker.GetAllClientData().ToArray();
             var connectionId = ClientUtils.GetConnectionIdByToken(_sessionId);
             if (connectionId != null)
-                await _hubContext.Clients.Client(connectionId).OnMcpClientDisconnected();
+                await _hubContext.Clients.Client(connectionId).OnMcpClientDisconnected(disconnectedClient, remainingClients);
             else
-                await _hubContext.Clients.All.OnMcpClientDisconnected();
+                await _hubContext.Clients.All.OnMcpClientDisconnected(disconnectedClient, remainingClients);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -138,6 +145,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                           : null)
                       ?? McpSessionOrServer?.SessionId
                       ?? Common.Consts.MCP.Server.TransportMethod.stdio.ToString();
+            _sessionTracker.AddRef(_sessionId);
             _sessionTracker.Update(_sessionId, GetClientData(), GetServerData());
             _logger.LogDebug("{type} Session tracked. Key: {sessionId}.", GetType().GetTypeShortName(), _sessionId);
 
@@ -201,18 +209,27 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(StopAsync));
             _logger.LogDebug("{type} MCP Client disconnected. SessionId: {sessionId}.", GetType().GetTypeShortName(), _sessionId);
 
-            try
-            {
-                await NotifyClientDisconnectedAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "{type} Error notifying client disconnected.", GetType().GetTypeShortName());
-            }
-
             _disposables.Clear();
-            _sessionTracker.Remove(_sessionId);
-            _logger.LogDebug("{type} Session removed. Key: {sessionId}.", GetType().GetTypeShortName(), _sessionId);
+
+            var isLastConnection = _sessionTracker.Remove(_sessionId);
+            if (isLastConnection)
+            {
+                _logger.LogDebug("{type} Last connection for session ended, notifying plugin. SessionId: {sessionId}.",
+                    GetType().GetTypeShortName(), _sessionId);
+                try
+                {
+                    await NotifyClientDisconnectedAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "{type} Error notifying client disconnected.", GetType().GetTypeShortName());
+                }
+            }
+            else
+            {
+                _logger.LogDebug("{type} Session still has active connections, skipping disconnect notification. SessionId: {sessionId}.",
+                    GetType().GetTypeShortName(), _sessionId);
+            }
         }
 
         async void OnListToolUpdated(HubEventToolsChange.EventData eventData, CancellationToken cancellationToken)

@@ -116,27 +116,79 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public void Remove_ExistingSession_NoLongerRetrievable()
+        public void Remove_WithoutAddRef_ReturnsTrue_AndSessionNoLongerRetrievable()
         {
             // Arrange
             var clientData = new McpClientData { IsConnected = true, ClientName = "ToRemove" };
             var serverData = new McpServerData { IsAiAgentConnected = true };
             _tracker.Update("session-1", clientData, serverData);
 
-            // Act
-            _tracker.Remove("session-1");
+            // Act — Remove without prior AddRef: treated as single-holder, returns true
+            var result = _tracker.Remove("session-1");
 
             // Assert
+            result.Should().BeTrue();
             _tracker.GetClientData("session-1").IsConnected.Should().BeFalse();
             _tracker.GetServerData("session-1").IsAiAgentConnected.Should().BeFalse();
         }
 
         [Fact]
-        public void Remove_NonexistentSession_DoesNotThrow()
+        public void Remove_NonexistentSession_ReturnsTrueAndDoesNotThrow()
         {
             // Act & Assert
-            var act = () => _tracker.Remove("nonexistent");
+            bool result = false;
+            var act = () => result = _tracker.Remove("nonexistent");
             act.Should().NotThrow();
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void AddRef_ThenRemove_SingleHolder_ReturnsTrue()
+        {
+            // Arrange
+            _tracker.Update("session-1", new McpClientData { IsConnected = true }, new McpServerData());
+            _tracker.AddRef("session-1");
+
+            // Act
+            var result = _tracker.Remove("session-1");
+
+            // Assert
+            result.Should().BeTrue();
+            _tracker.GetClientData("session-1").IsConnected.Should().BeFalse();
+        }
+
+        [Fact]
+        public void AddRef_Twice_FirstRemove_ReturnsFalse_SessionStillRetrievable()
+        {
+            // Arrange — two connections share the same sessionId
+            _tracker.Update("token-A", new McpClientData { IsConnected = true, ClientName = "Client" }, new McpServerData());
+            _tracker.AddRef("token-A"); // connection 1
+            _tracker.AddRef("token-A"); // connection 2
+
+            // Act — first connection disconnects
+            var firstResult = _tracker.Remove("token-A");
+
+            // Assert — second connection still active; no disconnect yet
+            firstResult.Should().BeFalse();
+            _tracker.GetClientData("token-A").IsConnected.Should().BeTrue();
+        }
+
+        [Fact]
+        public void AddRef_Twice_SecondRemove_ReturnsTrue_SessionGone()
+        {
+            // Arrange — two connections share the same sessionId
+            _tracker.Update("token-A", new McpClientData { IsConnected = true, ClientName = "Client" }, new McpServerData());
+            _tracker.AddRef("token-A"); // connection 1
+            _tracker.AddRef("token-A"); // connection 2
+
+            // Act — both connections disconnect in sequence
+            var firstResult  = _tracker.Remove("token-A"); // connection 1 ends
+            var secondResult = _tracker.Remove("token-A"); // connection 2 ends
+
+            // Assert — only the second Remove signals "last"
+            firstResult.Should().BeFalse();
+            secondResult.Should().BeTrue();
+            _tracker.GetClientData("token-A").IsConnected.Should().BeFalse();
         }
 
         [Fact]

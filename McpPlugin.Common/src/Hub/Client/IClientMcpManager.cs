@@ -19,7 +19,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
         IClientPromptHub? PromptHub { get; }
         IClientResourceHub? ResourceHub { get; }
 
-        Task OnMcpClientConnected(McpClientData clientData);
-        Task OnMcpClientDisconnected();
+        Task OnMcpClientConnected(McpClientData connectedClient, McpClientData[] allActiveClients);
+        Task OnMcpClientDisconnected(McpClientData disconnectedClient, McpClientData[] remainingClients);
     }
 }

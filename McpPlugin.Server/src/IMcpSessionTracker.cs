@@ -21,6 +21,20 @@ namespace com.IvanMurzak.McpPlugin.Server
         McpServerData GetServerData(string sessionId);
         IReadOnlyList<McpClientData> GetAllClientData();
         void Update(string sessionId, McpClientData clientData, McpServerData serverData);
-        void Remove(string sessionId);
+
+        /// <summary>
+        /// Increments the reference count for the session. Call once per logical connection
+        /// (e.g. from McpServerService.StartAsync) to track how many active connections
+        /// share this sessionId.
+        /// </summary>
+        void AddRef(string sessionId);
+
+        /// <summary>
+        /// Decrements the reference count for the session. Removes the session entry only
+        /// when the count reaches zero (i.e. the last connection with this sessionId ended).
+        /// Returns <c>true</c> if this was the last reference and the session was removed,
+        /// <c>false</c> if other connections with the same sessionId are still active.
+        /// </summary>
+        bool Remove(string sessionId);
     }
 }

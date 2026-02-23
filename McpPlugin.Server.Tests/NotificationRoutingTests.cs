@@ -38,13 +38,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         async Task SimulateNotifyClientConnected(
             string sessionId,
             IHubContext<McpServerHub, IClientMcpRpc> hubContext,
-            McpClientData clientData)
+            McpClientData connectedClient,
+            McpClientData[] allActiveClients)
         {
             var connectionId = ClientUtils.GetConnectionIdByToken(sessionId);
             if (connectionId != null)
-                await hubContext.Clients.Client(connectionId).OnMcpClientConnected(clientData);
+                await hubContext.Clients.Client(connectionId).OnMcpClientConnected(connectedClient, allActiveClients);
             else
-                await hubContext.Clients.All.OnMcpClientConnected(clientData);
+                await hubContext.Clients.All.OnMcpClientConnected(connectedClient, allActiveClients);
         }
 
         /// <summary>
@@ -52,13 +53,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         /// </summary>
         async Task SimulateNotifyClientDisconnected(
             string sessionId,
-            IHubContext<McpServerHub, IClientMcpRpc> hubContext)
+            IHubContext<McpServerHub, IClientMcpRpc> hubContext,
+            McpClientData disconnectedClient,
+            McpClientData[] remainingClients)
         {
             var connectionId = ClientUtils.GetConnectionIdByToken(sessionId);
             if (connectionId != null)
-                await hubContext.Clients.Client(connectionId).OnMcpClientDisconnected();
+                await hubContext.Clients.Client(connectionId).OnMcpClientDisconnected(disconnectedClient, remainingClients);
             else
-                await hubContext.Clients.All.OnMcpClientDisconnected();
+                await hubContext.Clients.All.OnMcpClientDisconnected(disconnectedClient, remainingClients);
         }
 
         [Fact]
@@ -83,11 +86,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             try
             {
                 // Act
-                await SimulateNotifyClientConnected(token, hubContext.Object, clientData);
+                await SimulateNotifyClientConnected(token, hubContext.Object, clientData, new[] { clientData });
 
                 // Assert — targeted client was notified, not all
-                targetClient.Verify(c => c.OnMcpClientConnected(clientData), Times.Once);
-                allClients.Verify(c => c.OnMcpClientConnected(It.IsAny<McpClientData>()), Times.Never);
+                targetClient.Verify(c => c.OnMcpClientConnected(clientData, It.IsAny<McpClientData[]>()), Times.Once);
+                allClients.Verify(c => c.OnMcpClientConnected(It.IsAny<McpClientData>(), It.IsAny<McpClientData[]>()), Times.Never);
             }
             finally
             {
@@ -110,10 +113,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             hubContext.Setup(c => c.Clients).Returns(hubClients.Object);
 
             // Act
-            await SimulateNotifyClientConnected(sessionId, hubContext.Object, clientData);
+            await SimulateNotifyClientConnected(sessionId, hubContext.Object, clientData, new[] { clientData });
 
             // Assert — all clients were notified
-            allClients.Verify(c => c.OnMcpClientConnected(clientData), Times.Once);
+            allClients.Verify(c => c.OnMcpClientConnected(clientData, It.IsAny<McpClientData[]>()), Times.Once);
         }
 
         [Fact]
@@ -134,14 +137,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var hubContext = new Mock<IHubContext<McpServerHub, IClientMcpRpc>>();
             hubContext.Setup(c => c.Clients).Returns(hubClients.Object);
 
+            var disconnectedData = new McpClientData { IsConnected = false, ClientName = "Claude" };
             try
             {
                 // Act
-                await SimulateNotifyClientDisconnected(token, hubContext.Object);
+                await SimulateNotifyClientDisconnected(token, hubContext.Object, disconnectedData, Array.Empty<McpClientData>());
 
                 // Assert
-                targetClient.Verify(c => c.OnMcpClientDisconnected(), Times.Once);
-                allClients.Verify(c => c.OnMcpClientDisconnected(), Times.Never);
+                targetClient.Verify(c => c.OnMcpClientDisconnected(disconnectedData, It.IsAny<McpClientData[]>()), Times.Once);
+                allClients.Verify(c => c.OnMcpClientDisconnected(It.IsAny<McpClientData>(), It.IsAny<McpClientData[]>()), Times.Never);
             }
             finally
             {
@@ -162,11 +166,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var hubContext = new Mock<IHubContext<McpServerHub, IClientMcpRpc>>();
             hubContext.Setup(c => c.Clients).Returns(hubClients.Object);
 
+            var disconnectedData = new McpClientData { IsConnected = false };
             // Act
-            await SimulateNotifyClientDisconnected(sessionId, hubContext.Object);
+            await SimulateNotifyClientDisconnected(sessionId, hubContext.Object, disconnectedData, Array.Empty<McpClientData>());
 
             // Assert
-            allClients.Verify(c => c.OnMcpClientDisconnected(), Times.Once);
+            allClients.Verify(c => c.OnMcpClientDisconnected(disconnectedData, It.IsAny<McpClientData[]>()), Times.Once);
         }
 
         [Fact]
@@ -196,12 +201,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             try
             {
                 // Act — notify for token A's session
-                await SimulateNotifyClientConnected(tokenA, hubContext.Object, clientData);
+                await SimulateNotifyClientConnected(tokenA, hubContext.Object, clientData, new[] { clientData });
 
                 // Assert — only plugin A receives the notification
-                clientA.Verify(c => c.OnMcpClientConnected(clientData), Times.Once);
-                clientB.Verify(c => c.OnMcpClientConnected(It.IsAny<McpClientData>()), Times.Never);
-                allClients.Verify(c => c.OnMcpClientConnected(It.IsAny<McpClientData>()), Times.Never);
+                clientA.Verify(c => c.OnMcpClientConnected(clientData, It.IsAny<McpClientData[]>()), Times.Once);
+                clientB.Verify(c => c.OnMcpClientConnected(It.IsAny<McpClientData>(), It.IsAny<McpClientData[]>()), Times.Never);
+                allClients.Verify(c => c.OnMcpClientConnected(It.IsAny<McpClientData>(), It.IsAny<McpClientData[]>()), Times.Never);
             }
             finally
             {

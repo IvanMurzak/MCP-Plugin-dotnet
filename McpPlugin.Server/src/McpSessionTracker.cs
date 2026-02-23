@@ -25,6 +25,11 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly Common.Version _version;
         readonly ConcurrentDictionary<string, (McpClientData ClientData, McpServerData ServerData)> _sessions = new();
 
+        // Reference counting: tracks how many active McpServerService instances share a sessionId.
+        // Guarded by _refCountLock for atomic decrement-and-check in Remove().
+        readonly object _refCountLock = new object();
+        readonly Dictionary<string, int> _refCounts = new();
+
         public McpSessionTracker(ILogger<McpSessionTracker> logger, IDataArguments dataArguments, Common.Version version)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -90,12 +95,49 @@ namespace com.IvanMurzak.McpPlugin.Server
                 isNew ? "added" : "updated", sessionId, clientData.IsConnected, clientData.ClientName, _sessions.Count);
         }
 
-        public void Remove(string sessionId)
+        public void AddRef(string sessionId)
         {
+            int newCount;
+            lock (_refCountLock)
+            {
+                _refCounts.TryGetValue(sessionId, out var count);
+                newCount = count + 1;
+                _refCounts[sessionId] = newCount;
+            }
+            _logger.LogDebug("Session ref incremented. Key: {sessionId}, Refs: {refs}, TotalSessions: {total}.",
+                sessionId, newCount, _sessions.Count);
+        }
+
+        public bool Remove(string sessionId)
+        {
+            bool isLast;
+            lock (_refCountLock)
+            {
+                if (_refCounts.TryGetValue(sessionId, out var count) && count > 1)
+                {
+                    _refCounts[sessionId] = count - 1;
+                    isLast = false;
+                }
+                else
+                {
+                    _refCounts.Remove(sessionId);
+                    isLast = true;
+                }
+            }
+
+            if (!isLast)
+            {
+                _logger.LogDebug("Session ref decremented, still active. Key: {sessionId}, TotalSessions: {total}.",
+                    sessionId, _sessions.Count);
+                return false;
+            }
+
             if (_sessions.TryRemove(sessionId, out _))
                 _logger.LogDebug("Session removed. Key: {sessionId}, TotalSessions: {total}.", sessionId, _sessions.Count);
             else
                 _logger.LogDebug("Session not found for removal. Key: {sessionId}, TotalSessions: {total}.", sessionId, _sessions.Count);
+
+            return true;
         }
     }
 }
