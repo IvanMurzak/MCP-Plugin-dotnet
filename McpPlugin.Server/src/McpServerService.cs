@@ -128,6 +128,19 @@ namespace com.IvanMurzak.McpPlugin.Server
                 GetType().GetTypeShortName(), McpSessionOrServer?.SessionId, _mcpServer?.ClientInfo?.Name, _mcpServer?.ClientInfo?.Title);
             _disposables.Clear();
 
+            // Resolve _sessionId BEFORE wiring subscriptions so that ShouldNotifySession
+            // always sees the correct session key even if an event fires immediately after Subscribe.
+            // For auth=required on stdio (no HTTP context), CurrentToken is null — fall back to
+            // dataArguments.Token so the session key matches what plugins registered with.
+            _sessionId = McpSessionTokenContext.CurrentToken
+                      ?? (_strategy.AuthOption == Common.Consts.MCP.Server.AuthOption.required
+                          ? _dataArguments.Token
+                          : null)
+                      ?? McpSessionOrServer?.SessionId
+                      ?? Common.Consts.MCP.Server.TransportMethod.stdio.ToString();
+            _sessionTracker.Update(_sessionId, GetClientData(), GetServerData());
+            _logger.LogDebug("{type} Session tracked. Key: {sessionId}.", GetType().GetTypeShortName(), _sessionId);
+
             _eventAppToolsChange
                 .Subscribe(data =>
                 {
@@ -157,12 +170,6 @@ namespace com.IvanMurzak.McpPlugin.Server
                     OnListResourcesUpdated(data, cancellationToken);
                 })
                 .AddTo(_disposables);
-
-            _sessionId = McpSessionTokenContext.CurrentToken
-                      ?? McpSessionOrServer?.SessionId
-                      ?? Common.Consts.MCP.Server.TransportMethod.stdio.ToString();
-            _sessionTracker.Update(_sessionId, GetClientData(), GetServerData());
-            _logger.LogDebug("{type} Session tracked. Key: {sessionId}.", GetType().GetTypeShortName(), _sessionId);
 
             _ = Task.Run(async () =>
             {
