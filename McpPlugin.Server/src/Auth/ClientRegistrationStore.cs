@@ -10,6 +10,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
 
 namespace com.IvanMurzak.McpPlugin.Server.Auth
 {
@@ -28,6 +29,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         private static readonly ConcurrentDictionary<string, string> _accessTokens
             = new ConcurrentDictionary<string, string>();
 
+        static string GenerateSecureToken(int byteCount = 32)
+            => Convert.ToHexString(RandomNumberGenerator.GetBytes(byteCount)).ToLowerInvariant();
+
         /// <summary>
         /// Registers a new client and returns its generated credentials.
         /// Registration is open (no prior auth needed) for deployments with AuthOption.none.
@@ -36,10 +40,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         {
             var client = new RegisteredClient
             {
-                ClientId     = Guid.NewGuid().ToString("N"),
-                ClientSecret = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N"),
-                ClientName   = clientName,
-                IssuedAt     = DateTimeOffset.UtcNow
+                ClientId = GenerateSecureToken(16),
+                ClientSecret = GenerateSecureToken(32),
+                ClientName = clientName,
+                IssuedAt = DateTimeOffset.UtcNow
             };
             _clients[client.ClientId] = client;
             return client;
@@ -57,7 +61,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             if (!string.Equals(client.ClientSecret, clientSecret, StringComparison.Ordinal))
                 return null;
 
-            var accessToken = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
+            var accessToken = GenerateSecureToken(32);
             _accessTokens[accessToken] = clientId;
             return accessToken;
         }
@@ -75,9 +79,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
 
     public class RegisteredClient
     {
-        public string ClientId     { get; set; } = string.Empty;
+        public string ClientId { get; set; } = string.Empty;
         public string ClientSecret { get; set; } = string.Empty;
-        public string? ClientName  { get; set; }
+        public string? ClientName { get; set; }
         public DateTimeOffset IssuedAt { get; set; }
     }
 }
