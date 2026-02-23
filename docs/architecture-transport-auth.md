@@ -42,7 +42,7 @@ All 4 combinations (2 transports × 2 auth options) are supported without condit
 | CLI argument     | `--token=<value>`         | `--token=mySecret`          |
 | Environment var  | `MCP_PLUGIN_TOKEN=<value>`| `MCP_PLUGIN_TOKEN=mySecret` |
 
-**Required** when `authorization=required`. Ignored (but accepted) when `authorization=none`.
+**Optional at server launch** when `authorization=required`. When absent, the server enters dynamic-pairing mode — any plugin token is accepted and plugins/clients are paired by token equality. When present, only that exact token is accepted from connecting plugins. Ignored (but accepted) when `authorization=none`. Note: connecting plugins must always provide a token in `auth=required` mode regardless.
 
 ---
 
@@ -74,21 +74,21 @@ Designed for **multiple independent plugins** each owning a specific MCP client 
 |----------------------------|-------------------------------|-----------------------------------|
 | `AuthOption`               | `none`                        | `required`                        |
 | `AllowMultipleConnections` | `false`                       | `true`                            |
-| Token required?            | No (optional)                 | Yes — startup fails without token |
+| Token required?            | No (optional)                 | No — plugins must provide a token |
 
 ### `Validate(dataArguments)`
 
 | Strategy                   | Behavior                                                                      |
 |----------------------------|-------------------------------------------------------------------------------|
 | `NoAuthMcpStrategy`        | No-op. Token is optional.                                                     |
-| `RequiredAuthMcpStrategy`  | Throws `InvalidOperationException` if `--token` is absent.                    |
+| `RequiredAuthMcpStrategy`  | No-op. Server token is optional; enables dynamic-pairing when absent.         |
 
 ### `ConfigureAuthentication(options, dataArguments)`
 
-| Strategy                   | `options.RequireToken` | `options.ServerToken`   |
-|----------------------------|------------------------|-------------------------|
-| `NoAuthMcpStrategy`        | `true` only if token is set, else `false` | Token value or `null` |
-| `RequiredAuthMcpStrategy`  | Always `true`          | Token value             |
+| Strategy                   | `options.RequireToken`                    | `options.ServerToken`   |
+|----------------------------|-------------------------------------------|-------------------------|
+| `NoAuthMcpStrategy`        | `true` only if token is set, else `false` | Token value or `null`   |
+| `RequiredAuthMcpStrategy`  | Always `true`                             | Token value or `null`   |
 
 ### `OnPluginConnected(hubType, connectionId, token, logger, disconnectClient)`
 
@@ -169,16 +169,16 @@ Both singletons are registered in DI and flow through the entire server:
 
 ```bash
 # Local development (stdio, no auth) — typical Claude Desktop config
-dotnet run client-transport=stdio
+dotnet run --client-transport=stdio
 
 # Local HTTP server without auth
-dotnet run client-transport=streamableHttp port=8080
+dotnet run --client-transport=streamableHttp --port=8080
 
 # Local HTTP server with a static token
-dotnet run client-transport=streamableHttp port=8080 token=mySecret
+dotnet run --client-transport=streamableHttp --port=8080 --token=mySecret
 
 # Multi-tenant remote deployment
-dotnet run client-transport=streamableHttp port=8080 authorization=required token=sharedSecret
+dotnet run --client-transport=streamableHttp --port=8080 --authorization=required --token=sharedSecret
 ```
 
 For remote multi-tenant use, each .NET plugin provides **its own** Bearer token when connecting:
