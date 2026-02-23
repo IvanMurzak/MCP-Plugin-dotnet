@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
@@ -160,27 +161,24 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
         }
 
-        public Task<McpClientData> GetMcpClientData()
+        public Task<McpClientData[]> GetMcpClientData()
         {
             try
             {
                 _logger.LogTrace("{method}. {guid}.",
                     nameof(IServerMcpManager.GetMcpClientData), _guid);
 
-                var clientData = _strategy.GetClientData(Context.ConnectionId, _sessionTracker);
+                var clientData = _strategy.GetAllClientData(Context.ConnectionId, _sessionTracker);
 
-                if (clientData == null)
-                    throw new Exception("Client data is null");
-
-                _logger.LogDebug("{method}. {guid}. ClientData, isConnected: {isConnected}, clientName: {clientName}",
-                    nameof(IServerMcpManager.GetMcpClientData), _guid, clientData.IsConnected, clientData.ClientName);
+                _logger.LogDebug("{method}. {guid}. ClientData count: {count}",
+                    nameof(IServerMcpManager.GetMcpClientData), _guid, clientData.Length);
 
                 return Task.FromResult(clientData);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting MCP Client Data");
-                return Task.FromResult(new McpClientData { IsConnected = false });
+                return Task.FromResult(Array.Empty<McpClientData>());
             }
         }
 

@@ -71,6 +71,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             return sessionTracker.GetClientData();
         }
 
+        public McpClientData[] GetAllClientData(string? connectionId, IMcpSessionTracker sessionTracker)
+        {
+            return sessionTracker.GetAllClientData().ToArray();
+        }
+
         public McpServerData GetServerData(string? connectionId, IMcpSessionTracker sessionTracker)
         {
             return sessionTracker.GetServerData();

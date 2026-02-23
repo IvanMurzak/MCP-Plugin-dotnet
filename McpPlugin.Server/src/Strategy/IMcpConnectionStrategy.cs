@@ -76,6 +76,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         McpClientData GetClientData(string? connectionId, IMcpSessionTracker sessionTracker);
 
         /// <summary>
+        /// Retrieves all active McpClientData entries scoped to the connection's token.
+        /// For AuthOption.required: returns an empty array if the connection carries no token.
+        /// For AuthOption.none: returns all active sessions regardless of token.
+        /// </summary>
+        McpClientData[] GetAllClientData(string? connectionId, IMcpSessionTracker sessionTracker);
+
+        /// <summary>
         /// Retrieves McpServerData scoped to the connection's token.
         /// For AuthOption.required: returns an empty <see cref="McpServerData"/> if the
         /// connection carries no token — unscoped access is denied.

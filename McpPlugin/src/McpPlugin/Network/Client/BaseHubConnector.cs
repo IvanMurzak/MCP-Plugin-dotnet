@@ -209,6 +209,8 @@ namespace com.IvanMurzak.McpPlugin
                 LogVersionMismatchError(handshakeResponse);
                 // Still proceed with tool notification for now, but user will see the error
             }
+
+            await OnConnectedAsync(cancellationToken);
         }
 
         private void LogVersionMismatchError(VersionHandshakeResponse handshakeResponse)
@@ -218,6 +220,12 @@ namespace com.IvanMurzak.McpPlugin
         }
 
         protected abstract void SubscribeOnServerEvents(HubConnection hubConnection, CompositeDisposable disposables);
+
+        /// <summary>
+        /// Called once after a successful connection and version handshake.
+        /// Override to perform post-connect initialization (e.g. fetching initial state).
+        /// </summary>
+        protected virtual Task OnConnectedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
         public virtual void Dispose()
         {

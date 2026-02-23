@@ -81,6 +81,13 @@ namespace com.IvanMurzak.McpPlugin
             return Task.CompletedTask;
         }
 
+        public Task OnInitialClientData(McpClientData[] allActiveClients)
+        {
+            _activeClients = allActiveClients;
+            _onClientsChanged.OnNext(allActiveClients);
+            return Task.CompletedTask;
+        }
+
         public void Dispose()
         {
             _logger.LogDebug("{method} called.", nameof(Dispose));

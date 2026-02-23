@@ -176,16 +176,32 @@ namespace com.IvanMurzak.McpPlugin
             return _connectionManager.InvokeAsync<RequestToolCompletedData, ResponseData>(nameof(IServerMcpManager.NotifyToolRequestCompleted), request, cancellationToken);
         }
 
-        public Task<McpClientData> GetMcpClientData()
+        public Task<McpClientData[]> GetMcpClientData()
         {
             _logger.LogTrace("{class}.{method}", nameof(IServerMcpManager), nameof(IServerMcpManager.GetMcpClientData));
-            return _connectionManager.InvokeAsync<McpClientData>(nameof(IServerMcpManager.GetMcpClientData), _cancellationTokenSource.Token);
+            return _connectionManager.InvokeAsync<McpClientData[]>(nameof(IServerMcpManager.GetMcpClientData), _cancellationTokenSource.Token);
         }
 
         public Task<McpServerData> GetMcpServerData()
         {
             _logger.LogTrace("{class}.{method}", nameof(IServerMcpManager), nameof(IServerMcpManager.GetMcpServerData));
             return _connectionManager.InvokeAsync<McpServerData>(nameof(IServerMcpManager.GetMcpServerData), _cancellationTokenSource.Token);
+        }
+
+        protected override async Task OnConnectedAsync(CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
+            _logger.LogDebug("{class}.{method} Fetching initial MCP client data snapshot.",
+                nameof(McpManagerClientHub), nameof(OnConnectedAsync));
+
+            var allClients = await GetMcpClientData();
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
+            if (allClients != null && allClients.Length > 0)
+                await _mcpManager.OnInitialClientData(allClients);
         }
 
         #endregion

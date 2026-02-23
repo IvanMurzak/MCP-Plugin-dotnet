@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Linq;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
@@ -93,6 +94,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 return sessionTracker.GetClientDataByToken(token);
             // auth-required mode: deny unscoped access — connection has no token
             return new McpClientData();
+        }
+
+        public McpClientData[] GetAllClientData(string? connectionId, IMcpSessionTracker sessionTracker)
+        {
+            var token = ClientUtils.GetTokenByConnectionId(connectionId);
+            if (token != null)
+                return sessionTracker.GetAllClientData(token).ToArray();
+            // auth-required mode: deny unscoped access — connection has no token
+            return Array.Empty<McpClientData>();
         }
 
         public McpServerData GetServerData(string? connectionId, IMcpSessionTracker sessionTracker)
