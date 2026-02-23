@@ -21,9 +21,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
     /// </summary>
     public static class ClientRegistrationStore
     {
+        // ----------------------------------------------------------------------------
+        // Note: The _clients and _accessTokens dictionaries grow unbounded
+        // in memory without any cleanup mechanism or expiration.
+        // In long-running server processes, this could lead to memory exhaustion
+        // as clients register repeatedly (especially if there's no rate limiting on registration)
+        // ----------------------------------------------------------------------------
+
         // client_id → RegisteredClient
         private static readonly ConcurrentDictionary<string, RegisteredClient> _clients
             = new ConcurrentDictionary<string, RegisteredClient>();
+
 
         // access_token → client_id
         private static readonly ConcurrentDictionary<string, string> _accessTokens
