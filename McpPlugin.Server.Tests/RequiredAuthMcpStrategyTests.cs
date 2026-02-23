@@ -105,6 +105,49 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
+        public void OnPluginConnected_WithWrongToken_WhenServerTokenConfigured_DisconnectsImmediately()
+        {
+            // Arrange — configure strategy with an explicit server token
+            var strategy = new RequiredAuthMcpStrategy();
+            strategy.ConfigureAuthentication(new TokenAuthenticationOptions(), new DataArguments(new[] { "token=server-secret" }));
+
+            var logger = new Mock<ILogger>().Object;
+            var connectionId = "conn-required-wrongtoken";
+            var disconnected = new List<string>();
+
+            // Act — plugin provides the wrong token
+            strategy.OnPluginConnected(typeof(McpServerHub), connectionId, "wrong-token", logger,
+                id => disconnected.Add(id));
+
+            // Assert — must be rejected and not registered
+            disconnected.Should().Contain(connectionId);
+            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).Should().NotContain(connectionId);
+        }
+
+        [Fact]
+        public void OnPluginConnected_WithCorrectToken_WhenServerTokenConfigured_Registers()
+        {
+            // Arrange — configure strategy with an explicit server token
+            var strategy = new RequiredAuthMcpStrategy();
+            strategy.ConfigureAuthentication(new TokenAuthenticationOptions(), new DataArguments(new[] { "token=server-secret" }));
+
+            var logger = new Mock<ILogger>().Object;
+            var connectionId = "conn-required-correcttoken";
+            var disconnected = new List<string>();
+
+            // Act — plugin provides the matching token
+            strategy.OnPluginConnected(typeof(McpServerHub), connectionId, "server-secret", logger,
+                id => disconnected.Add(id));
+
+            // Assert — must be accepted and registered
+            disconnected.Should().BeEmpty();
+            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).Should().Contain(connectionId);
+
+            // Cleanup
+            ClientUtils.RemoveClient(typeof(McpServerHub), connectionId, logger);
+        }
+
+        [Fact]
         public void OnPluginConnected_DoesNotDisconnectOthers()
         {
             // Arrange
