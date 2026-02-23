@@ -50,6 +50,13 @@ namespace com.IvanMurzak.McpPlugin
 
         #region Client Events
 
+        protected override void OnBeforeSubscribeToServerEvents()
+        {
+            // Reset to zero so that any notification that arrives after this point
+            // (including during the handshake) is detectable by OnConnectedAsync.
+            _liveNotificationEpoch = 0;
+        }
+
         protected override void SubscribeOnServerEvents(HubConnection hubConnection, CompositeDisposable disposables)
         {
             hubConnection.On<McpClientData, McpClientData[]>(nameof(IClientMcpRpc.OnMcpClientConnected), (connectedClient, allActiveClients) =>
@@ -202,10 +209,21 @@ namespace com.IvanMurzak.McpPlugin
             if (cancellationToken.IsCancellationRequested)
                 return;
 
+            // OnBeforeSubscribeToServerEvents reset the epoch to 0 before any handlers
+            // were registered.  If it is already non-zero here, at least one live
+            // notification arrived during the version handshake and _activeClients is
+            // already up-to-date — skip the snapshot fetch entirely.
+            if (_liveNotificationEpoch != 0)
+            {
+                _logger.LogDebug("{class}.{method} Skipping initial snapshot: live notifications received during handshake.",
+                    nameof(McpManagerClientHub), nameof(OnConnectedAsync));
+                return;
+            }
+
             _logger.LogDebug("{class}.{method} Fetching initial MCP client data snapshot.",
                 nameof(McpManagerClientHub), nameof(OnConnectedAsync));
 
-            // Capture epoch before the async gap so we can detect any live notifications
+            // Capture epoch (== 0) before the async gap so we can detect notifications
             // (OnMcpClientConnected / OnMcpClientDisconnected) that arrive while we wait.
             var epochBeforeFetch = _liveNotificationEpoch;
             var allClients = await GetMcpClientData();
