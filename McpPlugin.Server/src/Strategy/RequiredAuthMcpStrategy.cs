@@ -90,7 +90,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         {
             var token = ClientUtils.GetTokenByConnectionId(connectionId);
             if (token != null)
-                return sessionTracker.GetClientData(token);
+                return sessionTracker.GetClientDataByToken(token);
             // auth-required mode: deny unscoped access — connection has no token
             return new McpClientData();
         }
@@ -99,7 +99,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         {
             var token = ClientUtils.GetTokenByConnectionId(connectionId);
             if (token != null)
-                return sessionTracker.GetServerData(token);
+                return sessionTracker.GetServerDataByToken(token);
             // auth-required mode: deny unscoped access — connection has no token
             return new McpServerData();
         }

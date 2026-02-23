@@ -259,14 +259,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             var sessionTracker = new Mock<IMcpSessionTracker>();
             var expectedData = new McpClientData { IsConnected = true, ClientName = "remote-client" };
-            sessionTracker.Setup(s => s.GetClientData(token)).Returns(expectedData);
+            sessionTracker.Setup(s => s.GetClientDataByToken(token)).Returns(expectedData);
 
             // Act
             var result = _strategy.GetClientData(connectionId, sessionTracker.Object);
 
             // Assert
             result.Should().BeSameAs(expectedData);
-            sessionTracker.Verify(s => s.GetClientData(token), Times.Once);
+            sessionTracker.Verify(s => s.GetClientDataByToken(token), Times.Once);
 
             // Cleanup
             ClientUtils.RemoveClient(typeof(McpServerHub), connectionId, logger);
@@ -283,14 +283,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             var sessionTracker = new Mock<IMcpSessionTracker>();
             var expectedData = new McpServerData { IsAiAgentConnected = true };
-            sessionTracker.Setup(s => s.GetServerData(token)).Returns(expectedData);
+            sessionTracker.Setup(s => s.GetServerDataByToken(token)).Returns(expectedData);
 
             // Act
             var result = _strategy.GetServerData(connectionId, sessionTracker.Object);
 
             // Assert
             result.Should().BeSameAs(expectedData);
-            sessionTracker.Verify(s => s.GetServerData(token), Times.Once);
+            sessionTracker.Verify(s => s.GetServerDataByToken(token), Times.Once);
 
             // Cleanup
             ClientUtils.RemoveClient(typeof(McpServerHub), connectionId, logger);

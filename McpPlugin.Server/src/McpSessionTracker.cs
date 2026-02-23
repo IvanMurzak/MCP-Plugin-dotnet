@@ -23,9 +23,12 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly ILogger<McpSessionTracker> _logger;
         readonly IDataArguments _dataArguments;
         readonly Common.Version _version;
-        readonly ConcurrentDictionary<string, (McpClientData ClientData, McpServerData ServerData)> _sessions = new();
 
-        // Reference counting: tracks how many active McpServerService instances share a sessionId.
+        // Keyed by physicalId (unique per MCP connection).
+        // RoutingToken is the Bearer token used for plugin notification routing; null in no-auth mode.
+        readonly ConcurrentDictionary<string, (string? RoutingToken, McpClientData ClientData, McpServerData ServerData)> _sessions = new();
+
+        // Reference counting: tracks how many active McpServerService instances share a physicalId.
         // Guarded by _refCountLock for atomic decrement-and-check in Remove().
         readonly object _refCountLock = new object();
         readonly Dictionary<string, int> _refCounts = new();
@@ -43,12 +46,28 @@ namespace com.IvanMurzak.McpPlugin.Server
             return entry.ClientData ?? new McpClientData { IsConnected = false };
         }
 
-        public McpClientData GetClientData(string sessionId)
+        public McpClientData GetClientData(string physicalId)
         {
-            if (_sessions.TryGetValue(sessionId, out var entry))
+            if (_sessions.TryGetValue(physicalId, out var entry))
                 return entry.ClientData;
-
             return new McpClientData { IsConnected = false };
+        }
+
+        public McpClientData GetClientDataByToken(string? routingToken)
+        {
+            if (string.IsNullOrEmpty(routingToken))
+                return GetClientData();
+
+            McpClientData? fallback = null;
+            foreach (var entry in _sessions.Values)
+            {
+                if (!string.Equals(entry.RoutingToken, routingToken, StringComparison.Ordinal))
+                    continue;
+                if (entry.ClientData.IsConnected)
+                    return entry.ClientData;
+                fallback ??= entry.ClientData;
+            }
+            return fallback ?? new McpClientData { IsConnected = false };
         }
 
         public McpServerData GetServerData()
@@ -63,11 +82,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             };
         }
 
-        public McpServerData GetServerData(string sessionId)
+        public McpServerData GetServerData(string physicalId)
         {
-            if (_sessions.TryGetValue(sessionId, out var entry))
+            if (_sessions.TryGetValue(physicalId, out var entry))
                 return entry.ServerData;
-
             return new McpServerData
             {
                 IsAiAgentConnected = false,
@@ -77,65 +95,94 @@ namespace com.IvanMurzak.McpPlugin.Server
             };
         }
 
-        public IReadOnlyList<McpClientData> GetAllClientData()
+        public McpServerData GetServerDataByToken(string? routingToken)
         {
-            return _sessions.Values.Select(x => x.ClientData).ToList();
+            if (string.IsNullOrEmpty(routingToken))
+                return GetServerData();
+
+            McpServerData? fallback = null;
+            foreach (var entry in _sessions.Values)
+            {
+                if (!string.Equals(entry.RoutingToken, routingToken, StringComparison.Ordinal))
+                    continue;
+                if (entry.ServerData.IsAiAgentConnected)
+                    return entry.ServerData;
+                fallback ??= entry.ServerData;
+            }
+            return fallback ?? new McpServerData
+            {
+                IsAiAgentConnected = false,
+                ServerVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+                ServerApiVersion = _version.Api,
+                ServerTransport = _dataArguments.ClientTransport
+            };
         }
 
-        public void Update(string sessionId, McpClientData clientData, McpServerData serverData)
+        public IReadOnlyList<McpClientData> GetAllClientData(string? routingToken = null)
         {
-            var value = (clientData, serverData);
+            if (routingToken == null)
+                return _sessions.Values.Select(x => x.ClientData).ToList();
+
+            return _sessions.Values
+                .Where(x => string.Equals(x.RoutingToken, routingToken, StringComparison.Ordinal))
+                .Select(x => x.ClientData)
+                .ToList();
+        }
+
+        public void Update(string physicalId, string? routingToken, McpClientData clientData, McpServerData serverData)
+        {
+            var value = (routingToken, clientData, serverData);
             var isNew = true;
-            _sessions.AddOrUpdate(sessionId, value, (_, _) =>
+            _sessions.AddOrUpdate(physicalId, value, (_, _) =>
             {
                 isNew = false;
                 return value;
             });
-            _logger.LogDebug("Session {action}. Key: {sessionId}, IsConnected: {isConnected}, ClientName: {clientName}, TotalSessions: {total}.",
-                isNew ? "added" : "updated", sessionId, clientData.IsConnected, clientData.ClientName, _sessions.Count);
+            _logger.LogDebug("Session {action}. PhysicalId: {physicalId}, RoutingToken: {hasToken}, IsConnected: {isConnected}, ClientName: {clientName}, TotalSessions: {total}.",
+                isNew ? "added" : "updated", physicalId, routingToken != null ? "present" : "absent", clientData.IsConnected, clientData.ClientName, _sessions.Count);
         }
 
-        public void AddRef(string sessionId)
+        public void AddRef(string physicalId)
         {
             int newCount;
             lock (_refCountLock)
             {
-                _refCounts.TryGetValue(sessionId, out var count);
+                _refCounts.TryGetValue(physicalId, out var count);
                 newCount = count + 1;
-                _refCounts[sessionId] = newCount;
+                _refCounts[physicalId] = newCount;
             }
-            _logger.LogDebug("Session ref incremented. Key: {sessionId}, Refs: {refs}, TotalSessions: {total}.",
-                sessionId, newCount, _sessions.Count);
+            _logger.LogDebug("Session ref incremented. PhysicalId: {physicalId}, Refs: {refs}, TotalSessions: {total}.",
+                physicalId, newCount, _sessions.Count);
         }
 
-        public bool Remove(string sessionId)
+        public bool Remove(string physicalId)
         {
             bool isLast;
             lock (_refCountLock)
             {
-                if (_refCounts.TryGetValue(sessionId, out var count) && count > 1)
+                if (_refCounts.TryGetValue(physicalId, out var count) && count > 1)
                 {
-                    _refCounts[sessionId] = count - 1;
+                    _refCounts[physicalId] = count - 1;
                     isLast = false;
                 }
                 else
                 {
-                    _refCounts.Remove(sessionId);
+                    _refCounts.Remove(physicalId);
                     isLast = true;
                 }
             }
 
             if (!isLast)
             {
-                _logger.LogDebug("Session ref decremented, still active. Key: {sessionId}, TotalSessions: {total}.",
-                    sessionId, _sessions.Count);
+                _logger.LogDebug("Session ref decremented, still active. PhysicalId: {physicalId}, TotalSessions: {total}.",
+                    physicalId, _sessions.Count);
                 return false;
             }
 
-            if (_sessions.TryRemove(sessionId, out _))
-                _logger.LogDebug("Session removed. Key: {sessionId}, TotalSessions: {total}.", sessionId, _sessions.Count);
+            if (_sessions.TryRemove(physicalId, out _))
+                _logger.LogDebug("Session removed. PhysicalId: {physicalId}, TotalSessions: {total}.", physicalId, _sessions.Count);
             else
-                _logger.LogDebug("Session not found for removal. Key: {sessionId}, TotalSessions: {total}.", sessionId, _sessions.Count);
+                _logger.LogDebug("Session not found for removal. PhysicalId: {physicalId}, TotalSessions: {total}.", physicalId, _sessions.Count);
 
             return true;
         }
