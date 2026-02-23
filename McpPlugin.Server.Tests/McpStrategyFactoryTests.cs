@@ -21,24 +21,24 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         private readonly McpStrategyFactory _factory = new();
 
         [Fact]
-        public void Create_Local_ReturnsLocalMcpStrategy()
+        public void Create_None_ReturnsNoAuthMcpStrategy()
         {
             // Act
             var strategy = _factory.Create(Consts.MCP.Server.AuthOption.none);
 
             // Assert
-            strategy.Should().BeOfType<LocalMcpStrategy>();
+            strategy.Should().BeOfType<NoAuthMcpStrategy>();
             strategy.AuthOption.Should().Be(Consts.MCP.Server.AuthOption.none);
         }
 
         [Fact]
-        public void Create_Remote_ReturnsRemoteMcpStrategy()
+        public void Create_Required_ReturnsRequiredAuthMcpStrategy()
         {
             // Act
             var strategy = _factory.Create(Consts.MCP.Server.AuthOption.required);
 
             // Assert
-            strategy.Should().BeOfType<RemoteMcpStrategy>();
+            strategy.Should().BeOfType<RequiredAuthMcpStrategy>();
             strategy.AuthOption.Should().Be(Consts.MCP.Server.AuthOption.required);
         }
 
@@ -50,7 +50,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // Assert
             act.Should().Throw<ArgumentException>()
-                .Which.Message.Should().Contain("Unsupported deployment mode");
+                .Which.Message.Should().Contain("Unsupported auth option");
         }
     }
 }

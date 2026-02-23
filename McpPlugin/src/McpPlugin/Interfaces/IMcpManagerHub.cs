@@ -13,7 +13,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public interface IRemoteMcpManagerHub : IConnectServerHub, IServerMcpManager
+    public interface IMcpManagerHub : IConnectServerHub, IServerMcpManager
     {
         /// <summary>
         /// Gets the version handshake response status if a handshake has been performed; otherwise, null.

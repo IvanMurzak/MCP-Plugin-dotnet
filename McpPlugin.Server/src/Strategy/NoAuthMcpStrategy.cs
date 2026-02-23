@@ -18,7 +18,7 @@ using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server.Strategy
 {
-    public class LocalMcpStrategy : IMcpConnectionStrategy
+    public class NoAuthMcpStrategy : IMcpConnectionStrategy
     {
         public Consts.MCP.Server.AuthOption AuthOption
             => Consts.MCP.Server.AuthOption.none;
@@ -27,7 +27,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 
         public void Validate(DataArguments dataArguments)
         {
-            // LOCAL mode: token is optional, no strict validation needed
+            // no-auth mode: token is optional, no strict validation needed
         }
 
         public void ConfigureAuthentication(TokenAuthenticationOptions options, DataArguments dataArguments)
@@ -41,10 +41,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         {
             ClientUtils.AddClient(hubType, connectionId, logger, token);
 
-            // LOCAL mode: enforce single connection by disconnecting all others
+            // no-auth mode: enforce single connection by disconnecting all others
             foreach (var otherId in ClientUtils.GetAllConnectionIds(hubType).Where(id => id != connectionId).ToList())
             {
-                logger.LogInformation("LOCAL mode: disconnecting other client '{0}' for {1}.", otherId, hubType.Name);
+                logger.LogInformation("no-auth mode: disconnecting other client '{0}' for {1}.", otherId, hubType.Name);
                 disconnectClient(otherId);
             }
         }
@@ -62,7 +62,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 
         public bool ShouldNotifySession(string pluginConnectionId, string sessionId)
         {
-            // LOCAL mode: broadcast all notifications to all sessions
+            // no-auth mode: broadcast all notifications to all sessions
             return true;
         }
 

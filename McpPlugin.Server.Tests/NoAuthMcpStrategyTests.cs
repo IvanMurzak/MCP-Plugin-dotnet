@@ -22,12 +22,12 @@ using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tests
 {
-    public class LocalMcpStrategyTests
+    public class NoAuthMcpStrategyTests
     {
-        private readonly LocalMcpStrategy _strategy = new();
+        private readonly NoAuthMcpStrategy _strategy = new();
 
         [Fact]
-        public void DeploymentMode_ReturnsLocal()
+        public void AuthOption_ReturnsNone()
         {
             _strategy.AuthOption.Should().Be(Consts.MCP.Server.AuthOption.none);
         }
@@ -150,7 +150,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void ShouldNotifySession_AlwaysReturnsTrue()
         {
-            // LOCAL mode broadcasts to all sessions
+            // no-auth mode broadcasts to all sessions
             _strategy.ShouldNotifySession("any-connection", "any-session").Should().BeTrue();
             _strategy.ShouldNotifySession("conn1", "session2").Should().BeTrue();
         }

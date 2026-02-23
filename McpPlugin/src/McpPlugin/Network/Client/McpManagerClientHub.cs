@@ -23,7 +23,7 @@ using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public class McpManagerClientHub : BaseHubConnector, IRemoteMcpManagerHub
+    public class McpManagerClientHub : BaseHubConnector, IMcpManagerHub
     {
         readonly IClientMcpManager _mcpManager;
 

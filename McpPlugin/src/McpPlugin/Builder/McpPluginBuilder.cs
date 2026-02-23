@@ -76,7 +76,7 @@ namespace com.IvanMurzak.McpPlugin
             _services.AddSingleton<IResourceManager, McpResourceManager>();
 
             _services.AddSingleton<IMcpPlugin, McpPlugin>();
-            _services.AddSingleton<IRemoteMcpManagerHub, McpManagerClientHub>();
+            _services.AddSingleton<IMcpManagerHub, McpManagerClientHub>();
 
             _services.AddSingleton<McpManager>();
             _services.AddSingleton<IMcpManager>(sp => sp.GetRequiredService<McpManager>());

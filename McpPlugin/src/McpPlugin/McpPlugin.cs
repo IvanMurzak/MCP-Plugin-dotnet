@@ -23,7 +23,7 @@ namespace com.IvanMurzak.McpPlugin
     public partial class McpPlugin : IMcpPlugin, IDisposable
     {
         private readonly ILogger<McpPlugin> _logger;
-        private readonly IRemoteMcpManagerHub _remoteMcpManagerHub;
+        private readonly IMcpManagerHub _mcpManagerHub;
         private readonly CompositeDisposable _disposables = new();
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly ThreadSafeBool _isDisposed = new(false);
@@ -32,20 +32,20 @@ namespace com.IvanMurzak.McpPlugin
 
         public ILogger Logger => _logger;
         public IMcpManager McpManager { get; private set; }
-        public IRemoteMcpManagerHub RemoteMcpManagerHub => _remoteMcpManagerHub;
+        public IMcpManagerHub McpManagerHub => _mcpManagerHub;
         public Common.Version Version => _version;
         public string CurrentBaseDirectory => _basePath;
-        public VersionHandshakeResponse? VersionHandshakeStatus => _remoteMcpManagerHub?.VersionHandshakeStatus;
+        public VersionHandshakeResponse? VersionHandshakeStatus => _mcpManagerHub?.VersionHandshakeStatus;
         public ulong ToolCallsCount => McpManager.ToolManager?.ToolCallsCount ?? 0;
-        public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _remoteMcpManagerHub?.ConnectionState
+        public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _mcpManagerHub?.ConnectionState
             ?? new ReactiveProperty<HubConnectionState>(HubConnectionState.Disconnected);
-        public ReadOnlyReactiveProperty<bool> KeepConnected => _remoteMcpManagerHub?.KeepConnected
+        public ReadOnlyReactiveProperty<bool> KeepConnected => _mcpManagerHub?.KeepConnected
             ?? new ReactiveProperty<bool>(false);
 
         public McpPlugin(
             ILogger<McpPlugin> logger,
             IMcpManager mcpManager,
-            IRemoteMcpManagerHub remoteMcpManagerHub,
+            IMcpManagerHub mcpManagerHub,
             Common.Version version)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -54,10 +54,10 @@ namespace com.IvanMurzak.McpPlugin
             McpManager = mcpManager ?? throw new ArgumentNullException(nameof(mcpManager));
             _cancellationTokenSource = _disposables.ToCancellationTokenSource();
 
-            _remoteMcpManagerHub = remoteMcpManagerHub ?? throw new ArgumentNullException(nameof(remoteMcpManagerHub));
+            _mcpManagerHub = mcpManagerHub ?? throw new ArgumentNullException(nameof(mcpManagerHub));
             _version = version ?? throw new ArgumentNullException(nameof(version));
             _basePath = AppDomain.CurrentDomain.BaseDirectory;
-            _remoteMcpManagerHub.ConnectionState
+            _mcpManagerHub.ConnectionState
                 .Where(state => state == HubConnectionState.Connected)
                 .Where(state => !_cancellationTokenSource.Token.IsCancellationRequested)
                 .Subscribe(async state =>
@@ -67,7 +67,7 @@ namespace com.IvanMurzak.McpPlugin
 
                     var tasks = Enumerable.Empty<Task>();
 
-                    await _remoteMcpManagerHub.NotifyAboutUpdatedTools(new Common.Model.RequestToolsUpdated());
+                    await _mcpManagerHub.NotifyAboutUpdatedTools(new Common.Model.RequestToolsUpdated());
 
                     _logger.LogDebug("{method}, initial notifications sent.",
                         nameof(ConnectionState));
@@ -80,7 +80,7 @@ namespace com.IvanMurzak.McpPlugin
                     _logger.LogDebug("{method}, force disconnect requested.",
                         nameof(McpManager.OnForceDisconnect));
 
-                    _remoteMcpManagerHub.Disconnect();
+                    _mcpManagerHub.Disconnect();
                 })
                 .AddTo(_disposables);
 
@@ -94,14 +94,14 @@ namespace com.IvanMurzak.McpPlugin
                     if (_cancellationTokenSource.Token.IsCancellationRequested)
                         return;
 
-                    if (_remoteMcpManagerHub == null)
+                    if (_mcpManagerHub == null)
                     {
                         _logger.LogWarning("{method}, RPC Router is not initialized, cannot notify about updated tools.",
                             nameof(McpManager.ToolManager.OnToolsUpdated));
                         return;
                     }
 
-                    await _remoteMcpManagerHub.NotifyAboutUpdatedTools(new Common.Model.RequestToolsUpdated());
+                    await _mcpManagerHub.NotifyAboutUpdatedTools(new Common.Model.RequestToolsUpdated());
                 })
                 .AddTo(_disposables);
 
@@ -115,14 +115,14 @@ namespace com.IvanMurzak.McpPlugin
                     if (_cancellationTokenSource.Token.IsCancellationRequested)
                         return;
 
-                    if (_remoteMcpManagerHub == null)
+                    if (_mcpManagerHub == null)
                     {
                         _logger.LogWarning("{method}, RPC Router is not initialized, cannot notify about updated prompts.",
                             nameof(McpManager.PromptManager.OnPromptsUpdated));
                         return;
                     }
 
-                    await _remoteMcpManagerHub.NotifyAboutUpdatedPrompts(new Common.Model.RequestPromptsUpdated());
+                    await _mcpManagerHub.NotifyAboutUpdatedPrompts(new Common.Model.RequestPromptsUpdated());
                 })
                 .AddTo(_disposables);
 
@@ -136,14 +136,14 @@ namespace com.IvanMurzak.McpPlugin
                     if (_cancellationTokenSource.Token.IsCancellationRequested)
                         return;
 
-                    if (_remoteMcpManagerHub == null)
+                    if (_mcpManagerHub == null)
                     {
                         _logger.LogWarning("{method}, RPC Router is not initialized, cannot notify about updated resources.",
                             nameof(McpManager.ResourceManager.OnResourcesUpdated));
                         return;
                     }
 
-                    await _remoteMcpManagerHub.NotifyAboutUpdatedResources(new Common.Model.RequestResourcesUpdated());
+                    await _mcpManagerHub.NotifyAboutUpdatedResources(new Common.Model.RequestResourcesUpdated());
                 })
                 .AddTo(_disposables);
 
@@ -165,9 +165,9 @@ namespace com.IvanMurzak.McpPlugin
                 return Task.FromResult(false); // already disposed
             }
             _logger.LogDebug("{method} called.", nameof(Connect));
-            if (_remoteMcpManagerHub == null)
+            if (_mcpManagerHub == null)
                 return Task.FromResult(false);
-            return _remoteMcpManagerHub.Connect(cancellationToken);
+            return _mcpManagerHub.Connect(cancellationToken);
         }
 
         public Task Disconnect(CancellationToken cancellationToken = default)
@@ -179,9 +179,9 @@ namespace com.IvanMurzak.McpPlugin
                 return Task.CompletedTask; // already disposed
             }
             _logger.LogDebug("{method} called.", nameof(Disconnect));
-            if (_remoteMcpManagerHub == null)
+            if (_mcpManagerHub == null)
                 return Task.CompletedTask;
-            return _remoteMcpManagerHub.Disconnect(cancellationToken);
+            return _mcpManagerHub.Disconnect(cancellationToken);
         }
 
         public void DisconnectImmediate()
@@ -193,7 +193,7 @@ namespace com.IvanMurzak.McpPlugin
                 return; // already disposed
             }
             _logger.LogDebug("{method} called.", nameof(DisconnectImmediate));
-            _remoteMcpManagerHub?.DisconnectImmediate();
+            _mcpManagerHub?.DisconnectImmediate();
         }
 
         public void Dispose()
@@ -211,7 +211,7 @@ namespace com.IvanMurzak.McpPlugin
 
             try
             {
-                _remoteMcpManagerHub?.DisconnectImmediate();
+                _mcpManagerHub?.DisconnectImmediate();
             }
             catch (Exception ex)
             {
@@ -220,7 +220,7 @@ namespace com.IvanMurzak.McpPlugin
 
             try
             {
-                _remoteMcpManagerHub?.Dispose();
+                _mcpManagerHub?.Dispose();
             }
             catch (Exception ex)
             {

@@ -22,12 +22,12 @@ using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tests
 {
-    public class RemoteMcpStrategyTests
+    public class RequiredAuthMcpStrategyTests
     {
-        private readonly RemoteMcpStrategy _strategy = new();
+        private readonly RequiredAuthMcpStrategy _strategy = new();
 
         [Fact]
-        public void DeploymentMode_ReturnsRemote()
+        public void AuthOption_ReturnsRequired()
         {
             _strategy.AuthOption.Should().Be(Consts.MCP.Server.AuthOption.required);
         }
@@ -39,15 +39,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public void Validate_WithoutToken_ThrowsInvalidOperationException()
+        public void Validate_WithoutToken_DoesNotThrow()
         {
-            // Arrange
+            // A launch-time token is optional in auth=required mode
             var dataArguments = new DataArguments(new string[0]);
 
-            // Act & Assert
             var act = () => _strategy.Validate(dataArguments);
-            act.Should().Throw<InvalidOperationException>()
-                .Which.Message.Should().Contain("REMOTE deployment mode requires a token");
+            act.Should().NotThrow();
         }
 
         [Fact]
@@ -62,7 +60,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public void ConfigureAuthentication_AlwaysRequiresToken()
+        public void ConfigureAuthentication_WithToken_RequiresTokenAndSetsServerToken()
         {
             // Arrange
             var dataArguments = new DataArguments(new[] { "token=test-token" });
@@ -74,6 +72,36 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // Assert
             options.RequireToken.Should().BeTrue();
             options.ServerToken.Should().Be("test-token");
+        }
+
+        [Fact]
+        public void ConfigureAuthentication_WithoutToken_RequiresTokenButNoServerToken()
+        {
+            // Dynamic mode: RequireToken still true, but no static ServerToken
+            var dataArguments = new DataArguments(new string[0]);
+            var options = new TokenAuthenticationOptions();
+
+            _strategy.ConfigureAuthentication(options, dataArguments);
+
+            options.RequireToken.Should().BeTrue();
+            options.ServerToken.Should().BeNull();
+        }
+
+        [Fact]
+        public void OnPluginConnected_WithoutToken_DisconnectsImmediately()
+        {
+            // Arrange
+            var logger = new Mock<ILogger>().Object;
+            var connectionId = "conn-required-notoken-plugin";
+            var disconnected = new List<string>();
+
+            // Act
+            _strategy.OnPluginConnected(typeof(McpServerHub), connectionId, null, logger,
+                id => disconnected.Add(id));
+
+            // Assert — tokenless plugin must be rejected, not registered
+            disconnected.Should().Contain(connectionId);
+            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).Should().NotContain(connectionId);
         }
 
         [Fact]
@@ -91,7 +119,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             _strategy.OnPluginConnected(typeof(McpServerHub), newId, "token-2", logger,
                 id => disconnected.Add(id));
 
-            // Assert - REMOTE mode should NOT disconnect existing clients
+            // Assert - auth-required mode should NOT disconnect existing clients
             disconnected.Should().BeEmpty();
             ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).Should().Contain(existingId);
             ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).Should().Contain(newId);
@@ -219,6 +247,59 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // Assert
             result.Should().BeSameAs(expectedData);
             sessionTracker.Verify(s => s.GetServerData(token), Times.Once);
+
+            // Cleanup
+            ClientUtils.RemoveClient(typeof(McpServerHub), connectionId, logger);
+        }
+
+        [Fact]
+        public void ResolveConnectionId_WithUnknownToken_ReturnsNull()
+        {
+            // auth-required mode must not fall back to any connection when the token is unknown
+            var result = _strategy.ResolveConnectionId("unknown-token", 0);
+
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public void GetClientData_WithoutToken_ReturnsEmptyData()
+        {
+            // Arrange - connection registered without a token
+            var logger = new Mock<ILogger>().Object;
+            var connectionId = "conn-required-notoken-client";
+            ClientUtils.AddClient(typeof(McpServerHub), connectionId, logger);
+
+            var sessionTracker = new Mock<IMcpSessionTracker>();
+
+            // Act
+            var result = _strategy.GetClientData(connectionId, sessionTracker.Object);
+
+            // Assert — unscoped fallback must not be called; empty data returned instead
+            result.IsConnected.Should().BeFalse();
+            sessionTracker.Verify(s => s.GetClientData(), Times.Never);
+            sessionTracker.Verify(s => s.GetClientData(It.IsAny<string>()), Times.Never);
+
+            // Cleanup
+            ClientUtils.RemoveClient(typeof(McpServerHub), connectionId, logger);
+        }
+
+        [Fact]
+        public void GetServerData_WithoutToken_ReturnsEmptyData()
+        {
+            // Arrange - connection registered without a token
+            var logger = new Mock<ILogger>().Object;
+            var connectionId = "conn-required-notoken-server";
+            ClientUtils.AddClient(typeof(McpServerHub), connectionId, logger);
+
+            var sessionTracker = new Mock<IMcpSessionTracker>();
+
+            // Act
+            var result = _strategy.GetServerData(connectionId, sessionTracker.Object);
+
+            // Assert — unscoped fallback must not be called; empty data returned instead
+            result.IsAiAgentConnected.Should().BeFalse();
+            sessionTracker.Verify(s => s.GetServerData(), Times.Never);
+            sessionTracker.Verify(s => s.GetServerData(It.IsAny<string>()), Times.Never);
 
             // Cleanup
             ClientUtils.RemoveClient(typeof(McpServerHub), connectionId, logger);

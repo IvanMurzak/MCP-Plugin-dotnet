@@ -17,7 +17,7 @@ using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server.Strategy
 {
-    public class RemoteMcpStrategy : IMcpConnectionStrategy
+    public class RequiredAuthMcpStrategy : IMcpConnectionStrategy
     {
         public Consts.MCP.Server.AuthOption AuthOption
             => Consts.MCP.Server.AuthOption.required;
@@ -26,16 +26,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 
         public void Validate(DataArguments dataArguments)
         {
-            if (string.IsNullOrEmpty(dataArguments.Token))
-            {
-                throw new InvalidOperationException(
-                    "REMOTE deployment mode requires a token. " +
-                    "Set via --token=<value> or MCP_PLUGIN_TOKEN environment variable.");
-            }
+            // auth=required mode: a server token at launch is optional.
+            // When configured, only that single token is accepted from both plugins and MCP clients.
+            // When absent, any token is accepted; plugins and clients are paired by matching token value.
         }
 
         public void ConfigureAuthentication(TokenAuthenticationOptions options, DataArguments dataArguments)
         {
+            // ServerToken may be null — means "accept any token, pair by equality"
             options.ServerToken = dataArguments.Token;
             options.RequireToken = true;
         }
@@ -43,7 +41,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         public void OnPluginConnected(Type hubType, string connectionId, string? token,
             ILogger logger, Action<string> disconnectClient)
         {
-            // REMOTE mode: allow multiple connections, no disconnection
+            if (string.IsNullOrEmpty(token))
+            {
+                // auth-required mode: plugins must provide a token; reject tokenless connections
+                logger.LogWarning("auth-required mode: plugin connected without a token, disconnecting {ConnectionId}.", connectionId);
+                disconnectClient(connectionId);
+                return;
+            }
+            // auth-required mode: register with token; allows multiple simultaneous connections
             ClientUtils.AddClient(hubType, connectionId, logger, token);
         }
 
@@ -54,14 +59,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 
         public string? ResolveConnectionId(string? token, int retryOffset)
         {
-            // REMOTE mode: prefer token-based routing, fallback to round-robin as safety net
-            return ClientUtils.GetConnectionIdByToken(token)
-                ?? ClientUtils.GetBestConnectionId(typeof(McpServerHub), retryOffset);
+            // auth-required mode: token must match a registered plugin; no fallback allowed
+            return ClientUtils.GetConnectionIdByToken(token);
         }
 
         public bool ShouldNotifySession(string pluginConnectionId, string sessionId)
         {
-            // REMOTE mode: only notify the MCP session paired with this plugin
+            // auth-required mode: only notify the MCP session paired with this plugin
             var pluginToken = ClientUtils.GetTokenByConnectionId(pluginConnectionId);
             if (pluginToken == null)
                 return false;
@@ -73,7 +77,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             var token = ClientUtils.GetTokenByConnectionId(connectionId);
             if (token != null)
                 return sessionTracker.GetClientData(token);
-            return sessionTracker.GetClientData();
+            // auth-required mode: deny unscoped access — connection has no token
+            return new McpClientData();
         }
 
         public McpServerData GetServerData(string? connectionId, IMcpSessionTracker sessionTracker)
@@ -81,7 +86,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             var token = ClientUtils.GetTokenByConnectionId(connectionId);
             if (token != null)
                 return sessionTracker.GetServerData(token);
-            return sessionTracker.GetServerData();
+            // auth-required mode: deny unscoped access — connection has no token
+            return new McpServerData();
         }
     }
 }

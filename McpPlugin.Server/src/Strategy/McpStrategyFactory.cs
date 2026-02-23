@@ -24,11 +24,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         {
             return mode switch
             {
-                Consts.MCP.Server.AuthOption.none => new LocalMcpStrategy(),
-                Consts.MCP.Server.AuthOption.required => new RemoteMcpStrategy(),
+                Consts.MCP.Server.AuthOption.none => new NoAuthMcpStrategy(),
+                Consts.MCP.Server.AuthOption.required => new RequiredAuthMcpStrategy(),
                 _ => throw new ArgumentException(
-                    $"Unsupported deployment mode: {mode}. " +
-                    $"Supported modes are: {Consts.MCP.Server.AuthOption.none}, {Consts.MCP.Server.AuthOption.required}")
+                    $"Unsupported auth option: {mode}. " +
+                    $"Supported auth options are: {Consts.MCP.Server.AuthOption.none}, {Consts.MCP.Server.AuthOption.required}")
             };
         }
     }

@@ -30,7 +30,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
 
         /// <summary>
         /// Registers a new client and returns its generated credentials.
-        /// Registration is open (no prior auth needed) for local deployments.
+        /// Registration is open (no prior auth needed) for deployments with AuthOption.none.
         /// </summary>
         public static RegisteredClient Register(string? clientName)
         {
