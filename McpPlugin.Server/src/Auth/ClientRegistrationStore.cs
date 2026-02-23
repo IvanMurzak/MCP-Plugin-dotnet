@@ -28,6 +28,25 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         // as clients register repeatedly (especially if there's no rate limiting on registration)
         // ----------------------------------------------------------------------------
 
+        // ----------------------------------------------------------------------------
+        // Note: Security concern:
+        // Access tokens and client secrets are stored indefinitely in-memory without expiration.
+        // The ClientRegistrationStore uses ConcurrentDictionary with no cleanup mechanism,
+        // which means tokens remain valid for the entire process lifetime.
+        // This creates two issues: (1) compromised tokens cannot be revoked without restarting the server,
+        // and (2) memory usage will grow unbounded in long-running servers with many client registrations.
+        // Consider implementing token expiration, revocation capabilities,
+        // or at least a cleanup mechanism for old/unused tokens.
+        // ----------------------------------------------------------------------------
+
+        // ----------------------------------------------------------------------------
+        // Note: Each call to IssueAccessToken creates a new access token without invalidating previous ones.
+        // A single client can accumulate unlimited active tokens by repeatedly calling the token endpoint,
+        // and there's no mechanism to revoke or expire old tokens.
+        // This could lead to security issues if a token is compromised, as there's no way to invalidate it.
+        // Consider implementing token revocation, expiration, or limiting active tokens per client.
+        // ----------------------------------------------------------------------------
+
         // client_id → RegisteredClient
         private static readonly ConcurrentDictionary<string, RegisteredClient> _clients
             = new ConcurrentDictionary<string, RegisteredClient>();
