@@ -37,7 +37,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         }
 
         public void OnPluginConnected(Type hubType, string connectionId, string? token,
-            ILogger logger, Action<string> disconnectClient)
+            ILogger logger, Action<string, string?> disconnectClient)
         {
             ClientUtils.AddClient(hubType, connectionId, logger, token);
 
@@ -45,7 +45,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             foreach (var otherId in ClientUtils.GetAllConnectionIds(hubType).Where(id => id != connectionId).ToList())
             {
                 logger.LogInformation("no-auth mode: disconnecting other client '{0}' for {1}.", otherId, hubType.Name);
-                disconnectClient(otherId);
+                disconnectClient(otherId, "A newer plugin connection has replaced this one (no-auth mode allows only one connection).");
             }
         }
 

@@ -14,6 +14,6 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
 {
     public interface IClientDisconnectable
     {
-        Task ForceDisconnect();
+        Task ForceDisconnect(string? reason = null);
     }
 }

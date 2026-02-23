@@ -44,20 +44,22 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         }
 
         public void OnPluginConnected(Type hubType, string connectionId, string? token,
-            ILogger logger, Action<string> disconnectClient)
+            ILogger logger, Action<string, string?> disconnectClient)
         {
             if (string.IsNullOrEmpty(token))
             {
                 // auth-required mode: plugins must provide a token; reject tokenless connections
+                var reason = "Connection rejected: auth=required mode demands a token but none was provided.";
                 logger.LogWarning("auth-required mode: plugin connected without a token, disconnecting {ConnectionId}.", connectionId);
-                disconnectClient(connectionId);
+                disconnectClient(connectionId, reason);
                 return;
             }
             if (!string.IsNullOrEmpty(_serverToken) && !string.Equals(token, _serverToken, StringComparison.Ordinal))
             {
                 // auth-required mode: server has an explicit token configured; plugin token must match
+                var reason = "Connection rejected: the provided token does not match the server token.";
                 logger.LogWarning("auth-required mode: plugin token does not match server token, disconnecting {ConnectionId}.", connectionId);
-                disconnectClient(connectionId);
+                disconnectClient(connectionId, reason);
                 return;
             }
             // auth-required mode: register with token; allows multiple simultaneous connections

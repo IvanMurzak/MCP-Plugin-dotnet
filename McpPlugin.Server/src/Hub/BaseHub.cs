@@ -46,7 +46,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
 
             _strategy.OnPluginConnected(GetType(), Context.ConnectionId, token, _logger,
-                id => Clients.Client(id)?.ForceDisconnect());
+                (id, reason) => Clients.Client(id)?.ForceDisconnect(reason));
 
             _logger.LogDebug("{guid} MCP Plugin connected. ConnectionId: {connectionId}, Token: {hasToken}.",
                 _guid, Context.ConnectionId, !string.IsNullOrEmpty(token) ? "present" : "absent");

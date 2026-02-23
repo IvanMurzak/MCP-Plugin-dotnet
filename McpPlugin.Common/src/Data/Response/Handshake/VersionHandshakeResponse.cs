@@ -25,5 +25,13 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
 
         [JsonPropertyName("message")]
         public string Message { get; set; } = string.Empty;
+
+        /// <summary>
+        /// True when the handshake failed due to a connection error (e.g. the server
+        /// disconnected the plugin before the handshake response arrived) rather than
+        /// an actual version incompatibility. Client-side only — never sent over the wire.
+        /// </summary>
+        [JsonIgnore]
+        public bool IsConnectionError { get; set; } = false;
     }
 }

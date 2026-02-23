@@ -59,9 +59,13 @@ namespace com.IvanMurzak.McpPlugin
             })
             .AddTo(_serverEventsDisposables);
 
-            hubConnection.On(nameof(IClientMcpRpc.ForceDisconnect), async () =>
+            hubConnection.On<string?>(nameof(IClientMcpRpc.ForceDisconnect), async reason =>
             {
                 _logger.LogDebug("{class}.{method}", nameof(IClientMcpRpc), nameof(IClientMcpRpc.ForceDisconnect));
+                if (!string.IsNullOrEmpty(reason))
+                    _logger.LogError("Server forcefully disconnected this plugin. Reason: {Reason}", reason);
+                else
+                    _logger.LogError("Server forcefully disconnected this plugin.");
                 await _mcpManager.ForceDisconnect();
                 await _connectionManager.Disconnect();
             })

@@ -83,7 +83,7 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{method} completed.", nameof(Dispose));
         }
 
-        public Task ForceDisconnect()
+        public Task ForceDisconnect(string? reason = null)
         {
             _onForceDisconnect.OnNext(Unit.Default);
             return Task.CompletedTask;

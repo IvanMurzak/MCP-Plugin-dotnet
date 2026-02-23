@@ -124,7 +124,8 @@ namespace com.IvanMurzak.McpPlugin
                         ApiVersion = "Unknown",
                         ServerVersion = "Unknown",
                         Compatible = false,
-                        Message = "Version handshake was cancelled."
+                        Message = "Version handshake was cancelled.",
+                        IsConnectionError = true
                     };
                 }
 
@@ -136,7 +137,8 @@ namespace com.IvanMurzak.McpPlugin
                         ApiVersion = "Unknown",
                         ServerVersion = "Unknown",
                         Compatible = false,
-                        Message = "Version handshake failed with null response."
+                        Message = "Version handshake failed with null response.",
+                        IsConnectionError = true
                     };
                 }
 
@@ -153,7 +155,8 @@ namespace com.IvanMurzak.McpPlugin
                     ApiVersion = "Unknown",
                     ServerVersion = "Unknown",
                     Compatible = false,
-                    Message = "Version handshake failed with exception: " + ex.Message
+                    Message = "Version handshake failed with exception: " + ex.Message,
+                    IsConnectionError = true
                 };
             }
         }
@@ -201,7 +204,7 @@ namespace com.IvanMurzak.McpPlugin
 
             lastHandshakeResponse = handshakeResponse;
 
-            if (handshakeResponse != null && !handshakeResponse.Compatible)
+            if (handshakeResponse != null && !handshakeResponse.Compatible && !handshakeResponse.IsConnectionError)
             {
                 LogVersionMismatchError(handshakeResponse);
                 // Still proceed with tool notification for now, but user will see the error

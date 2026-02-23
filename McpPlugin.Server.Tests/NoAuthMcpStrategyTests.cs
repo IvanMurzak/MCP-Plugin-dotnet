@@ -100,7 +100,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // Act
             _strategy.OnPluginConnected(typeof(McpServerHub), connectionId, null, logger,
-                id => disconnected.Add(id));
+                (id, _) => disconnected.Add(id));
 
             // Assert - client should be registered
             ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).Should().Contain(connectionId);
@@ -122,7 +122,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // Act
             _strategy.OnPluginConnected(typeof(McpServerHub), newId, null, logger,
-                id => disconnected.Add(id));
+                (id, _) => disconnected.Add(id));
 
             // Assert
             disconnected.Should().Contain(existingId);

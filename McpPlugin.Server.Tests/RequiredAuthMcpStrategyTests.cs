@@ -97,7 +97,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // Act
             _strategy.OnPluginConnected(typeof(McpServerHub), connectionId, null, logger,
-                id => disconnected.Add(id));
+                (id, _) => disconnected.Add(id));
 
             // Assert — tokenless plugin must be rejected, not registered
             disconnected.Should().Contain(connectionId);
@@ -117,7 +117,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // Act — plugin provides the wrong token
             strategy.OnPluginConnected(typeof(McpServerHub), connectionId, "wrong-token", logger,
-                id => disconnected.Add(id));
+                (id, _) => disconnected.Add(id));
 
             // Assert — must be rejected and not registered
             disconnected.Should().Contain(connectionId);
@@ -137,7 +137,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // Act — plugin provides the matching token
             strategy.OnPluginConnected(typeof(McpServerHub), connectionId, "server-secret", logger,
-                id => disconnected.Add(id));
+                (id, _) => disconnected.Add(id));
 
             // Assert — must be accepted and registered
             disconnected.Should().BeEmpty();
@@ -160,7 +160,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // Act
             _strategy.OnPluginConnected(typeof(McpServerHub), newId, "token-2", logger,
-                id => disconnected.Add(id));
+                (id, _) => disconnected.Add(id));
 
             // Assert - auth-required mode should NOT disconnect existing clients
             disconnected.Should().BeEmpty();

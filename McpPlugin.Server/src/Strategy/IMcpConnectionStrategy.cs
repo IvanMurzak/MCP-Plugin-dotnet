@@ -43,10 +43,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         /// <summary>
         /// Called when a plugin connects via SignalR. Handles registration and
         /// optionally disconnects other clients (AuthOption.none) or connections without a token
-        /// (AuthOption.required).
+        /// (AuthOption.required). The disconnectClient callback accepts a connection ID and an
+        /// optional human-readable reason that is forwarded to the plugin for logging.
         /// </summary>
         void OnPluginConnected(Type hubType, string connectionId, string? token,
-            ILogger logger, Action<string> disconnectClient);
+            ILogger logger, Action<string, string?> disconnectClient);
 
         /// <summary>
         /// Called when a plugin disconnects from SignalR.
