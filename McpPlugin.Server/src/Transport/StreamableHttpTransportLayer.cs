@@ -109,8 +109,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
 
         public void ConfigureApp(WebApplication app, DataArguments dataArguments)
         {
-            var requireAuth = !string.IsNullOrEmpty(dataArguments.Token)
-                || dataArguments.Authorization == Consts.MCP.Server.AuthOption.required;
+            var logger = LogManager.GetCurrentClassLogger();
+            var requireAuth = dataArguments.Authorization == Consts.MCP.Server.AuthOption.required;
+
+            logger.Debug("Configuring HTTP transport endpoints. RequireAuth={requireAuth}", requireAuth);
 
             if (requireAuth)
             {

@@ -26,10 +26,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 {
     public static partial class ToolRouter
     {
-        // MCP clients (e.g. Codex) time out tools/list after 10 s.
-        // Return an empty list after 8 s so the MCP server stays alive and the
-        // plugin can advertise its tools later via a tools/changed notification.
-        static readonly TimeSpan _listToolsTimeout = TimeSpan.FromSeconds(8);
+        static readonly TimeSpan _listToolsTimeout = TimeSpan.FromSeconds(15);
 
         public static async ValueTask<ListToolsResult> ListAll(RequestContext<ListToolsRequestParams> request, CancellationToken cancellationToken)
         {
