@@ -109,7 +109,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
 
         public void ConfigureApp(WebApplication app, DataArguments dataArguments)
         {
-            if (!string.IsNullOrEmpty(dataArguments.Token))
+            var requireAuth = !string.IsNullOrEmpty(dataArguments.Token)
+                || dataArguments.Authorization == Consts.MCP.Server.AuthOption.required;
+
+            if (requireAuth)
             {
                 // MCP: OAuth 2.0 Protected Resource Metadata (RFC 9728)
                 // Tells clients that this server is its own authorization server
