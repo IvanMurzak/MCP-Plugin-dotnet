@@ -49,10 +49,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
 
                     var mcpClientSessionId = server.SessionId ?? throw new InvalidOperationException("MCP Server session ID is not available.");
 
-                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
-                        cancellationToken,
-                        context.RequestAborted);
-                    var linkedToken = linkedCts.Token;
+                    // Do NOT link context.RequestAborted here — it fires when the initial POST /
+                    // (initialize) response is sent, which would kill the entire session before
+                    // any subsequent requests (tools/list, SSE GET, etc.) can be served.
+                    // The MCP SDK's cancellationToken already manages the session lifetime.
+                    var linkedToken = cancellationToken;
 
                     // Extract Bearer token from the HTTP request for token-based routing
                     var authHeader = context.Request.Headers["Authorization"].ToString();
