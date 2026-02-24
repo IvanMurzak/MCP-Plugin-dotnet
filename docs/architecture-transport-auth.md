@@ -58,7 +58,7 @@ McpStrategyFactory
 
 ### NoAuthMcpStrategy (`authorization=none`)
 
-Designed for a **single trusted plugin** connecting to a single MCP client (e.g. a developer's local machine running one Unity editor). Authentication is optional — a token may be provided for extra protection, but it does not enable multi-tenancy.
+Designed for a **single trusted plugin** connecting to a single MCP client (e.g. a developer's local machine running one Unity editor). The HTTP endpoint is never token-gated in this mode — token-based protection of the HTTP endpoint is reserved for `AuthOption.required`.
 
 ### RequiredAuthMcpStrategy (`authorization=required`)
 
@@ -87,7 +87,7 @@ Designed for **multiple independent plugins** each owning a specific MCP client 
 
 | Strategy                   | `options.RequireToken`                    | `options.ServerToken`   |
 |----------------------------|-------------------------------------------|-------------------------|
-| `NoAuthMcpStrategy`        | `true` only if token is set, else `false` | Token value or `null`   |
+| `NoAuthMcpStrategy`        | Always `false`                            | Always `null`           |
 | `RequiredAuthMcpStrategy`  | Always `true`                             | Token value or `null`   |
 
 ### `OnPluginConnected(hubType, connectionId, token, logger, disconnectClient)`

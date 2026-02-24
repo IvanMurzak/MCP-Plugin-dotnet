@@ -77,7 +77,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public void ConfigureAuthentication_WithToken_RequiresToken()
+        public void ConfigureAuthentication_WithToken_DoesNotRequireToken()
         {
             // Arrange
             var dataArguments = new DataArguments(new[] { "token=test-token" });
@@ -86,9 +86,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // Act
             _strategy.ConfigureAuthentication(options, dataArguments);
 
-            // Assert
-            options.RequireToken.Should().BeTrue();
-            options.ServerToken.Should().Be("test-token");
+            // Assert — no-auth mode never gates the HTTP endpoint, even if a token is supplied
+            options.RequireToken.Should().BeFalse();
+            options.ServerToken.Should().BeNull();
         }
 
         [Fact]
