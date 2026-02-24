@@ -45,6 +45,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             foreach (var otherId in ClientUtils.GetAllConnectionIds(hubType).Where(id => id != connectionId).ToList())
             {
                 logger.LogInformation("no-auth mode: disconnecting other client '{0}' for {1}.", otherId, hubType.Name);
+                // Remove immediately so routing cannot resolve this ID before OnPluginDisconnected fires.
+                ClientUtils.RemoveClient(hubType, otherId, logger);
                 disconnectClient(otherId, "A newer plugin connection has replaced this one (no-auth mode allows only one connection).");
             }
         }
