@@ -17,20 +17,20 @@ All 4 combinations (2 transports × 2 auth options) are supported without condit
 
 ## Configuration
 
-### Transport — how MCP clients (e.g. Claude Desktop) connect
+### Transport — how MCP clients (e.g. Claude Code) connect
 
 | Source           | Key                                   | Values                        |
 |------------------|---------------------------------------|-------------------------------|
-| CLI argument     | `--client-transport=<value>`          | `stdio`, `streamableHttp`     |
+| CLI argument     | `client-transport=<value>`            | `stdio`, `streamableHttp`     |
 | Environment var  | `MCP_PLUGIN_CLIENT_TRANSPORT=<value>` | `stdio`, `streamableHttp`     |
 
-**Default**: `stdio` (when not set)
+**Default**: `streamableHttp` (when not set)
 
 ### Auth — how plugin connections are authenticated and isolated
 
 | Source           | Key                          | Values              |
 |------------------|------------------------------|---------------------|
-| CLI argument     | `--authorization=<value>`    | `none`, `required`  |
+| CLI argument     | `authorization=<value>`      | `none`, `required`  |
 | Environment var  | `MCP_AUTHORIZATION=<value>`  | `none`, `required`  |
 
 **Default**: `none` (when not set)
