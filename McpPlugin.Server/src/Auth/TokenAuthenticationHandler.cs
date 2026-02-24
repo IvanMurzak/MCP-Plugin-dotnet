@@ -35,8 +35,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         {
             Response.StatusCode = 401;
             var baseUrl = $"{Request.Scheme}://{Request.Host}";
-            Response.Headers.WWWAuthenticate =
-                $"Bearer realm=\"MCP Plugin Server\", resource=\"{baseUrl}\"";
+            Response.Headers.WWWAuthenticate = $"Bearer realm=\"MCP Plugin Server\", resource=\"{baseUrl}\"";
             return Task.CompletedTask;
         }
 

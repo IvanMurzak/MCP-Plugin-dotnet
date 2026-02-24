@@ -72,9 +72,10 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             // Configure authentication using the connection strategy
             var strategy = GetRegisteredSingleton<IMcpConnectionStrategy>(mcpServerBuilder.Services);
+
             mcpServerBuilder.Services.AddAuthentication(TokenAuthenticationHandler.SchemeName)
                 .AddScheme<TokenAuthenticationOptions, TokenAuthenticationHandler>(
-                    TokenAuthenticationHandler.SchemeName,
+                    authenticationScheme: TokenAuthenticationHandler.SchemeName,
                     options =>
                     {
                         if (strategy != null)
