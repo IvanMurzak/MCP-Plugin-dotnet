@@ -78,6 +78,17 @@ namespace com.IvanMurzak.McpPlugin
             hubConnection.On<string?>(nameof(IClientMcpRpc.ForceDisconnect), async reason =>
             {
                 _logger.LogDebug("{class}.{method}", nameof(IClientMcpRpc), nameof(IClientMcpRpc.ForceDisconnect));
+
+                // Guard against stale ForceDisconnect messages. If a newer connection has
+                // already replaced this one (e.g. rapid reconnect during server-side
+                // single-connection enforcement), we must NOT tear down the live connection.
+                if (_connectionManager.HubConnection.CurrentValue != hubConnection)
+                {
+                    _logger.LogWarning("{class}.{method} Received ForceDisconnect on a stale connection — ignoring to protect the active connection.",
+                        nameof(McpManagerClientHub), nameof(IClientMcpRpc.ForceDisconnect));
+                    return;
+                }
+
                 if (!string.IsNullOrEmpty(reason))
                     _logger.LogError("Server forcefully disconnected this plugin. Reason: {Reason}", reason);
                 else

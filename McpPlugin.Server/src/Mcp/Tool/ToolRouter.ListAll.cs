@@ -8,6 +8,8 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,6 +26,11 @@ namespace com.IvanMurzak.McpPlugin.Server
 {
     public static partial class ToolRouter
     {
+        // MCP clients (e.g. Codex) time out tools/list after 10 s.
+        // Return an empty list after 8 s so the MCP server stays alive and the
+        // plugin can advertise its tools later via a tools/changed notification.
+        static readonly TimeSpan _listToolsTimeout = TimeSpan.FromSeconds(8);
+
         public static async ValueTask<ListToolsResult> ListAll(RequestContext<ListToolsRequestParams> request, CancellationToken cancellationToken)
         {
             var logger = LogManager.GetCurrentClassLogger();
@@ -36,15 +43,38 @@ namespace com.IvanMurzak.McpPlugin.Server
             logger.Trace("Using ToolRunner: {0}", toolRunner.GetType().GetTypeShortName());
 
             var requestData = new RequestListTool();
-            var response = await toolRunner.RunListTool(requestData);
+
+            using var timeoutCts = new CancellationTokenSource(_listToolsTimeout);
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+
+            ResponseData<ResponseListTool[]>? response = null;
+            try
+            {
+                response = await toolRunner.RunListTool(requestData, linkedCts.Token);
+            }
+            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            {
+                logger.Warn("ListAll timed out after {0}s: MCP Plugin not yet connected. Returning empty tools list.", _listToolsTimeout.TotalSeconds);
+                return new ListToolsResult() { Tools = new List<Tool>() };
+            }
+
             if (response == null)
-                return new ListToolsResult().SetError($"[Error] '{nameof(response)}' is null");
+            {
+                logger.Warn("ListAll response is null. Returning empty tools list.");
+                return new ListToolsResult() { Tools = new List<Tool>() };
+            }
 
             if (response.Status == ResponseStatus.Error)
-                return new ListToolsResult().SetError(response.Message ?? "[Error] Got an error during reading resources");
+            {
+                logger.Warn("ListAll error (plugin may not be connected yet): {0}. Returning empty tools list.", response.Message);
+                return new ListToolsResult() { Tools = new List<Tool>() };
+            }
 
             if (response.Value == null)
-                return new ListToolsResult().SetError($"[Error] '{nameof(response)}.Value' is null");
+            {
+                logger.Warn("ListAll response value is null. Returning empty tools list.");
+                return new ListToolsResult() { Tools = new List<Tool>() };
+            }
 
             var result = new ListToolsResult()
             {
