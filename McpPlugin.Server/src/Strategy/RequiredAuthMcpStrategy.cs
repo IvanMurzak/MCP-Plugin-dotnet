@@ -77,8 +77,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 
         public string? ResolveConnectionId(string? token, int retryOffset)
         {
-            // auth-required mode: token must match a registered plugin; no fallback allowed
-            return ClientUtils.GetConnectionIdByToken(token);
+            // Try the per-session token first (set by HTTP transport per-request via McpSessionTokenContext).
+            if (!string.IsNullOrEmpty(token))
+                return ClientUtils.GetConnectionIdByToken(token);
+
+            // Session token is null — stdio transport has no HTTP context and never populates
+            // McpSessionTokenContext.CurrentToken. Fall back to the server-configured token so
+            // that the plugin registered with that token can still be reached.
+            if (!string.IsNullOrEmpty(_serverToken))
+                return ClientUtils.GetConnectionIdByToken(_serverToken);
+
+            // Dynamic pairing mode (no server token configured) without a session token:
+            // cannot determine the target plugin — return null to trigger retry.
+            return null;
         }
 
         public bool ShouldNotifySession(string pluginConnectionId, string sessionId)
