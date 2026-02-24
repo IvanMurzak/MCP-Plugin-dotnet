@@ -23,9 +23,16 @@ using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public class McpManagerClientHub : BaseHubConnector, IRemoteMcpManagerHub
+    public class McpManagerClientHub : BaseHubConnector, IMcpManagerHub
     {
         readonly IClientMcpManager _mcpManager;
+
+        /// <summary>
+        /// Incremented each time a live server notification (connect/disconnect) is received.
+        /// Used to detect whether state changed during the async initial-data fetch, so we
+        /// can skip applying a stale snapshot.
+        /// </summary>
+        private volatile int _liveNotificationEpoch = 0;
 
         public McpManagerClientHub(
             ILogger<McpManagerClientHub> logger,
@@ -43,25 +50,64 @@ namespace com.IvanMurzak.McpPlugin
 
         #region Client Events
 
+        protected override void OnBeforeSubscribeToServerEvents()
+        {
+            // Reset to zero so that any notification that arrives after this point
+            // (including during the handshake) is detectable by OnConnectedAsync.
+            _liveNotificationEpoch = 0;
+        }
+
         protected override void SubscribeOnServerEvents(HubConnection hubConnection, CompositeDisposable disposables)
         {
-            hubConnection.On<McpClientData>(nameof(IClientMcpRpc.OnMcpClientConnected), data =>
+            hubConnection.On<McpClientData[]>(nameof(IClientMcpRpc.OnInitialClientData), allActiveClients =>
+            {
+                _logger.LogDebug("{class}.{method}", nameof(IClientMcpRpc), nameof(IClientMcpRpc.OnInitialClientData));
+                // If any live connect/disconnect notifications arrived before this snapshot,
+                // the snapshot is already stale — discard it so live state is not overwritten.
+                if (_liveNotificationEpoch != 0)
+                {
+                    _logger.LogDebug("{class}.{method} Discarding stale initial snapshot: live notifications already received.",
+                        nameof(McpManagerClientHub), nameof(IClientMcpRpc.OnInitialClientData));
+                    return Task.CompletedTask;
+                }
+                return _mcpManager.OnInitialClientData(allActiveClients);
+            })
+            .AddTo(_serverEventsDisposables);
+
+            hubConnection.On<McpClientData, McpClientData[]>(nameof(IClientMcpRpc.OnMcpClientConnected), (connectedClient, allActiveClients) =>
             {
                 _logger.LogDebug("{class}.{method}", nameof(IClientMcpRpc), nameof(IClientMcpRpc.OnMcpClientConnected));
-                return _mcpManager.OnMcpClientConnected(data);
+                Interlocked.Increment(ref _liveNotificationEpoch);
+                return _mcpManager.OnMcpClientConnected(connectedClient, allActiveClients);
             })
             .AddTo(_serverEventsDisposables);
 
-            hubConnection.On(nameof(IClientMcpRpc.OnMcpClientDisconnected), () =>
+            hubConnection.On<McpClientData, McpClientData[]>(nameof(IClientMcpRpc.OnMcpClientDisconnected), (disconnectedClient, remainingClients) =>
             {
                 _logger.LogDebug("{class}.{method}", nameof(IClientMcpRpc), nameof(IClientMcpRpc.OnMcpClientDisconnected));
-                return _mcpManager.OnMcpClientDisconnected();
+                Interlocked.Increment(ref _liveNotificationEpoch);
+                return _mcpManager.OnMcpClientDisconnected(disconnectedClient, remainingClients);
             })
             .AddTo(_serverEventsDisposables);
 
-            hubConnection.On(nameof(IClientMcpRpc.ForceDisconnect), async () =>
+            hubConnection.On<string?>(nameof(IClientMcpRpc.ForceDisconnect), async reason =>
             {
                 _logger.LogDebug("{class}.{method}", nameof(IClientMcpRpc), nameof(IClientMcpRpc.ForceDisconnect));
+
+                // Guard against stale ForceDisconnect messages. If a newer connection has
+                // already replaced this one (e.g. rapid reconnect during server-side
+                // single-connection enforcement), we must NOT tear down the live connection.
+                if (_connectionManager.HubConnection.CurrentValue != hubConnection)
+                {
+                    _logger.LogWarning("{class}.{method} Received ForceDisconnect on a stale connection — ignoring to protect the active connection.",
+                        nameof(McpManagerClientHub), nameof(IClientMcpRpc.ForceDisconnect));
+                    return;
+                }
+
+                if (!string.IsNullOrEmpty(reason))
+                    _logger.LogError("Server forcefully disconnected this plugin. Reason: {Reason}", reason);
+                else
+                    _logger.LogError("Server forcefully disconnected this plugin.");
                 await _mcpManager.ForceDisconnect();
                 await _connectionManager.Disconnect();
             })
@@ -172,16 +218,27 @@ namespace com.IvanMurzak.McpPlugin
             return _connectionManager.InvokeAsync<RequestToolCompletedData, ResponseData>(nameof(IServerMcpManager.NotifyToolRequestCompleted), request, cancellationToken);
         }
 
-        public Task<McpClientData> GetMcpClientData()
+        public Task<McpClientData[]> GetMcpClientData()
         {
             _logger.LogTrace("{class}.{method}", nameof(IServerMcpManager), nameof(IServerMcpManager.GetMcpClientData));
-            return _connectionManager.InvokeAsync<McpClientData>(nameof(IServerMcpManager.GetMcpClientData), _cancellationTokenSource.Token);
+            return _connectionManager.InvokeAsync<McpClientData[]>(nameof(IServerMcpManager.GetMcpClientData), _cancellationTokenSource.Token);
         }
 
         public Task<McpServerData> GetMcpServerData()
         {
             _logger.LogTrace("{class}.{method}", nameof(IServerMcpManager), nameof(IServerMcpManager.GetMcpServerData));
             return _connectionManager.InvokeAsync<McpServerData>(nameof(IServerMcpManager.GetMcpServerData), _cancellationTokenSource.Token);
+        }
+
+        protected override Task OnConnectedAsync(CancellationToken cancellationToken)
+        {
+            // The server pushes OnInitialClientData via IClientMcpRpc.OnInitialClientData
+            // immediately after the plugin connects (in McpServerHub.OnConnectedAsync).
+            // No additional polling is needed here — the subscription registered in
+            // SubscribeOnServerEvents handles the incoming snapshot.
+            _logger.LogDebug("{class}.{method} Connected. Waiting for server-pushed initial client data snapshot.",
+                nameof(McpManagerClientHub), nameof(OnConnectedAsync));
+            return Task.CompletedTask;
         }
 
         #endregion

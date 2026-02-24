@@ -8,12 +8,28 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Threading.Tasks;
+using System;
+using com.IvanMurzak.McpPlugin.Common;
 
-namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
+namespace com.IvanMurzak.McpPlugin.Server.Strategy
 {
-    public interface IClientDisconnectable
+    public interface IMcpStrategyFactory
     {
-        Task ForceDisconnect(string? reason = null);
+        IMcpConnectionStrategy Create(Consts.MCP.Server.AuthOption mode);
+    }
+
+    public class McpStrategyFactory : IMcpStrategyFactory
+    {
+        public IMcpConnectionStrategy Create(Consts.MCP.Server.AuthOption mode)
+        {
+            return mode switch
+            {
+                Consts.MCP.Server.AuthOption.none => new NoAuthMcpStrategy(),
+                Consts.MCP.Server.AuthOption.required => new RequiredAuthMcpStrategy(),
+                _ => throw new ArgumentException(
+                    $"Unsupported auth option: {mode}. " +
+                    $"Supported auth options are: {Consts.MCP.Server.AuthOption.none}, {Consts.MCP.Server.AuthOption.required}")
+            };
+        }
     }
 }

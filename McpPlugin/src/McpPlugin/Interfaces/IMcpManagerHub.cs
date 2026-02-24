@@ -8,12 +8,16 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common.Hub.Server;
+using com.IvanMurzak.McpPlugin.Common.Model;
 
-namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
+namespace com.IvanMurzak.McpPlugin
 {
-    public interface IClientDisconnectable
+    public interface IMcpManagerHub : IConnectServerHub, IServerMcpManager
     {
-        Task ForceDisconnect(string? reason = null);
+        /// <summary>
+        /// Gets the version handshake response status if a handshake has been performed; otherwise, null.
+        /// </summary>
+        VersionHandshakeResponse? VersionHandshakeStatus { get; }
     }
 }

@@ -21,6 +21,7 @@ using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tests
 {
+    [Collection("McpPlugin.Server")]
     public class TokenAuthenticationHandlerTests
     {
         static string UniqueId() => Guid.NewGuid().ToString("N");
@@ -170,6 +171,91 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             result.Succeeded.Should().BeTrue();
             result.Principal!.HasClaim("connection_id", connId).Should().BeTrue();
+        }
+
+        async Task<AuthenticateResult> AuthenticateWithDcrTokenAsync(
+            string accessToken,
+            bool requireToken = true,
+            string? serverToken = null)
+        {
+            var options = new TokenAuthenticationOptions
+            {
+                RequireToken = requireToken,
+                ServerToken = serverToken
+            };
+
+            var optionsMonitor = new Mock<IOptionsMonitor<TokenAuthenticationOptions>>();
+            optionsMonitor.Setup(x => x.CurrentValue).Returns(options);
+            optionsMonitor.Setup(x => x.Get(TokenAuthenticationHandler.SchemeName)).Returns(options);
+
+            var loggerFactory = new Mock<ILoggerFactory>();
+            loggerFactory.Setup(x => x.CreateLogger(It.IsAny<string>()))
+                .Returns(new Mock<ILogger>().Object);
+
+            var handler = new TokenAuthenticationHandler(
+                optionsMonitor.Object,
+                loggerFactory.Object,
+                System.Text.Encodings.Web.UrlEncoder.Default);
+
+            var context = new DefaultHttpContext();
+            context.Request.Headers["Authorization"] = $"Bearer {accessToken}";
+
+            var scheme = new AuthenticationScheme(
+                TokenAuthenticationHandler.SchemeName,
+                TokenAuthenticationHandler.SchemeName,
+                typeof(TokenAuthenticationHandler));
+
+            await handler.InitializeAsync(scheme, context);
+            return await handler.AuthenticateAsync();
+        }
+
+        [Fact]
+        public async Task DcrAccessToken_ValidToken_ReturnsSuccess()
+        {
+            // Arrange
+            var client = ClientRegistrationStore.Register("DcrValid_" + UniqueId());
+            var token = ClientRegistrationStore.IssueAccessToken(client.ClientId, client.ClientSecret);
+
+            // Act
+            var result = await AuthenticateWithDcrTokenAsync(token!);
+
+            // Assert
+            result.Succeeded.Should().BeTrue();
+            result.Principal.Should().NotBeNull();
+            result.Principal!.HasClaim(TokenAuthenticationHandler.TokenClaimType, token!).Should().BeTrue();
+            result.Principal.HasClaim("client_id", client.ClientId).Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task DcrAccessToken_UnknownToken_ReturnsFail()
+        {
+            // Arrange
+            var randomToken = Guid.NewGuid().ToString();
+
+            // Act
+            var result = await AuthenticateWithDcrTokenAsync(randomToken);
+
+            // Assert
+            result.Succeeded.Should().BeFalse();
+            result.Failure!.Message.Should().Be("Invalid or unrecognized token.");
+        }
+
+        [Fact]
+        public async Task DcrAccessToken_TakesPriorityOverServerToken()
+        {
+            // Arrange
+            var client = ClientRegistrationStore.Register("DcrPriority_" + UniqueId());
+            var dcrToken = ClientRegistrationStore.IssueAccessToken(client.ClientId, client.ClientSecret);
+            var differentServerToken = UniqueId();
+
+            // Act
+            var result = await AuthenticateWithDcrTokenAsync(dcrToken!, serverToken: differentServerToken);
+
+            // Assert
+            result.Succeeded.Should().BeTrue();
+            result.Principal.Should().NotBeNull();
+            result.Principal!.HasClaim("client_id", client.ClientId).Should().BeTrue();
+            result.Principal.Claims.Should().NotContain(c => c.Type == "connection_id");
         }
     }
 }

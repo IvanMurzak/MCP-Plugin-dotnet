@@ -18,7 +18,7 @@ namespace com.IvanMurzak.McpPlugin
     {
         ILogger Logger { get; }
         IMcpManager McpManager { get; }
-        IRemoteMcpManagerHub? RemoteMcpManagerHub { get; }
+        IMcpManagerHub? McpManagerHub { get; }
         /// <summary>
         /// Gets the version of the MCP plugin.
         /// </summary>

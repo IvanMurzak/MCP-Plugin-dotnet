@@ -20,6 +20,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
     /// Tests for token-based routing in ClientUtils.
     /// Uses unique tokens/connectionIds per test to avoid static state interference.
     /// </summary>
+    [Collection("McpPlugin.Server")]
     public class ClientUtilsTokenRoutingTests
     {
         readonly ILogger _logger = new Mock<ILogger>().Object;

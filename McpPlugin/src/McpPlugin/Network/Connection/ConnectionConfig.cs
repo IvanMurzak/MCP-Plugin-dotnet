@@ -59,6 +59,18 @@ namespace com.IvanMurzak.McpPlugin
             return endpoint ?? Consts.Hub.DefaultHost;
         }
 
+        public static string? GetTokenFromArgsOrEnv(string[]? args = null)
+        {
+            args ??= Environment.GetCommandLineArgs();
+            var token = Environment.GetEnvironmentVariable(Consts.MCP.Plugin.Env.McpPluginToken);
+            var commandLineArgs = ArgsUtils.ParseLineArguments(args);
+
+            if (commandLineArgs.TryGetValue(Consts.MCP.Plugin.Args.McpPluginToken.TrimStart('-'), out var argToken))
+                return argToken;
+
+            return token;
+        }
+
         public static int GetTimeoutFromArgsOrEnv(string[]? args = null)
         {
             args ??= Environment.GetCommandLineArgs();

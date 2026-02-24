@@ -16,6 +16,7 @@ using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
+using com.IvanMurzak.McpPlugin.Server.Strategy;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using R3;
@@ -28,16 +29,18 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly IDataArguments _dataArguments;
         readonly IHubContext<McpServerHub> _remoteAppContext;
         readonly IRequestTrackingService _requestTrackingService;
+        readonly IMcpConnectionStrategy _strategy;
         readonly CompositeDisposable _disposables = new();
         readonly CancellationTokenSource _cancellationTokenSource;
 
-        public RemoteToolRunner(ILogger<RemoteToolRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IRequestTrackingService requestTrackingService)
+        public RemoteToolRunner(ILogger<RemoteToolRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IRequestTrackingService requestTrackingService, IMcpConnectionStrategy strategy)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("Ctor.");
             _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
             _remoteAppContext = remoteAppContext ?? throw new ArgumentNullException(nameof(remoteAppContext));
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
+            _strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
             _cancellationTokenSource = _disposables.ToCancellationTokenSource();
         }
 
@@ -57,6 +60,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                         methodName: nameof(IClientToolHub.RunCallTool),
                         request: request,
                         dataArguments: _dataArguments,
+                        strategy: _strategy,
                         token: McpSessionTokenContext.CurrentToken,
                         cancellationToken: cancellationToken);
 
@@ -81,6 +85,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 methodName: nameof(IClientToolHub.RunListTool),
                 request: request,
                 dataArguments: _dataArguments,
+                strategy: _strategy,
                 token: McpSessionTokenContext.CurrentToken,
                 cancellationToken: cancellationToken);
 

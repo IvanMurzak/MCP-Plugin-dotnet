@@ -9,12 +9,14 @@
 */
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
+using com.IvanMurzak.McpPlugin.Server.Strategy;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
@@ -36,10 +38,19 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly HubEventResourcesChange _eventAppResourcesChange;
         readonly IHubContext<McpServerHub, IClientMcpRpc> _hubContext;
         readonly IMcpSessionTracker _sessionTracker;
+        readonly IMcpConnectionStrategy _strategy;
         readonly Common.Version _version;
         readonly IDataArguments _dataArguments;
         readonly CompositeDisposable _disposables = new();
-        string _sessionId = "unknown";
+
+        // _physicalSessionId: unique per HTTP/stdio connection (MCP protocol session UUID).
+        //   Used as the tracker key and ref-count key so every physical connection
+        //   gets its own entry, even when multiple clients share the same Bearer token.
+        // _routingToken: the Bearer token from the HTTP Authorization header (or configured
+        //   token for stdio auth=required). Used to route SignalR notifications to the correct
+        //   plugin and to filter GetAllClientData() calls. Null in no-auth mode.
+        string _physicalSessionId = "unknown";
+        string? _routingToken = null;
 
         public McpSession? McpSessionOrServer => _mcpSession ?? _mcpServer;
 
@@ -52,6 +63,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             HubEventResourcesChange eventAppResourcesChange,
             IHubContext<McpServerHub, IClientMcpRpc> hubContext,
             IMcpSessionTracker sessionTracker,
+            IMcpConnectionStrategy strategy,
             McpServer? mcpServer = null,
             McpSession? mcpSession = null)
         {
@@ -70,6 +82,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _eventAppResourcesChange = eventAppResourcesChange ?? throw new ArgumentNullException(nameof(eventAppResourcesChange));
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
             _sessionTracker = sessionTracker ?? throw new ArgumentNullException(nameof(sessionTracker));
+            _strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
         }
 
         public McpClientData GetClientData()
@@ -100,13 +113,29 @@ namespace com.IvanMurzak.McpPlugin.Server
         public async Task NotifyClientConnectedAsync()
         {
             _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(NotifyClientConnectedAsync));
-            await _hubContext.Clients.All.OnMcpClientConnected(GetClientData());
+            var connectedClient = GetClientData();
+            // Filter to clients visible to this plugin's routing token group.
+            // Null token (no-auth) → returns all sessions; specific token → returns only matching.
+            var allActiveClients = _sessionTracker.GetAllClientData(_routingToken).ToArray();
+            var connectionId = ClientUtils.GetConnectionIdByToken(_routingToken);
+            if (connectionId != null)
+                await _hubContext.Clients.Client(connectionId).OnMcpClientConnected(connectedClient, allActiveClients);
+            else
+                await _hubContext.Clients.All.OnMcpClientConnected(connectedClient, allActiveClients);
         }
 
         public async Task NotifyClientDisconnectedAsync()
         {
             _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(NotifyClientDisconnectedAsync));
-            await _hubContext.Clients.All.OnMcpClientDisconnected();
+            // The physical session was already removed from the tracker by StopAsync before this call,
+            // so GetAllClientData() returns the remaining clients (this session excluded).
+            var disconnectedClient = GetClientData();
+            var remainingClients = _sessionTracker.GetAllClientData(_routingToken).ToArray();
+            var connectionId = ClientUtils.GetConnectionIdByToken(_routingToken);
+            if (connectionId != null)
+                await _hubContext.Clients.Client(connectionId).OnMcpClientDisconnected(disconnectedClient, remainingClients);
+            else
+                await _hubContext.Clients.All.OnMcpClientDisconnected(disconnectedClient, remainingClients);
         }
 
         public Task StartAsync(CancellationToken cancellationToken)
@@ -116,9 +145,37 @@ namespace com.IvanMurzak.McpPlugin.Server
                 GetType().GetTypeShortName(), McpSessionOrServer?.SessionId, _mcpServer?.ClientInfo?.Name, _mcpServer?.ClientInfo?.Title);
             _disposables.Clear();
 
+            // _routingToken: Bearer token used to route notifications to the correct plugin and to
+            // scope GetAllClientData() queries. Null in no-auth mode (broadcasts to all plugins).
+            // For auth=required on stdio (no HTTP context), fall back to dataArguments.Token so
+            // the routing key matches what the plugin registered with.
+            _routingToken = McpSessionTokenContext.CurrentToken
+                         ?? (_strategy.AuthOption == Common.Consts.MCP.Server.AuthOption.required
+                             ? _dataArguments.Token
+                             : null);
+
+            // _physicalSessionId: always unique per HTTP session (MCP protocol UUID) so each
+            // physical connection gets its own tracker entry regardless of shared tokens.
+            // Fall back to the routing token (stdio) or a generated ID as a last resort.
+            _physicalSessionId = McpSessionOrServer?.SessionId
+                              ?? _routingToken
+                              ?? Common.Consts.MCP.Server.TransportMethod.stdio.ToString();
+
+            _sessionTracker.Update(_physicalSessionId, _routingToken, GetClientData(), GetServerData());
+            _sessionTracker.AddRef(_physicalSessionId);
+            _logger.LogDebug("{type} Session tracked. PhysicalId: {physicalId}, RoutingToken: {hasToken}.",
+                GetType().GetTypeShortName(), _physicalSessionId, _routingToken != null ? "present" : "absent");
+
+            // ShouldNotifySession compares the plugin's token with the provided session key.
+            // Use _routingToken when available; fall back to _physicalSessionId for no-auth mode
+            // (NoAuthMcpStrategy.ShouldNotifySession ignores the value and always returns true).
+            var notifySessionKey = _routingToken ?? _physicalSessionId;
+
             _eventAppToolsChange
                 .Subscribe(data =>
                 {
+                    if (!_strategy.ShouldNotifySession(data.ConnectionId, notifySessionKey))
+                        return;
                     _logger.LogTrace("{type} EventAppToolsChange. ConnectionId: {connectionId}", GetType().GetTypeShortName(), data.ConnectionId);
                     OnListToolUpdated(data, cancellationToken);
                 })
@@ -127,6 +184,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             _eventAppPromptsChange
                 .Subscribe(data =>
                 {
+                    if (!_strategy.ShouldNotifySession(data.ConnectionId, notifySessionKey))
+                        return;
                     _logger.LogTrace("{type} EventAppPromptsChange. ConnectionId: {connectionId}", GetType().GetTypeShortName(), data.ConnectionId);
                     OnListPromptsUpdated(data, cancellationToken);
                 })
@@ -135,16 +194,12 @@ namespace com.IvanMurzak.McpPlugin.Server
             _eventAppResourcesChange
                 .Subscribe(data =>
                 {
+                    if (!_strategy.ShouldNotifySession(data.ConnectionId, notifySessionKey))
+                        return;
                     _logger.LogTrace("{type} EventAppResourcesChange. ConnectionId: {connectionId}", GetType().GetTypeShortName(), data.ConnectionId);
                     OnListResourcesUpdated(data, cancellationToken);
                 })
                 .AddTo(_disposables);
-
-            _sessionId = McpSessionTokenContext.CurrentToken
-                      ?? McpSessionOrServer?.SessionId
-                      ?? Common.Consts.MCP.Server.TransportMethod.stdio.ToString();
-            _sessionTracker.Update(_sessionId, GetClientData(), GetServerData());
-            _logger.LogDebug("{type} Session tracked. Key: {sessionId}.", GetType().GetTypeShortName(), _sessionId);
 
             _ = Task.Run(async () =>
             {
@@ -153,7 +208,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                     await Task.Delay(2000, cancellationToken); // Wait a bit to ensure connection is fully established
 
                     // Update session tracker with fresh data after MCP initialize handshake has completed
-                    _sessionTracker.Update(_sessionId, GetClientData(), GetServerData());
+                    _sessionTracker.Update(_physicalSessionId, _routingToken, GetClientData(), GetServerData());
 
                     await NotifyClientConnectedAsync();
                 }
@@ -174,20 +229,29 @@ namespace com.IvanMurzak.McpPlugin.Server
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogTrace("{type} {method}.", GetType().GetTypeShortName(), nameof(StopAsync));
-            _logger.LogDebug("{type} MCP Client disconnected. SessionId: {sessionId}.", GetType().GetTypeShortName(), _sessionId);
-
-            try
-            {
-                await NotifyClientDisconnectedAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "{type} Error notifying client disconnected.", GetType().GetTypeShortName());
-            }
+            _logger.LogDebug("{type} MCP Client disconnected. PhysicalId: {physicalId}.", GetType().GetTypeShortName(), _physicalSessionId);
 
             _disposables.Clear();
-            _sessionTracker.Remove(_sessionId);
-            _logger.LogDebug("{type} Session removed. Key: {sessionId}.", GetType().GetTypeShortName(), _sessionId);
+
+            var isLastConnection = _sessionTracker.Remove(_physicalSessionId);
+            if (isLastConnection)
+            {
+                _logger.LogDebug("{type} Last connection for session ended, notifying plugin. PhysicalId: {physicalId}.",
+                    GetType().GetTypeShortName(), _physicalSessionId);
+                try
+                {
+                    await NotifyClientDisconnectedAsync();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "{type} Error notifying client disconnected.", GetType().GetTypeShortName());
+                }
+            }
+            else
+            {
+                _logger.LogDebug("{type} Session still has active connections, skipping disconnect notification. PhysicalId: {physicalId}.",
+                    GetType().GetTypeShortName(), _physicalSessionId);
+            }
         }
 
         async void OnListToolUpdated(HubEventToolsChange.EventData eventData, CancellationToken cancellationToken)

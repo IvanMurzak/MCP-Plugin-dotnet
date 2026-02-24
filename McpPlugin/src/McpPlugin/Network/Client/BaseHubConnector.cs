@@ -124,7 +124,8 @@ namespace com.IvanMurzak.McpPlugin
                         ApiVersion = "Unknown",
                         ServerVersion = "Unknown",
                         Compatible = false,
-                        Message = "Version handshake was cancelled."
+                        Message = "Version handshake was cancelled.",
+                        IsConnectionError = true
                     };
                 }
 
@@ -136,7 +137,8 @@ namespace com.IvanMurzak.McpPlugin
                         ApiVersion = "Unknown",
                         ServerVersion = "Unknown",
                         Compatible = false,
-                        Message = "Version handshake failed with null response."
+                        Message = "Version handshake failed with null response.",
+                        IsConnectionError = true
                     };
                 }
 
@@ -153,7 +155,8 @@ namespace com.IvanMurzak.McpPlugin
                     ApiVersion = "Unknown",
                     ServerVersion = "Unknown",
                     Compatible = false,
-                    Message = "Version handshake failed with exception: " + ex.Message
+                    Message = "Version handshake failed with exception: " + ex.Message,
+                    IsConnectionError = true
                 };
             }
         }
@@ -176,6 +179,14 @@ namespace com.IvanMurzak.McpPlugin
 
             var serverEventsCts = _serverEventsDisposables.ToCancellationTokenSource();
             var cancellationToken = serverEventsCts.Token;
+
+            // Reset any per-connection state before handlers are registered so that
+            // subclasses can detect notifications arriving during the handshake (see
+            // OnBeforeSubscribeToServerEvents / McpManagerClientHub._liveNotificationEpoch).
+            _logger.LogTrace("{method} Invoking pre-subscribe hook.",
+                nameof(OnHubConnectionChanged));
+
+            OnBeforeSubscribeToServerEvents();
 
             // Subscribe to server events BEFORE handshake to avoid race condition.
             // The server may send RunListTool/RunListPrompts immediately after handshake,
@@ -201,11 +212,13 @@ namespace com.IvanMurzak.McpPlugin
 
             lastHandshakeResponse = handshakeResponse;
 
-            if (handshakeResponse != null && !handshakeResponse.Compatible)
+            if (handshakeResponse != null && !handshakeResponse.Compatible && !handshakeResponse.IsConnectionError)
             {
                 LogVersionMismatchError(handshakeResponse);
                 // Still proceed with tool notification for now, but user will see the error
             }
+
+            await OnConnectedAsync(cancellationToken);
         }
 
         private void LogVersionMismatchError(VersionHandshakeResponse handshakeResponse)
@@ -214,7 +227,20 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogError(errorMessage);
         }
 
+        /// <summary>
+        /// Called once per connection cycle, right before <see cref="SubscribeOnServerEvents"/>.
+        /// Override to reset per-connection state that must be clean before any server
+        /// notifications can arrive (e.g. epoch counters, flags).
+        /// </summary>
+        protected virtual void OnBeforeSubscribeToServerEvents() { }
+
         protected abstract void SubscribeOnServerEvents(HubConnection hubConnection, CompositeDisposable disposables);
+
+        /// <summary>
+        /// Called once after a successful connection and version handshake.
+        /// Override to perform post-connect initialization (e.g. fetching initial state).
+        /// </summary>
+        protected virtual Task OnConnectedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
         public virtual void Dispose()
         {

@@ -247,7 +247,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         }
 
         [Fact]
-        public void Build_RemoteMcpManagerHub_ShouldNotBeNull()
+        public void Build_McpManagerHub_ShouldNotBeNull()
         {
             // Arrange
             var reflector = new Reflector();
@@ -257,11 +257,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var plugin = mcpPluginBuilder.Build(reflector);
 
             // Assert
-            plugin.RemoteMcpManagerHub.Should().NotBeNull();
+            plugin.McpManagerHub.Should().NotBeNull();
         }
 
         [Fact]
-        public void RemoteMcpManagerHub_ShouldHaveVersionHandshakeStatusProperty()
+        public void McpManagerHub_ShouldHaveVersionHandshakeStatusProperty()
         {
             // Arrange
             var reflector = new Reflector();
@@ -269,8 +269,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var plugin = mcpPluginBuilder.Build(reflector);
 
             // Act & Assert
-            plugin.RemoteMcpManagerHub.Should().NotBeNull();
-            plugin.RemoteMcpManagerHub.VersionHandshakeStatus.Should().BeNull();
+            plugin.McpManagerHub.Should().NotBeNull();
+            plugin.McpManagerHub.VersionHandshakeStatus.Should().BeNull();
         }
 
         [Fact]

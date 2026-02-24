@@ -8,16 +8,21 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using com.IvanMurzak.McpPlugin.Common.Hub.Server;
-using com.IvanMurzak.McpPlugin.Common.Model;
+using System;
+using com.IvanMurzak.McpPlugin.Server.Strategy;
+using com.IvanMurzak.McpPlugin.Server.Transport;
 
-namespace com.IvanMurzak.McpPlugin
+namespace com.IvanMurzak.McpPlugin.Server
 {
-    public interface IRemoteMcpManagerHub : IConnectServerHub, IServerMcpManager
+    internal sealed class McpServerSetup
     {
-        /// <summary>
-        /// Gets the version handshake response status if a handshake has been performed; otherwise, null.
-        /// </summary>
-        VersionHandshakeResponse? VersionHandshakeStatus { get; }
+        public IMcpConnectionStrategy Strategy { get; }
+        public ITransportLayer Transport { get; }
+
+        public McpServerSetup(IMcpConnectionStrategy strategy, ITransportLayer transport)
+        {
+            Strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
+            Transport = transport ?? throw new ArgumentNullException(nameof(transport));
+        }
     }
 }

@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
@@ -22,9 +23,14 @@ namespace com.IvanMurzak.McpPlugin
     {
         protected readonly ILogger _logger;
         protected readonly Reflector _reflector;
+        // Volatile ensures the reference write is visible to all threads without CPU/JIT caching.
+        // Thread-safety contract: arrays are never mutated after assignment — only replaced atomically.
+        // Readers always observe either the previous or next snapshot, never a torn state.
+        private volatile IReadOnlyList<McpClientData> _activeClients = Array.Empty<McpClientData>();
         private readonly Subject<Unit> _onForceDisconnect = new();
         private readonly Subject<McpClientData> _onClientConnected = new();
-        private readonly Subject<Unit> _onClientDisconnected = new();
+        private readonly Subject<McpClientData> _onClientDisconnected = new();
+        private readonly Subject<IReadOnlyList<McpClientData>> _onClientsChanged = new();
 
         readonly IToolManager? _tools;
         readonly IPromptManager? _prompts;
@@ -39,9 +45,11 @@ namespace com.IvanMurzak.McpPlugin
         public IClientPromptHub? PromptHub => _prompts;
         public IClientResourceHub? ResourceHub => _resources;
 
+        public IReadOnlyList<McpClientData> ActiveClients => _activeClients;
         public Observable<Unit> OnForceDisconnect => _onForceDisconnect.AsObservable();
         public Observable<McpClientData> OnClientConnected => _onClientConnected.AsObservable();
-        public Observable<Unit> OnClientDisconnected => _onClientDisconnected.AsObservable();
+        public Observable<McpClientData> OnClientDisconnected => _onClientDisconnected.AsObservable();
+        public Observable<IReadOnlyList<McpClientData>> OnClientsChanged => _onClientsChanged.AsObservable();
 
         public McpManager(
             ILogger<McpManager> logger,
@@ -60,15 +68,26 @@ namespace com.IvanMurzak.McpPlugin
             _resources = resources;
         }
 
-        public Task OnMcpClientConnected(McpClientData clientData)
+        public Task OnMcpClientConnected(McpClientData connectedClient, McpClientData[] allActiveClients)
         {
-            _onClientConnected.OnNext(clientData);
+            _activeClients = allActiveClients;
+            _onClientConnected.OnNext(connectedClient);
+            _onClientsChanged.OnNext(allActiveClients);
             return Task.CompletedTask;
         }
 
-        public Task OnMcpClientDisconnected()
+        public Task OnMcpClientDisconnected(McpClientData disconnectedClient, McpClientData[] remainingClients)
         {
-            _onClientDisconnected.OnNext(Unit.Default);
+            _activeClients = remainingClients;
+            _onClientDisconnected.OnNext(disconnectedClient);
+            _onClientsChanged.OnNext(remainingClients);
+            return Task.CompletedTask;
+        }
+
+        public Task OnInitialClientData(McpClientData[] allActiveClients)
+        {
+            _activeClients = allActiveClients;
+            _onClientsChanged.OnNext(allActiveClients);
             return Task.CompletedTask;
         }
 
@@ -83,7 +102,7 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{method} completed.", nameof(Dispose));
         }
 
-        public Task ForceDisconnect()
+        public Task ForceDisconnect(string? reason = null)
         {
             _onForceDisconnect.OnNext(Unit.Default);
             return Task.CompletedTask;
