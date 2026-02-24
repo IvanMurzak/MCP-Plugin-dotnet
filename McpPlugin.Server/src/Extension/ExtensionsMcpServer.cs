@@ -8,6 +8,7 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+using System;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 using com.IvanMurzak.McpPlugin.Server.Transport;
@@ -36,25 +37,36 @@ namespace com.IvanMurzak.McpPlugin.Server
             var mcpServerBuilder = services
                 .AddMcpServer(options =>
                 {
-                    // Setup MCP tools
-                    options.Capabilities ??= new();
-                    options.Capabilities.Tools ??= new();
-                    options.Capabilities.Tools.ListChanged = true;
-                    options.Handlers.CallToolHandler = ToolRouter.Call;
-                    options.Handlers.ListToolsHandler = ToolRouter.ListAll;
+                    logger?.Debug("Configuring MCP Server with transport '{0}' and auth strategy '{1}'.",
+                        dataArguments.ClientTransport, dataArguments.Authorization);
 
-                    // Setup MCP resources
-                    options.Capabilities.Resources ??= new();
-                    options.Capabilities.Resources.ListChanged = true;
-                    options.Handlers.ReadResourceHandler = ResourceRouter.Read;
-                    options.Handlers.ListResourcesHandler = ResourceRouter.List;
-                    options.Handlers.ListResourceTemplatesHandler = ResourceRouter.ListTemplates;
+                    try
+                    {
+                        // Setup MCP tools
+                        options.Capabilities ??= new();
+                        options.Capabilities.Tools ??= new();
+                        options.Capabilities.Tools.ListChanged = true;
+                        options.Handlers.CallToolHandler = ToolRouter.Call;
+                        options.Handlers.ListToolsHandler = ToolRouter.ListAll;
 
-                    // Setup MCP prompts
-                    options.Capabilities.Prompts ??= new();
-                    options.Capabilities.Prompts.ListChanged = true;
-                    options.Handlers.GetPromptHandler = PromptRouter.Get;
-                    options.Handlers.ListPromptsHandler = PromptRouter.List;
+                        // Setup MCP resources
+                        options.Capabilities.Resources ??= new();
+                        options.Capabilities.Resources.ListChanged = true;
+                        options.Handlers.ReadResourceHandler = ResourceRouter.Read;
+                        options.Handlers.ListResourcesHandler = ResourceRouter.List;
+                        options.Handlers.ListResourceTemplatesHandler = ResourceRouter.ListTemplates;
+
+                        // Setup MCP prompts
+                        options.Capabilities.Prompts ??= new();
+                        options.Capabilities.Prompts.ListChanged = true;
+                        options.Handlers.GetPromptHandler = PromptRouter.Get;
+                        options.Handlers.ListPromptsHandler = PromptRouter.List;
+                    }
+                    catch (Exception ex)
+                    {
+                        logger?.Error(ex, "Error configuring MCP Server: {0}", ex.Message);
+                        throw;
+                    }
                 });
 
             // Delegate transport configuration

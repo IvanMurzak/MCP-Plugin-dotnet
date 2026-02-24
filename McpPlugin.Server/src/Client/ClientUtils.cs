@@ -172,15 +172,15 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                     if (client == null)
                     {
-                        logger.LogWarning("No connected clients. Retrying [{0}/{1}]...", retryCount, maxRetries);
-                        await Task.Delay(2500, cancellationToken); // Wait before retrying
+                        logger.LogWarning("Invoke '{0}': No connected clients. Retrying [{1}/{2}]...", methodName, retryCount, maxRetries);
+                        await Task.Delay(1000, cancellationToken); // Wait before retrying
                         continue;
                     }
 
                     if (logger.IsEnabled(LogLevel.Trace))
                     {
                         var allConnections = string.Join(", ", AllConnections);
-                        logger.LogTrace("Invoke '{0}', ConnectionId ='{1}'. RequestData:\n{2}\n{3}", methodName, connectionId, request, allConnections);
+                        logger.LogTrace("Invoke '{0}': ConnectionId ='{1}'. RequestData:\n{2}\n{3}", methodName, connectionId, request, allConnections);
                     }
                     var invokeTask = client.InvokeAsync<ResponseData<TResponse>>(methodName, request, cancellationToken);
                     var completed = await invokeTask.WaitWithTimeout(dataArguments.PluginTimeoutMs, cancellationToken);
@@ -198,7 +198,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                         }
                         catch (Exception ex)
                         {
-                            logger.LogError(ex, $"Error invoking '{request}' on client '{connectionId}': {ex.Message}");
+                            logger.LogError(ex, $"Invoke '{methodName}': Error invoking '{request}' on client '{connectionId}': {ex.Message}");
                             // RemoveCurrentClient(client);
                             await Task.Delay(50, cancellationToken); // Wait before retrying
                             continue;
@@ -206,17 +206,17 @@ namespace com.IvanMurzak.McpPlugin.Server
                     }
 
                     // Timeout occurred
-                    logger.LogWarning($"Timeout: Client '{connectionId}' did not respond in {dataArguments.PluginTimeoutMs} ms. Removing from ConnectedClients.");
+                    logger.LogWarning($"Invoke '{methodName}': Timeout: Client '{connectionId}' did not respond in {dataArguments.PluginTimeoutMs} ms. Removing from ConnectedClients.");
                     // RemoveCurrentClient(client);
                     await Task.Delay(retryDelayMs, cancellationToken); // Wait before retrying
                     // Restart the loop to try again with a new client
                 }
-                return ResponseData<TResponse>.Error(request.RequestID, $"Failed to invoke '{request}' after {retryCount} retries.")
+                return ResponseData<TResponse>.Error(request.RequestID, $"Invoke '{methodName}': Failed to invoke '{request}' after {retryCount} retries.")
                     .Log(logger);
             }
             catch (Exception ex)
             {
-                return ResponseData<TResponse>.Error(request.RequestID, $"Failed to invoke '{request}'. Exception: {ex}")
+                return ResponseData<TResponse>.Error(request.RequestID, $"Invoke '{methodName}': Failed to invoke '{request}'. Exception: {ex}")
                     .Log(logger, ex: ex);
             }
         }
