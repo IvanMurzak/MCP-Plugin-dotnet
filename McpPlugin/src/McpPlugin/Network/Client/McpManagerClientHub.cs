@@ -59,6 +59,21 @@ namespace com.IvanMurzak.McpPlugin
 
         protected override void SubscribeOnServerEvents(HubConnection hubConnection, CompositeDisposable disposables)
         {
+            hubConnection.On<McpClientData[]>(nameof(IClientMcpRpc.OnInitialClientData), allActiveClients =>
+            {
+                _logger.LogDebug("{class}.{method}", nameof(IClientMcpRpc), nameof(IClientMcpRpc.OnInitialClientData));
+                // If any live connect/disconnect notifications arrived before this snapshot,
+                // the snapshot is already stale — discard it so live state is not overwritten.
+                if (_liveNotificationEpoch != 0)
+                {
+                    _logger.LogDebug("{class}.{method} Discarding stale initial snapshot: live notifications already received.",
+                        nameof(McpManagerClientHub), nameof(IClientMcpRpc.OnInitialClientData));
+                    return Task.CompletedTask;
+                }
+                return _mcpManager.OnInitialClientData(allActiveClients);
+            })
+            .AddTo(_serverEventsDisposables);
+
             hubConnection.On<McpClientData, McpClientData[]>(nameof(IClientMcpRpc.OnMcpClientConnected), (connectedClient, allActiveClients) =>
             {
                 _logger.LogDebug("{class}.{method}", nameof(IClientMcpRpc), nameof(IClientMcpRpc.OnMcpClientConnected));
@@ -215,42 +230,15 @@ namespace com.IvanMurzak.McpPlugin
             return _connectionManager.InvokeAsync<McpServerData>(nameof(IServerMcpManager.GetMcpServerData), _cancellationTokenSource.Token);
         }
 
-        protected override async Task OnConnectedAsync(CancellationToken cancellationToken)
+        protected override Task OnConnectedAsync(CancellationToken cancellationToken)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return;
-
-            // OnBeforeSubscribeToServerEvents reset the epoch to 0 before any handlers
-            // were registered.  If it is already non-zero here, at least one live
-            // notification arrived during the version handshake and _activeClients is
-            // already up-to-date — skip the snapshot fetch entirely.
-            if (_liveNotificationEpoch != 0)
-            {
-                _logger.LogDebug("{class}.{method} Skipping initial snapshot: live notifications received during handshake.",
-                    nameof(McpManagerClientHub), nameof(OnConnectedAsync));
-                return;
-            }
-
-            _logger.LogDebug("{class}.{method} Fetching initial MCP client data snapshot.",
+            // The server pushes OnInitialClientData via IClientMcpRpc.OnInitialClientData
+            // immediately after the plugin connects (in McpServerHub.OnConnectedAsync).
+            // No additional polling is needed here — the subscription registered in
+            // SubscribeOnServerEvents handles the incoming snapshot.
+            _logger.LogDebug("{class}.{method} Connected. Waiting for server-pushed initial client data snapshot.",
                 nameof(McpManagerClientHub), nameof(OnConnectedAsync));
-
-            // Capture epoch (== 0) before the async gap so we can detect notifications
-            // (OnMcpClientConnected / OnMcpClientDisconnected) that arrive while we wait.
-            var epochBeforeFetch = _liveNotificationEpoch;
-            var allClients = await GetMcpClientData();
-
-            if (cancellationToken.IsCancellationRequested)
-                return;
-
-            if (_liveNotificationEpoch != epochBeforeFetch)
-            {
-                _logger.LogDebug("{class}.{method} Discarding stale initial snapshot: live notifications received during fetch.",
-                    nameof(McpManagerClientHub), nameof(OnConnectedAsync));
-                return;
-            }
-
-            if (allClients != null && allClients.Length > 0)
-                await _mcpManager.OnInitialClientData(allClients);
+            return Task.CompletedTask;
         }
 
         #endregion

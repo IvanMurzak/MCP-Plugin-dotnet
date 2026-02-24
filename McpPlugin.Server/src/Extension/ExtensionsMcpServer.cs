@@ -72,11 +72,14 @@ namespace com.IvanMurzak.McpPlugin.Server
             // Delegate transport configuration
             mcpServerBuilder = transport.ConfigureTransport(mcpServerBuilder, dataArguments, logger);
 
+            var setup = new McpServerSetup(strategy, transport);
+
             // Register factories and resolved instances in DI
             services.AddSingleton<ITransportFactory>(transportFactory);
             services.AddSingleton<ITransportLayer>(transport);
             services.AddSingleton<IMcpStrategyFactory>(strategyFactory);
             services.AddSingleton<IMcpConnectionStrategy>(strategy);
+            services.AddSingleton(setup);
 
             return mcpServerBuilder;
         }

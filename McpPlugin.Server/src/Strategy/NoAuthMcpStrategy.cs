@@ -32,8 +32,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 
         public void ConfigureAuthentication(TokenAuthenticationOptions options, DataArguments dataArguments)
         {
-            // options.ServerToken = dataArguments.Token;
-            // options.RequireToken = !string.IsNullOrEmpty(dataArguments.Token);
             options.ServerToken = null;
             options.RequireToken = false;
         }

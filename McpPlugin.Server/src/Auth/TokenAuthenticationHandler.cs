@@ -54,7 +54,26 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             if (string.IsNullOrEmpty(token))
                 return Task.FromResult(AuthenticateResult.Fail("Empty Bearer token."));
 
-            // Validate: token must match a registered plugin connection
+            // Token resolution — three additive sources, checked in priority order:
+            //
+            //   1. Plugin connection token  — a Bearer token that a connected .NET plugin
+            //      registered via SignalR (AddClient). Maps token → SignalR connectionId.
+            //      Grants a "connection_id" claim so the request can be routed to that plugin.
+            //      Checked first because plugin connections are the primary auth mechanism.
+            //
+            //   2. DCR access token (RFC 7591) — a token issued by the /token endpoint after
+            //      Dynamic Client Registration. Grants a "client_id" claim.
+            //      Checked before ServerToken because DCR tokens are per-client and dynamic;
+            //      a DCR token should never be confused with the static ServerToken.
+            //
+            //   3. ServerToken (static fallback) — a pre-shared token set at server startup
+            //      via the `token` CLI argument / MCP_PLUGIN_TOKEN env var.
+            //      Checked last; acts as a shared secret for deployments that don't use DCR.
+            //
+            // All three sources are additive: any valid token from any source is accepted.
+            // The first successful match wins.
+
+            // Tier 1 — plugin connection token
             var connectionId = ClientUtils.GetConnectionIdByToken(token);
             if (connectionId != null)
             {
@@ -69,7 +88,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 return Task.FromResult(AuthenticateResult.Success(ticket));
             }
 
-            // Check registered client access tokens (DCR flow, RFC 7591)
+            // Tier 2 — DCR access token (RFC 7591)
             var registeredClientId = ClientRegistrationStore.TryGetClientIdByAccessToken(token);
             if (registeredClientId != null)
             {
@@ -84,7 +103,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 return Task.FromResult(AuthenticateResult.Success(registeredTicket));
             }
 
-            // Fallback: check against server-configured token
+            // Tier 3 — static ServerToken fallback
             if (!string.IsNullOrEmpty(Options.ServerToken) && string.Equals(token, Options.ServerToken, StringComparison.Ordinal))
             {
                 var claims = new[]

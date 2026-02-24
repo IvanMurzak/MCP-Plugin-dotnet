@@ -13,23 +13,20 @@ using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
-using com.IvanMurzak.McpPlugin.Server.Strategy;
-using com.IvanMurzak.McpPlugin.Server.Transport;
 using com.IvanMurzak.ReflectorNet;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
     public static class ExtensionsMcpServerBuilder
     {
-        private static T? GetRegisteredSingleton<T>(IServiceCollection services) where T : class
+        private static McpServerSetup? GetMcpServerSetup(IServiceCollection services)
         {
             foreach (var descriptor in services)
             {
-                if (descriptor.ServiceType == typeof(T)
-                    && descriptor.ImplementationInstance is T instance)
-                    return instance;
+                if (descriptor.ServiceType == typeof(McpServerSetup)
+                    && descriptor.ImplementationInstance is McpServerSetup setup)
+                    return setup;
             }
             return null;
         }
@@ -70,16 +67,16 @@ namespace com.IvanMurzak.McpPlugin.Server
             mcpServerBuilder.Services.AddSingleton<IDataArguments>(dataArguments);
             mcpServerBuilder.Services.AddSingleton(version);
 
-            // Configure authentication using the connection strategy
-            var strategy = GetRegisteredSingleton<IMcpConnectionStrategy>(mcpServerBuilder.Services);
+            var setup = GetMcpServerSetup(mcpServerBuilder.Services);
 
+            // Configure authentication using the connection strategy
             mcpServerBuilder.Services.AddAuthentication(TokenAuthenticationHandler.SchemeName)
                 .AddScheme<TokenAuthenticationOptions, TokenAuthenticationHandler>(
                     authenticationScheme: TokenAuthenticationHandler.SchemeName,
                     options =>
                     {
-                        if (strategy != null)
-                            strategy.ConfigureAuthentication(options, dataArguments);
+                        if (setup != null)
+                            setup.Strategy.ConfigureAuthentication(options, dataArguments);
                         else
                         {
                             options.ServerToken = dataArguments.Token;
@@ -91,9 +88,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             mcpServerBuilder.Services.AddRouting();
 
             // Configure transport-specific services
-            var transport = GetRegisteredSingleton<ITransportLayer>(mcpServerBuilder.Services);
-            if (transport != null)
-                transport.ConfigureServices(mcpServerBuilder.Services, dataArguments);
+            if (setup != null)
+                setup.Transport.ConfigureServices(mcpServerBuilder.Services, dataArguments);
             else if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.stdio)
                 mcpServerBuilder.Services.AddHostedService<McpServerService>();
 

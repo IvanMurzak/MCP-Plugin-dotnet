@@ -18,6 +18,13 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
         // Task ForceDisconnect(); // Inherited from IClientDisconnectable
 
         /// <summary>
+        /// Called once when the plugin first connects. Provides the complete snapshot of all
+        /// MCP clients that are already active at the time of connection, covering the race
+        /// condition where clients connected before the plugin joined.
+        /// </summary>
+        Task OnInitialClientData(McpClientData[] allActiveClients);
+
+        /// <summary>
         /// Fired when an MCP client connects. Carries the newly connected client's data and
         /// the complete list of all currently active clients (including the new one).
         /// </summary>

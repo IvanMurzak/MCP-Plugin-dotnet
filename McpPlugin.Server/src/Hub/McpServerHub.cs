@@ -53,6 +53,15 @@ namespace com.IvanMurzak.McpPlugin.Server
             _sessionTracker = sessionTracker ?? throw new ArgumentNullException(nameof(sessionTracker));
         }
 
+        public override async Task OnConnectedAsync()
+        {
+            await base.OnConnectedAsync();
+            var allActiveClients = _strategy.GetAllClientData(Context.ConnectionId, _sessionTracker);
+            _logger.LogDebug("{method}. {guid}. Sending initial client data. Count: {count}",
+                nameof(OnConnectedAsync), _guid, allActiveClients.Length);
+            await Clients.Caller.OnInitialClientData(allActiveClients);
+        }
+
         public Task<ResponseData> NotifyAboutUpdatedTools(RequestToolsUpdated request) => NotifyAboutUpdatedTools(request, default);
         protected virtual Task<ResponseData> NotifyAboutUpdatedTools(RequestToolsUpdated request, CancellationToken cancellationToken = default)
         {
