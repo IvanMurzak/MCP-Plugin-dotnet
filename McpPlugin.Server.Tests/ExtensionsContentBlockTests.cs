@@ -9,6 +9,8 @@
 */
 
 using System;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using FluentAssertions;
@@ -277,6 +279,35 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // Assert
             result.IsError.Should().BeTrue();
+        }
+
+        [Fact]
+        public void ToCallToolResult_WithNonNullStructuredContent_MapsToJsonElement()
+        {
+            // Arrange – SuccessStructured wraps the node as {"result": <value>}
+            var response = ResponseCallTool.SuccessStructured(JsonValue.Create(42));
+
+            // Act
+            var result = response.ToCallToolResult();
+
+            // Assert
+            result.StructuredContent.Should().NotBeNull();
+            var element = result.StructuredContent!.Value;
+            element.ValueKind.Should().Be(JsonValueKind.Object);
+            element.GetProperty("result").GetInt32().Should().Be(42);
+        }
+
+        [Fact]
+        public void ToCallToolResult_WithNullStructuredContent_RemainsNull()
+        {
+            // Arrange – Success() leaves StructuredContent null
+            var response = ResponseCallTool.Success("hello");
+
+            // Act
+            var result = response.ToCallToolResult();
+
+            // Assert
+            result.StructuredContent.Should().BeNull();
         }
     }
 }
