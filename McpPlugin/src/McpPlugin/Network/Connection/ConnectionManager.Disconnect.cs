@@ -127,12 +127,15 @@ namespace com.IvanMurzak.McpPlugin
                 return;
             }
 
-            _logger.LogDebug("{class}[{guid}] {method}. Graceful: False",
+            _logger.LogDebug("{class}[{guid}] {method}.",
                 nameof(ConnectionManager), _guid, nameof(DisconnectImmediateCore));
 
             // Non-blocking gate attempt: if another thread holds _ongoingConnectionGate right now,
             // skip it — we still clear _ongoingConnectionTask directly since we are in emergency
-            // shutdown and the cancellation above already stopped any inflight Connect().
+            // shutdown. Invariant: CancelInternalToken() is always called by DisconnectImmediate()
+            // before entering here, so any in-flight Connect() will observe cancellation and will
+            // not write to _ongoingConnectionTask after the cancel propagates. The local-capture
+            // fix in Connect.cs ensures the awaiting caller is also safe from a NullReferenceException.
             var acquiredOngoingGate = _ongoingConnectionGate.Wait(TimeSpan.Zero);
             if (!acquiredOngoingGate)
             {
@@ -145,27 +148,16 @@ namespace com.IvanMurzak.McpPlugin
             if (acquiredOngoingGate)
                 _ongoingConnectionGate.Release();
 
-            hubConnectionLogger?.Dispose();
-            hubConnectionObservable?.Dispose();
-
-            hubConnectionLogger = null;
-            hubConnectionObservable = null;
-
-            // Update state immediately to prevent reconnection attempts
-            _connectionState.Value = HubConnectionState.Disconnected;
-
-            var tempHubConnection = _hubConnection.CurrentValue;
+            var tempHubConnection = ClearConnectionState();
             if (tempHubConnection == null)
                 return;
-
-            _hubConnection.Value = null;
 
             _logger.LogDebug("{class}[{guid}] {method} Performing immediate disconnect without waiting for cleanup.",
                 nameof(ConnectionManager), _guid, nameof(DisconnectImmediateCore));
 
-            // Fire-and-forget: let the OS/runtime clean up the socket.
-            // Do NOT call StopAsync here — that is async and uses the thread pool,
-            // which is unsafe during domain reload.
+            // Fire-and-forget: let the OS/runtime clean up the socket. Exceptions are
+            // intentionally unobserved — this is an emergency path (domain reload) where
+            // spawning async work or blocking on results is unsafe.
             _ = tempHubConnection.DisposeAsync();
         }
 
@@ -186,6 +178,21 @@ namespace com.IvanMurzak.McpPlugin
             _ongoingConnectionTask = null;
             _ongoingConnectionGate.Release();
 
+            var tempHubConnection = ClearConnectionState();
+            if (tempHubConnection == null)
+                return;
+
+            // For graceful disconnect, use proper async cleanup
+            await DisconnectGracefulAsync(tempHubConnection, cancellationToken);
+        }
+
+        /// <summary>
+        /// Clears all hub connection state fields and returns the active HubConnection (or null).
+        /// The caller is responsible for disposing the returned connection in the appropriate manner
+        /// (sync fire-and-forget for immediate shutdown; async for graceful disconnect).
+        /// </summary>
+        private HubConnection? ClearConnectionState()
+        {
             hubConnectionLogger?.Dispose();
             hubConnectionObservable?.Dispose();
 
@@ -196,13 +203,9 @@ namespace com.IvanMurzak.McpPlugin
             _connectionState.Value = HubConnectionState.Disconnected;
 
             var tempHubConnection = _hubConnection.CurrentValue;
-            if (tempHubConnection == null)
-                return;
-
             _hubConnection.Value = null;
 
-            // For graceful disconnect, use proper async cleanup
-            await DisconnectGracefulAsync(tempHubConnection, cancellationToken);
+            return tempHubConnection;
         }
 
         private async Task DisconnectGracefulAsync(HubConnection hubConnection, CancellationToken cancellationToken)

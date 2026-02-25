@@ -737,6 +737,67 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             providerCallCount.Should().BeGreaterThanOrEqualTo(2, "reconnection after disconnect should create a new connection");
         }
 
+        [Fact]
+        public void DisconnectImmediate_WhenNotConnected_DoesNotThrow()
+        {
+            // Arrange
+            var connectionManager = new ConnectionManager(
+                _logger,
+                _testVersion,
+                _testEndpoint,
+                _mockHubConnectionProvider.Object
+            );
+
+            // Act & Assert
+            Action act = () => connectionManager.DisconnectImmediate();
+            act.Should().NotThrow("DisconnectImmediate must be safe to call when no connection exists");
+        }
+
+        [Fact]
+        public async Task DisconnectImmediate_WhileConnecting_DoesNotThrowAndConnectReturnsFalse()
+        {
+            // Regression: Connect captures a local reference to _ongoingConnectionTask before
+            // releasing the gate, so DisconnectImmediate nulling _ongoingConnectionTask cannot
+            // cause a NullReferenceException on the awaiting caller.
+
+            // Arrange
+            var connectionStarted = new TaskCompletionSource<bool>();
+            var allowConnectionToComplete = new TaskCompletionSource<bool>();
+
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .Returns(async () =>
+                {
+                    connectionStarted.TrySetResult(true);
+                    await allowConnectionToComplete.Task;
+                    return CreateMockHubConnection();
+                });
+
+            var connectionManager = new ConnectionManager(
+                _logger,
+                _testVersion,
+                _testEndpoint,
+                _mockHubConnectionProvider.Object
+            );
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var connectTask = Task.Run(() => connectionManager.Connect(cts.Token));
+
+            // Wait until the provider is executing (connection is in flight)
+            await EnsureConnectionStartedAsync(connectionStarted.Task);
+
+            // Act: must not deadlock or throw even though Connect holds the gate
+            Action act = () => connectionManager.DisconnectImmediate();
+            act.Should().NotThrow("DisconnectImmediate must not deadlock or throw during an in-flight Connect");
+
+            // Unblock the provider; token is already canceled so Connect should return false
+            allowConnectionToComplete.SetResult(true);
+
+            // Assert: Connect must complete cleanly — no NullReferenceException from the race
+            var result = await connectTask;
+            result.Should().BeFalse("Connect should return false because DisconnectImmediate canceled it");
+        }
+
         #endregion
 
         #region InvokeAsync Tests
