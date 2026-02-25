@@ -42,6 +42,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                 options.Stateless = false;
                 options.PerSessionExecutionContext = true;
                 options.IdleTimeout = TimeSpan.FromSeconds(30);
+                // ConfigureSessionOptions cannot replace RunSessionHandler here because we need
+                // full session lifecycle management (StartAsync/StopAsync for McpServerService).
+                // Suppressing MCPEXP002 as RunSessionHandler is the only mechanism that provides
+                // access to session lifetime events (before session starts and after it ends).
+#pragma warning disable MCPEXP002
                 options.RunSessionHandler = async (context, server, cancellationToken) =>
                 {
                     logger?.Debug("-------------------------------------------------\nRunning session handler for HTTP transport. Session ID: {sessionId}",
@@ -100,6 +105,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                         logger?.Debug($"-------------------------------------------------\nSession handler for HTTP transport completed. Session ID: {mcpClientSessionId}\n------------------------");
                     }
                 };
+#pragma warning restore MCPEXP002
             });
         }
 
