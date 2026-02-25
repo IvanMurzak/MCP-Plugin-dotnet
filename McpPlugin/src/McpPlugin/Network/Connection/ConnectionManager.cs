@@ -83,12 +83,15 @@ namespace com.IvanMurzak.McpPlugin
 
             _connectionState
                 .Where(state => state == HubConnectionState.Reconnecting && _continueToReconnect.CurrentValue)
-                .SubscribeAwait(async (_, ct) =>
+                .Subscribe(state =>
                 {
                     _logger.LogDebug("{class}[{guid}] Connection state changed to Reconnecting. Initiating reconnection to: {endpoint}",
                         nameof(ConnectionManager), _guid, Endpoint);
-                    await Connect(_cancellationTokenSource.Token);
-                }, AwaitOperation.Sequential)
+                    // Fire-and-forget: Connect() handles sequential execution via its internal gate.
+                    // Avoid SubscribeAwait/async void to prevent capturing any SynchronizationContext.
+                    var reconnectTask = Connect(_cancellationTokenSource.Token);
+                    _ = reconnectTask.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
+                })
                 .AddTo(_disposables);
         }
 

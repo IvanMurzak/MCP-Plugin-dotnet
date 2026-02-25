@@ -315,17 +315,22 @@ namespace com.IvanMurzak.McpPlugin
         private void SetupHubConnectionObservables(HubConnection hubConnection, CancellationToken cancellationToken)
         {
             hubConnectionObservable = new(hubConnection);
+            // RegisterTo(cancellationToken) ties this subscription to the current connection
+            // cycle (internalCts lifetime). Each Connect() creates a new internalCts, which
+            // disposes this subscription when cancelled — preventing accumulation across cycles.
             hubConnectionObservable.Closed
                 .Where(_ => _continueToReconnect.CurrentValue)
                 .Where(_ => !cancellationToken.IsCancellationRequested)
-                .SubscribeAwait(async (_, ct) =>
+                .Subscribe(ex =>
                 {
                     _logger.LogWarning("{class}[{guid}] {method} Connection closed unexpectedly. Attempting to reconnect to: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(SetupHubConnectionObservables), Endpoint);
-                    // Call Connect instead of InternalConnect to ensure proper gate protection
-                    await Connect(cancellationToken);
-                }, AwaitOperation.Sequential)
-                .AddTo(_disposables);
+                    // Fire-and-forget: Connect() handles sequential execution via its internal gate.
+                    // Avoid SubscribeAwait/async void to prevent capturing any SynchronizationContext.
+                    var reconnectTask = Connect(cancellationToken);
+                    _ = reconnectTask.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
+                })
+                .RegisterTo(cancellationToken);
         }
 
         /// <summary>
@@ -377,6 +382,9 @@ namespace com.IvanMurzak.McpPlugin
                 {
                     _logger.LogWarning("{class}[{guid}] {method} Connection attempt timed out after 30 seconds for endpoint: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint);
+                    // Observe the task to prevent UnobservedTaskException; the exception
+                    // (typically OperationCanceledException) is expected and can be ignored.
+                    _ = connectionTask.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
                     return false;
                 }
 
