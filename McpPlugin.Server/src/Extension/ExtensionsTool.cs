@@ -81,7 +81,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 .ToList(),
             StructuredContent = response.StructuredContent != null
                 ? JsonSerializer.SerializeToElement(response.StructuredContent)
-                : (JsonElement?)null
+                : null
         };
     }
 }
