@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Tests.Infrastructure;
 using FluentAssertions;
+using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -60,7 +61,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                 .Setup(x => x.CreateConnectionAsync(_testEndpoint))
                 .ReturnsAsync(mockConnection);
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -83,7 +84,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                 .Setup(x => x.CreateConnectionAsync(_testEndpoint))
                 .ReturnsAsync((HubConnection)null!);
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -106,7 +107,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                 .Setup(x => x.CreateConnectionAsync(_testEndpoint))
                 .ThrowsAsync(new InvalidOperationException("Failed to create connection"));
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -145,7 +146,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                     return CreateMockHubConnection();
                 });
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -206,7 +207,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                     return CreateMockHubConnection();
                 });
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -254,7 +255,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                     return CreateMockHubConnection();
                 });
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -295,7 +296,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                     return CreateMockHubConnection();
                 });
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -345,7 +346,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                 .Setup(x => x.CreateConnectionAsync(_testEndpoint))
                 .ReturnsAsync(mockConnection);
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -375,7 +376,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                     return CreateMockHubConnection();
                 });
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -411,7 +412,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                     return CreateMockHubConnection();
                 });
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -444,7 +445,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                     return CreateMockHubConnection();
                 });
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -470,7 +471,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                 .Setup(x => x.CreateConnectionAsync(_testEndpoint))
                 .ThrowsAsync(new OperationCanceledException("Connection canceled"));
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -493,7 +494,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                 .Setup(x => x.CreateConnectionAsync(_testEndpoint))
                 .ThrowsAsync(new Exception("Connection error"));
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -534,7 +535,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                     return CreateMockHubConnection();
                 });
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -632,7 +633,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                     return CreateMockHubConnection();
                 });
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -702,7 +703,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                     return CreateMockHubConnection();
                 });
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -735,6 +736,67 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             // The second connect should succeed (or at least attempt to connect)
             // The provider should be called at least twice (once for each Connect)
             providerCallCount.Should().BeGreaterThanOrEqualTo(2, "reconnection after disconnect should create a new connection");
+        }
+
+        [Fact]
+        public void DisconnectImmediate_WhenNotConnected_DoesNotThrow()
+        {
+            // Arrange
+            using var connectionManager = new ConnectionManager(
+                _logger,
+                _testVersion,
+                _testEndpoint,
+                _mockHubConnectionProvider.Object
+            );
+
+            // Act & Assert
+            Action act = () => connectionManager.DisconnectImmediate();
+            act.Should().NotThrow("DisconnectImmediate must be safe to call when no connection exists");
+        }
+
+        [Fact]
+        public async Task DisconnectImmediate_WhileConnecting_DoesNotThrowAndConnectReturnsFalse()
+        {
+            // Regression: Connect captures a local reference to _ongoingConnectionTask before
+            // releasing the gate, so DisconnectImmediate nulling _ongoingConnectionTask cannot
+            // cause a NullReferenceException on the awaiting caller.
+
+            // Arrange
+            var connectionStarted = new TaskCompletionSource<bool>();
+            var allowConnectionToComplete = new TaskCompletionSource<bool>();
+
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .Returns(async () =>
+                {
+                    connectionStarted.TrySetResult(true);
+                    await allowConnectionToComplete.Task;
+                    return CreateMockHubConnection();
+                });
+
+            await using var connectionManager = new ConnectionManager(
+                _logger,
+                _testVersion,
+                _testEndpoint,
+                _mockHubConnectionProvider.Object
+            );
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var connectTask = Task.Run(() => connectionManager.Connect(cts.Token));
+
+            // Wait until the provider is executing (connection is in flight)
+            await EnsureConnectionStartedAsync(connectionStarted.Task);
+
+            // Act: must not deadlock or throw even though Connect holds the gate
+            Action act = () => connectionManager.DisconnectImmediate();
+            act.Should().NotThrow("DisconnectImmediate must not deadlock or throw during an in-flight Connect");
+
+            // Unblock the provider; token is already canceled so Connect should return false
+            allowConnectionToComplete.SetResult(true);
+
+            // Assert: Connect must complete cleanly — no NullReferenceException from the race
+            var result = await connectTask;
+            result.Should().BeFalse("Connect should return false because DisconnectImmediate canceled it");
         }
 
         #endregion
@@ -776,7 +838,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                 .Setup(x => x.CreateConnectionAsync(_testEndpoint))
                 .ReturnsAsync((HubConnection)null!);
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -800,7 +862,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                 .Setup(x => x.CreateConnectionAsync(_testEndpoint))
                 .ReturnsAsync(mockConnection);
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -833,7 +895,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                     return CreateMockHubConnection();
                 });
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -867,7 +929,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                 .Setup(x => x.CreateConnectionAsync(_testEndpoint))
                 .ThrowsAsync(new InvalidOperationException("Failed to create connection"));
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -891,7 +953,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                 .Setup(x => x.CreateConnectionAsync(_testEndpoint))
                 .ReturnsAsync((HubConnection)null!);
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -923,7 +985,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                     return CreateMockHubConnection();
                 });
 
-            var connectionManager = new ConnectionManager(
+            await using var connectionManager = new ConnectionManager(
                 _logger,
                 _testVersion,
                 _testEndpoint,
@@ -1028,13 +1090,22 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
         /// </summary>
         private static HubConnection CreateMockHubConnection()
         {
-            // Create a real HubConnection instance with a dummy URL
-            // This is necessary because HubConnection is sealed and cannot be mocked
-            var builder = new HubConnectionBuilder()
-                .WithUrl("http://localhost:9999/test")
-                .WithAutomaticReconnect();
-
-            return builder.Build();
+            // Create a real HubConnection instance with a dummy URL.
+            // HubConnection is sealed and cannot be mocked directly.
+            // Notes:
+            // - WithAutomaticReconnect() is omitted: ConnectionManager manages its own retry
+            //   logic; SignalR's built-in reconnect is redundant and adds background tasks.
+            // - WebSockets + SkipNegotiation avoids the HTTP negotiate step, so no HttpClient
+            //   connection pool entry is created. The WebSocket connect attempt fails immediately
+            //   (connection refused) at the TCP level, leaving no pooled connections behind. This
+            //   prevents the 60–90 s connection-pool-drain hang when the test host tries to exit.
+            return new HubConnectionBuilder()
+                .WithUrl("http://localhost:9999/test", options =>
+                {
+                    options.Transports = HttpTransportType.WebSockets;
+                    options.SkipNegotiation = true;
+                })
+                .Build();
         }
 
         /// <summary>

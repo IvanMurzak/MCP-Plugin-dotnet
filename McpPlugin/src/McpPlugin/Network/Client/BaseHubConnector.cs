@@ -45,22 +45,32 @@ namespace com.IvanMurzak.McpPlugin
         public ReadOnlyReactiveProperty<bool> KeepConnected => _connectionManager.KeepConnected;
         public VersionHandshakeResponse? VersionHandshakeStatus => lastHandshakeResponse;
 
-        public BaseHubConnector(ILogger logger, Version apiVersion, string endpoint, IHubConnectionProvider hubConnectionProvider)
+        /// <summary>
+        /// Primary constructor. Accepts an already-constructed <see cref="IConnectionManager"/>,
+        /// enabling injection of a mock or custom implementation in tests.
+        /// </summary>
+        public BaseHubConnector(ILogger logger, Version apiVersion, IConnectionManager connectionManager)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("{class} Ctor.", GetType().Name);
 
             _apiVersion = apiVersion ?? throw new ArgumentNullException(nameof(apiVersion));
-
-            _connectionManager = new ConnectionManager(
-                logger,
-                apiVersion,
-                endpoint ?? throw new ArgumentNullException(nameof(endpoint)),
-                hubConnectionProvider ?? throw new ArgumentNullException(nameof(hubConnectionProvider))
-            );
+            _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
 
             _hubConnectionDisposable = _connectionManager.HubConnection
                 .Subscribe(OnHubConnectionChanged);
+        }
+
+        /// <summary>
+        /// Convenience constructor that creates a <see cref="ConnectionManager"/> internally.
+        /// </summary>
+        public BaseHubConnector(ILogger logger, Version apiVersion, string endpoint, IHubConnectionProvider hubConnectionProvider)
+            : this(logger, apiVersion, new ConnectionManager(
+                logger ?? throw new ArgumentNullException(nameof(logger)),
+                apiVersion ?? throw new ArgumentNullException(nameof(apiVersion)),
+                endpoint ?? throw new ArgumentNullException(nameof(endpoint)),
+                hubConnectionProvider ?? throw new ArgumentNullException(nameof(hubConnectionProvider))))
+        {
         }
 
         public Task<bool> Connect(CancellationToken cancellationToken = default)
@@ -247,6 +257,7 @@ namespace com.IvanMurzak.McpPlugin
             if (!_isDisposed.TrySetTrue())
                 return; // already disposed
 
+            GC.SuppressFinalize(this);
             _logger.LogDebug("{method} called.", nameof(Dispose));
 
             if (!_cancellationTokenSource.IsCancellationRequested)
@@ -261,6 +272,5 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{method} completed.", nameof(Dispose));
         }
 
-        ~BaseHubConnector() => Dispose();
     }
 }

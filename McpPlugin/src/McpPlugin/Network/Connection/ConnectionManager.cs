@@ -35,14 +35,18 @@ namespace com.IvanMurzak.McpPlugin
         private readonly SemaphoreSlim _gate = new(1, 1);
         private readonly SemaphoreSlim _ongoingConnectionGate = new(1, 1);
         private readonly ThreadSafeBool _isDisposed = new(false);
+        private readonly SerialDisposable _hubStateSubscription = new();
+        private readonly ReadOnlyReactiveProperty<HubConnectionState> _connectionStateReadOnly;
+        private readonly ReadOnlyReactiveProperty<HubConnection?> _hubConnectionReadOnly;
+        private readonly ReadOnlyReactiveProperty<bool> _keepConnectedReadOnly;
         private HubConnectionLogger? hubConnectionLogger;
         private HubConnectionObservable? hubConnectionObservable;
         private CancellationTokenSource? internalCts;
         private volatile Task<bool>? _ongoingConnectionTask;
 
-        public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _connectionState.ToReadOnlyReactiveProperty();
-        public ReadOnlyReactiveProperty<HubConnection?> HubConnection => _hubConnection.ToReadOnlyReactiveProperty();
-        public ReadOnlyReactiveProperty<bool> KeepConnected => _continueToReconnect.ToReadOnlyReactiveProperty();
+        public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _connectionStateReadOnly;
+        public ReadOnlyReactiveProperty<HubConnection?> HubConnection => _hubConnectionReadOnly;
+        public ReadOnlyReactiveProperty<bool> KeepConnected => _keepConnectedReadOnly;
         public string Endpoint => _endpoint;
         public CancellationToken ConnectionCancellationToken => internalCts?.Token ?? CancellationToken.None;
 
@@ -56,28 +60,37 @@ namespace com.IvanMurzak.McpPlugin
             _hubConnectionBuilder = hubConnectionBuilder ?? throw new ArgumentNullException(nameof(hubConnectionBuilder));
             _cancellationTokenSource = _disposables.ToCancellationTokenSource();
 
+            _connectionStateReadOnly = _connectionState.ToReadOnlyReactiveProperty();
+            _hubConnectionReadOnly = _hubConnection.ToReadOnlyReactiveProperty();
+            _keepConnectedReadOnly = _continueToReconnect.ToReadOnlyReactiveProperty();
+
             _hubConnection
                 .Subscribe(hubConnection =>
                 {
                     if (hubConnection == null)
                     {
+                        _hubStateSubscription.Disposable = null;
                         _connectionState.Value = HubConnectionState.Disconnected;
                         return;
                     }
 
-                    hubConnection.ToObservable().State
-                        .Subscribe(state => _connectionState.Value = state)
-                        .AddTo(_disposables);
+                    // SerialDisposable auto-disposes the previous subscription when reassigned,
+                    // preventing accumulation of stale subscriptions across reconnection cycles.
+                    _hubStateSubscription.Disposable = hubConnection.ToObservable().State
+                        .Subscribe(state => _connectionState.Value = state);
                 })
                 .AddTo(_disposables);
 
             _connectionState
                 .Where(state => state == HubConnectionState.Reconnecting && _continueToReconnect.CurrentValue)
-                .Subscribe(async state =>
+                .Subscribe(state =>
                 {
-                    _logger.LogInformation("{class}[{guid}] Connection state changed to Reconnecting. Initiating reconnection to: {endpoint}",
+                    _logger.LogDebug("{class}[{guid}] Connection state changed to Reconnecting. Initiating reconnection to: {endpoint}",
                         nameof(ConnectionManager), _guid, Endpoint);
-                    await Connect(_cancellationTokenSource.Token);
+                    // Fire-and-forget: Connect() handles sequential execution via its internal gate.
+                    // Avoid SubscribeAwait/async void to prevent capturing any SynchronizationContext.
+                    var reconnectTask = Connect(_cancellationTokenSource.Token);
+                    _ = reconnectTask.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
                 })
                 .AddTo(_disposables);
         }
@@ -135,23 +148,11 @@ namespace com.IvanMurzak.McpPlugin
             if (!_isDisposed.TrySetTrue())
                 return; // already disposed
 
+            GC.SuppressFinalize(this);
             _logger.LogDebug("{class}[{guid}] {method}.",
                 nameof(ConnectionManager), _guid, nameof(Dispose));
 
-            CancelInternalToken(dispose: true);
-            _disposables.Dispose();
-
-            if (!_continueToReconnect.IsDisposed)
-                _continueToReconnect.Value = false;
-
-            hubConnectionLogger?.Dispose();
-            hubConnectionObservable?.Dispose();
-
-            hubConnectionLogger = null;
-            hubConnectionObservable = null;
-
-            _connectionState.Dispose();
-            _continueToReconnect.Dispose();
+            DisposeCommonSync();
 
             // Use Wait with timeout for synchronous disposal
             var acquiredGate = _gate.Wait(TimeSpan.FromSeconds(5));
@@ -182,35 +183,24 @@ namespace com.IvanMurzak.McpPlugin
                 if (acquiredGate)
                     _gate.Release();
 
-                _gate.Dispose();
-                _ongoingConnectionGate.Dispose();
+                try { _gate.Dispose(); } catch (ObjectDisposedException) { }
+                try { _ongoingConnectionGate.Dispose(); } catch (ObjectDisposedException) { }
 
                 _logger.LogDebug("{class}[{guid}] {method} completed.",
                     nameof(ConnectionManager), _guid, nameof(Dispose));
             }
         }
+
         public async ValueTask DisposeAsync()
         {
             if (!_isDisposed.TrySetTrue())
                 return; // already disposed
 
+            GC.SuppressFinalize(this);
             _logger.LogDebug("{class}[{guid}] {method}.",
                 nameof(ConnectionManager), _guid, nameof(DisposeAsync));
 
-            CancelInternalToken(dispose: true);
-            _disposables.Dispose();
-
-            if (!_continueToReconnect.IsDisposed)
-                _continueToReconnect.Value = false;
-
-            hubConnectionLogger?.Dispose();
-            hubConnectionObservable?.Dispose();
-
-            hubConnectionLogger = null;
-            hubConnectionObservable = null;
-
-            _connectionState.Dispose();
-            _continueToReconnect.Dispose();
+            DisposeCommonSync();
 
             var isGateAcquired = await _gate.WaitAsync(TimeSpan.FromSeconds(5));
             try
@@ -242,12 +232,38 @@ namespace com.IvanMurzak.McpPlugin
                 if (isGateAcquired)
                     _gate.Release();
 
-                _gate.Dispose();
-                _ongoingConnectionGate.Dispose();
+                try { _gate.Dispose(); } catch (ObjectDisposedException) { }
+                try { _ongoingConnectionGate.Dispose(); } catch (ObjectDisposedException) { }
 
                 _logger.LogDebug("{class}[{guid}] {method} completed.",
                     nameof(ConnectionManager), _guid, nameof(DisposeAsync));
             }
+        }
+
+        /// <summary>
+        /// Shared synchronous teardown logic executed by both <see cref="Dispose"/> and <see cref="DisposeAsync"/>.
+        /// Does not touch the HubConnection (handled differently per path).
+        /// </summary>
+        private void DisposeCommonSync()
+        {
+            CancelInternalToken(dispose: true);
+            _disposables.Dispose();
+
+            if (!_continueToReconnect.IsDisposed)
+                _continueToReconnect.Value = false;
+
+            hubConnectionLogger?.Dispose();
+            hubConnectionObservable?.Dispose();
+
+            hubConnectionLogger = null;
+            hubConnectionObservable = null;
+
+            _hubStateSubscription.Dispose();
+            _connectionState.Dispose();
+            _continueToReconnect.Dispose();
+            _connectionStateReadOnly.Dispose();
+            _hubConnectionReadOnly.Dispose();
+            _keepConnectedReadOnly.Dispose();
         }
 
         private async Task ExecuteHubMethodAsync(string methodName, Func<HubConnection, Task> hubMethod)
@@ -262,7 +278,7 @@ namespace com.IvanMurzak.McpPlugin
             try
             {
                 await hubMethod(_hubConnection.CurrentValue);
-                _logger.LogInformation("{class}[{guid}] {method} Successfully invoked method '{methodName}' on endpoint: {endpoint}",
+                _logger.LogDebug("{class}[{guid}] {method} Successfully invoked method '{methodName}' on endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint);
             }
             catch (Exception ex)
@@ -285,7 +301,7 @@ namespace com.IvanMurzak.McpPlugin
             try
             {
                 var result = await hubMethod(_hubConnection.CurrentValue);
-                _logger.LogInformation("{class}[{guid}] {method} Successfully invoked method '{methodName}' on endpoint: {endpoint}",
+                _logger.LogDebug("{class}[{guid}] {method} Successfully invoked method '{methodName}' on endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint);
                 return result;
             }
@@ -293,7 +309,7 @@ namespace com.IvanMurzak.McpPlugin
             {
                 _logger.LogError(ex, "{class}[{guid}] {method} Failed to invoke method '{methodName}' on endpoint: {endpoint}. Error: {message}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint, ex.Message);
-                return default!;
+                throw;
             }
         }
 
@@ -312,6 +328,5 @@ namespace com.IvanMurzak.McpPlugin
             }
         }
 
-        ~ConnectionManager() => Dispose();
     }
 }
