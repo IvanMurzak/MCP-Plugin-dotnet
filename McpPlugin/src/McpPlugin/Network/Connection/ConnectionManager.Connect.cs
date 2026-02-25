@@ -110,12 +110,14 @@ namespace com.IvanMurzak.McpPlugin
 
                 _continueToReconnect.Value = true;
 
+                Task<bool> connectionTask;
                 await _ongoingConnectionGate.WaitAsync(cancellationToken);
                 _ongoingConnectionTask = InternalConnect(cancellationToken);
+                connectionTask = _ongoingConnectionTask; // capture local ref before releasing gate
                 _ongoingConnectionGate.Release();
                 try
                 {
-                    return await _ongoingConnectionTask;
+                    return await connectionTask; // safe: local ref is never nulled by emergency shutdown
                 }
                 finally
                 {
