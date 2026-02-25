@@ -100,8 +100,6 @@ namespace com.IvanMurzak.McpPlugin
                     return true;
                 }
 
-                _continueToReconnect.Value = false;
-
                 // Dispose the previous internal CancellationTokenSource if it exists
                 CancelInternalToken(dispose: true);
 
@@ -193,6 +191,9 @@ namespace com.IvanMurzak.McpPlugin
                     return false;
                 }
 
+                // Small stabilization delay after HubConnection creation before the first StartAsync call.
+                // SignalR's internal DI/setup may not be fully ready immediately after CreateConnectionAsync returns.
+                // TODO: remove this delay if integration tests confirm it is no longer needed.
                 await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
 
                 if (cancellationToken.IsCancellationRequested)
@@ -317,14 +318,14 @@ namespace com.IvanMurzak.McpPlugin
             hubConnectionObservable.Closed
                 .Where(_ => _continueToReconnect.CurrentValue)
                 .Where(_ => !cancellationToken.IsCancellationRequested)
-                .Subscribe(async _ =>
+                .SubscribeAwait(async (_, ct) =>
                 {
                     _logger.LogWarning("{class}[{guid}] {method} Connection closed unexpectedly. Attempting to reconnect to: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(SetupHubConnectionObservables), Endpoint);
                     // Call Connect instead of InternalConnect to ensure proper gate protection
                     await Connect(cancellationToken);
-                })
-                .RegisterTo(cancellationToken);
+                }, AwaitOperation.Sequential)
+                .AddTo(_disposables);
         }
 
         /// <summary>

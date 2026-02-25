@@ -213,7 +213,8 @@ namespace com.IvanMurzak.McpPlugin
             try
             {
                 await hubConnection.StopAsync(cancellationToken).ConfigureAwait(false);
-                _logger.LogInformation("{class}[{guid}] {method} HubConnection stopped successfully.",
+                await hubConnection.DisposeAsync().ConfigureAwait(false);
+                _logger.LogDebug("{class}[{guid}] {method} HubConnection stopped and disposed successfully.",
                     nameof(ConnectionManager), _guid, nameof(DisconnectGracefulAsync));
             }
             catch (OperationCanceledException ex)
