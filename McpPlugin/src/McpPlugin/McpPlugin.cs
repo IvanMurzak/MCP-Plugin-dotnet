@@ -147,13 +147,6 @@ namespace com.IvanMurzak.McpPlugin
                 })
                 .AddTo(_disposables);
 
-            if (HasInstance)
-            {
-                _logger.LogError($"Instance already created. Use Singleton instance.");
-                return;
-            }
-
-            _instance.Value = this;
         }
 
         public Task<bool> Connect(CancellationToken cancellationToken = default)
@@ -204,10 +197,6 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{method} called.", nameof(Dispose));
 
             _disposables.Dispose();
-
-            var localInstance = _instance.CurrentValue;
-            if (localInstance == this)
-                _instance.Value = null;
 
             try
             {
