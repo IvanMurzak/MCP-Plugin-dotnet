@@ -182,8 +182,8 @@ namespace com.IvanMurzak.McpPlugin
                 if (acquiredGate)
                     _gate.Release();
 
-                _gate.Dispose();
-                _ongoingConnectionGate.Dispose();
+                try { _gate.Dispose(); } catch (ObjectDisposedException) { }
+                try { _ongoingConnectionGate.Dispose(); } catch (ObjectDisposedException) { }
 
                 _logger.LogDebug("{class}[{guid}] {method} completed.",
                     nameof(ConnectionManager), _guid, nameof(Dispose));
@@ -242,8 +242,8 @@ namespace com.IvanMurzak.McpPlugin
                 if (isGateAcquired)
                     _gate.Release();
 
-                _gate.Dispose();
-                _ongoingConnectionGate.Dispose();
+                try { _gate.Dispose(); } catch (ObjectDisposedException) { }
+                try { _ongoingConnectionGate.Dispose(); } catch (ObjectDisposedException) { }
 
                 _logger.LogDebug("{class}[{guid}] {method} completed.",
                     nameof(ConnectionManager), _guid, nameof(DisposeAsync));

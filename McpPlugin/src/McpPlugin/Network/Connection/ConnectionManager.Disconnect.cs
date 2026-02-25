@@ -130,23 +130,23 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{class}[{guid}] {method}.",
                 nameof(ConnectionManager), _guid, nameof(DisconnectImmediateCore));
 
-            // Non-blocking gate attempt: if another thread holds _ongoingConnectionGate right now,
-            // skip it — we still clear _ongoingConnectionTask directly since we are in emergency
-            // shutdown. Invariant: CancelInternalToken() is always called by DisconnectImmediate()
-            // before entering here, so any in-flight Connect() will observe cancellation and will
-            // not write to _ongoingConnectionTask after the cancel propagates. The local-capture
-            // fix in Connect.cs ensures the awaiting caller is also safe from a NullReferenceException.
+            // Non-blocking gate attempt. If Connect currently holds _ongoingConnectionGate
+            // (Wait returns false), skip the null write entirely — Connect's finally block always
+            // runs with CancellationToken.None and will clear _ongoingConnectionTask itself once
+            // the cancellation (signalled above by CancelInternalToken) causes it to complete.
+            // Writing the field outside the gate would be an unprotected race.
             var acquiredOngoingGate = _ongoingConnectionGate.Wait(TimeSpan.Zero);
-            if (!acquiredOngoingGate)
+            if (acquiredOngoingGate)
             {
-                _logger.LogWarning("{class}[{guid}] {method} Could not acquire ongoingConnectionGate (held by another thread). Proceeding anyway.",
+                _ongoingConnectionTask = null;
+                _ongoingConnectionGate.Release();
+            }
+            else
+            {
+                _logger.LogWarning("{class}[{guid}] {method} Could not acquire ongoingConnectionGate (held by another thread). " +
+                    "Connect's finally block will clear _ongoingConnectionTask after cancellation propagates.",
                     nameof(ConnectionManager), _guid, nameof(DisconnectImmediateCore));
             }
-
-            _ongoingConnectionTask = null;
-
-            if (acquiredOngoingGate)
-                _ongoingConnectionGate.Release();
 
             var tempHubConnection = ClearConnectionState();
             if (tempHubConnection == null)

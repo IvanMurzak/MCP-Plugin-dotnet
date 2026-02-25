@@ -112,16 +112,18 @@ namespace com.IvanMurzak.McpPlugin
 
                 Task<bool> connectionTask;
                 await _ongoingConnectionGate.WaitAsync(cancellationToken);
-                _ongoingConnectionTask = InternalConnect(cancellationToken);
-                connectionTask = _ongoingConnectionTask; // capture local ref before releasing gate
+                connectionTask = InternalConnect(cancellationToken); // local ref first — never null
+                _ongoingConnectionTask = connectionTask;             // publish to shared field under gate
                 _ongoingConnectionGate.Release();
                 try
                 {
-                    return await connectionTask; // safe: local ref is never nulled by emergency shutdown
+                    return await connectionTask; // safe: local ref was captured before the gate was released
                 }
                 finally
                 {
-                    await _ongoingConnectionGate.WaitAsync();
+                    // Use CancellationToken.None: cleanup must run even when cancellationToken
+                    // (the internal CTS token) has already been cancelled by DisconnectImmediate.
+                    await _ongoingConnectionGate.WaitAsync(CancellationToken.None);
                     _ongoingConnectionTask = null;
                     _ongoingConnectionGate.Release();
                 }
