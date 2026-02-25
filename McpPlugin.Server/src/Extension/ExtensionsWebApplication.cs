@@ -11,6 +11,7 @@
 using System;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Api;
 using com.IvanMurzak.McpPlugin.Server.Transport;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Connections;
@@ -46,6 +47,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             // Delegate MCP endpoint mapping to transport layer
             var transport = app.Services.GetRequiredService<ITransportLayer>();
             transport.ConfigureApp(app, dataArguments);
+
+            // Setup direct tool call API (POST /api/tools/{name}, GET /api/tools)
+            app.MapDirectToolCallApi(dataArguments);
 
             return app;
         }
