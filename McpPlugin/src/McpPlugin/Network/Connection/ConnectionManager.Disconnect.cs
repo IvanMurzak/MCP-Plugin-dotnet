@@ -60,7 +60,7 @@ namespace com.IvanMurzak.McpPlugin
 
             try
             {
-                await DisconnectInternal(cancellationToken, graceful: true);
+                await DisconnectInternal(cancellationToken);
             }
             finally
             {
@@ -73,6 +73,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// Immediately disconnects without waiting for async cleanup.
         /// Use this during assembly reload or other critical shutdown scenarios.
+        /// Fully synchronous — no Tasks are spawned, safe for domain reload.
         /// </summary>
         public void DisconnectImmediate()
         {
@@ -94,7 +95,7 @@ namespace com.IvanMurzak.McpPlugin
                 _logger.LogDebug("{class}[{guid}] {method} Gate acquired: {acquired}",
                     nameof(ConnectionManager), _guid, nameof(DisconnectImmediate), acquiredGate);
 
-                DisconnectInternal(CancellationToken.None, graceful: false).GetAwaiter().GetResult();
+                DisconnectImmediateCore();
             }
             finally
             {
@@ -112,7 +113,63 @@ namespace com.IvanMurzak.McpPlugin
             }
         }
 
-        private async Task DisconnectInternal(CancellationToken cancellationToken, bool graceful)
+        /// <summary>
+        /// Synchronous core of the immediate disconnect path.
+        /// Uses non-blocking gate attempts (TimeSpan.Zero) so it never deadlocks
+        /// when called from a thread that has a SynchronizationContext (e.g. Unity main thread).
+        /// </summary>
+        private void DisconnectImmediateCore()
+        {
+            if (_isDisposed.Value)
+            {
+                _logger.LogWarning("{class}[{guid}] {method} called but already disposed, ignored.",
+                    nameof(ConnectionManager), _guid, nameof(DisconnectImmediateCore));
+                return;
+            }
+
+            _logger.LogDebug("{class}[{guid}] {method}. Graceful: False",
+                nameof(ConnectionManager), _guid, nameof(DisconnectImmediateCore));
+
+            // Non-blocking gate attempt: if another thread holds _ongoingConnectionGate right now,
+            // skip it — we still clear _ongoingConnectionTask directly since we are in emergency
+            // shutdown and the cancellation above already stopped any inflight Connect().
+            var acquiredOngoingGate = _ongoingConnectionGate.Wait(TimeSpan.Zero);
+            if (!acquiredOngoingGate)
+            {
+                _logger.LogWarning("{class}[{guid}] {method} Could not acquire ongoingConnectionGate (held by another thread). Proceeding anyway.",
+                    nameof(ConnectionManager), _guid, nameof(DisconnectImmediateCore));
+            }
+
+            _ongoingConnectionTask = null;
+
+            if (acquiredOngoingGate)
+                _ongoingConnectionGate.Release();
+
+            hubConnectionLogger?.Dispose();
+            hubConnectionObservable?.Dispose();
+
+            hubConnectionLogger = null;
+            hubConnectionObservable = null;
+
+            // Update state immediately to prevent reconnection attempts
+            _connectionState.Value = HubConnectionState.Disconnected;
+
+            var tempHubConnection = _hubConnection.CurrentValue;
+            if (tempHubConnection == null)
+                return;
+
+            _hubConnection.Value = null;
+
+            _logger.LogDebug("{class}[{guid}] {method} Performing immediate disconnect without waiting for cleanup.",
+                nameof(ConnectionManager), _guid, nameof(DisconnectImmediateCore));
+
+            // Fire-and-forget: let the OS/runtime clean up the socket.
+            // Do NOT call StopAsync here — that is async and uses the thread pool,
+            // which is unsafe during domain reload.
+            _ = tempHubConnection.DisposeAsync();
+        }
+
+        private async Task DisconnectInternal(CancellationToken cancellationToken)
         {
             if (_isDisposed.Value)
             {
@@ -121,11 +178,11 @@ namespace com.IvanMurzak.McpPlugin
                 return; // already disposed
             }
 
-            _logger.LogDebug("{class}[{guid}] {method}. Graceful: {graceful}",
-                 nameof(ConnectionManager), _guid, nameof(DisconnectInternal), graceful);
+            _logger.LogDebug("{class}[{guid}] {method}.",
+                 nameof(ConnectionManager), _guid, nameof(DisconnectInternal));
 
             // Clear the ongoing connection task to prevent new Connect calls from waiting for it
-            await _ongoingConnectionGate.WaitAsync(cancellationToken);
+            await _ongoingConnectionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             _ongoingConnectionTask = null;
             _ongoingConnectionGate.Release();
 
@@ -143,19 +200,6 @@ namespace com.IvanMurzak.McpPlugin
                 return;
 
             _hubConnection.Value = null;
-
-            // For non-graceful disconnect (Unity domain reload), skip all async operations
-            if (!graceful)
-            {
-                _logger.LogDebug("{class}[{guid}] {method} Performing immediate disconnect without waiting for cleanup.",
-                    nameof(ConnectionManager), _guid, nameof(DisconnectInternal));
-
-                _ = tempHubConnection.DisposeAsync();
-                // Don't call StopAsync or DisposeAsync - they use thread pool during shutdown
-                // Just clear the reference and let the connection die
-                // The connection state was already set to Disconnected above
-                return;
-            }
 
             // For graceful disconnect, use proper async cleanup
             await DisconnectGracefulAsync(tempHubConnection, cancellationToken);
