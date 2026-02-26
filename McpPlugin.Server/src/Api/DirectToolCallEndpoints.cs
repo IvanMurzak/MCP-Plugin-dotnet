@@ -52,10 +52,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
             var group = app.MapGroup(RoutePrefix);
 
             // GET /api/tools — list all registered tools
-            var listEndpoint = group.MapGet("/", (RequestDelegate)ListToolsHandler);
+            var listEndpoint = group.MapGet("/", ListToolsHandler);
 
             // POST /api/tools/{name} — invoke a tool by name
-            var callEndpoint = group.MapPost("/{name}", (RequestDelegate)CallToolHandler);
+            var callEndpoint = group.MapPost("/{name}", CallToolHandler);
 
             if (requireAuth)
             {
@@ -98,7 +98,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
 
                     var entry = new JsonObject
                     {
-                        ["name"]    = tool.Name,
+                        ["name"] = tool.Name,
                         ["enabled"] = tool.Enabled
                     };
                     if (tool.Title != null)
@@ -172,7 +172,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
             }
             catch (Exception)
             {
-                arguments = new Dictionary<string, JsonElement>();
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Failed to read the request body." });
+                return;
             }
 
             var requestData = new RequestCallTool(name, arguments);
