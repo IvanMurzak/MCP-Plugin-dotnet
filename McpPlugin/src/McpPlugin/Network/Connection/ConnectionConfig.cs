@@ -30,6 +30,18 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         public virtual string? Token { get; set; }
 
+        /// <summary>
+        /// Whether to automatically generate skill markdown files for each registered MCP tool.
+        /// Default is true. Skill files are generated on plugin build and whenever tools are updated.
+        /// </summary>
+        public virtual bool GenerateSkillFiles { get; set; } = true;
+
+        /// <summary>
+        /// Root folder path for generated skill markdown files. Can be absolute or relative to the application base directory.
+        /// Default is 'SKILLS'. Set via command line arg 'mcp-skills-folder' or environment variable 'MCP_SKILLS_FOLDER'.
+        /// </summary>
+        public virtual string SkillsRootFolder { get; set; } = "SKILLS";
+
         public ConnectionConfig() { }
 
         public static ConnectionConfig Default => new ConnectionConfig()
@@ -37,6 +49,18 @@ namespace com.IvanMurzak.McpPlugin
             Host = Consts.Hub.DefaultHost,
             TimeoutMs = Consts.Hub.DefaultTimeoutMs
         };
+
+        public static string GetSkillsFolderFromArgsOrEnv(string[]? args = null)
+        {
+            args ??= Environment.GetCommandLineArgs();
+            var folder = Environment.GetEnvironmentVariable(Consts.MCP.Plugin.Env.McpSkillsFolder);
+            var commandLineArgs = ArgsUtils.ParseLineArguments(args);
+
+            if (commandLineArgs.TryGetValue(Consts.MCP.Plugin.Args.McpSkillsFolder.TrimStart('-'), out var argFolder))
+                return argFolder;
+
+            return folder ?? "SKILLS";
+        }
 
         public static ConnectionConfig BuildFromArgsOrEnv(string[]? args = null)
         {
@@ -106,6 +130,10 @@ namespace com.IvanMurzak.McpPlugin
             var token = Environment.GetEnvironmentVariable(Consts.MCP.Plugin.Env.McpPluginToken);
             if (token != null)
                 Token = token;
+
+            var skillsFolder = Environment.GetEnvironmentVariable(Consts.MCP.Plugin.Env.McpSkillsFolder);
+            if (skillsFolder != null)
+                SkillsRootFolder = skillsFolder;
         }
         void ParseCommandLineArguments(string[] args)
         {
@@ -126,6 +154,10 @@ namespace com.IvanMurzak.McpPlugin
             var argToken = commandLineArgs.GetValueOrDefault(Consts.MCP.Plugin.Args.McpPluginToken.TrimStart('-'));
             if (argToken != null)
                 Token = argToken;
+
+            var argSkillsFolder = commandLineArgs.GetValueOrDefault(Consts.MCP.Plugin.Args.McpSkillsFolder.TrimStart('-'));
+            if (argSkillsFolder != null)
+                SkillsRootFolder = argSkillsFolder;
         }
 
         public override string ToString()

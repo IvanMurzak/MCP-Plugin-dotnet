@@ -1,0 +1,276 @@
+/*
+┌────────────────────────────────────────────────────────────────────────┐
+│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
+│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
+│  Copyright (c) 2025 Ivan Murzak                                        │
+│  Licensed under the Apache License, Version 2.0.                       │
+│  See the LICENSE file in the project root for more information.        │
+└────────────────────────────────────────────────────────────────────────┘
+*/
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Microsoft.Extensions.Logging;
+
+namespace com.IvanMurzak.McpPlugin.Skills
+{
+    /// <summary>
+    /// Generates AI skill markdown files for each registered MCP tool.
+    /// Skill files follow the AI Skills template format and describe how to call each tool
+    /// via the direct HTTP API or MCP protocol, including JSON schemas for input and output.
+    /// </summary>
+    public class SkillFileGenerator
+    {
+        readonly ILogger? _logger;
+
+        static readonly JsonSerializerOptions _prettyJsonOptions = new JsonSerializerOptions
+        {
+            WriteIndented = true
+        };
+
+        public SkillFileGenerator(ILogger? logger = null)
+        {
+            _logger = logger;
+        }
+
+        /// <summary>
+        /// Generates skill markdown files for all provided tools.
+        /// Files are written to <paramref name="rootFolder"/> (resolved relative to <paramref name="basePath"/> if not absolute).
+        /// </summary>
+        public void Generate(IEnumerable<IRunTool> tools, string rootFolder, string basePath)
+        {
+            if (tools == null)
+            {
+                _logger?.LogWarning("{class}.{method}: tools collection is null, skipping.", nameof(SkillFileGenerator), nameof(Generate));
+                return;
+            }
+
+            var skillsDir = Path.IsPathRooted(rootFolder)
+                ? rootFolder
+                : Path.Combine(basePath, rootFolder);
+
+            try
+            {
+                Directory.CreateDirectory(skillsDir);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "{class}.{method}: Failed to create skills directory '{dir}'.",
+                    nameof(SkillFileGenerator), nameof(Generate), skillsDir);
+                return;
+            }
+
+            foreach (var tool in tools)
+            {
+                if (tool == null) continue;
+                GenerateFor(tool, skillsDir);
+            }
+        }
+
+        /// <summary>
+        /// Generates a single skill markdown file for the given tool inside <paramref name="skillsDir"/>.
+        /// </summary>
+        void GenerateFor(IRunTool tool, string skillsDir)
+        {
+            var fileName = SanitizeFileName(tool.Name) + ".md";
+            var filePath = Path.Combine(skillsDir, fileName);
+
+            try
+            {
+                var content = BuildMarkdown(tool);
+                File.WriteAllText(filePath, content, Encoding.UTF8);
+                _logger?.LogDebug("{class}.{method}: Skill file written for tool '{tool}' → '{path}'.",
+                    nameof(SkillFileGenerator), nameof(GenerateFor), tool.Name, filePath);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "{class}.{method}: Failed to write skill file for tool '{tool}' at '{path}'.",
+                    nameof(SkillFileGenerator), nameof(GenerateFor), tool.Name, filePath);
+            }
+        }
+
+        string BuildMarkdown(IRunTool tool)
+        {
+            var sb = new StringBuilder();
+            var title = tool.Title ?? tool.Name;
+            var description = tool.Description ?? string.Empty;
+
+            // YAML front-matter
+            sb.AppendLine("---");
+            sb.AppendLine($"name: {tool.Name}");
+            sb.AppendLine($"description: {EscapeYaml(description)}");
+            sb.AppendLine("---");
+            sb.AppendLine();
+
+            // Title
+            sb.AppendLine($"# {title}");
+            sb.AppendLine();
+            if (!string.IsNullOrWhiteSpace(description))
+            {
+                sb.AppendLine(description);
+                sb.AppendLine();
+            }
+
+            // How to Call section
+            sb.AppendLine("## How to Call");
+            sb.AppendLine();
+            sb.AppendLine("### HTTP API (Direct Tool Execution)");
+            sb.AppendLine();
+            sb.AppendLine("Execute this tool directly via the MCP Plugin HTTP API:");
+            sb.AppendLine();
+
+            var inputExample = BuildInputExample(tool.InputSchema);
+            sb.AppendLine("```bash");
+            sb.AppendLine($"curl -X POST http://localhost:8080/api/tools/{tool.Name} \\");
+            sb.AppendLine("  -H \"Content-Type: application/json\" \\");
+            sb.AppendLine($"  -d '{inputExample}'");
+            sb.AppendLine("```");
+            sb.AppendLine();
+            sb.AppendLine("#### With Authorization (if required)");
+            sb.AppendLine();
+            sb.AppendLine("```bash");
+            sb.AppendLine($"curl -X POST http://localhost:8080/api/tools/{tool.Name} \\");
+            sb.AppendLine("  -H \"Content-Type: application/json\" \\");
+            sb.AppendLine("  -H \"Authorization: Bearer YOUR_TOKEN\" \\");
+            sb.AppendLine($"  -d '{inputExample}'");
+            sb.AppendLine("```");
+            sb.AppendLine();
+
+            // Input section
+            sb.AppendLine("## Input");
+            sb.AppendLine();
+            AppendParameterTable(sb, tool.InputSchema);
+            sb.AppendLine();
+            sb.AppendLine("### Input JSON Schema");
+            sb.AppendLine();
+            sb.AppendLine("```json");
+            sb.AppendLine(PrettyPrintJson(tool.InputSchema));
+            sb.AppendLine("```");
+            sb.AppendLine();
+
+            // Output section
+            sb.AppendLine("## Output");
+            sb.AppendLine();
+            if (tool.OutputSchema != null)
+            {
+                sb.AppendLine("### Output JSON Schema");
+                sb.AppendLine();
+                sb.AppendLine("```json");
+                sb.AppendLine(PrettyPrintJson(tool.OutputSchema));
+                sb.AppendLine("```");
+            }
+            else
+            {
+                sb.AppendLine("This tool does not return structured output.");
+            }
+
+            return sb.ToString();
+        }
+
+        void AppendParameterTable(StringBuilder sb, JsonNode? inputSchema)
+        {
+            if (inputSchema == null)
+            {
+                sb.AppendLine("This tool takes no input parameters.");
+                return;
+            }
+
+            var properties = inputSchema["properties"] as JsonObject;
+            if (properties == null || properties.Count == 0)
+            {
+                sb.AppendLine("This tool takes no input parameters.");
+                return;
+            }
+
+            var required = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var requiredArray = inputSchema["required"] as JsonArray;
+            if (requiredArray != null)
+            {
+                foreach (var item in requiredArray)
+                    if (item?.GetValue<string>() is string r)
+                        required.Add(r);
+            }
+
+            sb.AppendLine("| Name | Type | Required | Description |");
+            sb.AppendLine("|------|------|----------|-------------|");
+
+            foreach (var prop in properties)
+            {
+                var propName = prop.Key;
+                var propNode = prop.Value as JsonObject;
+                var propType = propNode?["type"]?.GetValue<string>() ?? "any";
+                var propDesc = propNode?["description"]?.GetValue<string>() ?? string.Empty;
+                var isRequired = required.Contains(propName) ? "Yes" : "No";
+
+                sb.AppendLine($"| `{propName}` | `{propType}` | {isRequired} | {propDesc} |");
+            }
+        }
+
+        string BuildInputExample(JsonNode? inputSchema)
+        {
+            if (inputSchema == null)
+                return "{}";
+
+            var properties = inputSchema["properties"] as JsonObject;
+            if (properties == null || properties.Count == 0)
+                return "{}";
+
+            var example = new JsonObject();
+            foreach (var prop in properties)
+            {
+                var propNode = prop.Value as JsonObject;
+                var propType = propNode?["type"]?.GetValue<string>() ?? "string";
+                example[prop.Key] = CreateExampleValue(propType, propNode);
+            }
+
+            return example.ToJsonString(_prettyJsonOptions);
+        }
+
+        static JsonNode CreateExampleValue(string type, JsonObject? schema)
+        {
+            return type switch
+            {
+                "integer" => JsonValue.Create(0)!,
+                "number"  => JsonValue.Create(0.0)!,
+                "boolean" => JsonValue.Create(false)!,
+                "array"   => new JsonArray(),
+                "object"  => new JsonObject(),
+                "null"    => JsonValue.Create((string?)null)!,
+                _         => JsonValue.Create("string_value")!
+            };
+        }
+
+        string PrettyPrintJson(JsonNode? node)
+        {
+            if (node == null)
+                return "null";
+            try
+            {
+                return node.ToJsonString(_prettyJsonOptions);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "{class}.{method}: Failed to pretty-print JSON schema.", nameof(SkillFileGenerator), nameof(PrettyPrintJson));
+                return node.ToString();
+            }
+        }
+
+        static string SanitizeFileName(string name)
+        {
+            foreach (var c in Path.GetInvalidFileNameChars())
+                name = name.Replace(c, '_');
+            return name;
+        }
+
+        static string EscapeYaml(string value)
+        {
+            if (value.Contains(':') || value.Contains('"') || value.Contains('\n'))
+                return $"\"{value.Replace("\"", "\\\"")}\"";
+            return value;
+        }
+    }
+}

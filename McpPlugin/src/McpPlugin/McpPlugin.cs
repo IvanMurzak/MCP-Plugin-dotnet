@@ -14,8 +14,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Skills;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using R3;
 
 namespace com.IvanMurzak.McpPlugin
@@ -29,6 +31,8 @@ namespace com.IvanMurzak.McpPlugin
         private readonly ThreadSafeBool _isDisposed = new(false);
         private readonly Common.Version _version;
         private readonly string _basePath;
+        private readonly SkillFileGenerator _skillFileGenerator;
+        private readonly ConnectionConfig _connectionConfig;
 
         public ILogger Logger => _logger;
         public IMcpManager McpManager { get; private set; }
@@ -46,7 +50,8 @@ namespace com.IvanMurzak.McpPlugin
             ILogger<McpPlugin> logger,
             IMcpManager mcpManager,
             IMcpManagerHub mcpManagerHub,
-            Common.Version version)
+            Common.Version version,
+            IOptions<ConnectionConfig>? connectionConfig = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("{class} Ctor.", nameof(McpPlugin));
@@ -57,6 +62,8 @@ namespace com.IvanMurzak.McpPlugin
             _mcpManagerHub = mcpManagerHub ?? throw new ArgumentNullException(nameof(mcpManagerHub));
             _version = version ?? throw new ArgumentNullException(nameof(version));
             _basePath = AppDomain.CurrentDomain.BaseDirectory;
+            _connectionConfig = connectionConfig?.Value ?? new ConnectionConfig();
+            _skillFileGenerator = new SkillFileGenerator(_logger);
             _mcpManagerHub.ConnectionState
                 .Where(state => state == HubConnectionState.Connected)
                 .Where(state => !_cancellationTokenSource.Token.IsCancellationRequested)
@@ -94,6 +101,8 @@ namespace com.IvanMurzak.McpPlugin
                     if (_cancellationTokenSource.Token.IsCancellationRequested)
                         return;
 
+                    GenerateSkillFiles();
+
                     if (_mcpManagerHub == null)
                     {
                         _logger.LogWarning("{method}, RPC Router is not initialized, cannot notify about updated tools.",
@@ -104,6 +113,9 @@ namespace com.IvanMurzak.McpPlugin
                     await _mcpManagerHub.NotifyAboutUpdatedTools(new Common.Model.RequestToolsUpdated());
                 })
                 .AddTo(_disposables);
+
+            // Generate skill files for the initial set of tools on build
+            GenerateSkillFiles();
 
             McpManager.PromptManager?.OnPromptsUpdated
                 .ThrottleFirst(TimeSpan.FromMilliseconds(100))
@@ -147,6 +159,18 @@ namespace com.IvanMurzak.McpPlugin
                 })
                 .AddTo(_disposables);
 
+        }
+
+        void GenerateSkillFiles()
+        {
+            if (!_connectionConfig.GenerateSkillFiles)
+                return;
+
+            var tools = McpManager.ToolManager?.GetAllTools();
+            if (tools == null)
+                return;
+
+            _skillFileGenerator.Generate(tools, _connectionConfig.SkillsRootFolder, _basePath);
         }
 
         public Task<bool> Connect(CancellationToken cancellationToken = default)
