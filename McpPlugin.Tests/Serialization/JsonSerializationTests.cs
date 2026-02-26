@@ -19,11 +19,13 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
             // Arrange
             var reflector = new Reflector();
 
-            var builder = new McpPluginBuilder(new Version())
-                .AddLogging(b => { });
-
             // Act
-            builder.Build(reflector);
+            // Dispose the plugin immediately — Build() configures the reflector synchronously.
+            // Keeping the plugin alive leaves a ConnectionManager running indefinitely,
+            // causing xUnit's AsyncTestSyncContext to wait forever (hang).
+            using var plugin = new McpPluginBuilder(new Version())
+                .AddLogging(b => { })
+                .Build(reflector);
 
             // Assert
             reflector.JsonSerializerOptions.PropertyNamingPolicy.Should().BeNull();
@@ -35,9 +37,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
         {
             // Arrange
             var reflector = new Reflector();
-            var builder = new McpPluginBuilder(new Version())
-                .AddLogging(b => { });
-            builder.Build(reflector);
+            using var plugin = new McpPluginBuilder(new Version())
+                .AddLogging(b => { })
+                .Build(reflector);
 
             var dto = new TestDto
             {
@@ -66,9 +68,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
         {
             // Arrange
             var reflector = new Reflector();
-            var builder = new McpPluginBuilder(new Version())
-                .AddLogging(b => { });
-            builder.Build(reflector);
+            using var plugin = new McpPluginBuilder(new Version())
+                .AddLogging(b => { })
+                .Build(reflector);
 
             var json = $"{{\"{jsonPropertyName}\": \"TestValue\"}}";
 

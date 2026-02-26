@@ -100,8 +100,6 @@ namespace com.IvanMurzak.McpPlugin
                     return true;
                 }
 
-                _continueToReconnect.Value = false;
-
                 // Dispose the previous internal CancellationTokenSource if it exists
                 CancelInternalToken(dispose: true);
 
@@ -110,16 +108,20 @@ namespace com.IvanMurzak.McpPlugin
 
                 _continueToReconnect.Value = true;
 
+                Task<bool> connectionTask;
                 await _ongoingConnectionGate.WaitAsync(cancellationToken);
-                _ongoingConnectionTask = InternalConnect(cancellationToken);
+                connectionTask = InternalConnect(cancellationToken); // local ref first — never null
+                _ongoingConnectionTask = connectionTask;             // publish to shared field under gate
                 _ongoingConnectionGate.Release();
                 try
                 {
-                    return await _ongoingConnectionTask;
+                    return await connectionTask; // safe: local ref was captured before the gate was released
                 }
                 finally
                 {
-                    await _ongoingConnectionGate.WaitAsync();
+                    // Use CancellationToken.None: cleanup must run even when cancellationToken
+                    // (the internal CTS token) has already been cancelled by DisconnectImmediate.
+                    await _ongoingConnectionGate.WaitAsync(CancellationToken.None);
                     _ongoingConnectionTask = null;
                     _ongoingConnectionGate.Release();
                 }
@@ -189,6 +191,9 @@ namespace com.IvanMurzak.McpPlugin
                     return false;
                 }
 
+                // Small stabilization delay after HubConnection creation before the first StartAsync call.
+                // SignalR's internal DI/setup may not be fully ready immediately after CreateConnectionAsync returns.
+                // TODO: remove this delay if integration tests confirm it is no longer needed.
                 await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
 
                 if (cancellationToken.IsCancellationRequested)
@@ -310,15 +315,20 @@ namespace com.IvanMurzak.McpPlugin
         private void SetupHubConnectionObservables(HubConnection hubConnection, CancellationToken cancellationToken)
         {
             hubConnectionObservable = new(hubConnection);
+            // RegisterTo(cancellationToken) ties this subscription to the current connection
+            // cycle (internalCts lifetime). Each Connect() creates a new internalCts, which
+            // disposes this subscription when cancelled — preventing accumulation across cycles.
             hubConnectionObservable.Closed
                 .Where(_ => _continueToReconnect.CurrentValue)
                 .Where(_ => !cancellationToken.IsCancellationRequested)
-                .Subscribe(async _ =>
+                .Subscribe(ex =>
                 {
                     _logger.LogWarning("{class}[{guid}] {method} Connection closed unexpectedly. Attempting to reconnect to: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(SetupHubConnectionObservables), Endpoint);
-                    // Call Connect instead of InternalConnect to ensure proper gate protection
-                    await Connect(cancellationToken);
+                    // Fire-and-forget: Connect() handles sequential execution via its internal gate.
+                    // Avoid SubscribeAwait/async void to prevent capturing any SynchronizationContext.
+                    var reconnectTask = Connect(cancellationToken);
+                    _ = reconnectTask.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
                 })
                 .RegisterTo(cancellationToken);
         }
@@ -372,6 +382,9 @@ namespace com.IvanMurzak.McpPlugin
                 {
                     _logger.LogWarning("{class}[{guid}] {method} Connection attempt timed out after 30 seconds for endpoint: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint);
+                    // Observe the task to prevent UnobservedTaskException; the exception
+                    // (typically OperationCanceledException) is expected and can be ignored.
+                    _ = connectionTask.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
                     return false;
                 }
 
