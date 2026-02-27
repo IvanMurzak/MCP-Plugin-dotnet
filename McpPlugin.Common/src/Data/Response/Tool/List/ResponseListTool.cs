@@ -20,6 +20,10 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         public string? Description { get; set; }
         public JsonElement InputSchema { get; set; }
         public JsonElement? OutputSchema { get; set; }
+        public bool? ReadOnlyHint { get; set; }
+        public bool? DestructiveHint { get; set; }
+        public bool? IdempotentHint { get; set; }
+        public bool? OpenWorldHint { get; set; }
 
         public ResponseListTool() { }
     }
