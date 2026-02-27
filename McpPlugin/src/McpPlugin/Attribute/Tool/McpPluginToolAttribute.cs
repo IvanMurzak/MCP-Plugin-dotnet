@@ -32,7 +32,7 @@ namespace com.IvanMurzak.McpPlugin
 
         /// <summary>
         /// If true, the tool only reads or queries data and does not modify system state.
-        /// When not set, the MCP default applies (false — tool may modify state).
+        /// When not set, null is passed to the MCP SDK, which will apply its own default.
         /// </summary>
         public bool ReadOnlyHint
         {
@@ -42,7 +42,7 @@ namespace com.IvanMurzak.McpPlugin
 
         /// <summary>
         /// If true, the tool may perform destructive updates (e.g., deleting data, overwriting files).
-        /// When not set, the MCP default applies (true — assume destructive).
+        /// When not set, null is passed to the MCP SDK, which will apply its own default.
         /// </summary>
         public bool DestructiveHint
         {
@@ -53,7 +53,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// If true, calling the tool multiple times with the same arguments will have no additional effect
         /// on its environment beyond the first call.
-        /// When not set, the MCP default applies (false — not idempotent).
+        /// When not set, null is passed to the MCP SDK, which will apply its own default.
         /// </summary>
         public bool IdempotentHint
         {
@@ -64,7 +64,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// If true, the tool may interact with an "open world" of external entities
         /// (e.g., the web, external APIs, or real-world systems).
-        /// When not set, the MCP default applies (true — assume open world).
+        /// When not set, null is passed to the MCP SDK, which will apply its own default.
         /// </summary>
         public bool OpenWorldHint
         {
