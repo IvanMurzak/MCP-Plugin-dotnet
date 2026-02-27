@@ -31,5 +31,10 @@ namespace com.IvanMurzak.McpPlugin
         /// Gets the total number of tool calls made.
         /// </summary>
         ulong ToolCallsCount => 0;
+
+        /// <summary>
+        /// Generates skill markdown files for all registered tools if <see cref="ConnectionConfig.GenerateSkillFiles"/> is true.
+        /// </summary>
+        void GenerateSkillFiles();
     }
 }

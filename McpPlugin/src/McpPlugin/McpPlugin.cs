@@ -9,7 +9,6 @@
 */
 
 using System;
-using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -99,7 +98,7 @@ namespace com.IvanMurzak.McpPlugin
                     if (_cancellationTokenSource.Token.IsCancellationRequested)
                         return;
 
-                    GenerateSkillFiles();
+                    GenerateSkillFilesIfNeeded();
 
                     if (_mcpManagerHub == null)
                     {
@@ -113,7 +112,7 @@ namespace com.IvanMurzak.McpPlugin
                 .AddTo(_disposables);
 
             // Generate skill files for the initial set of tools on build
-            GenerateSkillFiles();
+            GenerateSkillFilesIfNeeded();
 
             McpManager.PromptManager?.OnPromptsUpdated
                 .ThrottleFirst(TimeSpan.FromMilliseconds(100))
@@ -156,14 +155,18 @@ namespace com.IvanMurzak.McpPlugin
                     await _mcpManagerHub.NotifyAboutUpdatedResources(new Common.Model.RequestResourcesUpdated());
                 })
                 .AddTo(_disposables);
-
         }
 
-        void GenerateSkillFiles()
+        void GenerateSkillFilesIfNeeded()
         {
             if (!_connectionConfig.GenerateSkillFiles)
                 return;
 
+            GenerateSkillFiles();
+        }
+
+        public void GenerateSkillFiles()
+        {
             var tools = McpManager.ToolManager?.GetAllTools();
             if (tools == null)
                 return;
