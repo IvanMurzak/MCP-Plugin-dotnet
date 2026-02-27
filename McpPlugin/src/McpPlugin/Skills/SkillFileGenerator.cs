@@ -39,7 +39,8 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
         /// <summary>
         /// Generates skill markdown files for all provided tools.
-        /// Files are written to <paramref name="skillsPath"/> (absolute path).
+        /// Files are written to <paramref name="skillsPath"/>, which can be an absolute path or a path relative
+        /// to <see cref="AppDomain.CurrentDomain.BaseDirectory"/>.
         /// Provide <paramref name="host"/> to include correct API endpoint URLs in the generated markdown.
         /// </summary>
         public void Generate(IEnumerable<IRunTool> tools, string skillsPath, string host)
@@ -50,7 +51,9 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 return;
             }
 
-            var skillsDir = skillsPath;
+            var skillsDir = Path.IsPathRooted(skillsPath)
+                ? skillsPath
+                : Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, skillsPath));
 
             try
             {
@@ -63,20 +66,51 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 return;
             }
 
+            var toolList = new List<IRunTool>();
             foreach (var tool in tools)
+                if (tool != null) toolList.Add(tool);
+
+            // Group by sanitized name to detect collisions (e.g. "foo bar" and "foo-bar" both → "foo-bar")
+            var sanitizedGroups = new Dictionary<string, List<IRunTool>>(StringComparer.Ordinal);
+            foreach (var tool in toolList)
             {
-                if (tool == null) continue;
-                GenerateFor(tool, skillsDir, host);
+                var sanitized = SanitizeSkillName(tool.Name);
+                if (!sanitizedGroups.TryGetValue(sanitized, out var group))
+                    sanitizedGroups[sanitized] = group = new List<IRunTool>();
+                group.Add(tool);
             }
+
+            // Build final skill-directory names, appending a stable hash suffix on any collision
+            var nameMap = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var kvp in sanitizedGroups)
+            {
+                if (kvp.Value.Count == 1)
+                {
+                    nameMap[kvp.Value[0].Name] = kvp.Key;
+                }
+                else
+                {
+                    _logger?.LogWarning(
+                        "{class}.{method}: Tools [{tools}] all sanitize to '{sanitized}'. Appending hash suffixes to avoid directory collisions.",
+                        nameof(SkillFileGenerator), nameof(Generate),
+                        string.Join(", ", kvp.Value.ConvertAll(t => "'" + t.Name + "'")),
+                        kvp.Key);
+
+                    foreach (var tool in kvp.Value)
+                        nameMap[tool.Name] = kvp.Key + "-" + StableShortHash(tool.Name);
+                }
+            }
+
+            foreach (var tool in toolList)
+                GenerateFor(tool, skillsDir, host, nameMap[tool.Name]);
         }
 
         /// <summary>
         /// Generates a skill subdirectory and SKILL.md file for the given tool inside <paramref name="skillsDir"/>.
         /// Each skill gets its own subdirectory named after the sanitized tool name, containing SKILL.md.
         /// </summary>
-        void GenerateFor(IRunTool tool, string skillsDir, string host)
+        void GenerateFor(IRunTool tool, string skillsDir, string host, string skillName)
         {
-            var skillName = SanitizeSkillName(tool.Name);
             var skillDir = Path.Combine(skillsDir, skillName);
             var filePath = Path.Combine(skillDir, "SKILL.md");
 
@@ -288,6 +322,23 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 sb.Length--;
 
             return sb.Length > 0 ? sb.ToString() : "tool";
+        }
+
+        /// <summary>
+        /// Returns a stable 4-character lowercase hex string derived from <paramref name="value"/>
+        /// using FNV-1a 32-bit, so the suffix is consistent across runs and runtimes.
+        /// </summary>
+        static string StableShortHash(string value)
+        {
+            uint hash = 2166136261u;
+            foreach (char c in value)
+            {
+                hash ^= (byte)(c & 0xFF);
+                hash *= 16777619u;
+                hash ^= (byte)((c >> 8) & 0xFF);
+                hash *= 16777619u;
+            }
+            return (hash & 0xFFFFu).ToString("x4");
         }
 
         static string EscapeYaml(string value)

@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -171,7 +172,10 @@ namespace com.IvanMurzak.McpPlugin
             if (tools == null)
                 return;
 
-            _skillFileGenerator.Generate(tools, _connectionConfig.SkillsPath, _connectionConfig.Host);
+            var skillsPath = Path.IsPathRooted(_connectionConfig.SkillsPath)
+                ? _connectionConfig.SkillsPath
+                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _connectionConfig.SkillsPath);
+            _skillFileGenerator.Generate(tools, skillsPath, _connectionConfig.Host);
         }
 
         public Task<bool> Connect(CancellationToken cancellationToken = default)
