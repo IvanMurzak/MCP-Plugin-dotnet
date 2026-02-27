@@ -28,10 +28,14 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="logger">The logger for logging execution details (optional).</param>
         /// <param name="methodInfo">The MethodInfo of the static method to execute.</param>
         /// <param name="title">An optional title for the command.</param>
-        public static RunTool CreateFromStaticMethod(Reflector reflector, ILogger? logger, string name, MethodInfo methodInfo, string? title = null)
+        public static RunTool CreateFromStaticMethod(Reflector reflector, ILogger? logger, string name, MethodInfo methodInfo, string? title = null, bool? readOnlyHint = null, bool? destructiveHint = null, bool? idempotentHint = null, bool? openWorldHint = null)
             => new RunTool(reflector, logger, name, methodInfo)
             {
-                Title = title
+                Title = title,
+                ReadOnlyHint = readOnlyHint,
+                DestructiveHint = destructiveHint,
+                IdempotentHint = idempotentHint,
+                OpenWorldHint = openWorldHint
             };
 
         /// <summary>
@@ -39,10 +43,14 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         /// <param name="targetInstance">The instance of the object containing the method.</param>
         /// <param name="methodInfo">The MethodInfo of the instance method to execute.</param>
-        public static RunTool CreateFromInstanceMethod(Reflector reflector, ILogger? logger, string name, object targetInstance, MethodInfo methodInfo, string? title = null)
+        public static RunTool CreateFromInstanceMethod(Reflector reflector, ILogger? logger, string name, object targetInstance, MethodInfo methodInfo, string? title = null, bool? readOnlyHint = null, bool? destructiveHint = null, bool? idempotentHint = null, bool? openWorldHint = null)
             => new RunTool(reflector, logger, name, targetInstance, methodInfo)
             {
-                Title = title
+                Title = title,
+                ReadOnlyHint = readOnlyHint,
+                DestructiveHint = destructiveHint,
+                IdempotentHint = idempotentHint,
+                OpenWorldHint = openWorldHint
             };
 
         /// <summary>
@@ -53,10 +61,14 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="classType">The type containing the method to execute.</param>
         /// <param name="methodInfo">The MethodInfo of the method to execute.</param>
         /// <param name="title">An optional title for the command.</param>
-        public static RunTool CreateFromClassMethod(Reflector reflector, ILogger? logger, string name, Type classType, MethodInfo methodInfo, string? title = null)
+        public static RunTool CreateFromClassMethod(Reflector reflector, ILogger? logger, string name, Type classType, MethodInfo methodInfo, string? title = null, bool? readOnlyHint = null, bool? destructiveHint = null, bool? idempotentHint = null, bool? openWorldHint = null)
             => new RunTool(reflector, logger, name, classType, methodInfo)
             {
-                Title = title
+                Title = title,
+                ReadOnlyHint = readOnlyHint,
+                DestructiveHint = destructiveHint,
+                IdempotentHint = idempotentHint,
+                OpenWorldHint = openWorldHint
             };
     }
 }

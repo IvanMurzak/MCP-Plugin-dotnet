@@ -68,7 +68,11 @@ namespace com.IvanMurzak.McpPlugin.Server
                 OutputSchema = response.OutputSchema,
                 Annotations = new()
                 {
-                    Title = response.Title
+                    Title = response.Title,
+                    ReadOnlyHint = response.ReadOnlyHint,
+                    DestructiveHint = response.DestructiveHint,
+                    IdempotentHint = response.IdempotentHint,
+                    OpenWorldHint = response.OpenWorldHint
                 }
             };
         }

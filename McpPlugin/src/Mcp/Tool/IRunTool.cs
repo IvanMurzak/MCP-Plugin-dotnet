@@ -24,7 +24,29 @@ namespace com.IvanMurzak.McpPlugin
         string? Description { get; }
         JsonNode? InputSchema { get; }
         JsonNode? OutputSchema { get; }
-        
+
+        /// <summary>
+        /// If true, the tool only reads or queries data and does not modify system state.
+        /// </summary>
+        bool? ReadOnlyHint { get; }
+
+        /// <summary>
+        /// If true, the tool may perform destructive updates (e.g., deleting data, overwriting files).
+        /// </summary>
+        bool? DestructiveHint { get; }
+
+        /// <summary>
+        /// If true, calling the tool multiple times with the same arguments will have no additional effect
+        /// on its environment beyond the first call.
+        /// </summary>
+        bool? IdempotentHint { get; }
+
+        /// <summary>
+        /// If true, the tool may interact with an "open world" of external entities
+        /// (e.g., the web, external APIs, or real-world systems).
+        /// </summary>
+        bool? OpenWorldHint { get; }
+
         /// <summary>
         /// Gets the semantic token count for this tool based on its JSON schema (including description).
         /// </summary>
