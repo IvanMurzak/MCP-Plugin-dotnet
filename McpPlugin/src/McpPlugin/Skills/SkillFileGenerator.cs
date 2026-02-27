@@ -176,6 +176,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// </summary>
         void GenerateFor(IRunTool tool, string skillsDir, string host, string skillName)
         {
+            skillName = SanitizeSkillName(skillName);
             var skillDir = Path.Combine(skillsDir, skillName);
             var filePath = Path.Combine(skillDir, "SKILL.md");
 
