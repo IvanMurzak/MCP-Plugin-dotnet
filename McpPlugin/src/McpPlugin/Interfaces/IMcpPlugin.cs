@@ -56,5 +56,17 @@ namespace com.IvanMurzak.McpPlugin
         /// generation is disabled or the underlying call to <see cref="GenerateSkillFiles"/> failed.
         /// </returns>
         bool GenerateSkillFilesIfNeeded();
+
+        /// <summary>
+        /// Deletes the skill markdown subdirectory for each currently registered tool from
+        /// <see cref="ConnectionConfig.SkillsPath"/>. Only the subdirectories that correspond to
+        /// registered tools are removed; any other content inside the skills folder is left intact.
+        /// </summary>
+        /// <returns>
+        /// <see langword="true"/> if all matching skill directories were deleted successfully (or did
+        /// not exist); <see langword="false"/> if the tool list could not be retrieved or any
+        /// deletion failed.
+        /// </returns>
+        bool DeleteSkillFiles();
     }
 }

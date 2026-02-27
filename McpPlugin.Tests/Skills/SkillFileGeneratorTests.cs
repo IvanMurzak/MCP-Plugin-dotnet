@@ -303,6 +303,135 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             content.Should().Contain("name: my-tool");
         }
 
+        // ── delete ───────────────────────────────────────────────────────────────
+
+        [Fact]
+        public void Delete_WithNullTools_DoesNotThrow()
+        {
+            var generator = new SkillFileGenerator();
+
+            bool result = false;
+            Action act = () => { result = generator.Delete(null!, _tempDir); };
+
+            act.Should().NotThrow();
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void Delete_WithEmptyTools_ReturnsTrue()
+        {
+            var generator = new SkillFileGenerator();
+
+            var result = generator.Delete(Array.Empty<IRunTool>(), _tempDir);
+
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Delete_WhenSkillsDirDoesNotExist_ReturnsTrue()
+        {
+            var generator = new SkillFileGenerator();
+            var nonExistentDir = Path.Combine(_tempDir, "does-not-exist");
+
+            var result = generator.Delete(new[] { new MockRunTool { Name = "add" } }, nonExistentDir);
+
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Delete_WithSingleTool_RemovesItsSubdirectory()
+        {
+            var generator = new SkillFileGenerator();
+            var tool = new MockRunTool { Name = "add" };
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+            Directory.Exists(Path.Combine(_tempDir, "add")).Should().BeTrue();
+
+            var result = generator.Delete(new[] { tool }, _tempDir);
+
+            result.Should().BeTrue();
+            Directory.Exists(Path.Combine(_tempDir, "add")).Should().BeFalse();
+        }
+
+        [Fact]
+        public void Delete_WithMultipleTools_RemovesEachSubdirectory()
+        {
+            var generator = new SkillFileGenerator();
+            var tools = new[]
+            {
+                new MockRunTool { Name = "tool-alpha" },
+                new MockRunTool { Name = "tool-beta" },
+                new MockRunTool { Name = "tool-gamma" }
+            };
+            generator.Generate(tools, _tempDir, "http://localhost:8080");
+
+            var result = generator.Delete(tools, _tempDir);
+
+            result.Should().BeTrue();
+            foreach (var tool in tools)
+                Directory.Exists(Path.Combine(_tempDir, tool.Name)).Should().BeFalse($"{tool.Name}/ should have been deleted");
+        }
+
+        [Fact]
+        public void Delete_LeavesUnrelatedSubdirectoriesIntact()
+        {
+            var generator = new SkillFileGenerator();
+            var toolToDelete = new MockRunTool { Name = "remove-me" };
+            var toolToKeep = new MockRunTool { Name = "keep-me" };
+            generator.Generate(new[] { toolToDelete, toolToKeep }, _tempDir, "http://localhost:8080");
+
+            var result = generator.Delete(new[] { toolToDelete }, _tempDir);
+
+            result.Should().BeTrue();
+            Directory.Exists(Path.Combine(_tempDir, "remove-me")).Should().BeFalse();
+            Directory.Exists(Path.Combine(_tempDir, "keep-me")).Should().BeTrue("unrelated skill dir must not be touched");
+        }
+
+        [Fact]
+        public void Delete_WhenToolDirDoesNotExist_StillReturnsTrue()
+        {
+            var generator = new SkillFileGenerator();
+            Directory.CreateDirectory(_tempDir);
+            // Do not generate — the subdirectory for "ghost-tool" never exists
+
+            var result = generator.Delete(new[] { new MockRunTool { Name = "ghost-tool" } }, _tempDir);
+
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Delete_WithSanitizedName_RemovesSanitizedSubdirectory()
+        {
+            var generator = new SkillFileGenerator();
+            var tool = new MockRunTool { Name = "My Complex Tool!" };
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+            Directory.Exists(Path.Combine(_tempDir, "my-complex-tool")).Should().BeTrue();
+
+            var result = generator.Delete(new[] { tool }, _tempDir);
+
+            result.Should().BeTrue();
+            Directory.Exists(Path.Combine(_tempDir, "my-complex-tool")).Should().BeFalse();
+        }
+
+        [Fact]
+        public void Delete_WithCollidingNames_RemovesBothHashedSubdirectories()
+        {
+            var generator = new SkillFileGenerator();
+            // "foo bar" and "foo-bar" both sanitize to "foo-bar" → collision → hashed dirs
+            var toolA = new MockRunTool { Name = "foo bar" };
+            var toolB = new MockRunTool { Name = "foo-bar" };
+            var tools = new[] { toolA, toolB };
+            generator.Generate(tools, _tempDir, "http://localhost:8080");
+
+            // Both hashed dirs should exist
+            Directory.GetDirectories(_tempDir).Should().HaveCount(2, "each colliding tool gets its own hashed directory");
+
+            // Delete must receive the same tool set so it can reproduce the same collision/hash logic
+            var result = generator.Delete(tools, _tempDir);
+
+            result.Should().BeTrue();
+            Directory.GetDirectories(_tempDir).Should().BeEmpty("both hashed dirs should have been deleted");
+        }
+
         // ── helpers ───────────────────────────────────────────────────────────────
 
         private class MockRunTool : IRunTool

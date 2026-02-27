@@ -70,9 +70,77 @@ namespace com.IvanMurzak.McpPlugin.Skills
             foreach (var tool in tools)
                 if (tool != null) toolList.Add(tool);
 
+            var nameMap = BuildNameMap(toolList, nameof(Generate));
+            foreach (var tool in toolList)
+                GenerateFor(tool, skillsDir, host, nameMap[tool.Name]);
+
+            return true;
+        }
+
+        /// <summary>
+        /// Deletes the skill subdirectory for each tool in <paramref name="tools"/> from
+        /// <paramref name="skillsPath"/>. Only the subdirectories that correspond to the provided
+        /// tools are removed; all other content inside <paramref name="skillsPath"/> is left intact.
+        /// </summary>
+        /// <returns>
+        /// <see langword="true"/> if the operation completed without errors;
+        /// <see langword="false"/> if <paramref name="tools"/> is <see langword="null"/> or a deletion failed.
+        /// </returns>
+        public bool Delete(IEnumerable<IRunTool> tools, string skillsPath)
+        {
+            if (tools == null)
+            {
+                _logger?.LogWarning("{class}.{method}: tools collection is null, skipping.", nameof(SkillFileGenerator), nameof(Delete));
+                return false;
+            }
+
+            var skillsDir = Path.IsPathRooted(skillsPath)
+                ? skillsPath
+                : Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, skillsPath));
+
+            if (!Directory.Exists(skillsDir))
+                return true;
+
+            var toolList = new List<IRunTool>();
+            foreach (var tool in tools)
+                if (tool != null) toolList.Add(tool);
+
+            var nameMap = BuildNameMap(toolList, nameof(Delete));
+
+            var success = true;
+            foreach (var tool in toolList)
+            {
+                var skillDir = Path.Combine(skillsDir, nameMap[tool.Name]);
+                if (!Directory.Exists(skillDir))
+                    continue;
+
+                try
+                {
+                    Directory.Delete(skillDir, recursive: true);
+                    _logger?.LogDebug("{class}.{method}: Deleted skill directory for tool '{tool}' → '{path}'.",
+                        nameof(SkillFileGenerator), nameof(Delete), tool.Name, skillDir);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "{class}.{method}: Failed to delete skill directory for tool '{tool}' at '{path}'.",
+                        nameof(SkillFileGenerator), nameof(Delete), tool.Name, skillDir);
+                    success = false;
+                }
+            }
+
+            return success;
+        }
+
+        /// <summary>
+        /// Builds a mapping from each tool's raw name to its final skill directory name,
+        /// applying <see cref="SanitizeSkillName"/> and appending a stable hash suffix when two or
+        /// more tools sanitize to the same string (collision handling).
+        /// </summary>
+        Dictionary<string, string> BuildNameMap(List<IRunTool> tools, string callerName)
+        {
             // Group by sanitized name to detect collisions (e.g. "foo bar" and "foo-bar" both → "foo-bar")
             var sanitizedGroups = new Dictionary<string, List<IRunTool>>(StringComparer.Ordinal);
-            foreach (var tool in toolList)
+            foreach (var tool in tools)
             {
                 var sanitized = SanitizeSkillName(tool.Name);
                 if (!sanitizedGroups.TryGetValue(sanitized, out var group))
@@ -92,7 +160,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 {
                     _logger?.LogWarning(
                         "{class}.{method}: Tools [{tools}] all sanitize to '{sanitized}'. Appending hash suffixes to avoid directory collisions.",
-                        nameof(SkillFileGenerator), nameof(Generate),
+                        nameof(SkillFileGenerator), callerName,
                         string.Join(", ", kvp.Value.ConvertAll(t => "'" + t.Name + "'")),
                         kvp.Key);
 
@@ -101,10 +169,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 }
             }
 
-            foreach (var tool in toolList)
-                GenerateFor(tool, skillsDir, host, nameMap[tool.Name]);
-
-            return true;
+            return nameMap;
         }
 
         /// <summary>

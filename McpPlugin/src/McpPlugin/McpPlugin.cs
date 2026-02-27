@@ -178,6 +178,18 @@ namespace com.IvanMurzak.McpPlugin
             return _skillFileGenerator.Generate(tools, skillsPath, _connectionConfig.Host);
         }
 
+        public bool DeleteSkillFiles()
+        {
+            var tools = McpManager.ToolManager?.GetAllTools();
+            if (tools == null)
+                return false;
+
+            var skillsPath = Path.IsPathRooted(_connectionConfig.SkillsPath)
+                ? _connectionConfig.SkillsPath
+                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _connectionConfig.SkillsPath);
+            return _skillFileGenerator.Delete(tools, skillsPath);
+        }
+
         public Task<bool> Connect(CancellationToken cancellationToken = default)
         {
             if (_isDisposed.Value)

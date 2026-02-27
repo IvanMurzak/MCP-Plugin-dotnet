@@ -55,6 +55,7 @@ namespace com.IvanMurzak.McpPlugin
 
         // Configuration methods
         IMcpPluginBuilder AddLogging(Action<ILoggingBuilder> loggingBuilder);
+        IMcpPluginBuilder SetConfig(ConnectionConfig config);
         IMcpPluginBuilder WithConfig(Action<ConnectionConfig> config);
         IMcpPluginBuilder WithConfigFromArgsOrEnv(string[]? args = null);
         IMcpPlugin Build(Reflector reflector);
