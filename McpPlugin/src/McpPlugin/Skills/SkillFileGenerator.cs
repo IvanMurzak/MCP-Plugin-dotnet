@@ -39,8 +39,8 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
         /// <summary>
         /// Generates skill markdown files for all provided tools.
-        /// <paramref name="skillsPath"/> must be an absolute path; callers are responsible for resolving
-        /// relative paths before calling this method.
+        /// <paramref name="skillsPath"/> may be an absolute or relative path; relative paths are resolved
+        /// against the current working directory at the time of the call.
         /// Provide <paramref name="host"/> to include correct API endpoint URLs in the generated markdown.
         /// </summary>
         public bool Generate(IEnumerable<IRunTool> tools, string skillsPath, string host)
@@ -69,10 +69,12 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 if (tool != null) toolList.Add(tool);
 
             var nameMap = BuildNameMap(toolList, nameof(Generate));
+            var success = true;
             foreach (var tool in toolList)
-                GenerateFor(tool, skillsDir, host, nameMap[tool.Name]);
+                if (!GenerateFor(tool, skillsDir, host, nameMap[tool.Name]))
+                    success = false;
 
-            return true;
+            return success;
         }
 
         /// <summary>
@@ -174,7 +176,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// Generates a skill subdirectory and SKILL.md file for the given tool inside <paramref name="skillsDir"/>.
         /// Each skill gets its own subdirectory named after the sanitized tool name, containing SKILL.md.
         /// </summary>
-        void GenerateFor(IRunTool tool, string skillsDir, string host, string skillName)
+        bool GenerateFor(IRunTool tool, string skillsDir, string host, string skillName)
         {
             skillName = SanitizeSkillName(skillName);
             var skillDir = Path.Combine(skillsDir, skillName);
@@ -187,16 +189,19 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 File.WriteAllText(filePath, content, Encoding.UTF8);
                 _logger?.LogDebug("{class}.{method}: Skill file written for tool '{tool}' → '{path}'.",
                     nameof(SkillFileGenerator), nameof(GenerateFor), tool.Name, filePath);
+                return true;
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "{class}.{method}: Failed to write skill file for tool '{tool}' at '{path}'.",
                     nameof(SkillFileGenerator), nameof(GenerateFor), tool.Name, filePath);
+                return false;
             }
         }
 
         string BuildMarkdown(IRunTool tool, string skillName, string host)
         {
+            host = host.TrimEnd('/');
             var sb = new StringBuilder();
             var title = tool.Title ?? tool.Name;
             var description = tool.Description ?? string.Empty;
@@ -391,9 +396,10 @@ namespace com.IvanMurzak.McpPlugin.Skills
         }
 
         /// <summary>
-        /// Returns a stable 4-character lowercase hex string derived from <paramref name="value"/>
+        /// Returns a stable 8-character lowercase hex string derived from <paramref name="value"/>
         /// using FNV-1a 32-bit over the UTF-8 byte representation, so the suffix is consistent
         /// across runs and runtimes and handles the full Unicode range correctly.
+        /// All 32 bits are used to keep the collision probability negligible even with large tool sets.
         /// </summary>
         static string StableShortHash(string value)
         {
@@ -403,7 +409,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 hash ^= b;
                 hash *= 16777619u;
             }
-            return (hash & 0xFFFFu).ToString("x4");
+            return hash.ToString("x8");
         }
 
         static string EscapeYaml(string value)

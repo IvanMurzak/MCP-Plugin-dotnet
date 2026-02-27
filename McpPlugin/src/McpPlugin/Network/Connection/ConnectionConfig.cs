@@ -37,7 +37,7 @@ namespace com.IvanMurzak.McpPlugin
         public virtual bool GenerateSkillFiles { get; set; } = true;
 
         /// <summary>
-        /// Path for generated skill markdown files. Can be absolute or relative to the application base directory.
+        /// Path for generated skill markdown files. Can be absolute or relative to the current working directory (<see cref="System.Environment.CurrentDirectory"/>).
         /// Default is 'SKILLS'. Set via command line arg 'mcp-skills-folder' or environment variable 'MCP_SKILLS_FOLDER'.
         /// </summary>
         public virtual string SkillsPath { get; set; } = "SKILLS";

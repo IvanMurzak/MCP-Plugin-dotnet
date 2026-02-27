@@ -37,9 +37,11 @@ namespace com.IvanMurzak.McpPlugin
         /// <see cref="ConnectionConfig.GenerateSkillFiles"/>. The resolved output path is determined as
         /// follows: if <see cref="ConnectionConfig.SkillsPath"/> is an absolute path it is used as-is
         /// and <paramref name="path"/> is ignored; otherwise <paramref name="path"/> (when provided) is
-        /// used as the base directory, falling back to the application base directory.
-        /// Each tool produces one <c>.md</c> file describing its name, description, and parameters so
-        /// that AI clients can discover and invoke it.
+        /// used as the base directory, falling back to the current working directory (<see cref="Environment.CurrentDirectory"/>).
+        /// Each tool produces a subdirectory named after the sanitized tool name inside the resolved
+        /// output path, containing a single <c>SKILL.md</c> file that describes the tool's name,
+        /// description, and parameters so that AI clients can discover and invoke it.
+        /// Example layout: <c>&lt;skillsPath&gt;/my-tool/SKILL.md</c>.
         /// </summary>
         /// <param name="path">
         /// Optional base directory prepended to <see cref="ConnectionConfig.SkillsPath"/> when that
@@ -71,7 +73,7 @@ namespace com.IvanMurzak.McpPlugin
         /// Deletes the skill markdown subdirectory for each currently registered tool from the resolved
         /// skills path. If <see cref="ConnectionConfig.SkillsPath"/> is an absolute path it is used
         /// as-is and <paramref name="path"/> is ignored; otherwise <paramref name="path"/> (when
-        /// provided) is used as the base directory, falling back to the application base directory.
+        /// provided) is used as the base directory, falling back to the current working directory (<see cref="Environment.CurrentDirectory"/>).
         /// Only the subdirectories that correspond to registered tools are removed; any other content
         /// inside the skills folder is left intact.
         /// </summary>
