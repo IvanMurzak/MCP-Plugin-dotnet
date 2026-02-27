@@ -34,26 +34,26 @@ namespace com.IvanMurzak.McpPlugin
                 var attr = method.Attribute;
                 this[attr.Name] = method.MethodInfo.IsStatic
                     ? RunTool.CreateFromStaticMethod(
-                        reflector,
-                        _logger,
-                        attr.Name,
-                        method.MethodInfo,
-                        attr.Title,
-                        attr.ReadOnlyHintValue,
-                        attr.DestructiveHintValue,
-                        attr.IdempotentHintValue,
-                        attr.OpenWorldHintValue) as IRunTool
+                        reflector: reflector,
+                        logger: _logger,
+                        name: attr.Name,
+                        methodInfo: method.MethodInfo,
+                        title: attr.Title,
+                        readOnlyHint: attr.ReadOnlyHintValue,
+                        destructiveHint: attr.DestructiveHintValue,
+                        idempotentHint: attr.IdempotentHintValue,
+                        openWorldHint: attr.OpenWorldHintValue) as IRunTool
                     : RunTool.CreateFromClassMethod(
-                        reflector,
-                        _logger,
-                        attr.Name,
-                        method.ClassType,
-                        method.MethodInfo,
-                        attr.Title,
-                        attr.ReadOnlyHintValue,
-                        attr.DestructiveHintValue,
-                        attr.IdempotentHintValue,
-                        attr.OpenWorldHintValue);
+                        reflector: reflector,
+                        logger: _logger,
+                        name: attr.Name,
+                        classType: method.ClassType,
+                        methodInfo: method.MethodInfo,
+                        title: attr.Title,
+                        readOnlyHint: attr.ReadOnlyHintValue,
+                        destructiveHint: attr.DestructiveHintValue,
+                        idempotentHint: attr.IdempotentHintValue,
+                        openWorldHint: attr.OpenWorldHintValue);
             }
             return this;
         }
