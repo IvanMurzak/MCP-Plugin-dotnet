@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,7 +31,6 @@ namespace com.IvanMurzak.McpPlugin
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly ThreadSafeBool _isDisposed = new(false);
         private readonly Common.Version _version;
-        private readonly string _basePath;
         private readonly SkillFileGenerator _skillFileGenerator;
         private readonly ConnectionConfig _connectionConfig;
 
@@ -38,7 +38,6 @@ namespace com.IvanMurzak.McpPlugin
         public IMcpManager McpManager { get; private set; }
         public IMcpManagerHub McpManagerHub => _mcpManagerHub;
         public Common.Version Version => _version;
-        public string CurrentBaseDirectory => _basePath;
         public VersionHandshakeResponse? VersionHandshakeStatus => _mcpManagerHub?.VersionHandshakeStatus;
         public ulong ToolCallsCount => McpManager.ToolManager?.ToolCallsCount ?? 0;
         public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _mcpManagerHub?.ConnectionState
@@ -61,7 +60,6 @@ namespace com.IvanMurzak.McpPlugin
 
             _mcpManagerHub = mcpManagerHub ?? throw new ArgumentNullException(nameof(mcpManagerHub));
             _version = version ?? throw new ArgumentNullException(nameof(version));
-            _basePath = AppDomain.CurrentDomain.BaseDirectory;
             _connectionConfig = connectionConfig?.Value ?? new ConnectionConfig();
             _skillFileGenerator = new SkillFileGenerator(_logger);
             _mcpManagerHub.ConnectionState
@@ -101,7 +99,7 @@ namespace com.IvanMurzak.McpPlugin
                     if (_cancellationTokenSource.Token.IsCancellationRequested)
                         return;
 
-                    GenerateSkillFiles();
+                    GenerateSkillFilesIfNeeded();
 
                     if (_mcpManagerHub == null)
                     {
@@ -115,7 +113,7 @@ namespace com.IvanMurzak.McpPlugin
                 .AddTo(_disposables);
 
             // Generate skill files for the initial set of tools on build
-            GenerateSkillFiles();
+            GenerateSkillFilesIfNeeded();
 
             McpManager.PromptManager?.OnPromptsUpdated
                 .ThrottleFirst(TimeSpan.FromMilliseconds(100))
@@ -158,19 +156,45 @@ namespace com.IvanMurzak.McpPlugin
                     await _mcpManagerHub.NotifyAboutUpdatedResources(new Common.Model.RequestResourcesUpdated());
                 })
                 .AddTo(_disposables);
-
         }
 
-        void GenerateSkillFiles()
+        public bool GenerateSkillFilesIfNeeded(string? path = null)
         {
             if (!_connectionConfig.GenerateSkillFiles)
-                return;
+                return false;
 
+            return GenerateSkillFiles(path);
+        }
+
+        public bool GenerateSkillFiles(string? path = null)
+        {
             var tools = McpManager.ToolManager?.GetAllTools();
             if (tools == null)
-                return;
+                return false;
 
-            _skillFileGenerator.Generate(tools, _connectionConfig.SkillsRootFolder, _basePath);
+            var skillsPath = ResolveSkillsPath(path);
+            return _skillFileGenerator.Generate(tools, skillsPath, _connectionConfig.Host);
+        }
+
+        public bool DeleteSkillFiles(string? path = null)
+        {
+            var tools = McpManager.ToolManager?.GetAllTools();
+            if (tools == null)
+                return false;
+
+            var skillsPath = ResolveSkillsPath(path);
+            return _skillFileGenerator.Delete(tools, skillsPath);
+        }
+
+        private string ResolveSkillsPath(string? basePath)
+        {
+            var skillsPath = _connectionConfig.SkillsPath;
+
+            if (Path.IsPathRooted(skillsPath))
+                return Path.GetFullPath(skillsPath);
+
+            var resolvedBase = basePath ?? Environment.CurrentDirectory;
+            return Path.GetFullPath(Path.Combine(resolvedBase, skillsPath));
         }
 
         public Task<bool> Connect(CancellationToken cancellationToken = default)

@@ -16,6 +16,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
 namespace com.IvanMurzak.McpPlugin
@@ -37,6 +38,9 @@ namespace com.IvanMurzak.McpPlugin
 
         // Ignore configuration for filtering assemblies, namespaces, and types
         protected readonly McpPluginBuilderIgnoreConfig _ignoreConfig = new();
+
+        // Optional externally provided config instance (set via SetConfig)
+        protected ConnectionConfig? _externalConfig;
 
         // Lazy assembly scanning - store assemblies to scan later
         protected readonly List<Assembly> _toolAssemblies = new();
@@ -228,11 +232,22 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
+        public virtual IMcpPluginBuilder SetConfig(ConnectionConfig config)
+        {
+            ThrowIfBuilt();
+
+            _externalConfig = config ?? throw new ArgumentNullException(nameof(config));
+            return this;
+        }
+
         public virtual IMcpPluginBuilder WithConfig(Action<ConnectionConfig> config)
         {
             ThrowIfBuilt();
 
-            _services.Configure(config);
+            if (_externalConfig != null)
+                config(_externalConfig);
+            else
+                _services.Configure(config);
             return this;
         }
 
@@ -266,6 +281,9 @@ namespace com.IvanMurzak.McpPlugin
             _services.AddSingleton(new ResourceRunnerCollection(reflector, _loggerProvider?.CreateLogger(nameof(ResourceRunnerCollection)))
                 .Add(_resourceMethods)
                 .Add(_resourceRunners));
+
+            if (_externalConfig != null)
+                _services.AddSingleton<IOptions<ConnectionConfig>>(new OptionsWrapper<ConnectionConfig>(_externalConfig));
 
             ServiceProvider = _services.BuildServiceProvider();
             isBuilt = true;

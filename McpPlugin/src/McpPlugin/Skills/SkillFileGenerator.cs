@@ -39,19 +39,19 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
         /// <summary>
         /// Generates skill markdown files for all provided tools.
-        /// Files are written to <paramref name="rootFolder"/> (resolved relative to <paramref name="basePath"/> if not absolute).
+        /// <paramref name="skillsPath"/> may be an absolute or relative path; relative paths are resolved
+        /// against the current working directory at the time of the call.
+        /// Provide <paramref name="host"/> to include correct API endpoint URLs in the generated markdown.
         /// </summary>
-        public void Generate(IEnumerable<IRunTool> tools, string rootFolder, string basePath)
+        public bool Generate(IEnumerable<IRunTool> tools, string skillsPath, string host)
         {
             if (tools == null)
             {
                 _logger?.LogWarning("{class}.{method}: tools collection is null, skipping.", nameof(SkillFileGenerator), nameof(Generate));
-                return;
+                return false;
             }
 
-            var skillsDir = Path.IsPathRooted(rootFolder)
-                ? rootFolder
-                : Path.Combine(basePath, rootFolder);
+            var skillsDir = skillsPath;
 
             try
             {
@@ -61,47 +61,154 @@ namespace com.IvanMurzak.McpPlugin.Skills
             {
                 _logger?.LogError(ex, "{class}.{method}: Failed to create skills directory '{dir}'.",
                     nameof(SkillFileGenerator), nameof(Generate), skillsDir);
-                return;
+                return false;
             }
 
+            var toolList = new List<IRunTool>();
             foreach (var tool in tools)
-            {
-                if (tool == null) continue;
-                GenerateFor(tool, skillsDir);
-            }
+                if (tool != null) toolList.Add(tool);
+
+            var nameMap = BuildNameMap(toolList, nameof(Generate));
+            var success = true;
+            foreach (var tool in toolList)
+                if (!GenerateFor(tool, skillsDir, host, nameMap[tool.Name]))
+                    success = false;
+
+            return success;
         }
 
         /// <summary>
-        /// Generates a single skill markdown file for the given tool inside <paramref name="skillsDir"/>.
+        /// Deletes the skill subdirectory for each tool in <paramref name="tools"/> from
+        /// <paramref name="skillsPath"/>. Only the subdirectories that correspond to the provided
+        /// tools are removed; all other content inside <paramref name="skillsPath"/> is left intact.
+        /// <paramref name="skillsPath"/> must be an absolute path; callers are responsible for resolving
+        /// relative paths before calling this method.
         /// </summary>
-        void GenerateFor(IRunTool tool, string skillsDir)
+        /// <returns>
+        /// <see langword="true"/> if the operation completed without errors;
+        /// <see langword="false"/> if <paramref name="tools"/> is <see langword="null"/> or a deletion failed.
+        /// </returns>
+        public bool Delete(IEnumerable<IRunTool> tools, string skillsPath)
         {
-            var fileName = SanitizeFileName(tool.Name) + ".md";
-            var filePath = Path.Combine(skillsDir, fileName);
+            if (tools == null)
+            {
+                _logger?.LogWarning("{class}.{method}: tools collection is null, skipping.", nameof(SkillFileGenerator), nameof(Delete));
+                return false;
+            }
+
+            var skillsDir = skillsPath;
+
+            if (!Directory.Exists(skillsDir))
+                return true;
+
+            var toolList = new List<IRunTool>();
+            foreach (var tool in tools)
+                if (tool != null) toolList.Add(tool);
+
+            var nameMap = BuildNameMap(toolList, nameof(Delete));
+
+            var success = true;
+            foreach (var tool in toolList)
+            {
+                var skillDir = Path.Combine(skillsDir, nameMap[tool.Name]);
+                if (!Directory.Exists(skillDir))
+                    continue;
+
+                try
+                {
+                    Directory.Delete(skillDir, recursive: true);
+                    _logger?.LogDebug("{class}.{method}: Deleted skill directory for tool '{tool}' → '{path}'.",
+                        nameof(SkillFileGenerator), nameof(Delete), tool.Name, skillDir);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "{class}.{method}: Failed to delete skill directory for tool '{tool}' at '{path}'.",
+                        nameof(SkillFileGenerator), nameof(Delete), tool.Name, skillDir);
+                    success = false;
+                }
+            }
+
+            return success;
+        }
+
+        /// <summary>
+        /// Builds a mapping from each tool's raw name to its final skill directory name,
+        /// applying <see cref="SanitizeSkillName"/> and appending a stable hash suffix when two or
+        /// more tools sanitize to the same string (collision handling).
+        /// </summary>
+        Dictionary<string, string> BuildNameMap(List<IRunTool> tools, string callerName)
+        {
+            // Group by sanitized name to detect collisions (e.g. "foo bar" and "foo-bar" both → "foo-bar")
+            var sanitizedGroups = new Dictionary<string, List<IRunTool>>(StringComparer.Ordinal);
+            foreach (var tool in tools)
+            {
+                var sanitized = SanitizeSkillName(tool.Name);
+                if (!sanitizedGroups.TryGetValue(sanitized, out var group))
+                    sanitizedGroups[sanitized] = group = new List<IRunTool>();
+                group.Add(tool);
+            }
+
+            // Build final skill-directory names, appending a stable hash suffix on any collision
+            var nameMap = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var kvp in sanitizedGroups)
+            {
+                if (kvp.Value.Count == 1)
+                {
+                    nameMap[kvp.Value[0].Name] = kvp.Key;
+                }
+                else
+                {
+                    _logger?.LogWarning(
+                        "{class}.{method}: Tools [{tools}] all sanitize to '{sanitized}'. Appending hash suffixes to avoid directory collisions.",
+                        nameof(SkillFileGenerator), callerName,
+                        string.Join(", ", kvp.Value.ConvertAll(t => "'" + t.Name + "'")),
+                        kvp.Key);
+
+                    foreach (var tool in kvp.Value)
+                        nameMap[tool.Name] = kvp.Key + "-" + StableShortHash(tool.Name);
+                }
+            }
+
+            return nameMap;
+        }
+
+        /// <summary>
+        /// Generates a skill subdirectory and SKILL.md file for the given tool inside <paramref name="skillsDir"/>.
+        /// Each skill gets its own subdirectory named after the sanitized tool name, containing SKILL.md.
+        /// </summary>
+        bool GenerateFor(IRunTool tool, string skillsDir, string host, string skillName)
+        {
+            skillName = SanitizeSkillName(skillName);
+            var skillDir = Path.Combine(skillsDir, skillName);
+            var filePath = Path.Combine(skillDir, "SKILL.md");
 
             try
             {
-                var content = BuildMarkdown(tool);
+                Directory.CreateDirectory(skillDir);
+                var content = BuildMarkdown(tool, skillName, host);
                 File.WriteAllText(filePath, content, Encoding.UTF8);
                 _logger?.LogDebug("{class}.{method}: Skill file written for tool '{tool}' → '{path}'.",
                     nameof(SkillFileGenerator), nameof(GenerateFor), tool.Name, filePath);
+                return true;
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "{class}.{method}: Failed to write skill file for tool '{tool}' at '{path}'.",
                     nameof(SkillFileGenerator), nameof(GenerateFor), tool.Name, filePath);
+                return false;
             }
         }
 
-        string BuildMarkdown(IRunTool tool)
+        string BuildMarkdown(IRunTool tool, string skillName, string host)
         {
+            host = host.TrimEnd('/');
             var sb = new StringBuilder();
             var title = tool.Title ?? tool.Name;
             var description = tool.Description ?? string.Empty;
 
             // YAML front-matter
             sb.AppendLine("---");
-            sb.AppendLine($"name: {tool.Name}");
+            sb.AppendLine($"name: {EscapeYaml(skillName)}");
             sb.AppendLine($"description: {EscapeYaml(description)}");
             sb.AppendLine("---");
             sb.AppendLine();
@@ -125,7 +232,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
             var inputExample = BuildInputExample(tool.InputSchema);
             sb.AppendLine("```bash");
-            sb.AppendLine($"curl -X POST http://localhost:8080/api/tools/{tool.Name} \\");
+            sb.AppendLine($"curl -X POST {host}/api/tools/{tool.Name} \\");
             sb.AppendLine("  -H \"Content-Type: application/json\" \\");
             sb.AppendLine($"  -d '{inputExample}'");
             sb.AppendLine("```");
@@ -133,7 +240,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine("#### With Authorization (if required)");
             sb.AppendLine();
             sb.AppendLine("```bash");
-            sb.AppendLine($"curl -X POST http://localhost:8080/api/tools/{tool.Name} \\");
+            sb.AppendLine($"curl -X POST {host}/api/tools/{tool.Name} \\");
             sb.AppendLine("  -H \"Content-Type: application/json\" \\");
             sb.AppendLine("  -H \"Authorization: Bearer YOUR_TOKEN\" \\");
             sb.AppendLine($"  -d '{inputExample}'");
@@ -235,12 +342,12 @@ namespace com.IvanMurzak.McpPlugin.Skills
             return type switch
             {
                 "integer" => JsonValue.Create(0)!,
-                "number"  => JsonValue.Create(0.0)!,
+                "number" => JsonValue.Create(0.0)!,
                 "boolean" => JsonValue.Create(false)!,
-                "array"   => new JsonArray(),
-                "object"  => new JsonObject(),
-                "null"    => JsonValue.Create((string?)null)!,
-                _         => JsonValue.Create("string_value")!
+                "array" => new JsonArray(),
+                "object" => new JsonObject(),
+                "null" => JsonValue.Create((string?)null)!,
+                _ => JsonValue.Create("string_value")!
             };
         }
 
@@ -259,11 +366,50 @@ namespace com.IvanMurzak.McpPlugin.Skills
             }
         }
 
-        static string SanitizeFileName(string name)
+        /// <summary>
+        /// Converts a tool name into a valid Agent Skills directory/name:
+        /// lowercase alphanumeric and hyphens only, no leading/trailing/consecutive hyphens.
+        /// </summary>
+        static string SanitizeSkillName(string name)
         {
-            foreach (var c in Path.GetInvalidFileNameChars())
-                name = name.Replace(c, '_');
-            return name;
+            var sb = new StringBuilder();
+            bool lastWasHyphen = false;
+
+            foreach (char c in name)
+            {
+                if (char.IsLetterOrDigit(c))
+                {
+                    sb.Append(char.ToLowerInvariant(c));
+                    lastWasHyphen = false;
+                }
+                else if (sb.Length > 0 && !lastWasHyphen)
+                {
+                    sb.Append('-');
+                    lastWasHyphen = true;
+                }
+            }
+
+            while (sb.Length > 0 && sb[sb.Length - 1] == '-')
+                sb.Length--;
+
+            return sb.Length > 0 ? sb.ToString() : "tool-" + StableShortHash(name);
+        }
+
+        /// <summary>
+        /// Returns a stable 8-character lowercase hex string derived from <paramref name="value"/>
+        /// using FNV-1a 32-bit over the UTF-8 byte representation, so the suffix is consistent
+        /// across runs and runtimes and handles the full Unicode range correctly.
+        /// All 32 bits are used to keep the collision probability negligible even with large tool sets.
+        /// </summary>
+        static string StableShortHash(string value)
+        {
+            uint hash = 2166136261u;
+            foreach (byte b in Encoding.UTF8.GetBytes(value))
+            {
+                hash ^= b;
+                hash *= 16777619u;
+            }
+            return hash.ToString("x8");
         }
 
         static string EscapeYaml(string value)
