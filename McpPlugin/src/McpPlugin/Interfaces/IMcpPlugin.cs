@@ -34,16 +34,22 @@ namespace com.IvanMurzak.McpPlugin
 
         /// <summary>
         /// Unconditionally generates skill markdown files for all registered tools, regardless of
-        /// <see cref="ConnectionConfig.GenerateSkillFiles"/>. Files are written to
-        /// <see cref="ConnectionConfig.SkillsPath"/> (resolved relative to the application base directory
-        /// when the path is not rooted). Each tool produces one <c>.md</c> file describing its name,
-        /// description, and parameters so that AI clients can discover and invoke it.
+        /// <see cref="ConnectionConfig.GenerateSkillFiles"/>. The resolved output path is determined as
+        /// follows: if <see cref="ConnectionConfig.SkillsPath"/> is an absolute path it is used as-is
+        /// and <paramref name="path"/> is ignored; otherwise <paramref name="path"/> (when provided) is
+        /// used as the base directory, falling back to the application base directory.
+        /// Each tool produces one <c>.md</c> file describing its name, description, and parameters so
+        /// that AI clients can discover and invoke it.
         /// </summary>
+        /// <param name="path">
+        /// Optional base directory prepended to <see cref="ConnectionConfig.SkillsPath"/> when that
+        /// value is a relative path. Ignored when <see cref="ConnectionConfig.SkillsPath"/> is rooted.
+        /// </param>
         /// <returns>
         /// <see langword="true"/> if files were generated successfully; <see langword="false"/> if the
         /// tool list could not be retrieved or generation failed.
         /// </returns>
-        bool GenerateSkillFiles();
+        bool GenerateSkillFiles(string? path = null);
 
         /// <summary>
         /// Generates skill markdown files only when <see cref="ConnectionConfig.GenerateSkillFiles"/> is
@@ -51,22 +57,33 @@ namespace com.IvanMurzak.McpPlugin
         /// whenever the registered tool set changes. Delegates to <see cref="GenerateSkillFiles"/> when
         /// the condition is met.
         /// </summary>
+        /// <param name="path">
+        /// Optional base directory forwarded to <see cref="GenerateSkillFiles"/>. Ignored when
+        /// <see cref="ConnectionConfig.SkillsPath"/> is rooted.
+        /// </param>
         /// <returns>
         /// <see langword="true"/> if files were generated successfully; <see langword="false"/> if
         /// generation is disabled or the underlying call to <see cref="GenerateSkillFiles"/> failed.
         /// </returns>
-        bool GenerateSkillFilesIfNeeded();
+        bool GenerateSkillFilesIfNeeded(string? path = null);
 
         /// <summary>
-        /// Deletes the skill markdown subdirectory for each currently registered tool from
-        /// <see cref="ConnectionConfig.SkillsPath"/>. Only the subdirectories that correspond to
-        /// registered tools are removed; any other content inside the skills folder is left intact.
+        /// Deletes the skill markdown subdirectory for each currently registered tool from the resolved
+        /// skills path. If <see cref="ConnectionConfig.SkillsPath"/> is an absolute path it is used
+        /// as-is and <paramref name="path"/> is ignored; otherwise <paramref name="path"/> (when
+        /// provided) is used as the base directory, falling back to the application base directory.
+        /// Only the subdirectories that correspond to registered tools are removed; any other content
+        /// inside the skills folder is left intact.
         /// </summary>
+        /// <param name="path">
+        /// Optional base directory prepended to <see cref="ConnectionConfig.SkillsPath"/> when that
+        /// value is a relative path. Ignored when <see cref="ConnectionConfig.SkillsPath"/> is rooted.
+        /// </param>
         /// <returns>
         /// <see langword="true"/> if all matching skill directories were deleted successfully (or did
         /// not exist); <see langword="false"/> if the tool list could not be retrieved or any
         /// deletion failed.
         /// </returns>
-        bool DeleteSkillFiles();
+        bool DeleteSkillFiles(string? path = null);
     }
 }

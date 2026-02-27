@@ -158,36 +158,44 @@ namespace com.IvanMurzak.McpPlugin
                 .AddTo(_disposables);
         }
 
-        public bool GenerateSkillFilesIfNeeded()
+        public bool GenerateSkillFilesIfNeeded(string? path = null)
         {
             if (!_connectionConfig.GenerateSkillFiles)
                 return false;
 
-            return GenerateSkillFiles();
+            return GenerateSkillFiles(path);
         }
 
-        public bool GenerateSkillFiles()
+        public bool GenerateSkillFiles(string? path = null)
         {
             var tools = McpManager.ToolManager?.GetAllTools();
             if (tools == null)
                 return false;
 
-            var skillsPath = Path.IsPathRooted(_connectionConfig.SkillsPath)
-                ? _connectionConfig.SkillsPath
-                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _connectionConfig.SkillsPath);
+            var skillsPath = ResolveSkillsPath(path);
             return _skillFileGenerator.Generate(tools, skillsPath, _connectionConfig.Host);
         }
 
-        public bool DeleteSkillFiles()
+        public bool DeleteSkillFiles(string? path = null)
         {
             var tools = McpManager.ToolManager?.GetAllTools();
             if (tools == null)
                 return false;
 
-            var skillsPath = Path.IsPathRooted(_connectionConfig.SkillsPath)
-                ? _connectionConfig.SkillsPath
-                : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _connectionConfig.SkillsPath);
+            var skillsPath = ResolveSkillsPath(path);
             return _skillFileGenerator.Delete(tools, skillsPath);
+        }
+
+        private string ResolveSkillsPath(string? basePath)
+        {
+            var skillsPath = _connectionConfig.SkillsPath;
+
+            if (Path.IsPathRooted(skillsPath))
+                return Path.GetFullPath(skillsPath);
+
+            return basePath != null
+                ? Path.GetFullPath(Path.Combine(basePath, skillsPath))
+                : Path.GetFullPath(skillsPath);
         }
 
         public Task<bool> Connect(CancellationToken cancellationToken = default)

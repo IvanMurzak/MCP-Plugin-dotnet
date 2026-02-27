@@ -39,8 +39,8 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
         /// <summary>
         /// Generates skill markdown files for all provided tools.
-        /// Files are written to <paramref name="skillsPath"/>, which can be an absolute path or a path relative
-        /// to <see cref="AppDomain.CurrentDomain.BaseDirectory"/>.
+        /// <paramref name="skillsPath"/> must be an absolute path; callers are responsible for resolving
+        /// relative paths before calling this method.
         /// Provide <paramref name="host"/> to include correct API endpoint URLs in the generated markdown.
         /// </summary>
         public bool Generate(IEnumerable<IRunTool> tools, string skillsPath, string host)
@@ -51,9 +51,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 return false;
             }
 
-            var skillsDir = Path.IsPathRooted(skillsPath)
-                ? skillsPath
-                : Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, skillsPath));
+            var skillsDir = skillsPath;
 
             try
             {
@@ -81,6 +79,8 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// Deletes the skill subdirectory for each tool in <paramref name="tools"/> from
         /// <paramref name="skillsPath"/>. Only the subdirectories that correspond to the provided
         /// tools are removed; all other content inside <paramref name="skillsPath"/> is left intact.
+        /// <paramref name="skillsPath"/> must be an absolute path; callers are responsible for resolving
+        /// relative paths before calling this method.
         /// </summary>
         /// <returns>
         /// <see langword="true"/> if the operation completed without errors;
@@ -94,9 +94,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 return false;
             }
 
-            var skillsDir = Path.IsPathRooted(skillsPath)
-                ? skillsPath
-                : Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, skillsPath));
+            var skillsDir = skillsPath;
 
             if (!Directory.Exists(skillsDir))
                 return true;
