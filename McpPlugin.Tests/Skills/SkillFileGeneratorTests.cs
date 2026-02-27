@@ -49,8 +49,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             var tool = new MockRunTool { Name = "add" };
             const string host = "http://myapp.example.com:9000";
 
-            generator.Generate(new[] { tool }, _tempDir, host);
+            var result = generator.Generate(new[] { tool }, _tempDir, host);
 
+            result.Should().BeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "add", "SKILL.md"));
             content.Should().Contain($"{host}/api/tools/add");
         }
@@ -65,8 +66,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             var generator = new SkillFileGenerator();
             var tool = new MockRunTool { Name = "ping" };
 
-            generator.Generate(new[] { tool }, _tempDir, host);
+            var result = generator.Generate(new[] { tool }, _tempDir, host);
 
+            result.Should().BeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "ping", "SKILL.md"));
             content.Should().Contain($"{host}/api/tools/ping");
         }
@@ -78,8 +80,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             var tool = new MockRunTool { Name = "query" };
             const string host = "http://production.server.com:4000";
 
-            generator.Generate(new[] { tool }, _tempDir, host);
+            var result = generator.Generate(new[] { tool }, _tempDir, host);
 
+            result.Should().BeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "query", "SKILL.md"));
             // The only host that should appear is the one we passed in
             content.Should().Contain(host);
@@ -93,8 +96,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             var tool = new MockRunTool { Name = "secure-op" };
             const string host = "https://secure.example.com";
 
-            generator.Generate(new[] { tool }, _tempDir, host);
+            var result = generator.Generate(new[] { tool }, _tempDir, host);
 
+            result.Should().BeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "secure-op", "SKILL.md"));
             content.Should().Contain("https://secure.example.com/api/tools/secure-op");
         }
@@ -106,8 +110,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             var tool = new MockRunTool { Name = "compute" };
             const string host = "http://bridge:8888";
 
-            generator.Generate(new[] { tool }, _tempDir, host);
+            var result = generator.Generate(new[] { tool }, _tempDir, host);
 
+            result.Should().BeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "compute", "SKILL.md"));
             // Both the plain and the auth-header curl snippets must use the given host
             var expectedUrl = $"{host}/api/tools/compute";
@@ -123,8 +128,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             var generator = new SkillFileGenerator();
             var tool = new MockRunTool { Name = "my-tool" };
 
-            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+            var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
+            result.Should().BeTrue();
             var expectedFile = Path.Combine(_tempDir, "my-tool", "SKILL.md");
             File.Exists(expectedFile).Should().BeTrue();
         }
@@ -140,8 +146,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
                 new MockRunTool { Name = "tool-gamma" }
             };
 
-            generator.Generate(tools, _tempDir, "http://localhost:8080");
+            var result = generator.Generate(tools, _tempDir, "http://localhost:8080");
 
+            result.Should().BeTrue();
             foreach (var tool in tools)
                 File.Exists(Path.Combine(_tempDir, tool.Name, "SKILL.md")).Should().BeTrue($"{tool.Name}/SKILL.md should exist");
         }
@@ -152,8 +159,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             var generator = new SkillFileGenerator();
             var tool = new MockRunTool { Name = "My Complex Tool!" };
 
-            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+            var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
+            result.Should().BeTrue();
             Directory.Exists(Path.Combine(_tempDir, "my-complex-tool")).Should().BeTrue();
         }
 
@@ -164,9 +172,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
         {
             var generator = new SkillFileGenerator();
 
-            Action act = () => generator.Generate(null!, _tempDir, "http://localhost:8080");
+            bool result = false;
+            Action act = () => { result = generator.Generate(null!, _tempDir, "http://localhost:8080"); };
 
             act.Should().NotThrow();
+            result.Should().BeFalse();
         }
 
         [Fact]
@@ -174,7 +184,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
         {
             var generator = new SkillFileGenerator();
 
-            generator.Generate(null!, _tempDir, "http://localhost:8080");
+            var result = generator.Generate(null!, _tempDir, "http://localhost:8080");
+
+            result.Should().BeFalse();
 
             // Skills dir should not have been created (or be empty if OS creates it)
             if (Directory.Exists(_tempDir))
@@ -186,7 +198,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
         {
             var generator = new SkillFileGenerator();
 
-            generator.Generate(Array.Empty<IRunTool>(), _tempDir, "http://localhost:8080");
+            var result = generator.Generate(Array.Empty<IRunTool>(), _tempDir, "http://localhost:8080");
+
+            result.Should().BeTrue();
 
             if (Directory.Exists(_tempDir))
                 Directory.GetDirectories(_tempDir).Should().BeEmpty();
@@ -201,8 +215,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             const string description = "Adds two integers and returns the sum.";
             var tool = new MockRunTool { Name = "add", Description = description };
 
-            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+            var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
+            result.Should().BeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "add", "SKILL.md"));
             content.Should().Contain(description);
         }
@@ -213,8 +228,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             var generator = new SkillFileGenerator();
             var tool = new MockRunTool { Name = "add", Title = "Addition Tool" };
 
-            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+            var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
+            result.Should().BeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "add", "SKILL.md"));
             content.Should().Contain("# Addition Tool");
         }
@@ -235,8 +251,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
                 """)!;
             var tool = new MockRunTool { Name = "add", InputSchema = schema };
 
-            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+            var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
+            result.Should().BeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "add", "SKILL.md"));
             content.Should().Contain("| `a`");
             content.Should().Contain("| `b`");
@@ -251,8 +268,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             var outputSchema = JsonNode.Parse("""{"type":"object","properties":{"result":{"type":"integer"}}}""")!;
             var tool = new MockRunTool { Name = "add", OutputSchema = outputSchema };
 
-            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+            var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
+            result.Should().BeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "add", "SKILL.md"));
             content.Should().Contain("## Output");
             content.Should().Contain("Output JSON Schema");
@@ -264,8 +282,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             var generator = new SkillFileGenerator();
             var tool = new MockRunTool { Name = "fire-and-forget", OutputSchema = null };
 
-            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+            var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
+            result.Should().BeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "fire-and-forget", "SKILL.md"));
             content.Should().Contain("does not return structured output");
         }
@@ -276,8 +295,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             var generator = new SkillFileGenerator();
             var tool = new MockRunTool { Name = "my-tool", Description = "Test tool" };
 
-            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+            var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
+            result.Should().BeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "my-tool", "SKILL.md"));
             content.Should().StartWith("---");
             content.Should().Contain("name: my-tool");

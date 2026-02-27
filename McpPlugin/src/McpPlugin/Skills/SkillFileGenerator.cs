@@ -43,12 +43,12 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// to <see cref="AppDomain.CurrentDomain.BaseDirectory"/>.
         /// Provide <paramref name="host"/> to include correct API endpoint URLs in the generated markdown.
         /// </summary>
-        public void Generate(IEnumerable<IRunTool> tools, string skillsPath, string host)
+        public bool Generate(IEnumerable<IRunTool> tools, string skillsPath, string host)
         {
             if (tools == null)
             {
                 _logger?.LogWarning("{class}.{method}: tools collection is null, skipping.", nameof(SkillFileGenerator), nameof(Generate));
-                return;
+                return false;
             }
 
             var skillsDir = Path.IsPathRooted(skillsPath)
@@ -63,7 +63,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             {
                 _logger?.LogError(ex, "{class}.{method}: Failed to create skills directory '{dir}'.",
                     nameof(SkillFileGenerator), nameof(Generate), skillsDir);
-                return;
+                return false;
             }
 
             var toolList = new List<IRunTool>();
@@ -103,6 +103,8 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
             foreach (var tool in toolList)
                 GenerateFor(tool, skillsDir, host, nameMap[tool.Name]);
+
+            return true;
         }
 
         /// <summary>

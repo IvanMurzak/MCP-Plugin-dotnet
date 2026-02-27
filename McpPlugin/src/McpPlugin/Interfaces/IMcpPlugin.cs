@@ -33,8 +33,28 @@ namespace com.IvanMurzak.McpPlugin
         ulong ToolCallsCount => 0;
 
         /// <summary>
-        /// Generates skill markdown files for all registered tools if <see cref="ConnectionConfig.GenerateSkillFiles"/> is true.
+        /// Unconditionally generates skill markdown files for all registered tools, regardless of
+        /// <see cref="ConnectionConfig.GenerateSkillFiles"/>. Files are written to
+        /// <see cref="ConnectionConfig.SkillsPath"/> (resolved relative to the application base directory
+        /// when the path is not rooted). Each tool produces one <c>.md</c> file describing its name,
+        /// description, and parameters so that AI clients can discover and invoke it.
         /// </summary>
-        void GenerateSkillFiles();
+        /// <returns>
+        /// <see langword="true"/> if files were generated successfully; <see langword="false"/> if the
+        /// tool list could not be retrieved or generation failed.
+        /// </returns>
+        bool GenerateSkillFiles();
+
+        /// <summary>
+        /// Generates skill markdown files only when <see cref="ConnectionConfig.GenerateSkillFiles"/> is
+        /// <see langword="true"/>; otherwise does nothing. Called automatically on plugin build and
+        /// whenever the registered tool set changes. Delegates to <see cref="GenerateSkillFiles"/> when
+        /// the condition is met.
+        /// </summary>
+        /// <returns>
+        /// <see langword="true"/> if files were generated successfully; <see langword="false"/> if
+        /// generation is disabled or the underlying call to <see cref="GenerateSkillFiles"/> failed.
+        /// </returns>
+        bool GenerateSkillFilesIfNeeded();
     }
 }

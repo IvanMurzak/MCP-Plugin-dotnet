@@ -158,24 +158,24 @@ namespace com.IvanMurzak.McpPlugin
                 .AddTo(_disposables);
         }
 
-        void GenerateSkillFilesIfNeeded()
+        public bool GenerateSkillFilesIfNeeded()
         {
             if (!_connectionConfig.GenerateSkillFiles)
-                return;
+                return false;
 
-            GenerateSkillFiles();
+            return GenerateSkillFiles();
         }
 
-        public void GenerateSkillFiles()
+        public bool GenerateSkillFiles()
         {
             var tools = McpManager.ToolManager?.GetAllTools();
             if (tools == null)
-                return;
+                return false;
 
             var skillsPath = Path.IsPathRooted(_connectionConfig.SkillsPath)
                 ? _connectionConfig.SkillsPath
                 : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _connectionConfig.SkillsPath);
-            _skillFileGenerator.Generate(tools, skillsPath, _connectionConfig.Host);
+            return _skillFileGenerator.Generate(tools, skillsPath, _connectionConfig.Host);
         }
 
         public Task<bool> Connect(CancellationToken cancellationToken = default)
