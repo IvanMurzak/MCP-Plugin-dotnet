@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,7 +31,6 @@ namespace com.IvanMurzak.McpPlugin
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly ThreadSafeBool _isDisposed = new(false);
         private readonly Common.Version _version;
-        private readonly string _basePath;
         private readonly SkillFileGenerator _skillFileGenerator;
         private readonly ConnectionConfig _connectionConfig;
 
@@ -38,7 +38,6 @@ namespace com.IvanMurzak.McpPlugin
         public IMcpManager McpManager { get; private set; }
         public IMcpManagerHub McpManagerHub => _mcpManagerHub;
         public Common.Version Version => _version;
-        public string CurrentBaseDirectory => _basePath;
         public VersionHandshakeResponse? VersionHandshakeStatus => _mcpManagerHub?.VersionHandshakeStatus;
         public ulong ToolCallsCount => McpManager.ToolManager?.ToolCallsCount ?? 0;
         public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _mcpManagerHub?.ConnectionState
@@ -61,7 +60,6 @@ namespace com.IvanMurzak.McpPlugin
 
             _mcpManagerHub = mcpManagerHub ?? throw new ArgumentNullException(nameof(mcpManagerHub));
             _version = version ?? throw new ArgumentNullException(nameof(version));
-            _basePath = AppDomain.CurrentDomain.BaseDirectory;
             _connectionConfig = connectionConfig?.Value ?? new ConnectionConfig();
             _skillFileGenerator = new SkillFileGenerator(_logger);
             _mcpManagerHub.ConnectionState
@@ -170,7 +168,7 @@ namespace com.IvanMurzak.McpPlugin
             if (tools == null)
                 return;
 
-            _skillFileGenerator.Generate(tools, _connectionConfig.SkillsRootFolder, _basePath);
+            _skillFileGenerator.Generate(tools, _connectionConfig.SkillsPath);
         }
 
         public Task<bool> Connect(CancellationToken cancellationToken = default)

@@ -37,10 +37,10 @@ namespace com.IvanMurzak.McpPlugin
         public virtual bool GenerateSkillFiles { get; set; } = true;
 
         /// <summary>
-        /// Root folder path for generated skill markdown files. Can be absolute or relative to the application base directory.
+        /// Path for generated skill markdown files. Can be absolute or relative to the application base directory.
         /// Default is 'SKILLS'. Set via command line arg 'mcp-skills-folder' or environment variable 'MCP_SKILLS_FOLDER'.
         /// </summary>
-        public virtual string SkillsRootFolder { get; set; } = "SKILLS";
+        public virtual string SkillsPath { get; set; } = "SKILLS";
 
         public ConnectionConfig() { }
 
@@ -133,7 +133,7 @@ namespace com.IvanMurzak.McpPlugin
 
             var skillsFolder = Environment.GetEnvironmentVariable(Consts.MCP.Plugin.Env.McpSkillsFolder);
             if (skillsFolder != null)
-                SkillsRootFolder = skillsFolder;
+                SkillsPath = skillsFolder;
         }
         void ParseCommandLineArguments(string[] args)
         {
@@ -157,7 +157,7 @@ namespace com.IvanMurzak.McpPlugin
 
             var argSkillsFolder = commandLineArgs.GetValueOrDefault(Consts.MCP.Plugin.Args.McpSkillsFolder.TrimStart('-'));
             if (argSkillsFolder != null)
-                SkillsRootFolder = argSkillsFolder;
+                SkillsPath = argSkillsFolder;
         }
 
         public override string ToString()

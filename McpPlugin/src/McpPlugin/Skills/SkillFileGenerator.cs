@@ -39,9 +39,9 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
         /// <summary>
         /// Generates skill markdown files for all provided tools.
-        /// Files are written to <paramref name="rootFolder"/> (resolved relative to <paramref name="basePath"/> if not absolute).
+        /// Files are written to <paramref name="skillsPath"/> (absolute path).
         /// </summary>
-        public void Generate(IEnumerable<IRunTool> tools, string rootFolder, string basePath)
+        public void Generate(IEnumerable<IRunTool> tools, string skillsPath)
         {
             if (tools == null)
             {
@@ -49,9 +49,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 return;
             }
 
-            var skillsDir = Path.IsPathRooted(rootFolder)
-                ? rootFolder
-                : Path.Combine(basePath, rootFolder);
+            var skillsDir = skillsPath;
 
             try
             {

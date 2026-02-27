@@ -9,8 +9,8 @@
 */
 
 using System;
-using Microsoft.Extensions.Logging;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin
 {
@@ -23,10 +23,6 @@ namespace com.IvanMurzak.McpPlugin
         /// Gets the version of the MCP plugin.
         /// </summary>
         Common.Version Version { get; }
-        /// <summary>
-        /// Gets the current base directory path of the MCP plugin.
-        /// </summary>
-        string CurrentBaseDirectory { get; }
         /// <summary>
         /// Gets the version handshake response status if a handshake has been performed; otherwise, null.
         /// </summary>

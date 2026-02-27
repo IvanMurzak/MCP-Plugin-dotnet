@@ -221,20 +221,6 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             plugin.Version.Should().Be(_version);
         }
 
-        [Fact]
-        public void Build_ShouldHaveCurrentBaseDirectoryProperty()
-        {
-            // Arrange
-            var reflector = new Reflector();
-            var mcpPluginBuilder = new McpPluginBuilder(_version);
-
-            // Act
-            var plugin = mcpPluginBuilder.Build(reflector);
-
-            // Assert
-            plugin.CurrentBaseDirectory.Should().NotBeNull();
-            plugin.CurrentBaseDirectory.Should().NotBeNullOrEmpty();
-        }
 
         [Fact]
         public void Build_WhenNotConnected_ShouldHaveNullVersionHandshakeStatus()
