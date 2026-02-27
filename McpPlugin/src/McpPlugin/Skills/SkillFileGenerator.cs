@@ -40,8 +40,9 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// <summary>
         /// Generates skill markdown files for all provided tools.
         /// Files are written to <paramref name="skillsPath"/> (absolute path).
+        /// Provide <paramref name="host"/> to include correct API endpoint URLs in the generated markdown.
         /// </summary>
-        public void Generate(IEnumerable<IRunTool> tools, string skillsPath)
+        public void Generate(IEnumerable<IRunTool> tools, string skillsPath, string host)
         {
             if (tools == null)
             {
@@ -65,7 +66,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             foreach (var tool in tools)
             {
                 if (tool == null) continue;
-                GenerateFor(tool, skillsDir);
+                GenerateFor(tool, skillsDir, host);
             }
         }
 
@@ -73,16 +74,16 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// Generates a skill subdirectory and SKILL.md file for the given tool inside <paramref name="skillsDir"/>.
         /// Each skill gets its own subdirectory named after the sanitized tool name, containing SKILL.md.
         /// </summary>
-        void GenerateFor(IRunTool tool, string skillsDir)
+        void GenerateFor(IRunTool tool, string skillsDir, string host)
         {
             var skillName = SanitizeSkillName(tool.Name);
-            var skillDir  = Path.Combine(skillsDir, skillName);
-            var filePath  = Path.Combine(skillDir, "SKILL.md");
+            var skillDir = Path.Combine(skillsDir, skillName);
+            var filePath = Path.Combine(skillDir, "SKILL.md");
 
             try
             {
                 Directory.CreateDirectory(skillDir);
-                var content = BuildMarkdown(tool, skillName);
+                var content = BuildMarkdown(tool, skillName, host);
                 File.WriteAllText(filePath, content, Encoding.UTF8);
                 _logger?.LogDebug("{class}.{method}: Skill file written for tool '{tool}' → '{path}'.",
                     nameof(SkillFileGenerator), nameof(GenerateFor), tool.Name, filePath);
@@ -94,7 +95,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             }
         }
 
-        string BuildMarkdown(IRunTool tool, string skillName)
+        string BuildMarkdown(IRunTool tool, string skillName, string host)
         {
             var sb = new StringBuilder();
             var title = tool.Title ?? tool.Name;
@@ -126,7 +127,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
             var inputExample = BuildInputExample(tool.InputSchema);
             sb.AppendLine("```bash");
-            sb.AppendLine($"curl -X POST http://localhost:8080/api/tools/{tool.Name} \\");
+            sb.AppendLine($"curl -X POST {host}/api/tools/{tool.Name} \\");
             sb.AppendLine("  -H \"Content-Type: application/json\" \\");
             sb.AppendLine($"  -d '{inputExample}'");
             sb.AppendLine("```");
@@ -134,7 +135,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine("#### With Authorization (if required)");
             sb.AppendLine();
             sb.AppendLine("```bash");
-            sb.AppendLine($"curl -X POST http://localhost:8080/api/tools/{tool.Name} \\");
+            sb.AppendLine($"curl -X POST {host}/api/tools/{tool.Name} \\");
             sb.AppendLine("  -H \"Content-Type: application/json\" \\");
             sb.AppendLine("  -H \"Authorization: Bearer YOUR_TOKEN\" \\");
             sb.AppendLine($"  -d '{inputExample}'");
@@ -236,12 +237,12 @@ namespace com.IvanMurzak.McpPlugin.Skills
             return type switch
             {
                 "integer" => JsonValue.Create(0)!,
-                "number"  => JsonValue.Create(0.0)!,
+                "number" => JsonValue.Create(0.0)!,
                 "boolean" => JsonValue.Create(false)!,
-                "array"   => new JsonArray(),
-                "object"  => new JsonObject(),
-                "null"    => JsonValue.Create((string?)null)!,
-                _         => JsonValue.Create("string_value")!
+                "array" => new JsonArray(),
+                "object" => new JsonObject(),
+                "null" => JsonValue.Create((string?)null)!,
+                _ => JsonValue.Create("string_value")!
             };
         }
 
