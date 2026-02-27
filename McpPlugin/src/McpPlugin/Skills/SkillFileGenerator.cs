@@ -70,16 +70,19 @@ namespace com.IvanMurzak.McpPlugin.Skills
         }
 
         /// <summary>
-        /// Generates a single skill markdown file for the given tool inside <paramref name="skillsDir"/>.
+        /// Generates a skill subdirectory and SKILL.md file for the given tool inside <paramref name="skillsDir"/>.
+        /// Each skill gets its own subdirectory named after the sanitized tool name, containing SKILL.md.
         /// </summary>
         void GenerateFor(IRunTool tool, string skillsDir)
         {
-            var fileName = SanitizeFileName(tool.Name) + ".md";
-            var filePath = Path.Combine(skillsDir, fileName);
+            var skillName = SanitizeSkillName(tool.Name);
+            var skillDir  = Path.Combine(skillsDir, skillName);
+            var filePath  = Path.Combine(skillDir, "SKILL.md");
 
             try
             {
-                var content = BuildMarkdown(tool);
+                Directory.CreateDirectory(skillDir);
+                var content = BuildMarkdown(tool, skillName);
                 File.WriteAllText(filePath, content, Encoding.UTF8);
                 _logger?.LogDebug("{class}.{method}: Skill file written for tool '{tool}' → '{path}'.",
                     nameof(SkillFileGenerator), nameof(GenerateFor), tool.Name, filePath);
@@ -91,7 +94,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             }
         }
 
-        string BuildMarkdown(IRunTool tool)
+        string BuildMarkdown(IRunTool tool, string skillName)
         {
             var sb = new StringBuilder();
             var title = tool.Title ?? tool.Name;
@@ -99,7 +102,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
             // YAML front-matter
             sb.AppendLine("---");
-            sb.AppendLine($"name: {tool.Name}");
+            sb.AppendLine($"name: {skillName}");
             sb.AppendLine($"description: {EscapeYaml(description)}");
             sb.AppendLine("---");
             sb.AppendLine();
@@ -257,11 +260,33 @@ namespace com.IvanMurzak.McpPlugin.Skills
             }
         }
 
-        static string SanitizeFileName(string name)
+        /// <summary>
+        /// Converts a tool name into a valid Agent Skills directory/name:
+        /// lowercase alphanumeric and hyphens only, no leading/trailing/consecutive hyphens.
+        /// </summary>
+        static string SanitizeSkillName(string name)
         {
-            foreach (var c in Path.GetInvalidFileNameChars())
-                name = name.Replace(c, '_');
-            return name;
+            var sb = new StringBuilder();
+            bool lastWasHyphen = false;
+
+            foreach (char c in name)
+            {
+                if (char.IsLetterOrDigit(c))
+                {
+                    sb.Append(char.ToLowerInvariant(c));
+                    lastWasHyphen = false;
+                }
+                else if (sb.Length > 0 && !lastWasHyphen)
+                {
+                    sb.Append('-');
+                    lastWasHyphen = true;
+                }
+            }
+
+            while (sb.Length > 0 && sb[sb.Length - 1] == '-')
+                sb.Length--;
+
+            return sb.Length > 0 ? sb.ToString() : "tool";
         }
 
         static string EscapeYaml(string value)
