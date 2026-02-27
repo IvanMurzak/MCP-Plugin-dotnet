@@ -202,7 +202,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
             // YAML front-matter
             sb.AppendLine("---");
-            sb.AppendLine($"name: {skillName}");
+            sb.AppendLine($"name: {EscapeYaml(skillName)}");
             sb.AppendLine($"description: {EscapeYaml(description)}");
             sb.AppendLine("---");
             sb.AppendLine();
@@ -386,21 +386,20 @@ namespace com.IvanMurzak.McpPlugin.Skills
             while (sb.Length > 0 && sb[sb.Length - 1] == '-')
                 sb.Length--;
 
-            return sb.Length > 0 ? sb.ToString() : "tool";
+            return sb.Length > 0 ? sb.ToString() : "tool-" + StableShortHash(name);
         }
 
         /// <summary>
         /// Returns a stable 4-character lowercase hex string derived from <paramref name="value"/>
-        /// using FNV-1a 32-bit, so the suffix is consistent across runs and runtimes.
+        /// using FNV-1a 32-bit over the UTF-8 byte representation, so the suffix is consistent
+        /// across runs and runtimes and handles the full Unicode range correctly.
         /// </summary>
         static string StableShortHash(string value)
         {
             uint hash = 2166136261u;
-            foreach (char c in value)
+            foreach (byte b in Encoding.UTF8.GetBytes(value))
             {
-                hash ^= (byte)(c & 0xFF);
-                hash *= 16777619u;
-                hash ^= (byte)((c >> 8) & 0xFF);
+                hash ^= b;
                 hash *= 16777619u;
             }
             return (hash & 0xFFFFu).ToString("x4");
