@@ -193,9 +193,8 @@ namespace com.IvanMurzak.McpPlugin
             if (Path.IsPathRooted(skillsPath))
                 return Path.GetFullPath(skillsPath);
 
-            return basePath != null
-                ? Path.GetFullPath(Path.Combine(basePath, skillsPath))
-                : Path.GetFullPath(skillsPath);
+            var resolvedBase = basePath ?? Environment.CurrentDirectory;
+            return Path.GetFullPath(Path.Combine(resolvedBase, skillsPath));
         }
 
         public Task<bool> Connect(CancellationToken cancellationToken = default)
