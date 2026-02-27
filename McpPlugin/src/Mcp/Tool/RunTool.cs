@@ -30,6 +30,10 @@ namespace com.IvanMurzak.McpPlugin
         public string Name { get; private set; }
         public bool Enabled { get; set; } = true;
         public string? Title { get; protected set; }
+        public bool? ReadOnlyHint { get; protected set; }
+        public bool? DestructiveHint { get; protected set; }
+        public bool? IdempotentHint { get; protected set; }
+        public bool? OpenWorldHint { get; protected set; }
         public MethodInfo Method => _methodInfo;
 
         protected string? RequestID { get; set; }

@@ -161,6 +161,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             public JsonNode InputSchema => JsonNode.Parse("{}")!;
             public JsonNode OutputSchema => JsonNode.Parse("{}")!;
             public bool Enabled { get; set; } = true;
+            public bool? ReadOnlyHint => null;
+            public bool? DestructiveHint => null;
+            public bool? IdempotentHint => null;
+            public bool? OpenWorldHint => null;
             public int TokenCount => 100; // Mock token count
             public Task<ResponseCallTool> Run(RequestCallTool request) => throw new NotImplementedException();
             public Task<ResponseCallTool> Run(string name, IReadOnlyDictionary<string, JsonElement>? arguments, CancellationToken cancellationToken = default) => throw new NotImplementedException();

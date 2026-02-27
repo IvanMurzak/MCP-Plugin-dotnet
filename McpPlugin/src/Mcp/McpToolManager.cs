@@ -179,7 +179,11 @@ namespace com.IvanMurzak.McpPlugin
                             Enabled = kvp.Value.Enabled,
                             Title = kvp.Value.Title,
                             Description = kvp.Value.Description,
-                            InputSchema = kvp.Value.InputSchema.ToJsonElement() ?? EmptyInputSchema
+                            InputSchema = kvp.Value.InputSchema.ToJsonElement() ?? EmptyInputSchema,
+                            ReadOnlyHint = kvp.Value.ReadOnlyHint,
+                            DestructiveHint = kvp.Value.DestructiveHint,
+                            IdempotentHint = kvp.Value.IdempotentHint,
+                            OpenWorldHint = kvp.Value.OpenWorldHint
                         };
                         if (kvp.Value.OutputSchema == null)
                             return response;
