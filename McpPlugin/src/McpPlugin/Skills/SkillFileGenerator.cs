@@ -273,6 +273,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine($"description: {EscapeYaml(description)}");
             sb.AppendLine("---");
             sb.AppendLine();
+            BuildFrontMatterNotes(sb);
 
             // Title
             sb.AppendLine($"# {title}");
@@ -282,6 +283,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 sb.AppendLine(description);
                 sb.AppendLine();
             }
+            BuildDescriptionNotes(sb);
 
             AppendAdditionalContent(sb, additionalContent, SkillAdditionalContentPosition.AfterTitle);
 
@@ -292,6 +294,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine();
             sb.AppendLine("Execute this tool directly via the MCP Plugin HTTP API:");
             sb.AppendLine();
+            BuildHowToCallIntroNotes(sb);
 
             var inputExample = BuildInputExample(tool.InputSchema);
             sb.AppendLine("```bash");
@@ -321,11 +324,13 @@ namespace com.IvanMurzak.McpPlugin.Skills
             // Input section
             sb.AppendLine("## Input");
             sb.AppendLine();
+            BuildInputSectionNotes(sb);
 
             if (IncludeParameterTable)
             {
                 AppendParameterTable(sb, tool.InputSchema);
                 sb.AppendLine();
+                BuildParameterTableNotes(sb);
             }
 
             if (IncludeInputJsonSchema)
@@ -336,6 +341,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 sb.AppendLine(PrettyPrintJson(tool.InputSchema));
                 sb.AppendLine("```");
                 sb.AppendLine();
+                BuildInputJsonSchemaNotes(sb);
             }
 
             AppendAdditionalContent(sb, additionalContent, SkillAdditionalContentPosition.AfterInput);
@@ -345,6 +351,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             {
                 sb.AppendLine("## Output");
                 sb.AppendLine();
+                BuildOutputSectionNotes(sb);
                 if (tool.OutputSchema != null)
                 {
                     sb.AppendLine("### Output JSON Schema");
@@ -357,12 +364,80 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 {
                     sb.AppendLine("This tool does not return structured output.");
                 }
+                BuildOutputSchemaNotes(sb);
                 sb.AppendLine();
             }
 
             AppendAdditionalContent(sb, additionalContent, SkillAdditionalContentPosition.End);
 
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content immediately after the closing <c>---</c>
+        /// of the YAML front-matter block and before the <c># Title</c> heading.
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// ---
+        /// name: tool-name
+        /// description: ...
+        /// ---
+        ///                          ← content appended HERE
+        /// # Tool Title
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildFrontMatterNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add content between front-matter and title.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content after the tool description paragraph
+        /// and before the <c>## How to Call</c> section (including before any
+        /// <see cref="SkillAdditionalContentPosition.AfterTitle"/> additional content).
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// # Tool Title
+        ///
+        /// Tool description text.
+        ///
+        ///                          ← content appended HERE
+        /// ## How to Call
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildDescriptionNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add content after the description.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content after the
+        /// <c>Execute this tool directly via the MCP Plugin HTTP API:</c> intro line and
+        /// before the first curl example block in the <c>## How to Call → ### HTTP API</c> section.
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// ### HTTP API (Direct Tool Execution)
+        ///
+        /// Execute this tool directly via the MCP Plugin HTTP API:
+        ///
+        ///                          ← content appended HERE
+        /// ```bash
+        /// curl -X POST {host}/api/tools/{name} \
+        /// ```
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildHowToCallIntroNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add content before the curl example.
         }
 
         /// <summary>
@@ -411,6 +486,120 @@ namespace com.IvanMurzak.McpPlugin.Skills
         protected virtual void BuildInputAuthorizationNotes(StringBuilder sb)
         {
             // No notes by default; override to add custom notes below the authorization example.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content immediately after the <c>## Input</c>
+        /// heading and before the parameter table (or before the JSON schema when
+        /// <see cref="IncludeParameterTable"/> is <see langword="false"/>).
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// ## Input
+        ///
+        ///                          ← content appended HERE
+        /// | Name | Type | Required | Description |
+        /// |------|------|----------|-------------|
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildInputSectionNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add content at the top of the Input section.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content immediately after the parameter table
+        /// and before the <c>### Input JSON Schema</c> block (or before
+        /// <see cref="SkillAdditionalContentPosition.AfterInput"/> additional content when
+        /// <see cref="IncludeInputJsonSchema"/> is <see langword="false"/>).
+        /// This method is only called when <see cref="IncludeParameterTable"/> is <see langword="true"/>.
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// | Name | Type | Required | Description |
+        /// | `param` | `string` | Yes | ... |
+        ///
+        ///                          ← content appended HERE
+        /// ### Input JSON Schema
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildParameterTableNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add content after the parameter table.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content immediately after the
+        /// <c>### Input JSON Schema</c> code block and before the
+        /// <see cref="SkillAdditionalContentPosition.AfterInput"/> additional content.
+        /// This method is only called when <see cref="IncludeInputJsonSchema"/> is <see langword="true"/>.
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// ### Input JSON Schema
+        ///
+        /// ```json
+        /// { ... }
+        /// ```
+        ///
+        ///                          ← content appended HERE
+        /// ## Output
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildInputJsonSchemaNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add content after the input JSON schema.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content immediately after the <c>## Output</c>
+        /// heading and before the output JSON schema block (or "no structured output" text).
+        /// This method is only called when <see cref="IncludeOutputSection"/> is <see langword="true"/>.
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// ## Output
+        ///
+        ///                          ← content appended HERE
+        /// ### Output JSON Schema
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildOutputSectionNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add content at the top of the Output section.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content immediately after the output JSON schema
+        /// block (or the "This tool does not return structured output." line) and before the end
+        /// of the <c>## Output</c> section.
+        /// This method is only called when <see cref="IncludeOutputSection"/> is <see langword="true"/>.
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// ### Output JSON Schema
+        ///
+        /// ```json
+        /// { ... }
+        /// ```
+        ///                          ← content appended HERE
+        ///
+        /// (end of document / AdditionalContent End)
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildOutputSchemaNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add content after the output schema.
         }
 
         /// <summary>
