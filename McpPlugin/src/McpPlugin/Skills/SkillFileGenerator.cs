@@ -30,14 +30,14 @@ namespace com.IvanMurzak.McpPlugin.Skills
     /// </summary>
     public class SkillFileGenerator : ISkillFileGenerator
     {
-        readonly ILogger<SkillFileGenerator>? _logger;
+        readonly ILogger? _logger;
 
         static readonly JsonSerializerOptions _prettyJsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true
         };
 
-        public SkillFileGenerator(ILogger<SkillFileGenerator>? logger = null)
+        public SkillFileGenerator(ILogger? logger = null)
         {
             _logger = logger;
         }
