@@ -13,6 +13,7 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -31,12 +32,26 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         {
         }
 
-        protected override Task HandleChallengeAsync(AuthenticationProperties properties)
+        protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
         {
-            Response.StatusCode = 401;
             var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            Response.StatusCode = 401;
             Response.Headers.WWWAuthenticate = $"Bearer realm=\"MCP Plugin Server\", resource=\"{baseUrl}\"";
-            return Task.CompletedTask;
+            await Response.WriteAsJsonAsync(new
+            {
+                error = "Unauthorized",
+                message = "A valid Bearer token is required. Provide it via the Authorization header: Bearer <token>"
+            });
+        }
+
+        protected override async Task HandleForbiddenAsync(AuthenticationProperties properties)
+        {
+            Response.StatusCode = 403;
+            await Response.WriteAsJsonAsync(new
+            {
+                error = "Forbidden",
+                message = "You do not have permission to access this resource."
+            });
         }
 
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
