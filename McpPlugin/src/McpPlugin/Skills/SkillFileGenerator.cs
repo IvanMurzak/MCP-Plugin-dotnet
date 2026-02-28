@@ -97,7 +97,8 @@ namespace com.IvanMurzak.McpPlugin.Skills
         {
             if (tools == null)
             {
-                _logger?.LogWarning("{class}.{method}: tools collection is null, skipping.", nameof(SkillFileGenerator), nameof(Generate));
+                _logger?.LogWarning("{class}.{method}: tools collection is null, skipping.",
+                    nameof(SkillFileGenerator), nameof(Generate));
                 return false;
             }
 
@@ -142,7 +143,8 @@ namespace com.IvanMurzak.McpPlugin.Skills
         {
             if (tools == null)
             {
-                _logger?.LogWarning("{class}.{method}: tools collection is null, skipping.", nameof(SkillFileGenerator), nameof(Delete));
+                _logger?.LogWarning("{class}.{method}: tools collection is null, skipping.",
+                    nameof(SkillFileGenerator), nameof(Delete));
                 return false;
             }
 
@@ -298,6 +300,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine($"  -d '{inputExample}'");
             sb.AppendLine("```");
             sb.AppendLine();
+            BuildInputExampleNotes(sb);
 
             if (IncludeAuthorizationExample)
             {
@@ -310,6 +313,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 sb.AppendLine($"  -d '{inputExample}'");
                 sb.AppendLine("```");
                 sb.AppendLine();
+                BuildInputAuthorizationNotes(sb);
             }
 
             AppendAdditionalContent(sb, additionalContent, SkillAdditionalContentPosition.AfterHowToCall);
@@ -359,6 +363,54 @@ namespace com.IvanMurzak.McpPlugin.Skills
             AppendAdditionalContent(sb, additionalContent, SkillAdditionalContentPosition.End);
 
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content immediately after the basic curl
+        /// input example block in the <c>## How to Call → ### HTTP API</c> section.
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// ```bash
+        /// curl -X POST {host}/api/tools/{name} \
+        ///   -H "Content-Type: application/json" \
+        ///   -d '{...}'
+        /// ```
+        ///                          ← content appended HERE
+        /// #### With Authorization (if required)   (when IncludeAuthorizationExample = true)
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildInputExampleNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add custom notes below the input example.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content immediately after the
+        /// <c>#### With Authorization (if required)</c> curl example block in the
+        /// <c>## How to Call → ### HTTP API</c> section.
+        /// This method is only called when <see cref="IncludeAuthorizationExample"/> is <c>true</c>.
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// #### With Authorization (if required)
+        /// ```bash
+        /// curl -X POST {host}/api/tools/{name} \
+        ///   -H "Content-Type: application/json" \
+        ///   -H "Authorization: Bearer YOUR_TOKEN" \
+        ///   -d '{...}'
+        /// ```
+        ///                          ← content appended HERE
+        /// ## Input
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildInputAuthorizationNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add custom notes below the authorization example.
         }
 
         /// <summary>
