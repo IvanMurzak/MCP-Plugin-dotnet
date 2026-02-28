@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using FluentAssertions;
@@ -256,6 +257,83 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             result.Principal.Should().NotBeNull();
             result.Principal!.HasClaim("client_id", client.ClientId).Should().BeTrue();
             result.Principal.Claims.Should().NotContain(c => c.Type == "connection_id");
+        }
+
+        (TokenAuthenticationHandler Handler, DefaultHttpContext Context, AuthenticationScheme Scheme) CreateHandlerContext(
+            bool requireToken = true,
+            string? serverToken = null)
+        {
+            var options = new TokenAuthenticationOptions
+            {
+                RequireToken = requireToken,
+                ServerToken = serverToken
+            };
+
+            var optionsMonitor = new Mock<IOptionsMonitor<TokenAuthenticationOptions>>();
+            optionsMonitor.Setup(x => x.CurrentValue).Returns(options);
+            optionsMonitor.Setup(x => x.Get(TokenAuthenticationHandler.SchemeName)).Returns(options);
+
+            var loggerFactory = new Mock<ILoggerFactory>();
+            loggerFactory.Setup(x => x.CreateLogger(It.IsAny<string>()))
+                .Returns(new Mock<ILogger>().Object);
+
+            var handler = new TokenAuthenticationHandler(
+                optionsMonitor.Object,
+                loggerFactory.Object,
+                System.Text.Encodings.Web.UrlEncoder.Default);
+
+            var context = new DefaultHttpContext();
+            context.Response.Body = new MemoryStream();
+
+            var scheme = new AuthenticationScheme(
+                TokenAuthenticationHandler.SchemeName,
+                TokenAuthenticationHandler.SchemeName,
+                typeof(TokenAuthenticationHandler));
+
+            return (handler, context, scheme);
+        }
+
+        [Fact]
+        public async Task Challenge_Returns401_WithWwwAuthenticateHeader_AndJsonErrorBody()
+        {
+            // Arrange
+            var (handler, context, scheme) = CreateHandlerContext(requireToken: true);
+            await handler.InitializeAsync(scheme, context);
+
+            // Act
+            await handler.ChallengeAsync(null);
+
+            // Assert
+            context.Response.StatusCode.Should().Be(401);
+            context.Response.ContentType.Should().Contain("application/json");
+            context.Response.Headers["WWW-Authenticate"].ToString().Should().Contain("Bearer realm=");
+
+            context.Response.Body.Seek(0, SeekOrigin.Begin);
+            var body = await new StreamReader(context.Response.Body).ReadToEndAsync();
+            body.Should().Contain("\"error\"");
+            body.Should().Contain("\"Unauthorized\"");
+            body.Should().Contain("\"message\"");
+        }
+
+        [Fact]
+        public async Task Forbidden_Returns403_WithJsonErrorBody()
+        {
+            // Arrange
+            var (handler, context, scheme) = CreateHandlerContext(requireToken: true);
+            await handler.InitializeAsync(scheme, context);
+
+            // Act
+            await handler.ForbidAsync(null);
+
+            // Assert
+            context.Response.StatusCode.Should().Be(403);
+            context.Response.ContentType.Should().Contain("application/json");
+
+            context.Response.Body.Seek(0, SeekOrigin.Begin);
+            var body = await new StreamReader(context.Response.Body).ReadToEndAsync();
+            body.Should().Contain("\"error\"");
+            body.Should().Contain("\"Forbidden\"");
+            body.Should().Contain("\"message\"");
         }
     }
 }
