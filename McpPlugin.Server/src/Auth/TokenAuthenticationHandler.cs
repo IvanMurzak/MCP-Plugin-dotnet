@@ -34,18 +34,24 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
 
         protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
         {
-            Response.StatusCode = 401;
             var baseUrl = $"{Request.Scheme}://{Request.Host}";
+            Response.StatusCode = 401;
             Response.Headers.WWWAuthenticate = $"Bearer realm=\"MCP Plugin Server\", resource=\"{baseUrl}\"";
-            Response.ContentType = "application/json";
-            await Response.WriteAsync("{\"error\":\"Unauthorized\",\"message\":\"A valid Bearer token is required. Provide it via the Authorization header: Bearer <token>\"}");
+            await Response.WriteAsJsonAsync(new
+            {
+                error = "Unauthorized",
+                message = "A valid Bearer token is required. Provide it via the Authorization header: Bearer <token>"
+            });
         }
 
         protected override async Task HandleForbiddenAsync(AuthenticationProperties properties)
         {
             Response.StatusCode = 403;
-            Response.ContentType = "application/json";
-            await Response.WriteAsync("{\"error\":\"Forbidden\",\"message\":\"You do not have permission to access this resource.\"}");
+            await Response.WriteAsJsonAsync(new
+            {
+                error = "Forbidden",
+                message = "You do not have permission to access this resource."
+            });
         }
 
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
