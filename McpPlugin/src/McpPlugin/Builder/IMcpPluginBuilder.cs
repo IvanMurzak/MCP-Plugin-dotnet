@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using com.IvanMurzak.McpPlugin.Skills;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -58,6 +59,8 @@ namespace com.IvanMurzak.McpPlugin
         IMcpPluginBuilder SetConfig(ConnectionConfig config);
         IMcpPluginBuilder WithConfig(Action<ConnectionConfig> config);
         IMcpPluginBuilder WithConfigFromArgsOrEnv(string[]? args = null);
+        IMcpPluginBuilder WithSkillFileGenerator<T>() where T : class, ISkillFileGenerator;
+        IMcpPluginBuilder WithSkillFileGenerator(ISkillFileGenerator instance);
         IMcpPlugin Build(Reflector reflector);
 
         // Ignore Assembly methods

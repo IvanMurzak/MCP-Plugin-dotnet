@@ -23,16 +23,16 @@ namespace com.IvanMurzak.McpPlugin.Skills
     /// Skill files follow the AI Skills template format and describe how to call each tool
     /// via the direct HTTP API or MCP protocol, including JSON schemas for input and output.
     /// </summary>
-    public class SkillFileGenerator
+    public class SkillFileGenerator : ISkillFileGenerator
     {
-        readonly ILogger? _logger;
+        readonly ILogger<SkillFileGenerator>? _logger;
 
         static readonly JsonSerializerOptions _prettyJsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true
         };
 
-        public SkillFileGenerator(ILogger? logger = null)
+        public SkillFileGenerator(ILogger<SkillFileGenerator>? logger = null)
         {
             _logger = logger;
         }

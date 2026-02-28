@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Skills;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -85,6 +86,8 @@ namespace com.IvanMurzak.McpPlugin
             _services.AddSingleton<McpManager>();
             _services.AddSingleton<IMcpManager>(sp => sp.GetRequiredService<McpManager>());
             _services.AddSingleton<IClientMcpManager>(sp => sp.GetRequiredService<McpManager>());
+
+            _services.AddSingleton<ISkillFileGenerator, SkillFileGenerator>();
         }
 
         #region Tool
@@ -248,6 +251,26 @@ namespace com.IvanMurzak.McpPlugin
                 config(_externalConfig);
             else
                 _services.Configure(config);
+            return this;
+        }
+
+        public virtual IMcpPluginBuilder WithSkillFileGenerator<T>()
+            where T : class, ISkillFileGenerator
+        {
+            ThrowIfBuilt();
+
+            _services.AddSingleton<ISkillFileGenerator, T>();
+            return this;
+        }
+
+        public virtual IMcpPluginBuilder WithSkillFileGenerator(ISkillFileGenerator instance)
+        {
+            ThrowIfBuilt();
+
+            if (instance == null)
+                throw new ArgumentNullException(nameof(instance));
+
+            _services.AddSingleton<ISkillFileGenerator>(instance);
             return this;
         }
 
