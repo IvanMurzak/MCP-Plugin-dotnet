@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -432,6 +433,243 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             Directory.GetDirectories(_tempDir).Should().BeEmpty("both hashed dirs should have been deleted");
         }
 
+        // ── virtual bool properties ──────────────────────────────────────────────
+
+        [Fact]
+        public void IncludeAuthorizationExample_Default_ContainsAuthorizationBlock()
+        {
+            var generator = new SkillFileGenerator();
+            var tool = new MockRunTool { Name = "op" };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.Should().Contain("Authorization: Bearer");
+        }
+
+        [Fact]
+        public void Generate_IncludeAuthorizationExampleFalse_OmitsAuthorizationBlock()
+        {
+            var generator = new CustomFlagsGenerator(includeAuth: false);
+            var tool = new MockRunTool { Name = "op" };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.Should().NotContain("Authorization: Bearer");
+        }
+
+        [Fact]
+        public void Generate_IncludeParameterTableFalse_OmitsParameterTable()
+        {
+            var schema = JsonNode.Parse("""{"type":"object","properties":{"x":{"type":"integer","description":"X value"}}}""")!;
+            var generator = new CustomFlagsGenerator(includeParamTable: false);
+            var tool = new MockRunTool { Name = "calc", InputSchema = schema };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "calc", "SKILL.md"));
+            content.Should().NotContain("| Name | Type |");
+            content.Should().NotContain("| `x`");
+        }
+
+        [Fact]
+        public void Generate_IncludeInputJsonSchemaFalse_OmitsInputJsonSchemaBlock()
+        {
+            var schema = JsonNode.Parse("""{"type":"object","properties":{"x":{"type":"integer"}}}""")!;
+            var generator = new CustomFlagsGenerator(includeInputJsonSchema: false);
+            var tool = new MockRunTool { Name = "calc", InputSchema = schema };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "calc", "SKILL.md"));
+            content.Should().NotContain("### Input JSON Schema");
+        }
+
+        [Fact]
+        public void Generate_IncludeOutputSectionFalse_OmitsOutputSection()
+        {
+            var generator = new CustomFlagsGenerator(includeOutput: false);
+            var tool = new MockRunTool { Name = "op" };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.Should().NotContain("## Output");
+        }
+
+        // ── additional content injection ─────────────────────────────────────────
+
+        [Fact]
+        public void GetAdditionalContent_Default_ReturnsNull()
+        {
+            var generator = new SkillFileGenerator();
+            var tool = new MockRunTool { Name = "op" };
+
+            generator.GetAdditionalContent(tool).Should().BeNull();
+        }
+
+        [Fact]
+        public void Generate_AdditionalContent_End_AppearsAfterOutputSection()
+        {
+            const string marker = "CUSTOM_END_MARKER";
+            var generator = new AdditionalContentGenerator(marker, SkillAdditionalContentPosition.End);
+            var tool = new MockRunTool { Name = "op" };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.Should().Contain(marker);
+            var outputIdx = content.IndexOf("## Output", StringComparison.Ordinal);
+            var markerIdx = content.IndexOf(marker, StringComparison.Ordinal);
+            markerIdx.Should().BeGreaterThan(outputIdx, "additional content at End should appear after the Output section");
+        }
+
+        [Fact]
+        public void Generate_AdditionalContent_AfterTitle_AppearsBetweenTitleAndHowToCall()
+        {
+            const string marker = "CUSTOM_AFTER_TITLE_MARKER";
+            var generator = new AdditionalContentGenerator(marker, SkillAdditionalContentPosition.AfterTitle);
+            var tool = new MockRunTool { Name = "op", Title = "My Op" };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.Should().Contain(marker);
+            var titleIdx = content.IndexOf("# My Op", StringComparison.Ordinal);
+            var markerIdx = content.IndexOf(marker, StringComparison.Ordinal);
+            var howToCallIdx = content.IndexOf("## How to Call", StringComparison.Ordinal);
+            markerIdx.Should().BeGreaterThan(titleIdx, "additional content should appear after the title");
+            markerIdx.Should().BeLessThan(howToCallIdx, "additional content should appear before 'How to Call'");
+        }
+
+        [Fact]
+        public void Generate_AdditionalContent_AfterHowToCall_AppearsBetweenHowToCallAndInput()
+        {
+            const string marker = "CUSTOM_AFTER_HOWTO_MARKER";
+            var generator = new AdditionalContentGenerator(marker, SkillAdditionalContentPosition.AfterHowToCall);
+            var tool = new MockRunTool { Name = "op" };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.Should().Contain(marker);
+            var howToCallIdx = content.IndexOf("## How to Call", StringComparison.Ordinal);
+            var markerIdx = content.IndexOf(marker, StringComparison.Ordinal);
+            var inputIdx = content.IndexOf("## Input", StringComparison.Ordinal);
+            markerIdx.Should().BeGreaterThan(howToCallIdx, "additional content should appear after 'How to Call'");
+            markerIdx.Should().BeLessThan(inputIdx, "additional content should appear before 'Input'");
+        }
+
+        [Fact]
+        public void Generate_AdditionalContent_AfterInput_AppearsBetweenInputAndOutput()
+        {
+            const string marker = "CUSTOM_AFTER_INPUT_MARKER";
+            var generator = new AdditionalContentGenerator(marker, SkillAdditionalContentPosition.AfterInput);
+            var tool = new MockRunTool { Name = "op" };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.Should().Contain(marker);
+            var inputIdx = content.IndexOf("## Input", StringComparison.Ordinal);
+            var markerIdx = content.IndexOf(marker, StringComparison.Ordinal);
+            var outputIdx = content.IndexOf("## Output", StringComparison.Ordinal);
+            markerIdx.Should().BeGreaterThan(inputIdx, "additional content should appear after 'Input'");
+            markerIdx.Should().BeLessThan(outputIdx, "additional content should appear before 'Output'");
+        }
+
+        [Fact]
+        public void Generate_AdditionalContent_NonePosition_ContentNotInjected()
+        {
+            const string marker = "CUSTOM_NONE_MARKER";
+            var generator = new AdditionalContentGenerator(marker, SkillAdditionalContentPosition.None);
+            var tool = new MockRunTool { Name = "op" };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.Should().NotContain(marker, "None position must suppress content injection entirely");
+        }
+
+        [Fact]
+        public void Generate_AdditionalContent_AppearsExactlyOnce()
+        {
+            const string marker = "CUSTOM_ONCE_MARKER";
+            var generator = new AdditionalContentGenerator(marker, SkillAdditionalContentPosition.AfterTitle);
+            var tool = new MockRunTool { Name = "op" };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.Split(marker).Length.Should().Be(2, "additional content must appear exactly once");
+        }
+
+        // ── protected virtual method overrides ───────────────────────────────────
+
+        [Fact]
+        public void Generate_OverriddenBuildMarkdown_WritesCustomContent()
+        {
+            var generator = new CustomMarkdownGenerator();
+            var tool = new MockRunTool { Name = "op" };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.Should().Be(CustomMarkdownGenerator.CustomContent);
+        }
+
+        [Fact]
+        public void Generate_OverriddenAppendParameterTable_WritesCustomTable()
+        {
+            var schema = JsonNode.Parse("""{"type":"object","properties":{"x":{"type":"integer"}}}""")!;
+            var generator = new CustomTableGenerator();
+            var tool = new MockRunTool { Name = "op", InputSchema = schema };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.Should().Contain(CustomTableGenerator.CustomRow);
+            content.Should().NotContain("| `x`", "default table rows should be replaced by the override");
+        }
+
+        [Fact]
+        public void Generate_OverriddenBuildInputExample_WritesCustomExample()
+        {
+            var schema = JsonNode.Parse("""{"type":"object","properties":{"x":{"type":"integer"}}}""")!;
+            var generator = new CustomExampleGenerator();
+            var tool = new MockRunTool { Name = "op", InputSchema = schema };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.Should().Contain(CustomExampleGenerator.CustomExample);
+        }
+
+        [Fact]
+        public void Generate_OverriddenGenerateFor_CreatesCustomFile()
+        {
+            var generator = new CustomGenerateForGenerator();
+            var tool = new MockRunTool { Name = "op" };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var customFile = Path.Combine(_tempDir, "custom-op", "SKILL.md");
+            File.Exists(customFile).Should().BeTrue("overridden GenerateFor should write to a custom directory");
+        }
+
+        [Fact]
+        public void Generate_OverriddenBuildNameMap_UsesCustomDirectoryName()
+        {
+            var generator = new CustomNameMapGenerator();
+            var tool = new MockRunTool { Name = "my-tool" };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            Directory.Exists(Path.Combine(_tempDir, "prefixed-my-tool")).Should().BeTrue(
+                "overridden BuildNameMap should produce the custom directory name");
+        }
+
         // ── helpers ───────────────────────────────────────────────────────────────
 
         private class MockRunTool : IRunTool
@@ -450,6 +688,99 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             public Task<ResponseCallTool> Run(string requestId, IReadOnlyDictionary<string, JsonElement>? namedParameters, CancellationToken cancellationToken = default)
                 => throw new NotImplementedException();
+        }
+
+        /// <summary>Configures individual bool customisation flags via constructor parameters.</summary>
+        private sealed class CustomFlagsGenerator : SkillFileGenerator
+        {
+            private readonly bool _includeAuth;
+            private readonly bool _includeParamTable;
+            private readonly bool _includeInputJsonSchema;
+            private readonly bool _includeOutput;
+
+            public override bool IncludeAuthorizationExample => _includeAuth;
+            public override bool IncludeParameterTable => _includeParamTable;
+            public override bool IncludeInputJsonSchema => _includeInputJsonSchema;
+            public override bool IncludeOutputSection => _includeOutput;
+
+            public CustomFlagsGenerator(
+                bool includeAuth = true,
+                bool includeParamTable = true,
+                bool includeInputJsonSchema = true,
+                bool includeOutput = true)
+            {
+                _includeAuth = includeAuth;
+                _includeParamTable = includeParamTable;
+                _includeInputJsonSchema = includeInputJsonSchema;
+                _includeOutput = includeOutput;
+            }
+        }
+
+        /// <summary>Returns a fixed content string and position for additional-content injection tests.</summary>
+        private sealed class AdditionalContentGenerator : SkillFileGenerator
+        {
+            private readonly string? _content;
+            private readonly SkillAdditionalContentPosition _position;
+
+            public override string? GetAdditionalContent(IRunTool tool) => _content;
+            public override SkillAdditionalContentPosition AdditionalContentPosition => _position;
+
+            public AdditionalContentGenerator(string? content, SkillAdditionalContentPosition position)
+            {
+                _content = content;
+                _position = position;
+            }
+        }
+
+        /// <summary>Overrides BuildMarkdown to return a fixed custom string.</summary>
+        private sealed class CustomMarkdownGenerator : SkillFileGenerator
+        {
+            public const string CustomContent = "# CUSTOM MARKDOWN CONTENT";
+
+            protected override string BuildMarkdown(IRunTool tool, string skillName, string host)
+                => CustomContent;
+        }
+
+        /// <summary>Overrides AppendParameterTable to emit a single custom marker row.</summary>
+        private sealed class CustomTableGenerator : SkillFileGenerator
+        {
+            public const string CustomRow = "CUSTOM_TABLE_ROW_MARKER";
+
+            protected override void AppendParameterTable(StringBuilder sb, JsonNode? inputSchema)
+                => sb.AppendLine(CustomRow);
+        }
+
+        /// <summary>Overrides BuildInputExample to return a fixed JSON string.</summary>
+        private sealed class CustomExampleGenerator : SkillFileGenerator
+        {
+            public const string CustomExample = "{\"custom\":\"injected_example\"}";
+
+            protected override string BuildInputExample(JsonNode? inputSchema)
+                => CustomExample;
+        }
+
+        /// <summary>Overrides GenerateFor to write the skill file into a "custom-" prefixed directory.</summary>
+        private sealed class CustomGenerateForGenerator : SkillFileGenerator
+        {
+            protected override bool GenerateFor(IRunTool tool, string skillsDir, string host, string skillName)
+            {
+                var customDir = Path.Combine(skillsDir, "custom-" + skillName);
+                Directory.CreateDirectory(customDir);
+                File.WriteAllText(Path.Combine(customDir, "SKILL.md"), "custom", Encoding.UTF8);
+                return true;
+            }
+        }
+
+        /// <summary>Overrides BuildNameMap to prefix every directory name with "prefixed-".</summary>
+        private sealed class CustomNameMapGenerator : SkillFileGenerator
+        {
+            protected override Dictionary<string, string> BuildNameMap(List<IRunTool> tools, string callerName)
+            {
+                var map = new Dictionary<string, string>(StringComparer.Ordinal);
+                foreach (var tool in tools)
+                    map[tool.Name] = "prefixed-" + SanitizeSkillName(tool.Name);
+                return map;
+            }
         }
     }
 }

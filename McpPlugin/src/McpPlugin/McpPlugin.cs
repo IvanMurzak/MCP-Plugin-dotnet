@@ -31,7 +31,7 @@ namespace com.IvanMurzak.McpPlugin
         private readonly CancellationTokenSource _cancellationTokenSource;
         private readonly ThreadSafeBool _isDisposed = new(false);
         private readonly Common.Version _version;
-        private readonly SkillFileGenerator _skillFileGenerator;
+        private readonly ISkillFileGenerator _skillFileGenerator;
         private readonly ConnectionConfig _connectionConfig;
 
         public ILogger Logger => _logger;
@@ -50,6 +50,7 @@ namespace com.IvanMurzak.McpPlugin
             IMcpManager mcpManager,
             IMcpManagerHub mcpManagerHub,
             Common.Version version,
+            ISkillFileGenerator skillFileGenerator,
             IOptions<ConnectionConfig>? connectionConfig = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -61,7 +62,7 @@ namespace com.IvanMurzak.McpPlugin
             _mcpManagerHub = mcpManagerHub ?? throw new ArgumentNullException(nameof(mcpManagerHub));
             _version = version ?? throw new ArgumentNullException(nameof(version));
             _connectionConfig = connectionConfig?.Value ?? new ConnectionConfig();
-            _skillFileGenerator = new SkillFileGenerator(_logger);
+            _skillFileGenerator = skillFileGenerator ?? throw new ArgumentNullException(nameof(skillFileGenerator));
             _mcpManagerHub.ConnectionState
                 .Where(state => state == HubConnectionState.Connected)
                 .Where(state => !_cancellationTokenSource.Token.IsCancellationRequested)

@@ -22,8 +22,13 @@ namespace com.IvanMurzak.McpPlugin.Skills
     /// Generates AI skill markdown files for each registered MCP tool.
     /// Skill files follow the AI Skills template format and describe how to call each tool
     /// via the direct HTTP API or MCP protocol, including JSON schemas for input and output.
+    /// <para>
+    /// Override virtual members to customise any aspect of file generation without replacing
+    /// the entire class. Register a custom subclass via
+    /// <c>McpPluginBuilder.WithSkillFileGenerator&lt;T&gt;()</c>.
+    /// </para>
     /// </summary>
-    public class SkillFileGenerator
+    public class SkillFileGenerator : ISkillFileGenerator
     {
         readonly ILogger? _logger;
 
@@ -37,17 +42,63 @@ namespace com.IvanMurzak.McpPlugin.Skills
             _logger = logger;
         }
 
+        // ── Customisation properties ─────────────────────────────────────────
+
+        /// <summary>
+        /// When <see langword="true"/> (default), a "With Authorization" curl block is included
+        /// in the "How to Call" section of each SKILL.md.
+        /// Override and return <see langword="false"/> to omit it.
+        /// </summary>
+        public virtual bool IncludeAuthorizationExample { get; } = true;
+
+        /// <summary>
+        /// When <see langword="true"/> (default), the parameter table is included in the
+        /// "Input" section. Override and return <see langword="false"/> to omit it.
+        /// </summary>
+        public virtual bool IncludeParameterTable { get; } = true;
+
+        /// <summary>
+        /// When <see langword="true"/> (default), the raw "Input JSON Schema" code block is
+        /// included after the parameter table. Override and return <see langword="false"/> to omit it.
+        /// </summary>
+        public virtual bool IncludeInputJsonSchema { get; } = true;
+
+        /// <summary>
+        /// When <see langword="true"/> (default), the "Output" section is included.
+        /// Override and return <see langword="false"/> to omit the entire section.
+        /// </summary>
+        public virtual bool IncludeOutputSection { get; } = true;
+
+        /// <summary>
+        /// Controls where the text returned by <see cref="GetAdditionalContent"/> is injected
+        /// into each SKILL.md. Defaults to <see cref="SkillAdditionalContentPosition.End"/>.
+        /// Has no effect when <see cref="GetAdditionalContent"/> returns <see langword="null"/>
+        /// or an empty string, or when the position is <see cref="SkillAdditionalContentPosition.None"/>.
+        /// </summary>
+        public virtual SkillAdditionalContentPosition AdditionalContentPosition { get; } = SkillAdditionalContentPosition.End;
+
+        /// <summary>
+        /// Returns additional markdown text to inject into the SKILL.md for <paramref name="tool"/>
+        /// at the location specified by <see cref="AdditionalContentPosition"/>.
+        /// The default implementation returns <see langword="null"/> (no injection).
+        /// Override to supply custom content such as usage notes, links, or warnings.
+        /// </summary>
+        public virtual string? GetAdditionalContent(IRunTool tool) => null;
+
+        // ── Interface implementation ─────────────────────────────────────────
+
         /// <summary>
         /// Generates skill markdown files for all provided tools.
         /// <paramref name="skillsPath"/> may be an absolute or relative path; relative paths are resolved
         /// against the current working directory at the time of the call.
         /// Provide <paramref name="host"/> to include correct API endpoint URLs in the generated markdown.
         /// </summary>
-        public bool Generate(IEnumerable<IRunTool> tools, string skillsPath, string host)
+        public virtual bool Generate(IEnumerable<IRunTool> tools, string skillsPath, string host)
         {
             if (tools == null)
             {
-                _logger?.LogWarning("{class}.{method}: tools collection is null, skipping.", nameof(SkillFileGenerator), nameof(Generate));
+                _logger?.LogWarning("{class}.{method}: tools collection is null, skipping.",
+                    nameof(SkillFileGenerator), nameof(Generate));
                 return false;
             }
 
@@ -88,11 +139,12 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// <see langword="true"/> if the operation completed without errors;
         /// <see langword="false"/> if <paramref name="tools"/> is <see langword="null"/> or a deletion failed.
         /// </returns>
-        public bool Delete(IEnumerable<IRunTool> tools, string skillsPath)
+        public virtual bool Delete(IEnumerable<IRunTool> tools, string skillsPath)
         {
             if (tools == null)
             {
-                _logger?.LogWarning("{class}.{method}: tools collection is null, skipping.", nameof(SkillFileGenerator), nameof(Delete));
+                _logger?.LogWarning("{class}.{method}: tools collection is null, skipping.",
+                    nameof(SkillFileGenerator), nameof(Delete));
                 return false;
             }
 
@@ -131,12 +183,14 @@ namespace com.IvanMurzak.McpPlugin.Skills
             return success;
         }
 
+        // ── Protected virtual helpers ────────────────────────────────────────
+
         /// <summary>
         /// Builds a mapping from each tool's raw name to its final skill directory name,
         /// applying <see cref="SanitizeSkillName"/> and appending a stable hash suffix when two or
         /// more tools sanitize to the same string (collision handling).
         /// </summary>
-        Dictionary<string, string> BuildNameMap(List<IRunTool> tools, string callerName)
+        protected virtual Dictionary<string, string> BuildNameMap(List<IRunTool> tools, string callerName)
         {
             // Group by sanitized name to detect collisions (e.g. "foo bar" and "foo-bar" both → "foo-bar")
             var sanitizedGroups = new Dictionary<string, List<IRunTool>>(StringComparer.Ordinal);
@@ -176,7 +230,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// Generates a skill subdirectory and SKILL.md file for the given tool inside <paramref name="skillsDir"/>.
         /// Each skill gets its own subdirectory named after the sanitized tool name, containing SKILL.md.
         /// </summary>
-        bool GenerateFor(IRunTool tool, string skillsDir, string host, string skillName)
+        protected virtual bool GenerateFor(IRunTool tool, string skillsDir, string host, string skillName)
         {
             skillName = SanitizeSkillName(skillName);
             var skillDir = Path.Combine(skillsDir, skillName);
@@ -199,12 +253,19 @@ namespace com.IvanMurzak.McpPlugin.Skills
             }
         }
 
-        string BuildMarkdown(IRunTool tool, string skillName, string host)
+        /// <summary>
+        /// Builds the full markdown content for a single tool's SKILL.md.
+        /// Override to replace or extend the entire document structure.
+        /// For targeted changes, prefer overriding individual section helpers or the
+        /// customisation properties/methods instead.
+        /// </summary>
+        protected virtual string BuildMarkdown(IRunTool tool, string skillName, string host)
         {
             host = host.TrimEnd('/');
             var sb = new StringBuilder();
             var title = tool.Title ?? tool.Name;
             var description = tool.Description ?? string.Empty;
+            var additionalContent = GetAdditionalContent(tool);
 
             // YAML front-matter
             sb.AppendLine("---");
@@ -212,6 +273,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine($"description: {EscapeYaml(description)}");
             sb.AppendLine("---");
             sb.AppendLine();
+            BuildFrontMatterNotes(sb);
 
             // Title
             sb.AppendLine($"# {title}");
@@ -221,6 +283,9 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 sb.AppendLine(description);
                 sb.AppendLine();
             }
+            BuildDescriptionNotes(sb);
+
+            AppendAdditionalContent(sb, additionalContent, SkillAdditionalContentPosition.AfterTitle);
 
             // How to Call section
             sb.AppendLine("## How to Call");
@@ -229,6 +294,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine();
             sb.AppendLine("Execute this tool directly via the MCP Plugin HTTP API:");
             sb.AppendLine();
+            BuildHowToCallIntroNotes(sb);
 
             var inputExample = BuildInputExample(tool.InputSchema);
             sb.AppendLine("```bash");
@@ -237,48 +303,310 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine($"  -d '{inputExample}'");
             sb.AppendLine("```");
             sb.AppendLine();
-            sb.AppendLine("#### With Authorization (if required)");
-            sb.AppendLine();
-            sb.AppendLine("```bash");
-            sb.AppendLine($"curl -X POST {host}/api/tools/{tool.Name} \\");
-            sb.AppendLine("  -H \"Content-Type: application/json\" \\");
-            sb.AppendLine("  -H \"Authorization: Bearer YOUR_TOKEN\" \\");
-            sb.AppendLine($"  -d '{inputExample}'");
-            sb.AppendLine("```");
-            sb.AppendLine();
+            BuildInputExampleNotes(sb);
+
+            if (IncludeAuthorizationExample)
+            {
+                sb.AppendLine("#### With Authorization (if required)");
+                sb.AppendLine();
+                sb.AppendLine("```bash");
+                sb.AppendLine($"curl -X POST {host}/api/tools/{tool.Name} \\");
+                sb.AppendLine("  -H \"Content-Type: application/json\" \\");
+                sb.AppendLine("  -H \"Authorization: Bearer YOUR_TOKEN\" \\");
+                sb.AppendLine($"  -d '{inputExample}'");
+                sb.AppendLine("```");
+                sb.AppendLine();
+                BuildInputAuthorizationNotes(sb);
+            }
+
+            AppendAdditionalContent(sb, additionalContent, SkillAdditionalContentPosition.AfterHowToCall);
 
             // Input section
             sb.AppendLine("## Input");
             sb.AppendLine();
-            AppendParameterTable(sb, tool.InputSchema);
-            sb.AppendLine();
-            sb.AppendLine("### Input JSON Schema");
-            sb.AppendLine();
-            sb.AppendLine("```json");
-            sb.AppendLine(PrettyPrintJson(tool.InputSchema));
-            sb.AppendLine("```");
-            sb.AppendLine();
+            BuildInputSectionNotes(sb);
 
-            // Output section
-            sb.AppendLine("## Output");
-            sb.AppendLine();
-            if (tool.OutputSchema != null)
+            if (IncludeParameterTable)
             {
-                sb.AppendLine("### Output JSON Schema");
+                AppendParameterTable(sb, tool.InputSchema);
+                sb.AppendLine();
+                BuildParameterTableNotes(sb);
+            }
+
+            if (IncludeInputJsonSchema)
+            {
+                sb.AppendLine("### Input JSON Schema");
                 sb.AppendLine();
                 sb.AppendLine("```json");
-                sb.AppendLine(PrettyPrintJson(tool.OutputSchema));
+                sb.AppendLine(PrettyPrintJson(tool.InputSchema));
                 sb.AppendLine("```");
+                sb.AppendLine();
+                BuildInputJsonSchemaNotes(sb);
             }
-            else
+
+            AppendAdditionalContent(sb, additionalContent, SkillAdditionalContentPosition.AfterInput);
+
+            // Output section
+            if (IncludeOutputSection)
             {
-                sb.AppendLine("This tool does not return structured output.");
+                sb.AppendLine("## Output");
+                sb.AppendLine();
+                BuildOutputSectionNotes(sb);
+                if (tool.OutputSchema != null)
+                {
+                    sb.AppendLine("### Output JSON Schema");
+                    sb.AppendLine();
+                    sb.AppendLine("```json");
+                    sb.AppendLine(PrettyPrintJson(tool.OutputSchema));
+                    sb.AppendLine("```");
+                }
+                else
+                {
+                    sb.AppendLine("This tool does not return structured output.");
+                }
+                BuildOutputSchemaNotes(sb);
+                sb.AppendLine();
             }
+
+            AppendAdditionalContent(sb, additionalContent, SkillAdditionalContentPosition.End);
 
             return sb.ToString();
         }
 
-        void AppendParameterTable(StringBuilder sb, JsonNode? inputSchema)
+        /// <summary>
+        /// Override to inject additional markdown content immediately after the closing <c>---</c>
+        /// of the YAML front-matter block and before the <c># Title</c> heading.
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// ---
+        /// name: tool-name
+        /// description: ...
+        /// ---
+        ///                          ← content appended HERE
+        /// # Tool Title
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildFrontMatterNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add content between front-matter and title.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content after the tool description paragraph
+        /// and before the <c>## How to Call</c> section (including before any
+        /// <see cref="SkillAdditionalContentPosition.AfterTitle"/> additional content).
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// # Tool Title
+        ///
+        /// Tool description text.
+        ///
+        ///                          ← content appended HERE
+        /// ## How to Call
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildDescriptionNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add content after the description.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content after the
+        /// <c>Execute this tool directly via the MCP Plugin HTTP API:</c> intro line and
+        /// before the first curl example block in the <c>## How to Call → ### HTTP API</c> section.
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// ### HTTP API (Direct Tool Execution)
+        ///
+        /// Execute this tool directly via the MCP Plugin HTTP API:
+        ///
+        ///                          ← content appended HERE
+        /// ```bash
+        /// curl -X POST {host}/api/tools/{name} \
+        /// ```
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildHowToCallIntroNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add content before the curl example.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content immediately after the basic curl
+        /// input example block in the <c>## How to Call → ### HTTP API</c> section.
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// ```bash
+        /// curl -X POST {host}/api/tools/{name} \
+        ///   -H "Content-Type: application/json" \
+        ///   -d '{...}'
+        /// ```
+        ///                          ← content appended HERE
+        /// #### With Authorization (if required)   (when IncludeAuthorizationExample = true)
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildInputExampleNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add custom notes below the input example.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content immediately after the
+        /// <c>#### With Authorization (if required)</c> curl example block in the
+        /// <c>## How to Call → ### HTTP API</c> section.
+        /// This method is only called when <see cref="IncludeAuthorizationExample"/> is <c>true</c>.
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// #### With Authorization (if required)
+        /// ```bash
+        /// curl -X POST {host}/api/tools/{name} \
+        ///   -H "Content-Type: application/json" \
+        ///   -H "Authorization: Bearer YOUR_TOKEN" \
+        ///   -d '{...}'
+        /// ```
+        ///                          ← content appended HERE
+        /// ## Input
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildInputAuthorizationNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add custom notes below the authorization example.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content immediately after the <c>## Input</c>
+        /// heading and before the parameter table (or before the JSON schema when
+        /// <see cref="IncludeParameterTable"/> is <see langword="false"/>).
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// ## Input
+        ///
+        ///                          ← content appended HERE
+        /// | Name | Type | Required | Description |
+        /// |------|------|----------|-------------|
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildInputSectionNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add content at the top of the Input section.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content immediately after the parameter table
+        /// and before the <c>### Input JSON Schema</c> block (or before
+        /// <see cref="SkillAdditionalContentPosition.AfterInput"/> additional content when
+        /// <see cref="IncludeInputJsonSchema"/> is <see langword="false"/>).
+        /// This method is only called when <see cref="IncludeParameterTable"/> is <see langword="true"/>.
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// | Name | Type | Required | Description |
+        /// | `param` | `string` | Yes | ... |
+        ///
+        ///                          ← content appended HERE
+        /// ### Input JSON Schema
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildParameterTableNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add content after the parameter table.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content immediately after the
+        /// <c>### Input JSON Schema</c> code block and before the
+        /// <see cref="SkillAdditionalContentPosition.AfterInput"/> additional content.
+        /// This method is only called when <see cref="IncludeInputJsonSchema"/> is <see langword="true"/>.
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// ### Input JSON Schema
+        ///
+        /// ```json
+        /// { ... }
+        /// ```
+        ///
+        ///                          ← content appended HERE
+        /// ## Output
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildInputJsonSchemaNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add content after the input JSON schema.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content immediately after the <c>## Output</c>
+        /// heading and before the output JSON schema block (or "no structured output" text).
+        /// This method is only called when <see cref="IncludeOutputSection"/> is <see langword="true"/>.
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// ## Output
+        ///
+        ///                          ← content appended HERE
+        /// ### Output JSON Schema
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildOutputSectionNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add content at the top of the Output section.
+        }
+
+        /// <summary>
+        /// Override to inject additional markdown content immediately after the output JSON schema
+        /// block (or the "This tool does not return structured output." line) and before the end
+        /// of the <c>## Output</c> section.
+        /// This method is only called when <see cref="IncludeOutputSection"/> is <see langword="true"/>.
+        /// <para>
+        /// Injected position in the generated document:
+        /// <code>
+        /// ### Output JSON Schema
+        ///
+        /// ```json
+        /// { ... }
+        /// ```
+        ///                          ← content appended HERE
+        ///
+        /// (end of document / AdditionalContent End)
+        /// </code>
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected virtual void BuildOutputSchemaNotes(StringBuilder sb)
+        {
+            // No notes by default; override to add content after the output schema.
+        }
+
+        /// <summary>
+        /// Appends the parameter table rows to <paramref name="sb"/> using <paramref name="inputSchema"/>.
+        /// Override to change the table format or add extra columns.
+        /// </summary>
+        protected virtual void AppendParameterTable(StringBuilder sb, JsonNode? inputSchema)
         {
             if (inputSchema == null)
             {
@@ -317,7 +645,11 @@ namespace com.IvanMurzak.McpPlugin.Skills
             }
         }
 
-        string BuildInputExample(JsonNode? inputSchema)
+        /// <summary>
+        /// Builds a compact JSON example string from <paramref name="inputSchema"/>.
+        /// Override to produce a different example format.
+        /// </summary>
+        protected virtual string BuildInputExample(JsonNode? inputSchema)
         {
             if (inputSchema == null)
                 return "{}";
@@ -337,21 +669,11 @@ namespace com.IvanMurzak.McpPlugin.Skills
             return example.ToJsonString(_prettyJsonOptions);
         }
 
-        static JsonNode CreateExampleValue(string type, JsonObject? schema)
-        {
-            return type switch
-            {
-                "integer" => JsonValue.Create(0)!,
-                "number" => JsonValue.Create(0.0)!,
-                "boolean" => JsonValue.Create(false)!,
-                "array" => new JsonArray(),
-                "object" => new JsonObject(),
-                "null" => JsonValue.Create((string?)null)!,
-                _ => JsonValue.Create("string_value")!
-            };
-        }
-
-        string PrettyPrintJson(JsonNode? node)
+        /// <summary>
+        /// Pretty-prints a <see cref="JsonNode"/> to an indented JSON string.
+        /// Override to change serialisation options or handle errors differently.
+        /// </summary>
+        protected virtual string PrettyPrintJson(JsonNode? node)
         {
             if (node == null)
                 return "null";
@@ -366,11 +688,32 @@ namespace com.IvanMurzak.McpPlugin.Skills
             }
         }
 
+        // ── Protected static utilities ───────────────────────────────────────
+
+        /// <summary>
+        /// Creates a placeholder JSON value for the given JSON Schema type string.
+        /// Available to subclasses for use in custom <see cref="BuildInputExample"/> overrides.
+        /// </summary>
+        protected static JsonNode CreateExampleValue(string type, JsonObject? schema)
+        {
+            return type switch
+            {
+                "integer" => JsonValue.Create(0)!,
+                "number" => JsonValue.Create(0.0)!,
+                "boolean" => JsonValue.Create(false)!,
+                "array" => new JsonArray(),
+                "object" => new JsonObject(),
+                "null" => JsonValue.Create((string?)null)!,
+                _ => JsonValue.Create("string_value")!
+            };
+        }
+
         /// <summary>
         /// Converts a tool name into a valid Agent Skills directory/name:
         /// lowercase alphanumeric and hyphens only, no leading/trailing/consecutive hyphens.
+        /// Available to subclasses for use in custom <see cref="BuildNameMap"/> overrides.
         /// </summary>
-        static string SanitizeSkillName(string name)
+        protected static string SanitizeSkillName(string name)
         {
             var sb = new StringBuilder();
             bool lastWasHyphen = false;
@@ -400,8 +743,9 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// using FNV-1a 32-bit over the UTF-8 byte representation, so the suffix is consistent
         /// across runs and runtimes and handles the full Unicode range correctly.
         /// All 32 bits are used to keep the collision probability negligible even with large tool sets.
+        /// Available to subclasses for use in custom <see cref="BuildNameMap"/> overrides.
         /// </summary>
-        static string StableShortHash(string value)
+        protected static string StableShortHash(string value)
         {
             uint hash = 2166136261u;
             foreach (byte b in Encoding.UTF8.GetBytes(value))
@@ -412,11 +756,35 @@ namespace com.IvanMurzak.McpPlugin.Skills
             return hash.ToString("x8");
         }
 
-        static string EscapeYaml(string value)
+        /// <summary>
+        /// Escapes a string for safe use as a YAML scalar value.
+        /// Available to subclasses for use in custom <see cref="BuildMarkdown"/> overrides.
+        /// </summary>
+        protected static string EscapeYaml(string value)
         {
             if (value.Contains(':') || value.Contains('"') || value.Contains('\n'))
                 return $"\"{value.Replace("\"", "\\\"")}\"";
             return value;
+        }
+
+        // ── Private helpers ──────────────────────────────────────────────────
+
+        /// <summary>
+        /// Appends <paramref name="content"/> to <paramref name="sb"/> only when
+        /// <see cref="AdditionalContentPosition"/> matches <paramref name="targetPosition"/>
+        /// and the content is non-empty.
+        /// </summary>
+        private void AppendAdditionalContent(StringBuilder sb, string? content, SkillAdditionalContentPosition targetPosition)
+        {
+            if (string.IsNullOrEmpty(content))
+                return;
+            if (AdditionalContentPosition == SkillAdditionalContentPosition.None)
+                return;
+            if (AdditionalContentPosition != targetPosition)
+                return;
+
+            sb.AppendLine(content);
+            sb.AppendLine();
         }
     }
 }

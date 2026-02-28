@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Skills;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -53,6 +54,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly List<Type> _resourceTypes = new();
 
         protected bool isBuilt = false;
+        protected bool _skillFileGeneratorSet = false;
 
         public IServiceCollection Services => _services;
         public ServiceProvider? ServiceProvider { get; private set; }
@@ -85,6 +87,8 @@ namespace com.IvanMurzak.McpPlugin
             _services.AddSingleton<McpManager>();
             _services.AddSingleton<IMcpManager>(sp => sp.GetRequiredService<McpManager>());
             _services.AddSingleton<IClientMcpManager>(sp => sp.GetRequiredService<McpManager>());
+
+            _services.AddSingleton<ISkillFileGenerator, SkillFileGenerator>();
         }
 
         #region Tool
@@ -251,6 +255,30 @@ namespace com.IvanMurzak.McpPlugin
             return this;
         }
 
+        public virtual IMcpPluginBuilder WithSkillFileGenerator<T>()
+            where T : class, ISkillFileGenerator
+        {
+            ThrowIfBuilt();
+            ThrowIfSkillFileGeneratorSet();
+
+            _skillFileGeneratorSet = true;
+            _services.AddSingleton<ISkillFileGenerator, T>();
+            return this;
+        }
+
+        public virtual IMcpPluginBuilder WithSkillFileGenerator(ISkillFileGenerator instance)
+        {
+            ThrowIfBuilt();
+            ThrowIfSkillFileGeneratorSet();
+
+            if (instance == null)
+                throw new ArgumentNullException(nameof(instance));
+
+            _skillFileGeneratorSet = true;
+            _services.AddSingleton<ISkillFileGenerator>(instance);
+            return this;
+        }
+
         public virtual IMcpPluginBuilder WithConfigFromArgsOrEnv(string[]? args = null) => WithConfig(config =>
         {
             config.Host = ConnectionConfig.GetEndpointFromArgsOrEnv(args);
@@ -295,6 +323,12 @@ namespace com.IvanMurzak.McpPlugin
         {
             if (isBuilt)
                 throw new InvalidOperationException("The builder has already been built.");
+        }
+
+        protected virtual void ThrowIfSkillFileGeneratorSet()
+        {
+            if (_skillFileGeneratorSet)
+                throw new InvalidOperationException($"{nameof(ISkillFileGenerator)} has already been set. Only one {nameof(ISkillFileGenerator)} can be registered.");
         }
         #endregion
     }
