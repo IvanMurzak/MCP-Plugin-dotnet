@@ -54,6 +54,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly List<Type> _resourceTypes = new();
 
         protected bool isBuilt = false;
+        protected bool _skillFileGeneratorSet = false;
 
         public IServiceCollection Services => _services;
         public ServiceProvider? ServiceProvider { get; private set; }
@@ -258,7 +259,9 @@ namespace com.IvanMurzak.McpPlugin
             where T : class, ISkillFileGenerator
         {
             ThrowIfBuilt();
+            ThrowIfSkillFileGeneratorSet();
 
+            _skillFileGeneratorSet = true;
             _services.AddSingleton<ISkillFileGenerator, T>();
             return this;
         }
@@ -266,10 +269,12 @@ namespace com.IvanMurzak.McpPlugin
         public virtual IMcpPluginBuilder WithSkillFileGenerator(ISkillFileGenerator instance)
         {
             ThrowIfBuilt();
+            ThrowIfSkillFileGeneratorSet();
 
             if (instance == null)
                 throw new ArgumentNullException(nameof(instance));
 
+            _skillFileGeneratorSet = true;
             _services.AddSingleton<ISkillFileGenerator>(instance);
             return this;
         }
@@ -318,6 +323,12 @@ namespace com.IvanMurzak.McpPlugin
         {
             if (isBuilt)
                 throw new InvalidOperationException("The builder has already been built.");
+        }
+
+        protected virtual void ThrowIfSkillFileGeneratorSet()
+        {
+            if (_skillFileGeneratorSet)
+                throw new InvalidOperationException($"{nameof(ISkillFileGenerator)} has already been set. Only one {nameof(ISkillFileGenerator)} can be registered.");
         }
         #endregion
     }
