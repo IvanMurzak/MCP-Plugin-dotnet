@@ -40,8 +40,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             app.MapHub<McpServerHub>(Consts.Hub.RemoteApp, options =>
             {
                 options.Transports = HttpTransports.All;
-                options.ApplicationMaxBufferSize = 1024 * 1024 * 10; // 10 MB
-                options.TransportMaxBufferSize = 1024 * 1024 * 10; // 10 MB
+                options.ApplicationMaxBufferSize = 1024 * 1024 * 4; // 4 MB
+                options.TransportMaxBufferSize = 1024 * 1024 * 4; // 4 MB
             });
 
             // Delegate MCP endpoint mapping to transport layer

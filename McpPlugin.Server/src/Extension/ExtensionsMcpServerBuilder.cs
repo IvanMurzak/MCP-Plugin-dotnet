@@ -48,7 +48,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             signalRConfigure ??= configure =>
             {
                 configure.EnableDetailedErrors = false;
-                configure.MaximumReceiveMessageSize = 1024 * 1024 * 256; // 256 MB
+                configure.MaximumReceiveMessageSize = 1024 * 1024 * 4; // 4 MB
                 configure.ClientTimeoutInterval = TimeSpan.FromMinutes(5);
                 configure.KeepAliveInterval = TimeSpan.FromSeconds(30);
                 configure.HandshakeTimeout = TimeSpan.FromMinutes(2);
