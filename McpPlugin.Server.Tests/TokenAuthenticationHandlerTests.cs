@@ -10,6 +10,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using Microsoft.AspNetCore.Authentication;
