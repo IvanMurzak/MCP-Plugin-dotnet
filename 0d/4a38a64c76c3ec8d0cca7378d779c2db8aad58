@@ -1,0 +1,79 @@
+McpPlugin.Server.Tests/Webhooks/WebhookEventCollectorTests.cs
+  b622bb861481e4d0 1-327
+McpPlugin.Server/src/Transport/StreamableHttpTransportLayer.cs
+  b622bb861481e4d0 81
+McpPlugin.Server/src/McpServerService.cs
+  b622bb861481e4d0 19,21,46,70,90,219-227,250-251,353-371
+McpPlugin.Server/src/Webhooks/Models/ResourceEvent.cs
+  b622bb861481e4d0 1-23
+McpPlugin.Server/src/Webhooks/Models/ConnectionEvent.cs
+  b622bb861481e4d0 1-36
+McpPlugin.Server.Tests/Webhooks/ToolCallEventTests.cs
+  b622bb861481e4d0 1-128
+McpPlugin.Server/src/Webhooks/Models/ToolCallEvent.cs
+  b622bb861481e4d0 1-35
+McpPlugin.Server/src/Webhooks/Services/NoOpWebhookEventCollector.cs
+  b622bb861481e4d0 1-25
+McpPlugin.Server/src/Webhooks/Services/IWebhookDispatcher.cs
+  b622bb861481e4d0 1-17
+McpPlugin.Server.Tests/Webhooks/PromptEventTests.cs
+  b622bb861481e4d0 1-69
+McpPlugin.Server.Tests/Webhooks/ResourceEventTests.cs
+  b622bb861481e4d0 1-70
+McpPlugin.Server/src/Webhooks/Models/PromptEvent.cs
+  b622bb861481e4d0 1-23
+McpPlugin.Server/src/Webhooks/Services/WebhookMessage.cs
+  b622bb861481e4d0 1-19
+McpPlugin.Server/src/Webhooks/Models/WebhookPayload.cs
+  b622bb861481e4d0 1-30
+McpPlugin.Server/src/Extension/ExtensionsMcpServer.cs
+  b622bb861481e4d0 12-15,19,54-78,84-98,105-119,143-170
+specs/001-analytics-webhooks/tasks.md
+  b622bb861481e4d0 22-23,33-40,56-58,62-69,85,89-90,106,110-112,128,132,148,152,162-166
+McpPlugin.Server/src/Webhooks/Services/WebhookEventCollector.cs
+  b622bb861481e4d0 1-177
+McpPlugin.Common/src/Utils/Consts.MCP.cs
+  b622bb861481e4d0 38,49
+McpPlugin.Server/src/Hub/McpServerHub.cs
+  b622bb861481e4d0 21,35,46-47,57,67-74
+McpPlugin.Server/src/Webhooks/Extensions/WebhookServiceExtensions.cs
+  b622bb861481e4d0 1-55
+McpPlugin.Server/src/Extension/ExtensionsMcpServerBuilder.cs
+  b622bb861481e4d0 16,103-104
+McpPlugin.Common/src/Utils/DataArguments.cs
+  b622bb861481e4d0 23-31,41-49,95-124,159-188
+McpPlugin.Server.Tests/Webhooks/ConnectionEventTests.cs
+  b622bb861481e4d0 1-176
+McpPlugin.Server.Tests/Webhooks/WebhookDispatcherTests.cs
+  b622bb861481e4d0 1-160
+McpPlugin.Server/src/Webhooks/Services/WebhookDispatcher.cs
+  b622bb861481e4d0 1-105
+McpPlugin.Server/src/Webhooks/Config/WebhookOptions.cs
+  b622bb861481e4d0 1-118
+McpPlugin.Server.Tests/Webhooks/WebhookOptionsTests.cs
+  b622bb861481e4d0 1-201
+McpPlugin.Server/src/Webhooks/Services/IWebhookEventCollector.cs
+  b622bb861481e4d0 1-25
+McpPlugin.Common/src/Utils/Consts.MCP.Webhook.cs
+  b622bb861481e4d0 1-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "0d4a38a64c76c3ec8d0cca7378d779c2db8aad58",
+  "prompts": {
+    "b622bb861481e4d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9b703f5d-827e-4696-9944-0d4f0f9f547e",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 3684,
+      "total_deletions": 1608,
+      "accepted_lines": 2436,
+      "overriden_lines": 0
+    }
+  }
+}
