@@ -37,8 +37,6 @@ namespace com.IvanMurzak.McpPlugin.Server
             // Validate configuration for the selected deployment mode
             strategy.Validate(dataArguments);
 
-            var webhookOptions = WebhookOptions.FromDataArguments(dataArguments);
-
             // Setup MCP Server -------------------------------------------------------------
             var mcpServerBuilder = services
                 .AddMcpServer(options =>
@@ -54,9 +52,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                         options.Capabilities.Tools.ListChanged = true;
                         options.Handlers.CallToolHandler = async (request, ct) =>
                         {
+                            var webhookOptions = request?.Services?.GetService<WebhookOptions>();
                             Stopwatch? stopwatch = null;
                             long requestSize = 0;
-                            if (webhookOptions.IsToolEnabled)
+                            if (webhookOptions?.IsToolEnabled == true)
                             {
                                 stopwatch = Stopwatch.StartNew();
                                 requestSize = MeasureSize(request?.Params?.Arguments);
@@ -64,7 +63,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                             var result = await ToolRouter.Call(request!, ct);
 
-                            if (webhookOptions.IsToolEnabled)
+                            if (webhookOptions?.IsToolEnabled == true)
                             {
                                 stopwatch!.Stop();
                                 var collector = request?.Services?.GetService<IWebhookEventCollector>();
@@ -94,7 +93,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                         {
                             var result = await ResourceRouter.Read(request, ct);
 
-                            if (webhookOptions.IsResourceEnabled)
+                            var webhookOptions = request?.Services?.GetService<WebhookOptions>();
+                            if (webhookOptions?.IsResourceEnabled == true)
                             {
                                 var collector = request?.Services?.GetService<IWebhookEventCollector>();
                                 if (collector != null)
@@ -118,7 +118,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                         {
                             var result = await PromptRouter.Get(request, ct);
 
-                            if (webhookOptions.IsPromptEnabled)
+                            var webhookOptions = request?.Services?.GetService<WebhookOptions>();
+                            if (webhookOptions?.IsPromptEnabled == true)
                             {
                                 var collector = request?.Services?.GetService<IWebhookEventCollector>();
                                 if (collector != null)

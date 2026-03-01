@@ -151,6 +151,55 @@ namespace McpPlugin.Server.Tests.Webhooks
             callCount.ShouldBe(2);
         }
 
+        [Fact]
+        public async Task ExecuteAsync_WhenRequestExceedsTimeout_CancelsAndContinues()
+        {
+            var mockLogger = new Mock<ILogger<WebhookDispatcher>>();
+            var options = new WebhookOptions("https://example.com/hooks", null, null, null, null, null, 500);
+
+            var callCount = 0;
+            var timeoutTokenWasCancelled = false;
+            var secondProcessed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            var handler = new AsyncMockHttpMessageHandler(async (req, ct) =>
+            {
+                var current = Interlocked.Increment(ref callCount);
+                if (current == 1)
+                {
+                    try
+                    {
+                        await Task.Delay(Timeout.Infinite, ct);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        timeoutTokenWasCancelled = true;
+                        throw;
+                    }
+                }
+                secondProcessed.TrySetResult(true);
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            });
+
+            var httpClient = new HttpClient(handler);
+            var httpFactory = new Mock<IHttpClientFactory>();
+            httpFactory.Setup(f => f.CreateClient("webhook")).Returns(httpClient);
+
+            var dispatcher = new WebhookDispatcher(mockLogger.Object, httpFactory.Object, options);
+
+            dispatcher.TryEnqueue(new WebhookMessage("https://example.com/hooks", "{\"slow\":true}", null, null));
+            dispatcher.TryEnqueue(new WebhookMessage("https://example.com/hooks", "{\"fast\":true}", null, null));
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            await dispatcher.StartAsync(cts.Token);
+
+            await secondProcessed.Task.WaitAsync(cts.Token);
+
+            await dispatcher.StopAsync(cts.Token);
+
+            callCount.ShouldBe(2);
+            timeoutTokenWasCancelled.ShouldBeTrue();
+        }
+
         sealed class MockHttpMessageHandler : HttpMessageHandler
         {
             readonly Func<HttpRequestMessage, HttpResponseMessage> _handler;
@@ -163,6 +212,21 @@ namespace McpPlugin.Server.Tests.Webhooks
             protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             {
                 return Task.FromResult(_handler(request));
+            }
+        }
+
+        sealed class AsyncMockHttpMessageHandler : HttpMessageHandler
+        {
+            readonly Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> _handler;
+
+            public AsyncMockHttpMessageHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler)
+            {
+                _handler = handler;
+            }
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                return _handler(request, cancellationToken);
             }
         }
     }

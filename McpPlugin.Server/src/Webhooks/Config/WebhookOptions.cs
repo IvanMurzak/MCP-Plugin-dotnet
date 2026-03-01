@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using Microsoft.Extensions.Logging;
 
@@ -34,6 +35,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
         public bool IsConnectionEnabled => ConnectionWebhookUrl != null;
         public bool HasToken => TokenValue != null;
 
+        readonly List<(string Category, string Url)> _invalidUrls = new List<(string, string)>();
+
         public WebhookOptions(
             string? toolWebhookUrl,
             string? promptWebhookUrl,
@@ -43,10 +46,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             string? headerName,
             int timeoutMs)
         {
-            ToolWebhookUrl = ValidateUrl(toolWebhookUrl);
-            PromptWebhookUrl = ValidateUrl(promptWebhookUrl);
-            ResourceWebhookUrl = ValidateUrl(resourceWebhookUrl);
-            ConnectionWebhookUrl = ValidateUrl(connectionWebhookUrl);
+            ToolWebhookUrl = ValidateUrl(toolWebhookUrl, "Tool");
+            PromptWebhookUrl = ValidateUrl(promptWebhookUrl, "Prompt");
+            ResourceWebhookUrl = ValidateUrl(resourceWebhookUrl, "Resource");
+            ConnectionWebhookUrl = ValidateUrl(connectionWebhookUrl, "Connection");
             TokenValue = tokenValue;
             HeaderName = IsValidHeaderName(headerName) ? headerName! : DefaultHeaderName;
             TimeoutMs = timeoutMs > 0 ? timeoutMs : DefaultTimeoutMs;
@@ -67,10 +70,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
 
         public void LogWarnings(ILogger logger)
         {
+            foreach (var (category, url) in _invalidUrls)
+            {
+                logger.LogWarning("Invalid webhook URL for {Category}: '{Url}'. URL must be an absolute HTTP or HTTPS URL. Treating as unconfigured.",
+                    category, url);
+            }
+
             if (!IsEnabled)
                 return;
 
-            if (IsEnabled && !HasToken)
+            if (!HasToken)
                 logger.LogWarning("Webhook URLs configured but no security token set. Webhooks will be sent without authentication.");
 
             CheckHttpWarning(logger, ToolWebhookUrl, "Tool");
@@ -88,7 +97,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             }
         }
 
-        static string? ValidateUrl(string? url)
+        string? ValidateUrl(string? url, string category)
         {
             if (string.IsNullOrWhiteSpace(url))
                 return null;
@@ -99,6 +108,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
                 return url;
             }
 
+            _invalidUrls.Add((category, url));
             return null;
         }
 

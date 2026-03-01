@@ -90,15 +90,22 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             if (message.HeaderName != null && message.TokenValue != null)
                 request.Headers.TryAddWithoutValidation(message.HeaderName, message.TokenValue);
 
-            using var response = await client.SendAsync(request, cts.Token);
+            try
+            {
+                using var response = await client.SendAsync(request, cts.Token);
 
-            if (response.IsSuccessStatusCode)
-            {
-                _logger.LogTrace("Webhook delivered to {Url}. Status: {StatusCode}.", message.TargetUrl, (int)response.StatusCode);
+                if (response.IsSuccessStatusCode)
+                {
+                    _logger.LogTrace("Webhook delivered to {Url}. Status: {StatusCode}.", message.TargetUrl, (int)response.StatusCode);
+                }
+                else
+                {
+                    _logger.LogWarning("Webhook delivery to {Url} returned {StatusCode}.", message.TargetUrl, (int)response.StatusCode);
+                }
             }
-            else
+            catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested)
             {
-                _logger.LogWarning("Webhook delivery to {Url} returned {StatusCode}.", message.TargetUrl, (int)response.StatusCode);
+                _logger.LogWarning("Webhook delivery to {Url} timed out after {TimeoutMs}ms.", message.TargetUrl, _options.TimeoutMs);
             }
         }
     }
