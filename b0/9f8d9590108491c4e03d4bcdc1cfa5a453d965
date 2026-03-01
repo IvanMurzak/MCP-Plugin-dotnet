@@ -1,0 +1,64 @@
+McpPlugin.Server.Tests/InitialClientDataTests.cs
+  ed34d766c09d2ef4 11,20,48-52,68,89-91,111-112,143-144,181-184,213,239
+McpPlugin.Server.Tests/RequiredAuthMcpStrategyTests.cs
+  ed34d766c09d2ef4 20,33,39,48,58,72-73,85-86,102-103,122-123,142-143,165-167,187,206,225,243,266,290,303,320,342
+McpPlugin.Server.Tests/TransportFactoryTests.cs
+  ed34d766c09d2ef4 14,30-31,41-42,52-53
+McpPlugin.Server.Tests/ExtensionsContentBlockTests.cs
+  ed34d766c09d2ef4 12,18,39-40,53-54,67,69,82,95-96,109,111,124,137-138,152,154-155,170,172,185-186,199-200,218-221,234-236,249-252,267-269,282,295,297-298,311
+CLAUDE.md
+  ed34d766c09d2ef4 83
+.github/copilot-instructions.md
+  ed34d766c09d2ef4 28
+McpPlugin.Server.Tests/NotificationRoutingTests.cs
+  ed34d766c09d2ef4 18
+McpPlugin.Server.Tests/McpSessionTrackerTests.cs
+  ed34d766c09d2ef4 11,17,41,48-50,67-68,71-72,78,84,95-96,108-110,117-118,129-130,143-144,157-159,172-173,190-193,205,221-223,225-226,242-243,256,266,281-282,285,296-299
+McpPlugin.Server.Tests/McpPlugin.Server.Tests.csproj
+  ed34d766c09d2ef4 18
+.specify/memory/constitution.md
+  19794d82eb7b0d38 4,7-8,11,17-19,22-26,90,97-98,102-104,209
+McpPlugin.Server.Tests/McpStrategyFactoryTests.cs
+  ed34d766c09d2ef4 14,30-31,41-42,52-53
+McpPlugin.Server.Tests/ClientUtilsTokenRoutingTests.cs
+  ed34d766c09d2ef4 14,41-42,58,76-77,83,89,95,101,107,124-127,149-150
+McpPlugin.Server.Tests/NoAuthMcpStrategyTests.cs
+  ed34d766c09d2ef4 20,33,39,49,59,73-74,88-89,105,127,146,153-154,169,185
+McpPlugin.Server.Tests/ClientRegistrationStoreTests.cs
+  ed34d766c09d2ef4 13,33-36,46-48,59-60,73,86,96,110-112,126,136,151-152
+McpPlugin.Server.Tests/TokenAuthenticationHandlerTests.cs
+  ed34d766c09d2ef4 13,21,89,96,103,110-111,126-129,142-144,155-156,174-175,225-228,241-242,257-260,308-310,314-316,330-331,335-337
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.6",
+  "base_commit_sha": "b09f8d9590108491c4e03d4bcdc1cfa5a453d965",
+  "prompts": {
+    "19794d82eb7b0d38": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4df06347-ff62-49c4-9176-7f6665a9be2c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 212,
+      "total_deletions": 204,
+      "accepted_lines": 92,
+      "overriden_lines": 0
+    },
+    "ed34d766c09d2ef4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ed0b30ae-86ee-4758-906a-eaa2ca53b53c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 2553,
+      "total_deletions": 2553,
+      "accepted_lines": 769,
+      "overriden_lines": 0
+    }
+  }
+}
