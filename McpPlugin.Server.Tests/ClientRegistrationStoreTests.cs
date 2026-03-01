@@ -33,7 +33,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             client.ClientId.ShouldNotBeNullOrEmpty();
             client.ClientSecret.ShouldNotBeNullOrEmpty();
             client.ClientName.ShouldBe(clientName);
-            (DateTimeOffset.UtcNow - client.IssuedAt).Duration().TotalSeconds.ShouldBeLessThan(5);
+            (DateTimeOffset.UtcNow - client.IssuedAt).Duration().ShouldBeLessThanOrEqualTo(TimeSpan.FromSeconds(5));
         }
 
         [Fact]
