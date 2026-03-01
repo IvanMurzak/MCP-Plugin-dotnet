@@ -537,7 +537,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             // Assert - Should return an error about duplicate parameters
             response.ShouldNotBeNull();
             response.Status.ShouldBe(ResponseStatus.Error);
-            response.Message.ShouldContain("Duplicate parameter");
+            response.Message.ShouldNotBeNull().ShouldContain("Duplicate parameter");
         }
 
         [Fact]
@@ -560,7 +560,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             // Assert - Should return an error about duplicate parameters
             response.ShouldNotBeNull();
             response.Status.ShouldBe(ResponseStatus.Error);
-            response.Message.ShouldContain("Duplicate parameter");
+            response.Message.ShouldNotBeNull().ShouldContain("Duplicate parameter");
         }
 
         #endregion
