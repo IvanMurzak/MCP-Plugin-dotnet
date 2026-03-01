@@ -580,8 +580,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             // Assert - Both "left" and "right" should be in the lookup (no conflicts)
             lookup.ShouldNotBeNull();
-            lookup!.ShouldContainKey("left");
-            lookup.ShouldContainKey("right");
+            lookup!.Keys.ShouldContain("left");
+            lookup.Keys.ShouldContain("right");
         }
 
         [Fact]
