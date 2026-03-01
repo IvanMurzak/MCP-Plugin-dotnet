@@ -1,14 +1,14 @@
 /*
-┌────────────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
-│  Copyright (c) 2025 Ivan Murzak                                        │
-│  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
-└────────────────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  Author: Ivan Murzak (https://github.com/IvanMurzak)                   â”‚
+â”‚  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  â”‚
+â”‚  Copyright (c) 2025 Ivan Murzak                                        â”‚
+â”‚  Licensed under the Apache License, Version 2.0.                       â”‚
+â”‚  See the LICENSE file in the project root for more information.        â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 */
 using com.IvanMurzak.McpPlugin.Common;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Tests.Data
@@ -22,9 +22,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var version = new Version();
 
             // Assert
-            version.Api.Should().Be("1.0.0");
-            version.Plugin.Should().Be("1.0.0");
-            version.Environment.Should().BeEmpty();
+            version.Api.ShouldBe("1.0.0");
+            version.Plugin.ShouldBe("1.0.0");
+            version.Environment.ShouldBeEmpty();
         }
 
         [Fact]
@@ -37,7 +37,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             version.Api = "2.0.0";
 
             // Assert
-            version.Api.Should().Be("2.0.0");
+            version.Api.ShouldBe("2.0.0");
         }
 
         [Fact]
@@ -50,7 +50,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             version.Plugin = "3.5.2";
 
             // Assert
-            version.Plugin.Should().Be("3.5.2");
+            version.Plugin.ShouldBe("3.5.2");
         }
 
         [Fact]
@@ -63,7 +63,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             version.Environment = "2022.3.10f1";
 
             // Assert
-            version.Environment.Should().Be("2022.3.10f1");
+            version.Environment.ShouldBe("2022.3.10f1");
         }
 
         [Fact]
@@ -78,9 +78,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             };
 
             // Assert
-            version.Api.Should().Be("2.1.0");
-            version.Plugin.Should().Be("4.3.2");
-            version.Environment.Should().Be("2023.1.5f1");
+            version.Api.ShouldBe("2.1.0");
+            version.Plugin.ShouldBe("4.3.2");
+            version.Environment.ShouldBe("2023.1.5f1");
         }
     }
 }

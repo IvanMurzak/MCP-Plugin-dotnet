@@ -137,7 +137,7 @@ SynchronizationContext by default, unlike `System.Reactive`.
 | `R3` | Reactive observables and properties | All packages |
 | `Microsoft.Extensions.Logging` | Logging abstractions | All packages |
 | `Microsoft.Extensions.DependencyInjection` | DI container | All packages |
-| `xUnit` + `FluentAssertions` + `Moq` | Testing | McpPlugin.Tests |
+| `xUnit` + `Shouldly` + `Moq` | Testing | McpPlugin.Tests |
 
 ### Transport Protocol
 

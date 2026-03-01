@@ -1,17 +1,17 @@
 /*
-┌────────────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
-│  Copyright (c) 2025 Ivan Murzak                                        │
-│  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
-└────────────────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  Author: Ivan Murzak (https://github.com/IvanMurzak)                   â”‚
+â”‚  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  â”‚
+â”‚  Copyright (c) 2025 Ivan Murzak                                        â”‚
+â”‚  Licensed under the Apache License, Version 2.0.                       â”‚
+â”‚  See the LICENSE file in the project root for more information.        â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 */
 
 using System;
 using com.IvanMurzak.McpPlugin.Skills;
 using com.IvanMurzak.ReflectorNet;
-using FluentAssertions;
+using Shouldly;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Version = com.IvanMurzak.McpPlugin.Common.Version;
@@ -24,7 +24,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         private readonly Version _version = new Version();
         private readonly Reflector _reflector = new Reflector();
 
-        // ── WithSkillFileGenerator<T>() ───────────────────────────────────────────
+        // â”€â”€ WithSkillFileGenerator<T>() â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
         [Fact]
         public void WithSkillFileGenerator_Generic_FirstCall_DoesNotThrow()
@@ -33,7 +33,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             Action act = () => builder.WithSkillFileGenerator<CustomSkillFileGenerator>();
 
-            act.Should().NotThrow();
+            Should.NotThrow(act);
         }
 
         [Fact]
@@ -44,11 +44,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             Action act = () => builder.WithSkillFileGenerator<CustomSkillFileGenerator>();
 
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage($"*{nameof(ISkillFileGenerator)}*already been set*");
+            var ex = Should.Throw<InvalidOperationException>(act);
+            ex.Message.ShouldContain(nameof(ISkillFileGenerator));
+            ex.Message.ShouldContain("already been set");
         }
 
-        // ── WithSkillFileGenerator(instance) ─────────────────────────────────────
+        // â”€â”€ WithSkillFileGenerator(instance) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
         [Fact]
         public void WithSkillFileGenerator_Instance_FirstCall_DoesNotThrow()
@@ -58,7 +59,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             Action act = () => builder.WithSkillFileGenerator(instance);
 
-            act.Should().NotThrow();
+            Should.NotThrow(act);
         }
 
         [Fact]
@@ -69,8 +70,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             Action act = () => builder.WithSkillFileGenerator(new CustomSkillFileGenerator());
 
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage($"*{nameof(ISkillFileGenerator)}*already been set*");
+            var ex = Should.Throw<InvalidOperationException>(act);
+            ex.Message.ShouldContain(nameof(ISkillFileGenerator));
+            ex.Message.ShouldContain("already been set");
         }
 
         [Fact]
@@ -80,10 +82,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             Action act = () => builder.WithSkillFileGenerator(null!);
 
-            act.Should().Throw<ArgumentNullException>();
+            Should.Throw<ArgumentNullException>(act);
         }
 
-        // ── cross-overload duplicate detection ────────────────────────────────────
+        // â”€â”€ cross-overload duplicate detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
         [Fact]
         public void WithSkillFileGenerator_Generic_ThenInstance_ThrowsInvalidOperationException()
@@ -93,8 +95,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             Action act = () => builder.WithSkillFileGenerator(new CustomSkillFileGenerator());
 
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage($"*{nameof(ISkillFileGenerator)}*already been set*");
+            var ex = Should.Throw<InvalidOperationException>(act);
+            ex.Message.ShouldContain(nameof(ISkillFileGenerator));
+            ex.Message.ShouldContain("already been set");
         }
 
         [Fact]
@@ -105,11 +108,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             Action act = () => builder.WithSkillFileGenerator<CustomSkillFileGenerator>();
 
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage($"*{nameof(ISkillFileGenerator)}*already been set*");
+            var ex = Should.Throw<InvalidOperationException>(act);
+            ex.Message.ShouldContain(nameof(ISkillFileGenerator));
+            ex.Message.ShouldContain("already been set");
         }
 
-        // ── after-build guard ─────────────────────────────────────────────────────
+        // â”€â”€ after-build guard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
         [Fact]
         public void WithSkillFileGenerator_Generic_AfterBuild_ThrowsInvalidOperationException()
@@ -119,8 +123,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             Action act = () => builder.WithSkillFileGenerator<CustomSkillFileGenerator>();
 
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("The builder has already been built.");
+            Should.Throw<InvalidOperationException>(act)
+                .Message.ShouldBe("The builder has already been built.");
         }
 
         [Fact]
@@ -131,11 +135,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             Action act = () => builder.WithSkillFileGenerator(new CustomSkillFileGenerator());
 
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("The builder has already been built.");
+            Should.Throw<InvalidOperationException>(act)
+                .Message.ShouldBe("The builder has already been built.");
         }
 
-        // ── DI resolution ─────────────────────────────────────────────────────────
+        // â”€â”€ DI resolution â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
         [Fact]
         public void WithSkillFileGenerator_Generic_Build_ResolvesCustomType()
@@ -146,7 +150,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var resolved = builder.ServiceProvider!.GetRequiredService<ISkillFileGenerator>();
 
-            resolved.Should().BeOfType<CustomSkillFileGenerator>();
+            resolved.ShouldBeOfType<CustomSkillFileGenerator>();
         }
 
         [Fact]
@@ -159,7 +163,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var resolved = builder.ServiceProvider!.GetRequiredService<ISkillFileGenerator>();
 
-            resolved.Should().BeSameAs(instance);
+            resolved.ShouldBeSameAs(instance);
         }
 
         [Fact]
@@ -170,10 +174,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var resolved = builder.ServiceProvider!.GetRequiredService<ISkillFileGenerator>();
 
-            resolved.Should().BeOfType<SkillFileGenerator>();
+            resolved.ShouldBeOfType<SkillFileGenerator>();
         }
 
-        // ── helpers ────────────────────────────────────────────────────────────────
+        // â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
         private sealed class CustomSkillFileGenerator : SkillFileGenerator { }
     }

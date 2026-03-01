@@ -1,11 +1,11 @@
 /*
-┌────────────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
-│  Copyright (c) 2025 Ivan Murzak                                        │
-│  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
-└────────────────────────────────────────────────────────────────────────┘
+Ã¢â€Å’Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â
+Ã¢â€â€š  Author: Ivan Murzak (https://github.com/IvanMurzak)                   Ã¢â€â€š
+Ã¢â€â€š  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  Ã¢â€â€š
+Ã¢â€â€š  Copyright (c) 2025 Ivan Murzak                                        Ã¢â€â€š
+Ã¢â€â€š  Licensed under the Apache License, Version 2.0.                       Ã¢â€â€š
+Ã¢â€â€š  See the LICENSE file in the project root for more information.        Ã¢â€â€š
+Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ
 */
 using System;
 using System.Linq;
@@ -19,7 +19,7 @@ using com.IvanMurzak.McpPlugin.Tests.Data.Other;
 using com.IvanMurzak.McpPlugin.Tests.Infrastructure;
 using com.IvanMurzak.ReflectorNet;
 using com.IvanMurzak.ReflectorNet.Utils;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 using Xunit.Abstractions;
 using Version = com.IvanMurzak.McpPlugin.Common.Version;
@@ -41,29 +41,29 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
         async Task ValidateListToolResponse(RequestListTool request, Task<ResponseData<ResponseListTool[]>>? listToolTask, string expectedToolName, string expectedToolTitle)
         {
-            listToolTask.Should().NotBeNull();
+            listToolTask.ShouldNotBeNull();
 
             var response = await listToolTask;
-            response.Should().NotBeNull();
-            response.RequestID.Should().Be(request.RequestID);
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Message.Should().NotBeNull();
-            response.Value.Should().NotBeNull();
-            response.Value!.Length.Should().Be(1);
-            response.Value![0].Name.Should().Be(expectedToolName);
-            response.Value![0].Title.Should().Be(expectedToolTitle);
+            response.ShouldNotBeNull();
+            response.RequestID.ShouldBe(request.RequestID);
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Message.ShouldNotBeNull();
+            response.Value.ShouldNotBeNull();
+            response.Value!.Length.ShouldBe(1);
+            response.Value![0].Name.ShouldBe(expectedToolName);
+            response.Value![0].Title.ShouldBe(expectedToolTitle);
         }
 
         private static void CompareJsonElements(string name, JsonElement? actual, JsonElement? expected)
         {
             if (expected == null)
             {
-                actual.Should().BeNull(name);
+                actual.ShouldBeNull(name);
             }
             else
             {
-                actual.Should().NotBeNull(name);
-                actual.Value.ValueKind.Should().Be(expected.Value.ValueKind, name);
+                actual.ShouldNotBeNull(name);
+                actual.Value.ValueKind.ShouldBe(expected.Value.ValueKind, name);
 
                 // First try exact string comparison for performance
                 if (actual.ToString() == expected.ToString())
@@ -76,7 +76,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
         private static void CompareJsonElementsRecursive(string path, JsonElement actual, JsonElement expected)
         {
-            actual.ValueKind.Should().Be(expected.ValueKind, $"{path}: ValueKind mismatch.");
+            actual.ValueKind.ShouldBe(expected.ValueKind, $"{path}: ValueKind mismatch.");
 
             switch (expected.ValueKind)
             {
@@ -84,12 +84,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     var expectedProps = expected.EnumerateObject().ToList();
                     var actualProps = actual.EnumerateObject().ToList();
 
-                    actualProps.Count.Should().Be(expectedProps.Count, $"{path}: Object property count mismatch. \r\nExpected properties: \r\n  {string.Join(",\r\n  ", expectedProps.Select(p => p.Name))}. \r\n\r\nActual properties: \r\n  {string.Join(",\r\n  ", actualProps.Select(p => p.Name))}");
+                    actualProps.Count.ShouldBe(expectedProps.Count, $"{path}: Object property count mismatch. \r\nExpected properties: \r\n  {string.Join(",\r\n  ", expectedProps.Select(p => p.Name))}. \r\n\r\nActual properties: \r\n  {string.Join(",\r\n  ", actualProps.Select(p => p.Name))}");
 
                     foreach (var expectedProp in expectedProps)
                     {
                         var actualProp = actualProps.FirstOrDefault(p => p.Name == expectedProp.Name);
-                        actualProp.Should().NotBeNull($"{path}: Missing property '{expectedProp.Name}'.\r\nExpected: {expected.ToPrettyJson()}\r\nActual: {actual.ToPrettyJson()}");
+                        actualProp.Name.ShouldNotBeNull($"{path}: Missing property '{expectedProp.Name}'.\r\nExpected: {expected.ToPrettyJson()}\r\nActual: {actual.ToPrettyJson()}");
 
                         CompareJsonElementsRecursive($"{path}/{expectedProp.Name}", actualProp.Value, expectedProp.Value);
                     }
@@ -99,7 +99,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     var expectedArray = expected.EnumerateArray().ToList();
                     var actualArray = actual.EnumerateArray().ToList();
 
-                    actualArray.Count.Should().Be(expectedArray.Count, $"{path}: Array length mismatch.\r\nExpected: {expected.ToPrettyJson()}\r\nActual: {actual.ToPrettyJson()}");
+                    actualArray.Count.ShouldBe(expectedArray.Count, $"{path}: Array length mismatch.\r\nExpected: {expected.ToPrettyJson()}\r\nActual: {actual.ToPrettyJson()}");
 
                     for (int i = 0; i < expectedArray.Count; i++)
                     {
@@ -108,31 +108,31 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     break;
 
                 case JsonValueKind.String:
-                    actual.GetString().Should().Be(expected.GetString(), $"{path}: String value mismatch.");
+                    actual.GetString().ShouldBe(expected.GetString(), $"{path}: String value mismatch.");
                     break;
 
                 case JsonValueKind.Number:
                     if (expected.TryGetInt32(out int expectedInt))
                     {
-                        actual.GetInt32().Should().Be(expectedInt, $"{path}: Integer value mismatch.");
+                        actual.GetInt32().ShouldBe(expectedInt, $"{path}: Integer value mismatch.");
                     }
                     else if (expected.TryGetInt64(out long expectedLong))
                     {
-                        actual.GetInt64().Should().Be(expectedLong, $"{path}: Long value mismatch.");
+                        actual.GetInt64().ShouldBe(expectedLong, $"{path}: Long value mismatch.");
                     }
                     else if (expected.TryGetDouble(out double expectedDouble))
                     {
-                        actual.GetDouble().Should().Be(expectedDouble, $"{path}: Double value mismatch.");
+                        actual.GetDouble().ShouldBe(expectedDouble, $"{path}: Double value mismatch.");
                     }
                     else
                     {
-                        actual.GetDecimal().Should().Be(expected.GetDecimal(), $"{path}: Decimal value mismatch.");
+                        actual.GetDecimal().ShouldBe(expected.GetDecimal(), $"{path}: Decimal value mismatch.");
                     }
                     break;
 
                 case JsonValueKind.True:
                 case JsonValueKind.False:
-                    actual.GetBoolean().Should().Be(expected.GetBoolean(), $"{path}: Boolean value mismatch.");
+                    actual.GetBoolean().ShouldBe(expected.GetBoolean(), $"{path}: Boolean value mismatch.");
                     break;
 
                 case JsonValueKind.Null:
@@ -146,12 +146,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
         private async Task ValidateListToolSchema(Task<ResponseData<ResponseListTool[]>>? listToolTask, JsonElement? expectedInputSchema = null, JsonElement? expectedOutputSchema = null)
         {
-            listToolTask.Should().NotBeNull();
+            listToolTask.ShouldNotBeNull();
 
             var response = await listToolTask;
-            response.Should().NotBeNull();
-            response.Value.Should().NotBeNull();
-            response.Value!.Length.Should().Be(1);
+            response.ShouldNotBeNull();
+            response.Value.ShouldNotBeNull();
+            response.Value!.Length.ShouldBe(1);
 
             _output.WriteLine("==================================");
             _output.WriteLine("Validating InputSchema and OutputSchema...");

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using com.IvanMurzak.ReflectorNet;
-using FluentAssertions;
+using Shouldly;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -42,7 +42,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         {
             var result = _manager.IsMatch("/files/{id}/content", "/files/123/content");
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
         }
 
         [Fact]
@@ -50,7 +50,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         {
             var result = _manager.IsMatch("/files/{id}/content", "/files/123/other");
 
-            result.Should().BeFalse();
+            result.ShouldBeFalse();
         }
 
         [Fact]
@@ -58,9 +58,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         {
             var dict = _manager.ParseUriParameters("/files/{id}", "/files/123/other");
 
-            dict.Should().ContainKey("uri").WhoseValue.Should().Be("/files/123/other");
-            dict.Should().ContainKey("id");
-            dict["id"].Should().Be("123/other");
+            dict.ShouldContainKey("uri");
+            dict["uri"].ShouldBe("/files/123/other");
+            dict.ShouldContainKey("id");
+            dict["id"].ShouldBe("123/other");
         }
 
         [Fact]
@@ -68,9 +69,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         {
             var dict = _manager.ParseUriParameters("/{a}/{b}", "/one/two");
 
-            dict["a"].Should().Be("one");
-            dict["b"].Should().Be("two");
-            dict["uri"].Should().Be("/one/two");
+            dict["a"].ShouldBe("one");
+            dict["b"].ShouldBe("two");
+            dict["uri"].ShouldBe("/one/two");
         }
 
         [Fact]
@@ -80,12 +81,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var uri = "gameObject://currentScene/Player/Armature/Hand";
 
             var isMatch = _manager.IsMatch(template, uri);
-            isMatch.Should().BeTrue();
+            isMatch.ShouldBeTrue();
 
             var dict = _manager.ParseUriParameters(template, uri);
-            dict.Should().ContainKey("path");
-            dict["path"].Should().Be("Player/Armature/Hand");
-            dict["uri"].Should().Be(uri);
+            dict.ShouldContainKey("path");
+            dict["path"].ShouldBe("Player/Armature/Hand");
+            dict["uri"].ShouldBe(uri);
         }
 
         [Fact]
@@ -102,9 +103,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var result = _manager.FindResourceContentRunner("/files/123", resources, out var uriTemplate);
 
-            result.Should().NotBeNull();
-            result.Should().BeSameAs(mockResource.Object);
-            uriTemplate.Should().Be("/files/{id}");
+            result.ShouldNotBeNull();
+            result.ShouldBeSameAs(mockResource.Object);
+            uriTemplate.ShouldBe("/files/{id}");
         }
 
         [Fact]
@@ -121,8 +122,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var result = _manager.FindResourceContentRunner("/users/123", resources, out var uriTemplate);
 
-            result.Should().BeNull();
-            uriTemplate.Should().BeNull();
+            result.ShouldBeNull();
+            uriTemplate.ShouldBeNull();
         }
 
         [Fact]
@@ -132,8 +133,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var result = _manager.FindResourceContentRunner("/files/123", resources, out var uriTemplate);
 
-            result.Should().BeNull();
-            uriTemplate.Should().BeNull();
+            result.ShouldBeNull();
+            uriTemplate.ShouldBeNull();
         }
 
         [Fact]
@@ -155,9 +156,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var result = _manager.FindResourceContentRunner("/users/456", resources, out var uriTemplate);
 
-            result.Should().NotBeNull();
-            result.Should().BeSameAs(mockResource2.Object);
-            uriTemplate.Should().Be("/users/{id}");
+            result.ShouldNotBeNull();
+            result.ShouldBeSameAs(mockResource2.Object);
+            uriTemplate.ShouldBe("/users/{id}");
         }
 
         [Fact]
@@ -177,9 +178,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 resources,
                 out var uriTemplate);
 
-            result.Should().NotBeNull();
-            result.Should().BeSameAs(mockResource.Object);
-            uriTemplate.Should().Be("gameObject://currentScene/{path}");
+            result.ShouldNotBeNull();
+            result.ShouldBeSameAs(mockResource.Object);
+            uriTemplate.ShouldBe("gameObject://currentScene/{path}");
         }
     }
 }

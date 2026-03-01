@@ -1,11 +1,11 @@
 /*
-┌────────────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
-│  Copyright (c) 2025 Ivan Murzak                                        │
-│  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
-└────────────────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  Author: Ivan Murzak (https://github.com/IvanMurzak)                   â”‚
+â”‚  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  â”‚
+â”‚  Copyright (c) 2025 Ivan Murzak                                        â”‚
+â”‚  Licensed under the Apache License, Version 2.0.                       â”‚
+â”‚  See the LICENSE file in the project root for more information.        â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 */
 
 using System;
@@ -14,7 +14,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.ReflectorNet;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
@@ -39,16 +39,16 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var toolManager = plugin.McpManager.ToolManager!;
 
             // Verify initial state
-            toolManager.ToolCallsCount.Should().Be(0UL);
-            plugin.ToolCallsCount.Should().Be(0UL);
+            toolManager.ToolCallsCount.ShouldBe(0UL);
+            plugin.ToolCallsCount.ShouldBe(0UL);
 
             // Act
             var request = new RequestCallTool("testTool", new Dictionary<string, JsonElement>());
             await toolManager.RunCallTool(request);
 
             // Assert
-            toolManager.ToolCallsCount.Should().Be(1UL);
-            plugin.ToolCallsCount.Should().Be(1UL);
+            toolManager.ToolCallsCount.ShouldBe(1UL);
+            plugin.ToolCallsCount.ShouldBe(1UL);
         }
 
         [Fact]
@@ -72,8 +72,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             await toolManager.RunCallTool(request);
 
             // Assert
-            toolManager.ToolCallsCount.Should().Be(3UL);
-            plugin.ToolCallsCount.Should().Be(3UL);
+            toolManager.ToolCallsCount.ShouldBe(3UL);
+            plugin.ToolCallsCount.ShouldBe(3UL);
         }
 
         [Fact]
@@ -100,8 +100,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             await toolManager.RunCallTool(request1);
 
             // Assert - should count all calls regardless of which tool
-            toolManager.ToolCallsCount.Should().Be(3UL);
-            plugin.ToolCallsCount.Should().Be(3UL);
+            toolManager.ToolCallsCount.ShouldBe(3UL);
+            plugin.ToolCallsCount.ShouldBe(3UL);
         }
 
         [Fact]
@@ -119,8 +119,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             await toolManager.RunCallTool(request);
 
             // Assert - counter should still increment even if tool not found
-            toolManager.ToolCallsCount.Should().Be(1UL);
-            plugin.ToolCallsCount.Should().Be(1UL);
+            toolManager.ToolCallsCount.ShouldBe(1UL);
+            plugin.ToolCallsCount.ShouldBe(1UL);
         }
 
         [Fact]
@@ -147,8 +147,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             await Task.WhenAll(tasks);
 
             // Assert
-            toolManager.ToolCallsCount.Should().Be(100UL);
-            plugin.ToolCallsCount.Should().Be(100UL);
+            toolManager.ToolCallsCount.ShouldBe(100UL);
+            plugin.ToolCallsCount.ShouldBe(100UL);
         }
 
         private class TestToolClass

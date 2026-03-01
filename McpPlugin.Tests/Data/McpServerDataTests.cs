@@ -1,16 +1,16 @@
 /*
-┌────────────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
-│  Copyright (c) 2025 Ivan Murzak                                        │
-│  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
-└────────────────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  Author: Ivan Murzak (https://github.com/IvanMurzak)                   â”‚
+â”‚  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  â”‚
+â”‚  Copyright (c) 2025 Ivan Murzak                                        â”‚
+â”‚  Licensed under the Apache License, Version 2.0.                       â”‚
+â”‚  See the LICENSE file in the project root for more information.        â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 */
 using System.Text.Json;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Tests.Data
@@ -24,10 +24,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var serverData = new McpServerData();
 
             // Assert
-            serverData.ServerVersion.Should().BeNull();
-            serverData.ServerApiVersion.Should().BeNull();
-            serverData.ServerTransport.Should().Be(Consts.MCP.Server.TransportMethod.unknown);
-            serverData.IsAiAgentConnected.Should().BeFalse();
+            serverData.ServerVersion.ShouldBeNull();
+            serverData.ServerApiVersion.ShouldBeNull();
+            serverData.ServerTransport.ShouldBe(Consts.MCP.Server.TransportMethod.unknown);
+            serverData.IsAiAgentConnected.ShouldBeFalse();
         }
 
         [Fact]
@@ -40,7 +40,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             serverData.ServerVersion = "1.2.3";
 
             // Assert
-            serverData.ServerVersion.Should().Be("1.2.3");
+            serverData.ServerVersion.ShouldBe("1.2.3");
         }
 
         [Fact]
@@ -53,7 +53,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             serverData.ServerApiVersion = "2.0.0";
 
             // Assert
-            serverData.ServerApiVersion.Should().Be("2.0.0");
+            serverData.ServerApiVersion.ShouldBe("2.0.0");
         }
 
         [Theory]
@@ -69,7 +69,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             serverData.ServerTransport = transport;
 
             // Assert
-            serverData.ServerTransport.Should().Be(transport);
+            serverData.ServerTransport.ShouldBe(transport);
         }
 
         [Theory]
@@ -84,7 +84,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             serverData.IsAiAgentConnected = isConnected;
 
             // Assert
-            serverData.IsAiAgentConnected.Should().Be(isConnected);
+            serverData.IsAiAgentConnected.ShouldBe(isConnected);
         }
 
         [Fact]
@@ -100,10 +100,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             };
 
             // Assert
-            serverData.ServerVersion.Should().Be("1.0.0");
-            serverData.ServerApiVersion.Should().Be("1.0.0");
-            serverData.ServerTransport.Should().Be(Consts.MCP.Server.TransportMethod.stdio);
-            serverData.IsAiAgentConnected.Should().BeTrue();
+            serverData.ServerVersion.ShouldBe("1.0.0");
+            serverData.ServerApiVersion.ShouldBe("1.0.0");
+            serverData.ServerTransport.ShouldBe(Consts.MCP.Server.TransportMethod.stdio);
+            serverData.IsAiAgentConnected.ShouldBeTrue();
         }
 
         [Fact]
@@ -122,10 +122,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var json = JsonSerializer.Serialize(serverData);
 
             // Assert
-            json.Should().Contain("\"serverVersion\":");
-            json.Should().Contain("\"serverApiVersion\":");
-            json.Should().Contain("\"serverTransport\":");
-            json.Should().Contain("\"isAiAgentConnected\":");
+            json.ShouldContain("\"serverVersion\":");
+            json.ShouldContain("\"serverApiVersion\":");
+            json.ShouldContain("\"serverTransport\":");
+            json.ShouldContain("\"isAiAgentConnected\":");
         }
 
         [Theory]
@@ -146,7 +146,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var json = JsonSerializer.Serialize(serverData);
 
             // Assert
-            json.Should().Contain($"\"serverTransport\":\"{expectedString}\"");
+            json.ShouldContain($"\"serverTransport\":\"{expectedString}\"");
         }
 
         [Theory]
@@ -164,8 +164,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var serverData = JsonSerializer.Deserialize<McpServerData>(json);
 
             // Assert
-            serverData.Should().NotBeNull();
-            serverData!.ServerTransport.Should().Be(expectedTransport);
+            serverData.ShouldNotBeNull();
+            serverData!.ServerTransport.ShouldBe(expectedTransport);
         }
 
         [Fact]
@@ -185,11 +185,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var deserialized = JsonSerializer.Deserialize<McpServerData>(json);
 
             // Assert
-            deserialized.Should().NotBeNull();
-            deserialized!.ServerVersion.Should().Be(original.ServerVersion);
-            deserialized.ServerApiVersion.Should().Be(original.ServerApiVersion);
-            deserialized.ServerTransport.Should().Be(original.ServerTransport);
-            deserialized.IsAiAgentConnected.Should().Be(original.IsAiAgentConnected);
+            deserialized.ShouldNotBeNull();
+            deserialized!.ServerVersion.ShouldBe(original.ServerVersion);
+            deserialized.ServerApiVersion.ShouldBe(original.ServerApiVersion);
+            deserialized.ServerTransport.ShouldBe(original.ServerTransport);
+            deserialized.IsAiAgentConnected.ShouldBe(original.IsAiAgentConnected);
         }
     }
 }

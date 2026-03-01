@@ -1,11 +1,11 @@
 /*
-┌────────────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
-│  Copyright (c) 2025 Ivan Murzak                                        │
-│  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
-└────────────────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  Author: Ivan Murzak (https://github.com/IvanMurzak)                   â”‚
+â”‚  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  â”‚
+â”‚  Copyright (c) 2025 Ivan Murzak                                        â”‚
+â”‚  Licensed under the Apache License, Version 2.0.                       â”‚
+â”‚  See the LICENSE file in the project root for more information.        â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 */
 
 using System;
@@ -18,7 +18,7 @@ using com.IvanMurzak.McpPlugin.Tests.Data.Ignored.SubNamespace;
 using com.IvanMurzak.McpPlugin.Tests.Data.Included;
 using com.IvanMurzak.McpPlugin.Tests.Infrastructure;
 using com.IvanMurzak.ReflectorNet;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 using Xunit.Abstractions;
 using Version = com.IvanMurzak.McpPlugin.Common.Version;
@@ -55,10 +55,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
 
             // Assert
-            response.Value.Should().NotBeNull();
-            response.Value!.Should().NotContain(t => t.Name == "ignore-test-tool");
-            response.Value!.Should().NotContain(t => t.Name == "sub-namespace-tool");
-            response.Value!.Should().NotContain(t => t.Name == "include-test-tool");
+            response.Value.ShouldNotBeNull();
+            response.Value!.ShouldNotContain(t => t.Name == "ignore-test-tool");
+            response.Value!.ShouldNotContain(t => t.Name == "sub-namespace-tool");
+            response.Value!.ShouldNotContain(t => t.Name == "include-test-tool");
         }
 
         [Fact]
@@ -77,8 +77,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
 
             // Assert
-            response.Value.Should().NotBeNull();
-            response.Value!.Should().NotContain(t => t.Name == "ignore-test-tool");
+            response.Value.ShouldNotBeNull();
+            response.Value!.ShouldNotContain(t => t.Name == "ignore-test-tool");
         }
 
         [Fact]
@@ -93,8 +93,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             Action act = () => builder.IgnoreAssembly(typeof(IgnoreTestToolClass).Assembly);
 
             // Assert
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("The builder has already been built.");
+            Should.Throw<InvalidOperationException>(act)
+                .Message.ShouldBe("The builder has already been built.");
         }
 
         #endregion
@@ -116,9 +116,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
 
             // Assert
-            response.Value.Should().NotBeNull();
-            response.Value!.Should().NotContain(t => t.Name == "ignore-test-tool");
-            response.Value!.Should().Contain(t => t.Name == "include-test-tool");
+            response.Value.ShouldNotBeNull();
+            response.Value!.ShouldNotContain(t => t.Name == "ignore-test-tool");
+            response.Value!.ShouldContain(t => t.Name == "include-test-tool");
         }
 
         [Fact]
@@ -137,10 +137,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
 
             // Assert
-            response.Value.Should().NotBeNull();
-            response.Value!.Should().NotContain(t => t.Name == "ignore-test-tool");
-            response.Value!.Should().NotContain(t => t.Name == "sub-namespace-tool");
-            response.Value!.Should().Contain(t => t.Name == "include-test-tool");
+            response.Value.ShouldNotBeNull();
+            response.Value!.ShouldNotContain(t => t.Name == "ignore-test-tool");
+            response.Value!.ShouldNotContain(t => t.Name == "sub-namespace-tool");
+            response.Value!.ShouldContain(t => t.Name == "include-test-tool");
         }
 
         [Fact]
@@ -160,9 +160,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
 
             // Assert
-            response.Value.Should().NotBeNull();
-            response.Value!.Should().NotContain(t => t.Name == "ignore-test-tool");
-            response.Value!.Should().NotContain(t => t.Name == "include-test-tool");
+            response.Value.ShouldNotBeNull();
+            response.Value!.ShouldNotContain(t => t.Name == "ignore-test-tool");
+            response.Value!.ShouldNotContain(t => t.Name == "include-test-tool");
         }
 
         [Fact]
@@ -177,8 +177,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             Action act = () => builder.IgnoreNamespace("com.IvanMurzak.McpPlugin.Tests.Data.Ignored");
 
             // Assert
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("The builder has already been built.");
+            Should.Throw<InvalidOperationException>(act)
+                .Message.ShouldBe("The builder has already been built.");
         }
 
         #endregion
@@ -202,10 +202,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
 
             // Assert
-            response.Value.Should().NotBeNull();
-            response.Value!.Should().NotContain(t => t.Name == "ignore-test-tool");
-            response.Value!.Should().NotContain(t => t.Name == "sub-namespace-tool");
-            response.Value!.Should().Contain(t => t.Name == "include-test-tool");
+            response.Value.ShouldNotBeNull();
+            response.Value!.ShouldNotContain(t => t.Name == "ignore-test-tool");
+            response.Value!.ShouldNotContain(t => t.Name == "sub-namespace-tool");
+            response.Value!.ShouldContain(t => t.Name == "include-test-tool");
         }
 
         [Fact]
@@ -225,10 +225,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await plugin.McpManager.PromptManager!.RunListPrompts(new RequestListPrompts());
 
             // Assert
-            response.Value.Should().NotBeNull();
-            response.Value!.Prompts.Should().NotContain(p => p.Name == "ignore-test-prompt");
-            response.Value!.Prompts.Should().NotContain(p => p.Name == "sub-namespace-prompt");
-            response.Value!.Prompts.Should().Contain(p => p.Name == "include-test-prompt");
+            response.Value.ShouldNotBeNull();
+            response.Value!.Prompts.ShouldNotContain(p => p.Name == "ignore-test-prompt");
+            response.Value!.Prompts.ShouldNotContain(p => p.Name == "sub-namespace-prompt");
+            response.Value!.Prompts.ShouldContain(p => p.Name == "include-test-prompt");
         }
 
         #endregion
@@ -251,9 +251,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
 
             // Assert
-            response.Value.Should().NotBeNull();
-            response.Value!.Should().Contain(t => t.Name == "ignore-test-tool");
-            response.Value!.Should().Contain(t => t.Name == "include-test-tool");
+            response.Value.ShouldNotBeNull();
+            response.Value!.ShouldContain(t => t.Name == "ignore-test-tool");
+            response.Value!.ShouldContain(t => t.Name == "include-test-tool");
         }
 
         [Fact]
@@ -273,8 +273,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
 
             // Assert
-            response.Value.Should().NotBeNull();
-            response.Value!.Should().Contain(t => t.Name == "ignore-test-tool");
+            response.Value.ShouldNotBeNull();
+            response.Value!.ShouldContain(t => t.Name == "ignore-test-tool");
         }
 
         [Fact]
@@ -289,8 +289,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             Action act = () => builder.RemoveIgnoredAssembly(typeof(IgnoreTestToolClass).Assembly);
 
             // Assert
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("The builder has already been built.");
+            Should.Throw<InvalidOperationException>(act)
+                .Message.ShouldBe("The builder has already been built.");
         }
 
         #endregion
@@ -313,9 +313,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
 
             // Assert
-            response.Value.Should().NotBeNull();
-            response.Value!.Should().Contain(t => t.Name == "ignore-test-tool");
-            response.Value!.Should().Contain(t => t.Name == "include-test-tool");
+            response.Value.ShouldNotBeNull();
+            response.Value!.ShouldContain(t => t.Name == "ignore-test-tool");
+            response.Value!.ShouldContain(t => t.Name == "include-test-tool");
         }
 
         [Fact]
@@ -338,9 +338,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
 
             // Assert
-            response.Value.Should().NotBeNull();
-            response.Value!.Should().Contain(t => t.Name == "ignore-test-tool");
-            response.Value!.Should().Contain(t => t.Name == "include-test-tool");
+            response.Value.ShouldNotBeNull();
+            response.Value!.ShouldContain(t => t.Name == "ignore-test-tool");
+            response.Value!.ShouldContain(t => t.Name == "include-test-tool");
         }
 
         [Fact]
@@ -355,8 +355,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             Action act = () => builder.RemoveIgnoredNamespace("com.IvanMurzak.McpPlugin.Tests.Data.Ignored");
 
             // Assert
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("The builder has already been built.");
+            Should.Throw<InvalidOperationException>(act)
+                .Message.ShouldBe("The builder has already been built.");
         }
 
         #endregion
@@ -379,9 +379,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
 
             // Assert
-            response.Value.Should().NotBeNull();
-            response.Value!.Should().Contain(t => t.Name == "ignore-test-tool");
-            response.Value!.Should().Contain(t => t.Name == "include-test-tool");
+            response.Value.ShouldNotBeNull();
+            response.Value!.ShouldContain(t => t.Name == "ignore-test-tool");
+            response.Value!.ShouldContain(t => t.Name == "include-test-tool");
         }
 
         [Fact]
@@ -402,8 +402,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
 
             // Assert
-            response.Value.Should().NotBeNull();
-            response.Value!.Should().Contain(t => t.Name == "ignore-test-tool");
+            response.Value.ShouldNotBeNull();
+            response.Value!.ShouldContain(t => t.Name == "ignore-test-tool");
         }
 
         [Fact]
@@ -423,10 +423,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
 
             // Assert
-            response.Value.Should().NotBeNull();
-            response.Value!.Should().Contain(t => t.Name == "ignore-test-tool");
-            response.Value!.Should().Contain(t => t.Name == "sub-namespace-tool");
-            response.Value!.Should().Contain(t => t.Name == "include-test-tool");
+            response.Value.ShouldNotBeNull();
+            response.Value!.ShouldContain(t => t.Name == "ignore-test-tool");
+            response.Value!.ShouldContain(t => t.Name == "sub-namespace-tool");
+            response.Value!.ShouldContain(t => t.Name == "include-test-tool");
         }
 
         [Fact]
@@ -446,10 +446,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
 
             // Assert
-            response.Value.Should().NotBeNull();
-            response.Value!.Should().Contain(t => t.Name == "ignore-test-tool");
-            response.Value!.Should().Contain(t => t.Name == "sub-namespace-tool");
-            response.Value!.Should().Contain(t => t.Name == "include-test-tool");
+            response.Value.ShouldNotBeNull();
+            response.Value!.ShouldContain(t => t.Name == "ignore-test-tool");
+            response.Value!.ShouldContain(t => t.Name == "sub-namespace-tool");
+            response.Value!.ShouldContain(t => t.Name == "include-test-tool");
         }
 
         [Fact]
@@ -464,8 +464,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             Action act = () => builder.ClearIgnoredAssemblies();
 
             // Assert
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("The builder has already been built.");
+            Should.Throw<InvalidOperationException>(act)
+                .Message.ShouldBe("The builder has already been built.");
         }
 
         [Fact]
@@ -480,8 +480,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             Action act = () => builder.ClearIgnoredNamespaces();
 
             // Assert
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("The builder has already been built.");
+            Should.Throw<InvalidOperationException>(act)
+                .Message.ShouldBe("The builder has already been built.");
         }
 
         [Fact]
@@ -496,8 +496,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             Action act = () => builder.ClearAllIgnored();
 
             // Assert
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("The builder has already been built.");
+            Should.Throw<InvalidOperationException>(act)
+                .Message.ShouldBe("The builder has already been built.");
         }
 
         #endregion
@@ -520,8 +520,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var countAfter = builder.GetIgnoredAssembliesCount();
 
             // Assert
-            countBefore.Should().Be(0);
-            countAfter.Should().Be(1);
+            countBefore.ShouldBe(0);
+            countAfter.ShouldBe(1);
         }
 
         [Fact]
@@ -541,8 +541,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var countAfter = builder.GetIgnoredAssembliesCount();
 
             // Assert
-            countBefore.Should().Be(0);
-            countAfter.Should().Be(1);
+            countBefore.ShouldBe(0);
+            countAfter.ShouldBe(1);
         }
 
         [Fact]
@@ -562,8 +562,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var countAfter = builder.GetIgnoredAssembliesCount();
 
             // Assert
-            countBefore.Should().Be(1);
-            countAfter.Should().Be(0);
+            countBefore.ShouldBe(1);
+            countAfter.ShouldBe(0);
         }
 
         [Fact]
@@ -584,8 +584,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var countAfter = builder.GetIgnoredAssembliesCount();
 
             // Assert
-            countBefore.Should().Be(1);
-            countAfter.Should().Be(0);
+            countBefore.ShouldBe(1);
+            countAfter.ShouldBe(0);
         }
 
         [Fact]
@@ -605,8 +605,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var countAfter = builder.GetIgnoredAssembliesCount();
 
             // Assert
-            countBefore.Should().Be(1);
-            countAfter.Should().Be(0);
+            countBefore.ShouldBe(1);
+            countAfter.ShouldBe(0);
         }
 
         [Fact]
@@ -626,8 +626,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var countAfter = builder.GetIgnoredTypesCount();
 
             // Assert
-            countBefore.Should().Be(0);
-            countAfter.Should().Be(1); // IgnoreTestToolClass is in Ignored namespace
+            countBefore.ShouldBe(0);
+            countAfter.ShouldBe(1); // IgnoreTestToolClass is in Ignored namespace
         }
 
         [Fact]
@@ -648,8 +648,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var countAfter = builder.GetIgnoredTypesCount();
 
             // Assert
-            countBefore.Should().Be(0);
-            countAfter.Should().Be(2); // Both types are in ignored namespaces
+            countBefore.ShouldBe(0);
+            countAfter.ShouldBe(2); // Both types are in ignored namespaces
         }
 
         [Fact]
@@ -669,8 +669,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var countAfter = builder.GetIgnoredTypesCount();
 
             // Assert
-            countBefore.Should().Be(1);
-            countAfter.Should().Be(0);
+            countBefore.ShouldBe(1);
+            countAfter.ShouldBe(0);
         }
 
         [Fact]
@@ -694,8 +694,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var countAfter = builder.GetIgnoredTypesCount();
 
             // Assert
-            countBefore.Should().Be(2);
-            countAfter.Should().Be(0);
+            countBefore.ShouldBe(2);
+            countAfter.ShouldBe(0);
         }
 
         [Fact]
@@ -715,8 +715,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var countAfter = builder.GetIgnoredTypesCount();
 
             // Assert
-            countBefore.Should().Be(1);
-            countAfter.Should().Be(0);
+            countBefore.ShouldBe(1);
+            countAfter.ShouldBe(0);
         }
 
         [Fact]
@@ -739,10 +739,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var typeCountAfter = builder.GetIgnoredTypesCount();
 
             // Assert
-            assemblyCountBefore.Should().Be(1);
-            assemblyCountAfter.Should().Be(0);
+            assemblyCountBefore.ShouldBe(1);
+            assemblyCountAfter.ShouldBe(0);
             // Note: typeCountBefore may be 0 since the assembly itself was ignored
-            typeCountAfter.Should().Be(0);
+            typeCountAfter.ShouldBe(0);
         }
 
         [Fact]
@@ -761,8 +761,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var countAfter = builder.GetIgnoredAssembliesCount();
 
             // Assert
-            countBefore.Should().Be(0);
-            countAfter.Should().Be(1);
+            countBefore.ShouldBe(0);
+            countAfter.ShouldBe(1);
         }
 
         [Fact]
@@ -782,8 +782,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var countAfter = builder.GetIgnoredAssembliesCount();
 
             // Assert
-            countBefore.Should().Be(0);
-            countAfter.Should().Be(1);
+            countBefore.ShouldBe(0);
+            countAfter.ShouldBe(1);
         }
 
         [Fact]
@@ -803,8 +803,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var countAfter = builder.GetIgnoredAssembliesCount();
 
             // Assert
-            countBefore.Should().Be(1);
-            countAfter.Should().Be(0);
+            countBefore.ShouldBe(1);
+            countAfter.ShouldBe(0);
         }
 
         [Fact]
@@ -825,8 +825,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var countAfter = builder.GetIgnoredAssembliesCount();
 
             // Assert
-            countBefore.Should().Be(1);
-            countAfter.Should().Be(0);
+            countBefore.ShouldBe(1);
+            countAfter.ShouldBe(0);
         }
 
         [Fact]
@@ -838,19 +838,19 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 .WithToolsFromAssembly(testAssembly);
 
             // Act & Assert - Multiple mutations should always reflect current state
-            builder.GetIgnoredAssembliesCount().Should().Be(0);
+            builder.GetIgnoredAssembliesCount().ShouldBe(0);
 
             builder.IgnoreAssembly(testAssembly);
-            builder.GetIgnoredAssembliesCount().Should().Be(1);
+            builder.GetIgnoredAssembliesCount().ShouldBe(1);
 
             builder.RemoveIgnoredAssembly(testAssembly);
-            builder.GetIgnoredAssembliesCount().Should().Be(0);
+            builder.GetIgnoredAssembliesCount().ShouldBe(0);
 
             builder.IgnoreAssembly(testAssembly);
-            builder.GetIgnoredAssembliesCount().Should().Be(1);
+            builder.GetIgnoredAssembliesCount().ShouldBe(1);
 
             builder.ClearIgnoredAssemblies();
-            builder.GetIgnoredAssembliesCount().Should().Be(0);
+            builder.GetIgnoredAssembliesCount().ShouldBe(0);
         }
 
         [Fact]
@@ -862,20 +862,20 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 .WithTools<IncludeTestToolClass>();
 
             // Act & Assert - Multiple mutations should always reflect current state
-            builder.GetIgnoredTypesCount().Should().Be(0);
+            builder.GetIgnoredTypesCount().ShouldBe(0);
 
             builder.IgnoreNamespace("com.IvanMurzak.McpPlugin.Tests.Data.Ignored");
             var countAfterIgnore = builder.GetIgnoredTypesCount();
-            countAfterIgnore.Should().BeGreaterThan(0);
+            countAfterIgnore.ShouldBeGreaterThan(0);
 
             builder.RemoveIgnoredNamespace("com.IvanMurzak.McpPlugin.Tests.Data.Ignored");
-            builder.GetIgnoredTypesCount().Should().Be(0);
+            builder.GetIgnoredTypesCount().ShouldBe(0);
 
             builder.IgnoreNamespace("com.IvanMurzak.McpPlugin.Tests.Data.Ignored");
-            builder.GetIgnoredTypesCount().Should().Be(countAfterIgnore);
+            builder.GetIgnoredTypesCount().ShouldBe(countAfterIgnore);
 
             builder.ClearIgnoredNamespaces();
-            builder.GetIgnoredTypesCount().Should().Be(0);
+            builder.GetIgnoredTypesCount().ShouldBe(0);
         }
 
         #endregion
@@ -898,10 +898,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await plugin.McpManager.PromptManager!.RunListPrompts(new RequestListPrompts());
 
             // Assert
-            response.Value.Should().NotBeNull();
-            response.Value!.Prompts.Should().NotContain(p => p.Name == "ignore-test-prompt");
-            response.Value!.Prompts.Should().NotContain(p => p.Name == "sub-namespace-prompt");
-            response.Value!.Prompts.Should().Contain(p => p.Name == "include-test-prompt");
+            response.Value.ShouldNotBeNull();
+            response.Value!.Prompts.ShouldNotContain(p => p.Name == "ignore-test-prompt");
+            response.Value!.Prompts.ShouldNotContain(p => p.Name == "sub-namespace-prompt");
+            response.Value!.Prompts.ShouldContain(p => p.Name == "include-test-prompt");
         }
 
         #endregion

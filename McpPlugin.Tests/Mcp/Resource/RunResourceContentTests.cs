@@ -1,11 +1,11 @@
 /*
-┌────────────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
-│  Copyright (c) 2025 Ivan Murzak                                        │
-│  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
-└────────────────────────────────────────────────────────────────────────┘
+Ã¢â€Å’Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â
+Ã¢â€â€š  Author: Ivan Murzak (https://github.com/IvanMurzak)                   Ã¢â€â€š
+Ã¢â€â€š  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  Ã¢â€â€š
+Ã¢â€â€š  Copyright (c) 2025 Ivan Murzak                                        Ã¢â€â€š
+Ã¢â€â€š  Licensed under the Apache License, Version 2.0.                       Ã¢â€â€š
+Ã¢â€â€š  See the LICENSE file in the project root for more information.        Ã¢â€â€š
+Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ
 */
 
 using System;
@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Tests.Infrastructure;
 using com.IvanMurzak.ReflectorNet;
-using FluentAssertions;
+using Shouldly;
 using Microsoft.Extensions.Logging;
 using Xunit;
 using Xunit.Abstractions;
@@ -192,7 +192,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var runner = RunResourceContent.CreateFromStaticMethod(_reflector, _logger, methodInfo);
 
             // Assert
-            runner.Should().NotBeNull();
+            runner.ShouldNotBeNull();
         }
 
         [Fact]
@@ -206,10 +206,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var result = await runner.Run();
 
             // Assert
-            result.Should().NotBeNull();
-            result.Should().HaveCount(1);
-            result[0].Uri.Should().Be("test://static");
-            result[0].Text.Should().Be("Static content");
+            result.ShouldNotBeNull();
+            result.Length.ShouldBe(1);
+            result[0].Uri.ShouldBe("test://static");
+            result[0].Text.ShouldBe("Static content");
         }
 
         [Fact]
@@ -223,10 +223,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var result = await runner.Run("myResource");
 
             // Assert
-            result.Should().NotBeNull();
-            result.Should().HaveCount(1);
-            result[0].Uri.Should().Be("test://static/myResource");
-            result[0].Text.Should().Be("Content for myResource");
+            result.ShouldNotBeNull();
+            result.Length.ShouldBe(1);
+            result[0].Uri.ShouldBe("test://static/myResource");
+            result[0].Text.ShouldBe("Content for myResource");
         }
 
         [Fact]
@@ -240,11 +240,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var result = await runner.Run(3);
 
             // Assert
-            result.Should().NotBeNull();
-            result.Should().HaveCount(3);
-            result[0].Uri.Should().Be("test://static/0");
-            result[1].Uri.Should().Be("test://static/1");
-            result[2].Uri.Should().Be("test://static/2");
+            result.ShouldNotBeNull();
+            result.Length.ShouldBe(3);
+            result[0].Uri.ShouldBe("test://static/0");
+            result[1].Uri.ShouldBe("test://static/1");
+            result[2].Uri.ShouldBe("test://static/2");
         }
 
         #endregion
@@ -262,7 +262,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var runner = RunResourceContent.CreateFromInstanceMethod(_reflector, _logger, instance, methodInfo);
 
             // Assert
-            runner.Should().NotBeNull();
+            runner.ShouldNotBeNull();
         }
 
         [Fact]
@@ -277,10 +277,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var result = await runner.Run();
 
             // Assert
-            result.Should().NotBeNull();
-            result.Should().HaveCount(1);
-            result[0].Uri.Should().Be("test://customPrefix");
-            result[0].Text.Should().Be("customPrefix content");
+            result.ShouldNotBeNull();
+            result.Length.ShouldBe(1);
+            result[0].Uri.ShouldBe("test://customPrefix");
+            result[0].Text.ShouldBe("customPrefix content");
         }
 
         [Fact]
@@ -295,10 +295,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var result = await runner.Run("resourceName");
 
             // Assert
-            result.Should().NotBeNull();
-            result.Should().HaveCount(1);
-            result[0].Uri.Should().Be("test://myInstance/resourceName");
-            result[0].Text.Should().Be("myInstance content for resourceName");
+            result.ShouldNotBeNull();
+            result.Length.ShouldBe(1);
+            result[0].Uri.ShouldBe("test://myInstance/resourceName");
+            result[0].Text.ShouldBe("myInstance content for resourceName");
         }
 
         #endregion
@@ -315,7 +315,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var runner = RunResourceContent.CreateFromClassMethod(_reflector, _logger, typeof(SimpleResourceContentProvider), methodInfo);
 
             // Assert
-            runner.Should().NotBeNull();
+            runner.ShouldNotBeNull();
         }
 
         [Fact]
@@ -329,10 +329,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var result = await runner.Run();
 
             // Assert
-            result.Should().NotBeNull();
-            result.Should().HaveCount(1);
-            result[0].Uri.Should().Be("test://simple");
-            result[0].Text.Should().Be("Simple content");
+            result.ShouldNotBeNull();
+            result.Length.ShouldBe(1);
+            result[0].Uri.ShouldBe("test://simple");
+            result[0].Text.ShouldBe("Simple content");
         }
 
         #endregion
@@ -354,10 +354,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var result = await runner.Run(namedParams);
 
             // Assert
-            result.Should().NotBeNull();
-            result.Should().HaveCount(1);
-            result[0].Uri.Should().Be("test://static/namedResource");
-            result[0].Text.Should().Be("Content for namedResource");
+            result.ShouldNotBeNull();
+            result.Length.ShouldBe(1);
+            result[0].Uri.ShouldBe("test://static/namedResource");
+            result[0].Text.ShouldBe("Content for namedResource");
         }
 
         [Fact]
@@ -371,9 +371,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var result = await runner.Run((IDictionary<string, object?>?)null);
 
             // Assert
-            result.Should().NotBeNull();
-            result.Should().HaveCount(1);
-            result[0].Uri.Should().Be("test://default/default/0");
+            result.ShouldNotBeNull();
+            result.Length.ShouldBe(1);
+            result[0].Uri.ShouldBe("test://default/default/0");
         }
 
         [Fact]
@@ -391,9 +391,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var result = await runner.Run(namedParams);
 
             // Assert
-            result.Should().NotBeNull();
-            result.Should().HaveCount(1);
-            result[0].Uri.Should().Be("test://default/customName/0");
+            result.ShouldNotBeNull();
+            result.Length.ShouldBe(1);
+            result[0].Uri.ShouldBe("test://default/customName/0");
         }
 
         [Fact]
@@ -412,10 +412,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var result = await runner.Run(namedParams);
 
             // Assert
-            result.Should().NotBeNull();
-            result.Should().HaveCount(2);
-            result[0].Uri.Should().Be("test://default/custom/0");
-            result[1].Uri.Should().Be("test://default/custom/1");
+            result.ShouldNotBeNull();
+            result.Length.ShouldBe(2);
+            result[0].Uri.ShouldBe("test://default/custom/0");
+            result[1].Uri.ShouldBe("test://default/custom/1");
         }
 
         #endregion
@@ -433,10 +433,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var result = await runner.Run();
 
             // Assert
-            result.Should().NotBeNull();
-            result.Should().HaveCount(1);
-            result[0].Uri.Should().Be("test://async");
-            result[0].Text.Should().Be("Async content");
+            result.ShouldNotBeNull();
+            result.Length.ShouldBe(1);
+            result[0].Uri.ShouldBe("test://async");
+            result[0].Text.ShouldBe("Async content");
         }
 
         [Fact]
@@ -450,10 +450,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var result = await runner.Run("asyncResource", 2);
 
             // Assert
-            result.Should().NotBeNull();
-            result.Should().HaveCount(2);
-            result[0].Uri.Should().Be("test://async/asyncResource/0");
-            result[1].Uri.Should().Be("test://async/asyncResource/1");
+            result.ShouldNotBeNull();
+            result.Length.ShouldBe(2);
+            result[0].Uri.ShouldBe("test://async/asyncResource/0");
+            result[1].Uri.ShouldBe("test://async/asyncResource/1");
         }
 
         #endregion
@@ -471,8 +471,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             Func<Task> act = async () => await runner.Run();
 
             // Assert
-            await act.Should().ThrowAsync<InvalidOperationException>()
-                .WithMessage("*did not return a valid ResponseResourceContent[]*");
+            var ex = await Should.ThrowAsync<InvalidOperationException>(act);
+            ex.Message.ShouldContain("did not return a valid ResponseResourceContent");
         }
 
         [Fact]
@@ -487,8 +487,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             Func<Task> act = async () => await runner.Run();
 
             // Assert
-            await act.Should().ThrowAsync<InvalidOperationException>()
-                .WithMessage("*did not return a valid ResponseResourceContent[]*");
+            var ex = await Should.ThrowAsync<InvalidOperationException>(act);
+            ex.Message.ShouldContain("did not return a valid ResponseResourceContent");
         }
 
         [Fact]
@@ -502,8 +502,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             Func<Task> act = async () => await runner.Run((IDictionary<string, object?>?)null);
 
             // Assert
-            await act.Should().ThrowAsync<InvalidOperationException>()
-                .WithMessage("*did not return a valid ResponseResourceContent[]*");
+            var ex = await Should.ThrowAsync<InvalidOperationException>(act);
+            ex.Message.ShouldContain("did not return a valid ResponseResourceContent");
         }
 
         #endregion
@@ -520,7 +520,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var runner = new RunResourceContent(_reflector, _logger, methodInfo);
 
             // Assert
-            runner.Should().NotBeNull();
+            runner.ShouldNotBeNull();
         }
 
         [Fact]
@@ -534,7 +534,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var runner = new RunResourceContent(_reflector, _logger, instance, methodInfo);
 
             // Assert
-            runner.Should().NotBeNull();
+            runner.ShouldNotBeNull();
         }
 
         [Fact]
@@ -547,7 +547,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var runner = new RunResourceContent(_reflector, _logger, typeof(SimpleResourceContentProvider), methodInfo);
 
             // Assert
-            runner.Should().NotBeNull();
+            runner.ShouldNotBeNull();
         }
 
         #endregion
@@ -565,8 +565,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var result = await runner.Run();
 
             // Assert
-            result.Should().NotBeNull();
-            result.Should().HaveCount(1);
+            result.ShouldNotBeNull();
+            result.Length.ShouldBe(1);
         }
 
         [Fact]
@@ -584,8 +584,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp.Resource
             var result = await runner.Run(namedParams);
 
             // Assert
-            result.Should().NotBeNull();
-            result.Should().HaveCount(1);
+            result.ShouldNotBeNull();
+            result.Length.ShouldBe(1);
         }
 
         #endregion

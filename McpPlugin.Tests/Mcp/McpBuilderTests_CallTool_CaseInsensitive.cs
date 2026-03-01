@@ -1,11 +1,11 @@
 /*
-┌────────────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
-│  Copyright (c) 2025 Ivan Murzak                                        │
-│  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
-└────────────────────────────────────────────────────────────────────────┘
+Ã¢â€Å’Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â
+Ã¢â€â€š  Author: Ivan Murzak (https://github.com/IvanMurzak)                   Ã¢â€â€š
+Ã¢â€â€š  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  Ã¢â€â€š
+Ã¢â€â€š  Copyright (c) 2025 Ivan Murzak                                        Ã¢â€â€š
+Ã¢â€â€š  Licensed under the Apache License, Version 2.0.                       Ã¢â€â€š
+Ã¢â€â€š  See the LICENSE file in the project root for more information.        Ã¢â€â€š
+Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ
 */
 using System;
 using System.Collections.Generic;
@@ -16,7 +16,7 @@ using com.IvanMurzak.McpPlugin.Tests.Data.Other;
 using com.IvanMurzak.McpPlugin.Tests.Infrastructure;
 using com.IvanMurzak.McpPlugin.Utils;
 using com.IvanMurzak.ReflectorNet;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 using Xunit.Abstractions;
 using Version = com.IvanMurzak.McpPlugin.Common.Version;
@@ -166,11 +166,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(6);
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().ShouldBe(6);
         }
 
         [Fact]
@@ -185,11 +185,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(11);
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().ShouldBe(11);
         }
 
         [Fact]
@@ -204,11 +204,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(21);
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().ShouldBe(21);
         }
 
         [Fact]
@@ -223,11 +223,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("HelloWorld");
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().ShouldBe("HelloWorld");
         }
 
         [Fact]
@@ -242,11 +242,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(31);
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().ShouldBe(31);
         }
 
         #endregion
@@ -265,11 +265,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("Hello");
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().ShouldBe("Hello");
         }
 
         [Fact]
@@ -284,11 +284,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert - Should succeed (unknown parameters are typically ignored)
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(41);
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().ShouldBe(41);
         }
 
         [Fact]
@@ -303,11 +303,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("User: John");
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().ShouldBe("User: John");
         }
 
         [Fact]
@@ -322,11 +322,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(101);
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().ShouldBe(101);
         }
 
         #endregion
@@ -348,11 +348,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("A-B-C");
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().ShouldBe("A-B-C");
         }
 
         [Fact]
@@ -370,11 +370,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("a|b|c");
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().ShouldBe("a|b|c");
         }
 
         #endregion
@@ -393,11 +393,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("TEST");
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().ShouldBe("TEST");
         }
 
         [Fact]
@@ -412,11 +412,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("HELLO");
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().ShouldBe("HELLO");
         }
 
         #endregion
@@ -435,11 +435,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert - Should use default value 10 for optional parameter
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(15); // 5 + 10 (default)
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().ShouldBe(15); // 5 + 10 (default)
         }
 
         [Fact]
@@ -454,11 +454,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(10); // 7 + 3
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().ShouldBe(10); // 7 + 3
         }
 
         #endregion
@@ -481,11 +481,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success, $"Parameter name '{paramName}' should work");
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(inputValue + 1);
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success, $"Parameter name '{paramName}' should work");
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().ShouldBe(inputValue + 1);
         }
 
         [Theory]
@@ -504,11 +504,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success, $"Parameters '{leftParam}' and '{rightParam}' should work");
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be(expected);
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success, $"Parameters '{leftParam}' and '{rightParam}' should work");
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().ShouldBe(expected);
         }
 
         #endregion
@@ -535,9 +535,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert - Should return an error about duplicate parameters
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Error);
-            response.Message.Should().Contain("Duplicate parameter");
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Error);
+            response.Message.ShouldContain("Duplicate parameter");
         }
 
         [Fact]
@@ -558,9 +558,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert - Should return an error about duplicate parameters
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Error);
-            response.Message.Should().Contain("Duplicate parameter");
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Error);
+            response.Message.ShouldContain("Duplicate parameter");
         }
 
         #endregion
@@ -579,9 +579,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var lookup = Utils.ParameterNameUtils.BuildParameterNameLookup(methodParams);
 
             // Assert - Both "left" and "right" should be in the lookup (no conflicts)
-            lookup.Should().NotBeNull();
-            lookup!.Should().ContainKey("left");
-            lookup.Should().ContainKey("right");
+            lookup.ShouldNotBeNull();
+            lookup!.Keys.ShouldContain("left");
+            lookup.Keys.ShouldContain("right");
         }
 
         [Fact]
@@ -596,11 +596,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert - Should succeed with exact case match
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("TEST");
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().ShouldBe("TEST");
         }
 
         [Fact]
@@ -615,11 +615,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert - Should succeed because case-insensitive matching works when no conflict
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("HELLO");
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().ShouldBe("HELLO");
         }
 
         #endregion
@@ -638,7 +638,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             // Assert - All parameters should be excluded from lookup due to case conflicts
             // When there are conflicts, the lookup should be null or empty
-            lookup.Should().BeNull("all parameters differ only by case, creating conflicts");
+            lookup.ShouldBeNull("all parameters differ only by case, creating conflicts");
         }
 
         [Fact]
@@ -653,11 +653,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert - Should succeed with exact matches
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success, "exact parameter names should work");
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(6); // 1 + 2 + 3
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success, "exact parameter names should work");
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().ShouldBe(6); // 1 + 2 + 3
         }
 
         [Fact]
@@ -674,12 +674,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert - Should succeed but with default value for unmatched parameter
-            // "value" = 0 (default), "vAlue" = 2, "vaLue" = 3 → 0 + 2 + 3 = 5
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success, "call succeeds but with default values for unmatched params");
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(5); // 0 + 2 + 3
+            // "value" = 0 (default), "vAlue" = 2, "vaLue" = 3 Ã¢â€ â€™ 0 + 2 + 3 = 5
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success, "call succeeds but with default values for unmatched params");
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().ShouldBe(5); // 0 + 2 + 3
         }
 
         [Fact]
@@ -700,12 +700,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert - Should succeed but with default values for missing params
-            // Only "value" = 1 is provided, "vAlue" = 0, "vaLue" = 0 → 1 + 0 + 0 = 1
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(1); // 1 + 0 + 0
+            // Only "value" = 1 is provided, "vAlue" = 0, "vaLue" = 0 Ã¢â€ â€™ 1 + 0 + 0 = 1
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().ShouldBe(1); // 1 + 0 + 0
         }
 
         [Fact]
@@ -721,12 +721,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert - "vaLue" gets default value (0) since "VALUE" doesn't match exactly
-            // "value" = 1, "vAlue" = 2, "vaLue" = 0 → 1 + 2 + 0 = 3
-            response.Should().NotBeNull();
-            response.Status.Should().Be(ResponseStatus.Success, "call succeeds with default value for unmatched param");
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<int>().Should().Be(3); // 1 + 2 + 0
+            // "value" = 1, "vAlue" = 2, "vaLue" = 0 Ã¢â€ â€™ 1 + 2 + 0 = 3
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success, "call succeeds with default value for unmatched param");
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<int>().ShouldBe(3); // 1 + 2 + 0
         }
 
         #endregion

@@ -1,16 +1,16 @@
 /*
-┌────────────────────────────────────────────────────────────────────────┐
-│  Author: Kieran Hannigan (https://github.com/KaiStarkk)                │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
-│  Copyright (c) 2025 Ivan Murzak                                        │
-│  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
-└────────────────────────────────────────────────────────────────────────┘
+Ã¢â€Å’Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â
+Ã¢â€â€š  Author: Kieran Hannigan (https://github.com/KaiStarkk)                Ã¢â€â€š
+Ã¢â€â€š  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  Ã¢â€â€š
+Ã¢â€â€š  Copyright (c) 2025 Ivan Murzak                                        Ã¢â€â€š
+Ã¢â€â€š  Licensed under the Apache License, Version 2.0.                       Ã¢â€â€š
+Ã¢â€â€š  See the LICENSE file in the project root for more information.        Ã¢â€â€š
+Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ
 */
 using System;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Tests.Data
@@ -24,9 +24,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
         {
             var block = ContentBlock.CreateImage(_testData, Consts.MimeType.ImagePng);
 
-            block.Type.Should().Be("image");
-            block.MimeType.Should().Be(Consts.MimeType.ImagePng);
-            Convert.FromBase64String(block.Data!).Should().BeEquivalentTo(_testData);
+            block.Type.ShouldBe("image");
+            block.MimeType.ShouldBe(Consts.MimeType.ImagePng);
+            Convert.FromBase64String(block.Data!).ShouldBe(_testData);
         }
 
         [Fact]
@@ -36,7 +36,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
 
             var block = ContentBlock.CreateImageBase64(base64, Consts.MimeType.ImagePng);
 
-            block.Data.Should().Be(base64);
+            block.Data.ShouldBe(base64);
         }
     }
 
@@ -49,11 +49,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
         {
             var response = ResponseCallTool.Image(_testData, Consts.MimeType.ImagePng, "caption");
 
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Content.Should().HaveCount(2);
-            response.Content[0].Type.Should().Be("text");
-            response.Content[0].Text.Should().Be("caption");
-            response.Content[1].Type.Should().Be("image");
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Content.Count.ShouldBe(2);
+            response.Content[0].Type.ShouldBe("text");
+            response.Content[0].Text.ShouldBe("caption");
+            response.Content[1].Type.ShouldBe("image");
         }
 
         [Fact]
@@ -61,8 +61,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
         {
             var response = ResponseCallTool.Image(_testData, Consts.MimeType.ImagePng);
 
-            response.Content.Should().HaveCount(1);
-            response.Content[0].Type.Should().Be("image");
+            response.Content.Count.ShouldBe(1);
+            response.Content[0].Type.ShouldBe("image");
         }
 
         [Fact]
@@ -71,7 +71,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var response = ResponseCallTool.Image(_testData, Consts.MimeType.ImagePng);
 
             var decoded = Convert.FromBase64String(response.Content[0].Data!);
-            decoded.Should().BeEquivalentTo(_testData);
+            decoded.ShouldBe(_testData);
         }
 
         [Fact]
@@ -82,10 +82,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
 
             var response = ResponseCallTool.WithContent(ResponseStatus.Success, text, image);
 
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Content.Should().HaveCount(2);
-            response.Content[0].Should().BeSameAs(text);
-            response.Content[1].Should().BeSameAs(image);
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Content.Count.ShouldBe(2);
+            response.Content[0].ShouldBeSameAs(text);
+            response.Content[1].ShouldBeSameAs(image);
         }
     }
 }

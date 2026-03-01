@@ -1,11 +1,11 @@
 /*
-┌────────────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
-│  Copyright (c) 2025 Ivan Murzak                                        │
-│  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
-└────────────────────────────────────────────────────────────────────────┘
+Ã¢â€Å’Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â
+Ã¢â€â€š  Author: Ivan Murzak (https://github.com/IvanMurzak)                   Ã¢â€â€š
+Ã¢â€â€š  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  Ã¢â€â€š
+Ã¢â€â€š  Copyright (c) 2025 Ivan Murzak                                        Ã¢â€â€š
+Ã¢â€â€š  Licensed under the Apache License, Version 2.0.                       Ã¢â€â€š
+Ã¢â€â€š  See the LICENSE file in the project root for more information.        Ã¢â€â€š
+Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ
 */
 
 using System;
@@ -17,7 +17,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.ReflectorNet;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 using Xunit.Abstractions;
 using Version = com.IvanMurzak.McpPlugin.Common.Version;
@@ -27,10 +27,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
     [Collection("McpPlugin")]
     public class McpPluginSkillPathTests : IDisposable
     {
-        // Primary temp directory — cleaned up in Dispose.
+        // Primary temp directory Ã¢â‚¬â€ cleaned up in Dispose.
         readonly string _tempDir;
 
-        // BaseDirectory paths created as side-effects — tracked for cleanup.
+        // BaseDirectory paths created as side-effects Ã¢â‚¬â€ tracked for cleanup.
         readonly List<string> _cleanupPaths = new();
 
         readonly Reflector _reflector = new Reflector();
@@ -55,7 +55,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     Directory.Delete(path, recursive: true);
         }
 
-        // ── helpers ────────────────────────────────────────────────────────────────
+        // Ã¢â€â‚¬Ã¢â€â‚¬ helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
         IMcpPlugin BuildPlugin(ConnectionConfig config)
             => new McpPluginBuilder(_version)
@@ -75,7 +75,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             return full;
         }
 
-        // ── GenerateSkillFiles — path resolution ───────────────────────────────────
+        // Ã¢â€â‚¬Ã¢â€â‚¬ GenerateSkillFiles Ã¢â‚¬â€ path resolution Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
         [Fact]
         public void GenerateSkillFiles_NullPath_RelativeSkillsPath_CreatesFilesInBaseDirectory()
@@ -89,9 +89,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var result = plugin.GenerateSkillFiles();
 
-            result.Should().BeTrue();
-            File.Exists(SkillFile(expectedSkillsDir)).Should().BeTrue(
-                $"path=null + relative SkillsPath → BaseDirectory/{relName}");
+            result.ShouldBeTrue();
+            File.Exists(SkillFile(expectedSkillsDir)).ShouldBeTrue(
+                $"path=null + relative SkillsPath Ã¢â€ â€™ BaseDirectory/{relName}");
         }
 
         [Fact]
@@ -106,9 +106,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var result = plugin.GenerateSkillFiles(customBase);
 
-            result.Should().BeTrue();
-            File.Exists(SkillFile(Path.Combine(customBase, relName))).Should().BeTrue(
-                $"custom path + relative SkillsPath → customBase/{relName}");
+            result.ShouldBeTrue();
+            File.Exists(SkillFile(Path.Combine(customBase, relName))).ShouldBeTrue(
+                $"custom path + relative SkillsPath Ã¢â€ â€™ customBase/{relName}");
         }
 
         [Fact]
@@ -122,9 +122,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var result = plugin.GenerateSkillFiles();
 
-            result.Should().BeTrue();
-            File.Exists(SkillFile(absoluteSkillsDir)).Should().BeTrue(
-                "path=null + absolute SkillsPath → SkillsPath itself");
+            result.ShouldBeTrue();
+            File.Exists(SkillFile(absoluteSkillsDir)).ShouldBeTrue(
+                "path=null + absolute SkillsPath Ã¢â€ â€™ SkillsPath itself");
         }
 
         [Fact]
@@ -139,14 +139,14 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var result = plugin.GenerateSkillFiles(customBase);
 
-            result.Should().BeTrue();
-            File.Exists(SkillFile(absoluteSkillsDir)).Should().BeTrue(
+            result.ShouldBeTrue();
+            File.Exists(SkillFile(absoluteSkillsDir)).ShouldBeTrue(
                 "absolute SkillsPath takes precedence over custom path");
-            Directory.Exists(customBase).Should().BeFalse(
+            Directory.Exists(customBase).ShouldBeFalse(
                 "custom path must never be touched when SkillsPath is absolute");
         }
 
-        // ── GenerateSkillFilesIfNeeded — flag + path ────────────────────────────────
+        // Ã¢â€â‚¬Ã¢â€â‚¬ GenerateSkillFilesIfNeeded Ã¢â‚¬â€ flag + path Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
         [Fact]
         public void GenerateSkillFilesIfNeeded_WhenDisabled_ReturnsFalse_NoFilesCreated()
@@ -160,8 +160,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var result = plugin.GenerateSkillFilesIfNeeded(customBase);
 
-            result.Should().BeFalse("generation is disabled via config");
-            Directory.Exists(customBase).Should().BeFalse(
+            result.ShouldBeFalse("generation is disabled via config");
+            Directory.Exists(customBase).ShouldBeFalse(
                 "no directory must be created when generation is disabled");
         }
 
@@ -183,9 +183,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var result = plugin.GenerateSkillFilesIfNeeded();
 
-            result.Should().BeTrue();
-            File.Exists(SkillFile(expectedSkillsDir)).Should().BeTrue(
-                $"path=null + enabled + relative SkillsPath → BaseDirectory/{relName}");
+            result.ShouldBeTrue();
+            File.Exists(SkillFile(expectedSkillsDir)).ShouldBeTrue(
+                $"path=null + enabled + relative SkillsPath Ã¢â€ â€™ BaseDirectory/{relName}");
         }
 
         [Fact]
@@ -202,9 +202,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var result = plugin.GenerateSkillFilesIfNeeded(customBase);
 
-            result.Should().BeTrue();
-            File.Exists(SkillFile(Path.Combine(customBase, relName))).Should().BeTrue(
-                $"custom path + enabled + relative SkillsPath → customBase/{relName}");
+            result.ShouldBeTrue();
+            File.Exists(SkillFile(Path.Combine(customBase, relName))).ShouldBeTrue(
+                $"custom path + enabled + relative SkillsPath Ã¢â€ â€™ customBase/{relName}");
         }
 
         [Fact]
@@ -219,14 +219,14 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             var result = plugin.GenerateSkillFilesIfNeeded(customBase);
 
-            result.Should().BeTrue();
-            File.Exists(SkillFile(absoluteSkillsDir)).Should().BeTrue(
+            result.ShouldBeTrue();
+            File.Exists(SkillFile(absoluteSkillsDir)).ShouldBeTrue(
                 "absolute SkillsPath takes precedence over custom path");
-            Directory.Exists(customBase).Should().BeFalse(
+            Directory.Exists(customBase).ShouldBeFalse(
                 "custom path must never be touched when SkillsPath is absolute");
         }
 
-        // ── DeleteSkillFiles — path resolution ──────────────────────────────────────
+        // Ã¢â€â‚¬Ã¢â€â‚¬ DeleteSkillFiles Ã¢â‚¬â€ path resolution Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
         [Fact]
         public void DeleteSkillFiles_NullPath_RelativeSkillsPath_DeletesFromBaseDirectory()
@@ -239,13 +239,13 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             plugin.GenerateSkillFiles(); // create files at BaseDirectory/relName
 
-            File.Exists(SkillFile(skillsDir)).Should().BeTrue("setup: SKILL.md must exist before delete");
+            File.Exists(SkillFile(skillsDir)).ShouldBeTrue("setup: SKILL.md must exist before delete");
 
             var result = plugin.DeleteSkillFiles();
 
-            result.Should().BeTrue();
-            Directory.Exists(Path.Combine(skillsDir, ToolName)).Should().BeFalse(
-                "path=null + relative SkillsPath → delete from BaseDirectory/relName");
+            result.ShouldBeTrue();
+            Directory.Exists(Path.Combine(skillsDir, ToolName)).ShouldBeFalse(
+                "path=null + relative SkillsPath Ã¢â€ â€™ delete from BaseDirectory/relName");
         }
 
         [Fact]
@@ -260,13 +260,13 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             plugin.GenerateSkillFiles(customBase); // create files at customBase/SKILLS
 
-            File.Exists(SkillFile(skillsDir)).Should().BeTrue("setup: SKILL.md must exist before delete");
+            File.Exists(SkillFile(skillsDir)).ShouldBeTrue("setup: SKILL.md must exist before delete");
 
             var result = plugin.DeleteSkillFiles(customBase);
 
-            result.Should().BeTrue();
-            Directory.Exists(Path.Combine(skillsDir, ToolName)).Should().BeFalse(
-                "custom path + relative SkillsPath → delete from customBase/SKILLS");
+            result.ShouldBeTrue();
+            Directory.Exists(Path.Combine(skillsDir, ToolName)).ShouldBeFalse(
+                "custom path + relative SkillsPath Ã¢â€ â€™ delete from customBase/SKILLS");
         }
 
         [Fact]
@@ -279,13 +279,13 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             plugin.GenerateSkillFiles(); // create files at absoluteSkillsDir
 
-            File.Exists(SkillFile(absoluteSkillsDir)).Should().BeTrue("setup: SKILL.md must exist before delete");
+            File.Exists(SkillFile(absoluteSkillsDir)).ShouldBeTrue("setup: SKILL.md must exist before delete");
 
             var result = plugin.DeleteSkillFiles();
 
-            result.Should().BeTrue();
-            Directory.Exists(Path.Combine(absoluteSkillsDir, ToolName)).Should().BeFalse(
-                "path=null + absolute SkillsPath → delete from absoluteSkillsDir");
+            result.ShouldBeTrue();
+            Directory.Exists(Path.Combine(absoluteSkillsDir, ToolName)).ShouldBeFalse(
+                "path=null + absolute SkillsPath Ã¢â€ â€™ delete from absoluteSkillsDir");
         }
 
         [Fact]
@@ -299,18 +299,18 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             plugin.GenerateSkillFiles(); // create files at absoluteSkillsDir
 
-            File.Exists(SkillFile(absoluteSkillsDir)).Should().BeTrue("setup: SKILL.md must exist before delete");
+            File.Exists(SkillFile(absoluteSkillsDir)).ShouldBeTrue("setup: SKILL.md must exist before delete");
 
             var result = plugin.DeleteSkillFiles(customBase);
 
-            result.Should().BeTrue();
-            Directory.Exists(Path.Combine(absoluteSkillsDir, ToolName)).Should().BeFalse(
-                "absolute SkillsPath takes precedence — deletes from absoluteSkillsDir");
-            Directory.Exists(customBase).Should().BeFalse(
+            result.ShouldBeTrue();
+            Directory.Exists(Path.Combine(absoluteSkillsDir, ToolName)).ShouldBeFalse(
+                "absolute SkillsPath takes precedence Ã¢â‚¬â€ deletes from absoluteSkillsDir");
+            Directory.Exists(customBase).ShouldBeFalse(
                 "custom path must never be created when SkillsPath is absolute");
         }
 
-        // ── mock ───────────────────────────────────────────────────────────────────
+        // Ã¢â€â‚¬Ã¢â€â‚¬ mock Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
         private sealed class MockRunTool : IRunTool
         {
