@@ -1,25 +1,29 @@
 <!--
 ## Sync Impact Report
 
-**Version Change**: N/A → 1.0.0 (initial ratification — template filled for the first time)
+**Version Change**: 1.0.0 → 1.1.0 (MINOR — new prohibition rule added to Principle IV)
 
 ### Modified Principles
-None — initial ratification.
+- **Principle IV (Test-First Discipline)**: "FluentAssertions" → "Shouldly" in rule 2;
+  added rule 7 prohibiting `using FluentAssertions` directives.
 
 ### Added Sections
-- All sections (initial fill of constitution template from project context)
+None
 
 ### Removed Sections
 None
 
 ### Template Consistency Status
-- `.specify/templates/plan-template.md` ✅ Constitution Check section present; references principles dynamically via /speckit.plan
-- `.specify/templates/spec-template.md` ✅ No constitution-specific mandatory sections needed; generic template is compatible
-- `.specify/templates/tasks-template.md` ✅ Phase structure (Test-First → Implementation) aligns with Principle IV
+- `.specify/templates/plan-template.md` ✅ No FluentAssertions references; Constitution Check gate unchanged
+- `.specify/templates/spec-template.md` ✅ No testing-library references; compatible
+- `.specify/templates/tasks-template.md` ✅ Phase structure unchanged; test-first discipline still applies
 - `.specify/templates/commands/` ⚠ Directory does not exist — no command files to validate
 
-### Deferred TODOs
-None — all placeholders resolved from CLAUDE.md, README.md, and repository context.
+### Follow-up TODOs
+- `CLAUDE.md` line "xUnit + FluentAssertions + Moq" MUST be updated to "xUnit + Shouldly + Moq"
+- `McpPlugin.Server.Tests/*.cs` — 10 files still contain `using FluentAssertions` directives
+- `McpPlugin.Server.Tests.csproj` — still references FluentAssertions NuGet package
+- `.github/copilot-instructions.md` — references FluentAssertions
 -->
 
 # MCP Plugin for .NET Constitution
@@ -83,17 +87,21 @@ LLMs understand parameter types precisely.
 All new functionality MUST follow Red-Green-Refactor:
 
 1. Write tests → confirm they FAIL → implement → confirm they PASS → refactor.
-2. Tests MUST use xUnit + FluentAssertions + Moq.
+2. Tests MUST use xUnit + Shouldly + Moq.
 3. Tests requiring test isolation MUST use `[Collection("McpPlugin")]`.
 4. All tests MUST pass on both `net8.0` and `net9.0` before merging to `main`.
 5. `async` tests MUST use `await using` for disposable resources to prevent
    `AsyncTestSyncContext` deadlocks under xUnit.
 6. `SubscribeAwait` from R3 MUST NOT be used in production code exercised by tests, as it
    captures the SynchronizationContext and can cause xUnit's test runner to hang indefinitely.
+7. `using FluentAssertions` directives MUST NOT appear in any source file. FluentAssertions
+   is a prohibited dependency — all assertion needs MUST be fulfilled by Shouldly.
 
 **Rationale**: The bridge architecture spans process boundaries; regressions are expensive to
 diagnose. The known xUnit `AsyncTestSyncContext` deadlock risk is prevented by strict disposal
-discipline and avoiding SynchronizationContext-capturing reactive operators.
+discipline and avoiding SynchronizationContext-capturing reactive operators. FluentAssertions
+was replaced by Shouldly for assertion readability and consistency; retaining both libraries
+creates confusion and split conventions.
 
 ### V. Code Style & Reactive Patterns
 
@@ -198,4 +206,4 @@ conflict between this constitution and any other guidance, the constitution take
   in the Complexity Tracking table of plan.md.
 - Use `CLAUDE.md` as the runtime development guidance file for day-to-day coding instructions.
 
-**Version**: 1.0.0 | **Ratified**: 2026-02-28 | **Last Amended**: 2026-02-28
+**Version**: 1.1.0 | **Ratified**: 2026-02-28 | **Last Amended**: 2026-03-01

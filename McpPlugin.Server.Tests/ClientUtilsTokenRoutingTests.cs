@@ -9,9 +9,9 @@
 */
 
 using System;
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Shouldly;
 using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tests
@@ -38,8 +38,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             ClientUtils.AddClient<McpServerHub>(connectionId, _logger, token);
 
             // Assert
-            ClientUtils.GetConnectionIdByToken(token).Should().Be(connectionId);
-            ClientUtils.GetTokenByConnectionId(connectionId).Should().Be(token);
+            ClientUtils.GetConnectionIdByToken(token).ShouldBe(connectionId);
+            ClientUtils.GetTokenByConnectionId(connectionId).ShouldBe(token);
 
             // Cleanup
             ClientUtils.RemoveClient<McpServerHub>(connectionId, _logger);
@@ -55,7 +55,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             ClientUtils.AddClient<McpServerHub>(connectionId, _logger);
 
             // Assert
-            ClientUtils.GetTokenByConnectionId(connectionId).Should().BeNull();
+            ClientUtils.GetTokenByConnectionId(connectionId).ShouldBeNull();
 
             // Cleanup
             ClientUtils.RemoveClient<McpServerHub>(connectionId, _logger);
@@ -73,38 +73,38 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             ClientUtils.RemoveClient<McpServerHub>(connectionId, _logger);
 
             // Assert
-            ClientUtils.GetConnectionIdByToken(token).Should().BeNull();
-            ClientUtils.GetTokenByConnectionId(connectionId).Should().BeNull();
+            ClientUtils.GetConnectionIdByToken(token).ShouldBeNull();
+            ClientUtils.GetTokenByConnectionId(connectionId).ShouldBeNull();
         }
 
         [Fact]
         public void GetConnectionIdByToken_NullToken_ReturnsNull()
         {
-            ClientUtils.GetConnectionIdByToken(null).Should().BeNull();
+            ClientUtils.GetConnectionIdByToken(null).ShouldBeNull();
         }
 
         [Fact]
         public void GetConnectionIdByToken_EmptyToken_ReturnsNull()
         {
-            ClientUtils.GetConnectionIdByToken("").Should().BeNull();
+            ClientUtils.GetConnectionIdByToken("").ShouldBeNull();
         }
 
         [Fact]
         public void GetTokenByConnectionId_NullConnectionId_ReturnsNull()
         {
-            ClientUtils.GetTokenByConnectionId(null).Should().BeNull();
+            ClientUtils.GetTokenByConnectionId(null).ShouldBeNull();
         }
 
         [Fact]
         public void GetTokenByConnectionId_EmptyConnectionId_ReturnsNull()
         {
-            ClientUtils.GetTokenByConnectionId("").Should().BeNull();
+            ClientUtils.GetTokenByConnectionId("").ShouldBeNull();
         }
 
         [Fact]
         public void GetConnectionIdByToken_UnknownToken_ReturnsNull()
         {
-            ClientUtils.GetConnectionIdByToken(UniqueId()).Should().BeNull();
+            ClientUtils.GetConnectionIdByToken(UniqueId()).ShouldBeNull();
         }
 
         [Fact]
@@ -121,10 +121,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             ClientUtils.AddClient<McpServerHub>(connB, _logger, tokenB);
 
             // Assert
-            ClientUtils.GetConnectionIdByToken(tokenA).Should().Be(connA);
-            ClientUtils.GetConnectionIdByToken(tokenB).Should().Be(connB);
-            ClientUtils.GetTokenByConnectionId(connA).Should().Be(tokenA);
-            ClientUtils.GetTokenByConnectionId(connB).Should().Be(tokenB);
+            ClientUtils.GetConnectionIdByToken(tokenA).ShouldBe(connA);
+            ClientUtils.GetConnectionIdByToken(tokenB).ShouldBe(connB);
+            ClientUtils.GetTokenByConnectionId(connA).ShouldBe(tokenA);
+            ClientUtils.GetTokenByConnectionId(connB).ShouldBe(tokenB);
 
             // Cleanup
             ClientUtils.RemoveClient<McpServerHub>(connA, _logger);
@@ -146,8 +146,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             ClientUtils.RemoveClient<McpServerHub>(connA, _logger);
 
             // Assert
-            ClientUtils.GetConnectionIdByToken(tokenA).Should().BeNull();
-            ClientUtils.GetConnectionIdByToken(tokenB).Should().Be(connB);
+            ClientUtils.GetConnectionIdByToken(tokenA).ShouldBeNull();
+            ClientUtils.GetConnectionIdByToken(tokenB).ShouldBe(connB);
 
             // Cleanup
             ClientUtils.RemoveClient<McpServerHub>(connB, _logger);

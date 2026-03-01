@@ -15,9 +15,9 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Shouldly;
 using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tests
@@ -30,13 +30,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void AuthOption_ReturnsRequired()
         {
-            _strategy.AuthOption.Should().Be(Consts.MCP.Server.AuthOption.required);
+            _strategy.AuthOption.ShouldBe(Consts.MCP.Server.AuthOption.required);
         }
 
         [Fact]
         public void AllowMultipleConnections_ReturnsTrue()
         {
-            _strategy.AllowMultipleConnections.Should().BeTrue();
+            _strategy.AllowMultipleConnections.ShouldBeTrue();
         }
 
         [Fact]
@@ -45,8 +45,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // A launch-time token is optional in auth=required mode
             var dataArguments = new DataArguments(new string[0]);
 
-            var act = () => _strategy.Validate(dataArguments);
-            act.Should().NotThrow();
+            Should.NotThrow(() => _strategy.Validate(dataArguments));
         }
 
         [Fact]
@@ -56,8 +55,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var dataArguments = new DataArguments(new[] { "token=test-token" });
 
             // Act & Assert
-            var act = () => _strategy.Validate(dataArguments);
-            act.Should().NotThrow();
+            Should.NotThrow(() => _strategy.Validate(dataArguments));
         }
 
         [Fact]
@@ -71,8 +69,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             _strategy.ConfigureAuthentication(options, dataArguments);
 
             // Assert
-            options.RequireToken.Should().BeTrue();
-            options.ServerToken.Should().Be("test-token");
+            options.RequireToken.ShouldBeTrue();
+            options.ServerToken.ShouldBe("test-token");
         }
 
         [Fact]
@@ -84,8 +82,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             _strategy.ConfigureAuthentication(options, dataArguments);
 
-            options.RequireToken.Should().BeTrue();
-            options.ServerToken.Should().BeNull();
+            options.RequireToken.ShouldBeTrue();
+            options.ServerToken.ShouldBeNull();
         }
 
         [Fact]
@@ -101,8 +99,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 (id, _) => disconnected.Add(id));
 
             // Assert — tokenless plugin must be rejected, not registered
-            disconnected.Should().Contain(connectionId);
-            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).Should().NotContain(connectionId);
+            disconnected.ShouldContain(connectionId);
+            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldNotContain(connectionId);
         }
 
         [Fact]
@@ -121,8 +119,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 (id, _) => disconnected.Add(id));
 
             // Assert — must be rejected and not registered
-            disconnected.Should().Contain(connectionId);
-            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).Should().NotContain(connectionId);
+            disconnected.ShouldContain(connectionId);
+            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldNotContain(connectionId);
         }
 
         [Fact]
@@ -141,8 +139,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 (id, _) => disconnected.Add(id));
 
             // Assert — must be accepted and registered
-            disconnected.Should().BeEmpty();
-            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).Should().Contain(connectionId);
+            disconnected.ShouldBeEmpty();
+            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldContain(connectionId);
 
             // Cleanup
             ClientUtils.RemoveClient(typeof(McpServerHub), connectionId, logger);
@@ -164,9 +162,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 (id, _) => disconnected.Add(id));
 
             // Assert - auth-required mode should NOT disconnect existing clients
-            disconnected.Should().BeEmpty();
-            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).Should().Contain(existingId);
-            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).Should().Contain(newId);
+            disconnected.ShouldBeEmpty();
+            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldContain(existingId);
+            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldContain(newId);
 
             // Cleanup
             ClientUtils.RemoveClient(typeof(McpServerHub), existingId, logger);
@@ -186,7 +184,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = _strategy.ResolveConnectionId(token, 0);
 
             // Assert
-            result.Should().Be(connectionId);
+            result.ShouldBe(connectionId);
 
             // Cleanup
             ClientUtils.RemoveClient(typeof(McpServerHub), connectionId, logger);
@@ -205,7 +203,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = _strategy.ShouldNotifySession(connectionId, token);
 
             // Assert
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
 
             // Cleanup
             ClientUtils.RemoveClient(typeof(McpServerHub), connectionId, logger);
@@ -224,7 +222,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = _strategy.ShouldNotifySession(connectionId, "token-B");
 
             // Assert
-            result.Should().BeFalse();
+            result.ShouldBeFalse();
 
             // Cleanup
             ClientUtils.RemoveClient(typeof(McpServerHub), connectionId, logger);
@@ -242,7 +240,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = _strategy.ShouldNotifySession(connectionId, "some-session");
 
             // Assert
-            result.Should().BeFalse();
+            result.ShouldBeFalse();
 
             // Cleanup
             ClientUtils.RemoveClient(typeof(McpServerHub), connectionId, logger);
@@ -265,7 +263,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = _strategy.GetClientData(connectionId, sessionTracker.Object);
 
             // Assert
-            result.Should().BeSameAs(expectedData);
+            result.ShouldBeSameAs(expectedData);
             sessionTracker.Verify(s => s.GetClientDataByToken(token), Times.Once);
 
             // Cleanup
@@ -289,7 +287,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = _strategy.GetServerData(connectionId, sessionTracker.Object);
 
             // Assert
-            result.Should().BeSameAs(expectedData);
+            result.ShouldBeSameAs(expectedData);
             sessionTracker.Verify(s => s.GetServerDataByToken(token), Times.Once);
 
             // Cleanup
@@ -302,7 +300,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // auth-required mode must not fall back to any connection when the token is unknown
             var result = _strategy.ResolveConnectionId("unknown-token", 0);
 
-            result.Should().BeNull();
+            result.ShouldBeNull();
         }
 
         [Fact]
@@ -319,7 +317,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = _strategy.GetClientData(connectionId, sessionTracker.Object);
 
             // Assert — unscoped fallback must not be called; empty data returned instead
-            result.IsConnected.Should().BeFalse();
+            result.IsConnected.ShouldBeFalse();
             sessionTracker.Verify(s => s.GetClientData(), Times.Never);
             sessionTracker.Verify(s => s.GetClientData(It.IsAny<string>()), Times.Never);
 
@@ -341,7 +339,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = _strategy.GetServerData(connectionId, sessionTracker.Object);
 
             // Assert — unscoped fallback must not be called; empty data returned instead
-            result.IsAiAgentConnected.Should().BeFalse();
+            result.IsAiAgentConnected.ShouldBeFalse();
             sessionTracker.Verify(s => s.GetServerData(), Times.Never);
             sessionTracker.Verify(s => s.GetServerData(It.IsAny<string>()), Times.Never);
 

@@ -9,12 +9,13 @@
 */
 
 using System;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
-using FluentAssertions;
 using ModelContextProtocol.Protocol;
+using Shouldly;
 using Xunit;
 using CommonContentBlock = com.IvanMurzak.McpPlugin.Common.Model.ContentBlock;
 
@@ -35,8 +36,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = block.ToContent();
 
             // Assert
-            result.Should().BeOfType<TextContentBlock>();
-            ((TextContentBlock)result).Text.Should().Be("hello world");
+            result.ShouldBeOfType<TextContentBlock>();
+            ((TextContentBlock)result).Text.ShouldBe("hello world");
         }
 
         [Fact]
@@ -49,8 +50,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = block.ToContent();
 
             // Assert
-            result.Should().BeOfType<TextContentBlock>();
-            ((TextContentBlock)result).Text.Should().Be(string.Empty);
+            result.ShouldBeOfType<TextContentBlock>();
+            ((TextContentBlock)result).Text.ShouldBe(string.Empty);
         }
 
         [Fact]
@@ -63,9 +64,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = block.ToContent();
 
             // Assert
-            result.Should().BeOfType<ImageContentBlock>();
+            result.ShouldBeOfType<ImageContentBlock>();
             var imageBlock = (ImageContentBlock)result;
-            imageBlock.MimeType.Should().Be(Consts.MimeType.ImagePng);
+            imageBlock.MimeType.ShouldBe(Consts.MimeType.ImagePng);
         }
 
         [Fact]
@@ -78,7 +79,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = (ImageContentBlock)block.ToContent();
 
             // Assert
-            result.DecodedData.ToArray().Should().BeEquivalentTo(_testImageBytes);
+            result.DecodedData.ToArray().ShouldBe(_testImageBytes);
         }
 
         [Fact]
@@ -91,8 +92,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var act = () => block.ToContent();
 
             // Assert
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("*Image content block is missing Data*");
+            Should.Throw<InvalidOperationException>(act)
+                .Message.ShouldContain("Image content block is missing Data");
         }
 
         [Fact]
@@ -105,9 +106,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = block.ToContent();
 
             // Assert
-            result.Should().BeOfType<AudioContentBlock>();
+            result.ShouldBeOfType<AudioContentBlock>();
             var audioBlock = (AudioContentBlock)result;
-            audioBlock.MimeType.Should().Be(Consts.MimeType.AudioWav);
+            audioBlock.MimeType.ShouldBe(Consts.MimeType.AudioWav);
         }
 
         [Fact]
@@ -120,7 +121,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = (AudioContentBlock)block.ToContent();
 
             // Assert
-            result.DecodedData.ToArray().Should().BeEquivalentTo(_testAudioBytes);
+            result.DecodedData.ToArray().ShouldBe(_testAudioBytes);
         }
 
         [Fact]
@@ -133,8 +134,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var act = () => block.ToContent();
 
             // Assert
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("*Audio content block is missing Data*");
+            Should.Throw<InvalidOperationException>(act)
+                .Message.ShouldContain("Audio content block is missing Data");
         }
 
         [Fact]
@@ -148,10 +149,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = block.ToContent();
 
             // Assert
-            result.Should().BeOfType<EmbeddedResourceBlock>();
+            result.ShouldBeOfType<EmbeddedResourceBlock>();
             var resourceBlock = (EmbeddedResourceBlock)result;
-            resourceBlock.Resource.Should().BeOfType<TextResourceContents>();
-            ((TextResourceContents)resourceBlock.Resource).Text.Should().Be("hello");
+            resourceBlock.Resource.ShouldBeOfType<TextResourceContents>();
+            ((TextResourceContents)resourceBlock.Resource).Text.ShouldBe("hello");
         }
 
         [Fact]
@@ -166,9 +167,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = block.ToContent();
 
             // Assert
-            result.Should().BeOfType<EmbeddedResourceBlock>();
+            result.ShouldBeOfType<EmbeddedResourceBlock>();
             var resourceBlock = (EmbeddedResourceBlock)result;
-            resourceBlock.Resource.Should().BeOfType<BlobResourceContents>();
+            resourceBlock.Resource.ShouldBeOfType<BlobResourceContents>();
         }
 
         [Fact]
@@ -181,8 +182,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var act = () => block.ToContent();
 
             // Assert
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("*Resource content block is missing Resource*");
+            Should.Throw<InvalidOperationException>(act)
+                .Message.ShouldContain("Resource content block is missing Resource");
         }
 
         [Fact]
@@ -195,8 +196,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = block.ToContent();
 
             // Assert
-            result.Should().BeOfType<TextContentBlock>();
-            ((TextContentBlock)result).Text.Should().Be("fallback");
+            result.ShouldBeOfType<TextContentBlock>();
+            ((TextContentBlock)result).Text.ShouldBe("fallback");
         }
     }
 
@@ -214,10 +215,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = response.ToCallToolResult();
 
             // Assert
-            result.IsError.Should().BeFalse();
-            result.Content.Should().HaveCount(1);
-            result.Content[0].Should().BeOfType<ImageContentBlock>();
-            ((ImageContentBlock)result.Content[0]).MimeType.Should().Be(Consts.MimeType.ImagePng);
+            result.IsError.ShouldBe(false);
+            result.Content.Count.ShouldBe(1);
+            result.Content[0].ShouldBeOfType<ImageContentBlock>();
+            ((ImageContentBlock)result.Content[0]).MimeType.ShouldBe(Consts.MimeType.ImagePng);
         }
 
         [Fact]
@@ -230,9 +231,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = response.ToCallToolResult();
 
             // Assert
-            result.Content.Should().HaveCount(2);
-            result.Content[0].Should().BeOfType<TextContentBlock>();
-            result.Content[1].Should().BeOfType<ImageContentBlock>();
+            result.Content.Count.ShouldBe(2);
+            result.Content[0].ShouldBeOfType<TextContentBlock>();
+            result.Content[1].ShouldBeOfType<ImageContentBlock>();
         }
 
         [Fact]
@@ -245,10 +246,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = response.ToCallToolResult();
 
             // Assert
-            result.IsError.Should().BeFalse();
-            result.Content.Should().HaveCount(1);
-            result.Content[0].Should().BeOfType<AudioContentBlock>();
-            ((AudioContentBlock)result.Content[0]).MimeType.Should().Be(Consts.MimeType.AudioWav);
+            result.IsError.ShouldBe(false);
+            result.Content.Count.ShouldBe(1);
+            result.Content[0].ShouldBeOfType<AudioContentBlock>();
+            ((AudioContentBlock)result.Content[0]).MimeType.ShouldBe(Consts.MimeType.AudioWav);
         }
 
         [Fact]
@@ -263,9 +264,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = response.ToCallToolResult();
 
             // Assert
-            result.Content.Should().HaveCount(2);
-            result.Content[0].Should().BeOfType<TextContentBlock>();
-            result.Content[1].Should().BeOfType<ImageContentBlock>();
+            result.Content.Count.ShouldBe(2);
+            result.Content[0].ShouldBeOfType<TextContentBlock>();
+            result.Content[1].ShouldBeOfType<ImageContentBlock>();
         }
 
         [Fact]
@@ -278,7 +279,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = response.ToCallToolResult();
 
             // Assert
-            result.IsError.Should().BeTrue();
+            result.IsError.ShouldBe(true);
         }
 
         [Fact]
@@ -291,10 +292,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = response.ToCallToolResult();
 
             // Assert
-            result.StructuredContent.Should().NotBeNull();
+            result.StructuredContent.ShouldNotBeNull();
             var element = result.StructuredContent!.Value;
-            element.ValueKind.Should().Be(JsonValueKind.Object);
-            element.GetProperty("result").GetInt32().Should().Be(42);
+            element.ValueKind.ShouldBe(JsonValueKind.Object);
+            element.GetProperty("result").GetInt32().ShouldBe(42);
         }
 
         [Fact]
@@ -307,7 +308,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = response.ToCallToolResult();
 
             // Assert
-            result.StructuredContent.Should().BeNull();
+            result.StructuredContent.ShouldBeNull();
         }
     }
 }

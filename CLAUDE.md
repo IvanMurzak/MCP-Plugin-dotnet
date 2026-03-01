@@ -80,7 +80,7 @@ public static class MyTools
 
 ## Testing Conventions
 
-- xUnit + FluentAssertions + Moq
+- xUnit + Shouldly + Moq
 - Arrange-Act-Assert pattern
 - `[Fact]` for single scenarios, `[Theory]` for parameterized
 - `[Collection("McpPlugin")]` for test isolation
