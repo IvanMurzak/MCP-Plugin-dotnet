@@ -41,9 +41,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
         async Task ValidateListToolResponse(RequestListTool request, Task<ResponseData<ResponseListTool[]>>? listToolTask, string expectedToolName, string expectedToolTitle)
         {
-            listToolTask.ShouldNotBeNull();
-
-            var response = await listToolTask;
+            var response = await listToolTask.ShouldNotBeNull();
             response.ShouldNotBeNull();
             response.RequestID.ShouldBe(request.RequestID);
             response.Status.ShouldBe(ResponseStatus.Success);
@@ -146,9 +144,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
         private async Task ValidateListToolSchema(Task<ResponseData<ResponseListTool[]>>? listToolTask, JsonElement? expectedInputSchema = null, JsonElement? expectedOutputSchema = null)
         {
-            listToolTask.ShouldNotBeNull();
-
-            var response = await listToolTask;
+            var response = await listToolTask.ShouldNotBeNull();
             response.ShouldNotBeNull();
             response.Value.ShouldNotBeNull();
             response.Value!.Length.ShouldBe(1);
