@@ -1,15 +1,15 @@
 /*
-┌────────────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
-│  Copyright (c) 2025 Ivan Murzak                                        │
-│  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
-└────────────────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  Author: Ivan Murzak (https://github.com/IvanMurzak)                   â”‚
+â”‚  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  â”‚
+â”‚  Copyright (c) 2025 Ivan Murzak                                        â”‚
+â”‚  Licensed under the Apache License, Version 2.0.                       â”‚
+â”‚  See the LICENSE file in the project root for more information.        â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 */
 using System;
 using com.IvanMurzak.McpPlugin.Common.Model;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Tests.Data
@@ -23,9 +23,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var response = new ResponseData();
 
             // Assert
-            response.RequestID.Should().BeEmpty();
-            response.Status.Should().Be(ResponseStatus.Error);
-            response.Message.Should().BeNull();
+            response.RequestID.ShouldBeEmpty();
+            response.Status.ShouldBe(ResponseStatus.Error);
+            response.Message.ShouldBeNull();
         }
 
         [Fact]
@@ -39,8 +39,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var response = new ResponseData(requestId, status);
 
             // Assert
-            response.RequestID.Should().Be(requestId);
-            response.Status.Should().Be(status);
+            response.RequestID.ShouldBe(requestId);
+            response.Status.ShouldBe(status);
         }
 
         [Fact]
@@ -50,8 +50,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             Action act = () => new ResponseData(null!, ResponseStatus.Success);
 
             // Assert
-            act.Should().Throw<ArgumentNullException>()
-                .WithParameterName("requestId");
+            Should.Throw<ArgumentNullException>(act)
+                .ParamName.ShouldBe("requestId");
         }
 
         [Fact]
@@ -65,9 +65,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var response = ResponseData.Success(requestId, message);
 
             // Assert
-            response.RequestID.Should().Be(requestId);
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Message.Should().Be(message);
+            response.RequestID.ShouldBe(requestId);
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Message.ShouldBe(message);
         }
 
         [Fact]
@@ -81,9 +81,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var response = ResponseData.Error(requestId, message);
 
             // Assert
-            response.RequestID.Should().Be(requestId);
-            response.Status.Should().Be(ResponseStatus.Error);
-            response.Message.Should().Be(message);
+            response.RequestID.ShouldBe(requestId);
+            response.Status.ShouldBe(ResponseStatus.Error);
+            response.Message.ShouldBe(message);
         }
 
         [Fact]
@@ -97,9 +97,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var response = ResponseData.Processing(requestId, message);
 
             // Assert
-            response.RequestID.Should().Be(requestId);
-            response.Status.Should().Be(ResponseStatus.Processing);
-            response.Message.Should().Be(message);
+            response.RequestID.ShouldBe(requestId);
+            response.Status.ShouldBe(ResponseStatus.Processing);
+            response.Message.ShouldBe(message);
         }
 
         [Fact]
@@ -113,8 +113,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var result = response.SetRequestID(newRequestId);
 
             // Assert
-            result.RequestID.Should().Be(newRequestId);
-            result.Should().BeSameAs(response); // Fluent API should return same instance
+            result.RequestID.ShouldBe(newRequestId);
+            result.ShouldBeSameAs(response); // Fluent API should return same instance
         }
     }
 
@@ -127,10 +127,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var response = new ResponseData<string>();
 
             // Assert
-            response.RequestID.Should().BeEmpty();
-            response.Status.Should().Be(ResponseStatus.Error);
-            response.Message.Should().BeNull();
-            response.Value.Should().BeNull();
+            response.RequestID.ShouldBeEmpty();
+            response.Status.ShouldBe(ResponseStatus.Error);
+            response.Message.ShouldBeNull();
+            response.Value.ShouldBeNull();
         }
 
         [Fact]
@@ -144,7 +144,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             response.Value = value;
 
             // Assert
-            response.Value.Should().Be(value);
+            response.Value.ShouldBe(value);
         }
 
         [Fact]
@@ -160,10 +160,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             response.Value = value;
 
             // Assert
-            response.RequestID.Should().Be(requestId);
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Message.Should().Be(message);
-            response.Value.Should().Be(value);
+            response.RequestID.ShouldBe(requestId);
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Message.ShouldBe(message);
+            response.Value.ShouldBe(value);
         }
 
         [Fact]
@@ -177,10 +177,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var response = ResponseData<string>.Error(requestId, message);
 
             // Assert
-            response.RequestID.Should().Be(requestId);
-            response.Status.Should().Be(ResponseStatus.Error);
-            response.Message.Should().Be(message);
-            response.Value.Should().BeNull();
+            response.RequestID.ShouldBe(requestId);
+            response.Status.ShouldBe(ResponseStatus.Error);
+            response.Message.ShouldBe(message);
+            response.Value.ShouldBeNull();
         }
 
         [Fact]
@@ -194,8 +194,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             var result = response.SetRequestID(newRequestId);
 
             // Assert
-            result.Should().BeOfType<ResponseData<string>>();
-            result.RequestID.Should().Be(newRequestId);
+            result.ShouldBeOfType<ResponseData<string>>();
+            result.RequestID.ShouldBe(newRequestId);
         }
 
         [Fact]
@@ -209,7 +209,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             response.Value = complexValue;
 
             // Assert
-            response.Value.Should().BeSameAs(complexValue);
+            response.Value.ShouldBeSameAs(complexValue);
         }
     }
 }

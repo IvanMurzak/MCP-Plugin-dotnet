@@ -1,11 +1,11 @@
 /*
-┌────────────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
-│  Copyright (c) 2025 Ivan Murzak                                        │
-│  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
-└────────────────────────────────────────────────────────────────────────┘
+Ã¢â€Å’Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â
+Ã¢â€â€š  Author: Ivan Murzak (https://github.com/IvanMurzak)                   Ã¢â€â€š
+Ã¢â€â€š  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  Ã¢â€â€š
+Ã¢â€â€š  Copyright (c) 2025 Ivan Murzak                                        Ã¢â€â€š
+Ã¢â€â€š  Licensed under the Apache License, Version 2.0.                       Ã¢â€â€š
+Ã¢â€â€š  See the LICENSE file in the project root for more information.        Ã¢â€â€š
+Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ
 */
 
 using System;
@@ -18,7 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Skills;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -41,7 +41,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
                 Directory.Delete(_tempDir, recursive: true);
         }
 
-        // ── host in URL ──────────────────────────────────────────────────────────
+        // Ã¢â€â‚¬Ã¢â€â‚¬ host in URL Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
         [Fact]
         public void Generate_WithHost_WritesHostToUrls()
@@ -52,9 +52,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Generate(new[] { tool }, _tempDir, host);
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "add", "SKILL.md"));
-            content.Should().Contain($"{host}/api/tools/add");
+            content.ShouldContain($"{host}/api/tools/add");
         }
 
         [Theory]
@@ -69,9 +69,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Generate(new[] { tool }, _tempDir, host);
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "ping", "SKILL.md"));
-            content.Should().Contain($"{host}/api/tools/ping");
+            content.ShouldContain($"{host}/api/tools/ping");
         }
 
         [Fact]
@@ -83,11 +83,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Generate(new[] { tool }, _tempDir, host);
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "query", "SKILL.md"));
             // The only host that should appear is the one we passed in
-            content.Should().Contain(host);
-            content.Should().NotContain("localhost:8080");
+            content.ShouldContain(host);
+            content.ShouldNotContain("localhost:8080");
         }
 
         [Fact]
@@ -99,9 +99,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Generate(new[] { tool }, _tempDir, host);
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "secure-op", "SKILL.md"));
-            content.Should().Contain("https://secure.example.com/api/tools/secure-op");
+            content.ShouldContain("https://secure.example.com/api/tools/secure-op");
         }
 
         [Fact]
@@ -113,15 +113,15 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Generate(new[] { tool }, _tempDir, host);
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "compute", "SKILL.md"));
             // Both the plain and the auth-header curl snippets must use the given host
             var expectedUrl = $"{host}/api/tools/compute";
-            content.Split(expectedUrl).Length.Should().BeGreaterThanOrEqualTo(3,
+            content.Split(expectedUrl).Length.ShouldBeGreaterThanOrEqualTo(3,
                 "because the host URL appears in both curl examples");
         }
 
-        // ── file creation ────────────────────────────────────────────────────────
+        // Ã¢â€â‚¬Ã¢â€â‚¬ file creation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
         [Fact]
         public void Generate_WithSingleTool_CreatesSkillFileInSubdirectory()
@@ -131,9 +131,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
             var expectedFile = Path.Combine(_tempDir, "my-tool", "SKILL.md");
-            File.Exists(expectedFile).Should().BeTrue();
+            File.Exists(expectedFile).ShouldBeTrue();
         }
 
         [Fact]
@@ -149,9 +149,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Generate(tools, _tempDir, "http://localhost:8080");
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
             foreach (var tool in tools)
-                File.Exists(Path.Combine(_tempDir, tool.Name, "SKILL.md")).Should().BeTrue($"{tool.Name}/SKILL.md should exist");
+                File.Exists(Path.Combine(_tempDir, tool.Name, "SKILL.md")).ShouldBeTrue($"{tool.Name}/SKILL.md should exist");
         }
 
         [Fact]
@@ -162,11 +162,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
-            result.Should().BeTrue();
-            Directory.Exists(Path.Combine(_tempDir, "my-complex-tool")).Should().BeTrue();
+            result.ShouldBeTrue();
+            Directory.Exists(Path.Combine(_tempDir, "my-complex-tool")).ShouldBeTrue();
         }
 
-        // ── null / empty input guards ─────────────────────────────────────────────
+        // Ã¢â€â‚¬Ã¢â€â‚¬ null / empty input guards Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
         [Fact]
         public void Generate_WithNullTools_DoesNotThrow()
@@ -176,8 +176,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             bool result = false;
             Action act = () => { result = generator.Generate(null!, _tempDir, "http://localhost:8080"); };
 
-            act.Should().NotThrow();
-            result.Should().BeFalse();
+            Should.NotThrow(act);
+            result.ShouldBeFalse();
         }
 
         [Fact]
@@ -187,11 +187,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Generate(null!, _tempDir, "http://localhost:8080");
 
-            result.Should().BeFalse();
+            result.ShouldBeFalse();
 
             // Skills dir should not have been created (or be empty if OS creates it)
             if (Directory.Exists(_tempDir))
-                Directory.GetDirectories(_tempDir).Should().BeEmpty();
+                Directory.GetDirectories(_tempDir).ShouldBeEmpty();
         }
 
         [Fact]
@@ -201,13 +201,13 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Generate(Array.Empty<IRunTool>(), _tempDir, "http://localhost:8080");
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
 
             if (Directory.Exists(_tempDir))
-                Directory.GetDirectories(_tempDir).Should().BeEmpty();
+                Directory.GetDirectories(_tempDir).ShouldBeEmpty();
         }
 
-        // ── markdown content ─────────────────────────────────────────────────────
+        // Ã¢â€â‚¬Ã¢â€â‚¬ markdown content Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
         [Fact]
         public void Generate_WithToolDescription_IncludesDescriptionInMarkdown()
@@ -218,9 +218,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "add", "SKILL.md"));
-            content.Should().Contain(description);
+            content.ShouldContain(description);
         }
 
         [Fact]
@@ -231,9 +231,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "add", "SKILL.md"));
-            content.Should().Contain("# Addition Tool");
+            content.ShouldContain("# Addition Tool");
         }
 
         [Fact]
@@ -254,12 +254,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "add", "SKILL.md"));
-            content.Should().Contain("| `a`");
-            content.Should().Contain("| `b`");
-            content.Should().Contain("First operand");
-            content.Should().Contain("Second operand");
+            content.ShouldContain("| `a`");
+            content.ShouldContain("| `b`");
+            content.ShouldContain("First operand");
+            content.ShouldContain("Second operand");
         }
 
         [Fact]
@@ -271,10 +271,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "add", "SKILL.md"));
-            content.Should().Contain("## Output");
-            content.Should().Contain("Output JSON Schema");
+            content.ShouldContain("## Output");
+            content.ShouldContain("Output JSON Schema");
         }
 
         [Fact]
@@ -285,9 +285,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "fire-and-forget", "SKILL.md"));
-            content.Should().Contain("does not return structured output");
+            content.ShouldContain("does not return structured output");
         }
 
         [Fact]
@@ -298,13 +298,13 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "my-tool", "SKILL.md"));
-            content.Should().StartWith("---");
-            content.Should().Contain("name: my-tool");
+            content.ShouldStartWith("---");
+            content.ShouldContain("name: my-tool");
         }
 
-        // ── delete ───────────────────────────────────────────────────────────────
+        // Ã¢â€â‚¬Ã¢â€â‚¬ delete Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
         [Fact]
         public void Delete_WithNullTools_DoesNotThrow()
@@ -314,8 +314,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             bool result = false;
             Action act = () => { result = generator.Delete(null!, _tempDir); };
 
-            act.Should().NotThrow();
-            result.Should().BeFalse();
+            Should.NotThrow(act);
+            result.ShouldBeFalse();
         }
 
         [Fact]
@@ -325,7 +325,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Delete(Array.Empty<IRunTool>(), _tempDir);
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
         }
 
         [Fact]
@@ -336,7 +336,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Delete(new[] { new MockRunTool { Name = "add" } }, nonExistentDir);
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
         }
 
         [Fact]
@@ -345,12 +345,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             var generator = new SkillFileGenerator();
             var tool = new MockRunTool { Name = "add" };
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
-            Directory.Exists(Path.Combine(_tempDir, "add")).Should().BeTrue();
+            Directory.Exists(Path.Combine(_tempDir, "add")).ShouldBeTrue();
 
             var result = generator.Delete(new[] { tool }, _tempDir);
 
-            result.Should().BeTrue();
-            Directory.Exists(Path.Combine(_tempDir, "add")).Should().BeFalse();
+            result.ShouldBeTrue();
+            Directory.Exists(Path.Combine(_tempDir, "add")).ShouldBeFalse();
         }
 
         [Fact]
@@ -367,9 +367,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Delete(tools, _tempDir);
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
             foreach (var tool in tools)
-                Directory.Exists(Path.Combine(_tempDir, tool.Name)).Should().BeFalse($"{tool.Name}/ should have been deleted");
+                Directory.Exists(Path.Combine(_tempDir, tool.Name)).ShouldBeFalse($"{tool.Name}/ should have been deleted");
         }
 
         [Fact]
@@ -382,9 +382,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             var result = generator.Delete(new[] { toolToDelete }, _tempDir);
 
-            result.Should().BeTrue();
-            Directory.Exists(Path.Combine(_tempDir, "remove-me")).Should().BeFalse();
-            Directory.Exists(Path.Combine(_tempDir, "keep-me")).Should().BeTrue("unrelated skill dir must not be touched");
+            result.ShouldBeTrue();
+            Directory.Exists(Path.Combine(_tempDir, "remove-me")).ShouldBeFalse();
+            Directory.Exists(Path.Combine(_tempDir, "keep-me")).ShouldBeTrue("unrelated skill dir must not be touched");
         }
 
         [Fact]
@@ -392,11 +392,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
         {
             var generator = new SkillFileGenerator();
             Directory.CreateDirectory(_tempDir);
-            // Do not generate — the subdirectory for "ghost-tool" never exists
+            // Do not generate Ã¢â‚¬â€ the subdirectory for "ghost-tool" never exists
 
             var result = generator.Delete(new[] { new MockRunTool { Name = "ghost-tool" } }, _tempDir);
 
-            result.Should().BeTrue();
+            result.ShouldBeTrue();
         }
 
         [Fact]
@@ -405,35 +405,35 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             var generator = new SkillFileGenerator();
             var tool = new MockRunTool { Name = "My Complex Tool!" };
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
-            Directory.Exists(Path.Combine(_tempDir, "my-complex-tool")).Should().BeTrue();
+            Directory.Exists(Path.Combine(_tempDir, "my-complex-tool")).ShouldBeTrue();
 
             var result = generator.Delete(new[] { tool }, _tempDir);
 
-            result.Should().BeTrue();
-            Directory.Exists(Path.Combine(_tempDir, "my-complex-tool")).Should().BeFalse();
+            result.ShouldBeTrue();
+            Directory.Exists(Path.Combine(_tempDir, "my-complex-tool")).ShouldBeFalse();
         }
 
         [Fact]
         public void Delete_WithCollidingNames_RemovesBothHashedSubdirectories()
         {
             var generator = new SkillFileGenerator();
-            // "foo bar" and "foo-bar" both sanitize to "foo-bar" → collision → hashed dirs
+            // "foo bar" and "foo-bar" both sanitize to "foo-bar" Ã¢â€ â€™ collision Ã¢â€ â€™ hashed dirs
             var toolA = new MockRunTool { Name = "foo bar" };
             var toolB = new MockRunTool { Name = "foo-bar" };
             var tools = new[] { toolA, toolB };
             generator.Generate(tools, _tempDir, "http://localhost:8080");
 
             // Both hashed dirs should exist
-            Directory.GetDirectories(_tempDir).Should().HaveCount(2, "each colliding tool gets its own hashed directory");
+            Directory.GetDirectories(_tempDir).Length.ShouldBe(2, "each colliding tool gets its own hashed directory");
 
             // Delete must receive the same tool set so it can reproduce the same collision/hash logic
             var result = generator.Delete(tools, _tempDir);
 
-            result.Should().BeTrue();
-            Directory.GetDirectories(_tempDir).Should().BeEmpty("both hashed dirs should have been deleted");
+            result.ShouldBeTrue();
+            Directory.GetDirectories(_tempDir).ShouldBeEmpty("both hashed dirs should have been deleted");
         }
 
-        // ── virtual bool properties ──────────────────────────────────────────────
+        // Ã¢â€â‚¬Ã¢â€â‚¬ virtual bool properties Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
         [Fact]
         public void IncludeAuthorizationExample_Default_ContainsAuthorizationBlock()
@@ -444,7 +444,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
-            content.Should().Contain("Authorization: Bearer");
+            content.ShouldContain("Authorization: Bearer");
         }
 
         [Fact]
@@ -456,7 +456,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
-            content.Should().NotContain("Authorization: Bearer");
+            content.ShouldNotContain("Authorization: Bearer");
         }
 
         [Fact]
@@ -469,8 +469,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "calc", "SKILL.md"));
-            content.Should().NotContain("| Name | Type |");
-            content.Should().NotContain("| `x`");
+            content.ShouldNotContain("| Name | Type |");
+            content.ShouldNotContain("| `x`");
         }
 
         [Fact]
@@ -483,7 +483,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "calc", "SKILL.md"));
-            content.Should().NotContain("### Input JSON Schema");
+            content.ShouldNotContain("### Input JSON Schema");
         }
 
         [Fact]
@@ -495,10 +495,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
-            content.Should().NotContain("## Output");
+            content.ShouldNotContain("## Output");
         }
 
-        // ── additional content injection ─────────────────────────────────────────
+        // Ã¢â€â‚¬Ã¢â€â‚¬ additional content injection Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
         [Fact]
         public void GetAdditionalContent_Default_ReturnsNull()
@@ -506,7 +506,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             var generator = new SkillFileGenerator();
             var tool = new MockRunTool { Name = "op" };
 
-            generator.GetAdditionalContent(tool).Should().BeNull();
+            generator.GetAdditionalContent(tool).ShouldBeNull();
         }
 
         [Fact]
@@ -519,10 +519,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
-            content.Should().Contain(marker);
+            content.ShouldContain(marker);
             var outputIdx = content.IndexOf("## Output", StringComparison.Ordinal);
             var markerIdx = content.IndexOf(marker, StringComparison.Ordinal);
-            markerIdx.Should().BeGreaterThan(outputIdx, "additional content at End should appear after the Output section");
+            markerIdx.ShouldBeGreaterThan(outputIdx, "additional content at End should appear after the Output section");
         }
 
         [Fact]
@@ -535,12 +535,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
-            content.Should().Contain(marker);
+            content.ShouldContain(marker);
             var titleIdx = content.IndexOf("# My Op", StringComparison.Ordinal);
             var markerIdx = content.IndexOf(marker, StringComparison.Ordinal);
             var howToCallIdx = content.IndexOf("## How to Call", StringComparison.Ordinal);
-            markerIdx.Should().BeGreaterThan(titleIdx, "additional content should appear after the title");
-            markerIdx.Should().BeLessThan(howToCallIdx, "additional content should appear before 'How to Call'");
+            markerIdx.ShouldBeGreaterThan(titleIdx, "additional content should appear after the title");
+            markerIdx.ShouldBeLessThan(howToCallIdx, "additional content should appear before 'How to Call'");
         }
 
         [Fact]
@@ -553,12 +553,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
-            content.Should().Contain(marker);
+            content.ShouldContain(marker);
             var howToCallIdx = content.IndexOf("## How to Call", StringComparison.Ordinal);
             var markerIdx = content.IndexOf(marker, StringComparison.Ordinal);
             var inputIdx = content.IndexOf("## Input", StringComparison.Ordinal);
-            markerIdx.Should().BeGreaterThan(howToCallIdx, "additional content should appear after 'How to Call'");
-            markerIdx.Should().BeLessThan(inputIdx, "additional content should appear before 'Input'");
+            markerIdx.ShouldBeGreaterThan(howToCallIdx, "additional content should appear after 'How to Call'");
+            markerIdx.ShouldBeLessThan(inputIdx, "additional content should appear before 'Input'");
         }
 
         [Fact]
@@ -571,12 +571,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
-            content.Should().Contain(marker);
+            content.ShouldContain(marker);
             var inputIdx = content.IndexOf("## Input", StringComparison.Ordinal);
             var markerIdx = content.IndexOf(marker, StringComparison.Ordinal);
             var outputIdx = content.IndexOf("## Output", StringComparison.Ordinal);
-            markerIdx.Should().BeGreaterThan(inputIdx, "additional content should appear after 'Input'");
-            markerIdx.Should().BeLessThan(outputIdx, "additional content should appear before 'Output'");
+            markerIdx.ShouldBeGreaterThan(inputIdx, "additional content should appear after 'Input'");
+            markerIdx.ShouldBeLessThan(outputIdx, "additional content should appear before 'Output'");
         }
 
         [Fact]
@@ -589,7 +589,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
-            content.Should().NotContain(marker, "None position must suppress content injection entirely");
+            content.ShouldNotContain(marker); // None position must suppress content injection entirely
         }
 
         [Fact]
@@ -602,10 +602,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
-            content.Split(marker).Length.Should().Be(2, "additional content must appear exactly once");
+            content.Split(marker).Length.ShouldBe(2, "additional content must appear exactly once");
         }
 
-        // ── protected virtual method overrides ───────────────────────────────────
+        // Ã¢â€â‚¬Ã¢â€â‚¬ protected virtual method overrides Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
         [Fact]
         public void Generate_OverriddenBuildMarkdown_WritesCustomContent()
@@ -616,7 +616,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
-            content.Should().Be(CustomMarkdownGenerator.CustomContent);
+            content.ShouldBe(CustomMarkdownGenerator.CustomContent);
         }
 
         [Fact]
@@ -629,8 +629,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
-            content.Should().Contain(CustomTableGenerator.CustomRow);
-            content.Should().NotContain("| `x`", "default table rows should be replaced by the override");
+            content.ShouldContain(CustomTableGenerator.CustomRow);
+            content.ShouldNotContain("| `x`"); // default table rows should be replaced by the override
         }
 
         [Fact]
@@ -643,7 +643,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
-            content.Should().Contain(CustomExampleGenerator.CustomExample);
+            content.ShouldContain(CustomExampleGenerator.CustomExample);
         }
 
         [Fact]
@@ -655,7 +655,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var customFile = Path.Combine(_tempDir, "custom-op", "SKILL.md");
-            File.Exists(customFile).Should().BeTrue("overridden GenerateFor should write to a custom directory");
+            File.Exists(customFile).ShouldBeTrue("overridden GenerateFor should write to a custom directory");
         }
 
         [Fact]
@@ -666,11 +666,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
-            Directory.Exists(Path.Combine(_tempDir, "prefixed-my-tool")).Should().BeTrue(
+            Directory.Exists(Path.Combine(_tempDir, "prefixed-my-tool")).ShouldBeTrue(
                 "overridden BuildNameMap should produce the custom directory name");
         }
 
-        // ── helpers ───────────────────────────────────────────────────────────────
+        // Ã¢â€â‚¬Ã¢â€â‚¬ helpers Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
         private class MockRunTool : IRunTool
         {

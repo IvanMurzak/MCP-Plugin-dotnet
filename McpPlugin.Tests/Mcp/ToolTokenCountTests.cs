@@ -1,11 +1,11 @@
 /*
-┌────────────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
-│  Copyright (c) 2025 Ivan Murzak                                        │
-│  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
-└────────────────────────────────────────────────────────────────────────┘
+Ã¢â€Å’Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â
+Ã¢â€â€š  Author: Ivan Murzak (https://github.com/IvanMurzak)                   Ã¢â€â€š
+Ã¢â€â€š  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  Ã¢â€â€š
+Ã¢â€â€š  Copyright (c) 2025 Ivan Murzak                                        Ã¢â€â€š
+Ã¢â€â€š  Licensed under the Apache License, Version 2.0.                       Ã¢â€â€š
+Ã¢â€â€š  See the LICENSE file in the project root for more information.        Ã¢â€â€š
+Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ
 */
 
 using System.Collections.Generic;
@@ -13,7 +13,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
 using com.IvanMurzak.ReflectorNet;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
@@ -42,8 +42,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var tool = tools.Where(t => t.Name == "simpleTool").FirstOrDefault();
 
             // Assert
-            tool.Should().NotBeNull();
-            tool!.TokenCount.Should().BeGreaterThan(0);
+            tool.ShouldNotBeNull();
+            tool!.TokenCount.ShouldBeGreaterThan(0);
         }
 
         [Fact]
@@ -72,9 +72,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             }
 
             // Assert
-            simpleTool.Should().NotBeNull();
-            complexTool.Should().NotBeNull();
-            complexTool!.TokenCount.Should().BeGreaterThan(simpleTool!.TokenCount);
+            simpleTool.ShouldNotBeNull();
+            complexTool.ShouldNotBeNull();
+            complexTool!.TokenCount.ShouldBeGreaterThan(simpleTool!.TokenCount);
         }
 
         [Fact]
@@ -99,18 +99,18 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var count3 = tool.TokenCount;
 
             // Assert - All calls should return the same cached value
-            count1.Should().Be(count2);
-            count2.Should().Be(count3);
+            count1.ShouldBe(count2);
+            count2.ShouldBe(count3);
 
             // Verify caching by checking that the private field is populated using reflection
             var runTool = tool as RunTool;
-            runTool.Should().NotBeNull();
+            runTool.ShouldNotBeNull();
             var cacheField = typeof(RunTool).GetField("_cachedTokenCount", BindingFlags.NonPublic | BindingFlags.Instance);
-            cacheField.Should().NotBeNull();
+            cacheField.ShouldNotBeNull();
             var cachedValue = cacheField!.GetValue(runTool);
-            cachedValue.Should().NotBeNull();
-            ((int?)cachedValue).Should().HaveValue();
-            ((int?)cachedValue)!.Value.Should().Be(count1);
+            cachedValue.ShouldNotBeNull();
+            ((int?)cachedValue).ShouldNotBeNull();
+            ((int?)cachedValue)!.Value.ShouldBe(count1);
         }
 
         [Fact]
@@ -134,13 +134,13 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var totalTokens = toolManager.EnabledToolsTokenCount;
 
             // Assert
-            totalTokens.Should().BeGreaterThan(0);
+            totalTokens.ShouldBeGreaterThan(0);
 
             // Verify it's the sum by checking individual tools
             var tools = toolManager.GetAllTools();
             int expectedSum = tools.Where(tool => tool.Enabled).Sum(tool => tool.TokenCount);
 
-            totalTokens.Should().Be(expectedSum);
+            totalTokens.ShouldBe(expectedSum);
         }
 
         [Fact]
@@ -169,10 +169,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var enabledTool = tools.Where(t => t.Name == "enabledTool").FirstOrDefault();
             var disabledTool = tools.Where(t => t.Name == "disabledTool").FirstOrDefault();
 
-            enabledTool.Should().NotBeNull();
-            disabledTool.Should().NotBeNull();
-            totalTokens.Should().Be(enabledTool!.TokenCount);
-            totalTokens.Should().NotBe(enabledTool.TokenCount + disabledTool!.TokenCount);
+            enabledTool.ShouldNotBeNull();
+            disabledTool.ShouldNotBeNull();
+            totalTokens.ShouldBe(enabledTool!.TokenCount);
+            totalTokens.ShouldNotBe(enabledTool.TokenCount + disabledTool!.TokenCount);
         }
 
         [Fact]
@@ -195,7 +195,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var totalTokens = toolManager.EnabledToolsTokenCount;
 
             // Assert
-            totalTokens.Should().Be(0);
+            totalTokens.ShouldBe(0);
         }
 
         [Fact]
@@ -225,8 +225,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var countAfterReEnable = toolManager.EnabledToolsTokenCount;
 
             // Assert
-            initialCount.Should().BeGreaterThan(countAfterDisable);
-            countAfterReEnable.Should().Be(initialCount);
+            initialCount.ShouldBeGreaterThan(countAfterDisable);
+            countAfterReEnable.ShouldBe(initialCount);
         }
 
         [Fact]
@@ -250,14 +250,14 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var toolWithoutDescription = tools.Where(t => t.Name == "withoutDescription").FirstOrDefault();
 
             // Assert - Tool with description should have higher token count
-            toolWithDescription.Should().NotBeNull();
-            toolWithoutDescription.Should().NotBeNull();
+            toolWithDescription.ShouldNotBeNull();
+            toolWithoutDescription.ShouldNotBeNull();
 
             // Note: This assertion might be fragile depending on the schema generation,
             // but in general, a method with a description should have more tokens
             if (!string.IsNullOrEmpty(toolWithDescription!.Description))
             {
-                toolWithDescription.TokenCount.Should().BeGreaterThanOrEqualTo(toolWithoutDescription!.TokenCount);
+                toolWithDescription.TokenCount.ShouldBeGreaterThanOrEqualTo(toolWithoutDescription!.TokenCount);
             }
         }
 

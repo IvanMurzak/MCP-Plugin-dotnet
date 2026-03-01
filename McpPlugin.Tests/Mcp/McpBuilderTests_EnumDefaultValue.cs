@@ -6,7 +6,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Tests.Infrastructure;
 using com.IvanMurzak.McpPlugin.Utils;
 using com.IvanMurzak.ReflectorNet;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 using Xunit.Abstractions;
 using Version = com.IvanMurzak.McpPlugin.Common.Version;
@@ -90,15 +90,15 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
+            response.ShouldNotBeNull();
             if (response.Status != ResponseStatus.Success)
             {
                 _output.WriteLine($"Error: {response.Message}");
             }
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("Value2");
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().ShouldBe("Value2");
         }
 
         [Fact]
@@ -113,15 +113,15 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert
-            response.Should().NotBeNull();
+            response.ShouldNotBeNull();
             if (response.Status != ResponseStatus.Success)
             {
                 _output.WriteLine($"Error: {response.Message}");
             }
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.StructuredContent.Should().NotBeNull();
-            response.Value!.StructuredContent!["result"]!.GetValue<string>().Should().Be("42-Value2");
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.StructuredContent.ShouldNotBeNull();
+            response.Value!.StructuredContent!["result"]!.GetValue<string>().ShouldBe("42-Value2");
         }
     }
 }

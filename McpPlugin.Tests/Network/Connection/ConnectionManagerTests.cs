@@ -1,17 +1,17 @@
 /*
-┌────────────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
-│  Copyright (c) 2025 Ivan Murzak                                        │
-│  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
-└────────────────────────────────────────────────────────────────────────┘
+Ã¢â€Å’Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Â
+Ã¢â€â€š  Author: Ivan Murzak (https://github.com/IvanMurzak)                   Ã¢â€â€š
+Ã¢â€â€š  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  Ã¢â€â€š
+Ã¢â€â€š  Copyright (c) 2025 Ivan Murzak                                        Ã¢â€â€š
+Ã¢â€â€š  Licensed under the Apache License, Version 2.0.                       Ã¢â€â€š
+Ã¢â€â€š  See the LICENSE file in the project root for more information.        Ã¢â€â€š
+Ã¢â€â€Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€Ëœ
 */
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Tests.Infrastructure;
-using FluentAssertions;
+using Shouldly;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
@@ -96,7 +96,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var result = await connectionManager.Connect(cts.Token);
 
             // Assert
-            result.Should().BeFalse();
+            result.ShouldBeFalse();
         }
 
         [Fact]
@@ -119,7 +119,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var result = await connectionManager.Connect(cts.Token);
 
             // Assert
-            result.Should().BeFalse();
+            result.ShouldBeFalse();
         }
 
         #endregion
@@ -186,7 +186,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             System.Diagnostics.Debug.WriteLine($"Final connection creation count: {connectionCreationCount}");
 
             // Assert - Only ONE CreateConnectionAsync call should have been made despite 10 concurrent Connect calls
-            connectionCreationCount.Should().Be(1, "only one connection should be created despite multiple concurrent calls");
+            connectionCreationCount.ShouldBe(1, "only one connection should be created despite multiple concurrent calls");
         }
 
         [Fact]
@@ -232,13 +232,13 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             await Task.Delay(50);
 
             // Assert - verify only one connection attempt while both tasks are running
-            providerCallCount.Should().Be(1, "second call should reuse first connection attempt");
+            providerCallCount.ShouldBe(1, "second call should reuse first connection attempt");
 
             // Complete connection and wait for both tasks
             allowConnectionToComplete.SetResult(true);
             await EnsureTasksCompleteAsync(5000, firstTask, secondTask);
 
-            providerCallCount.Should().Be(1, "provider should only be called once");
+            providerCallCount.ShouldBe(1, "provider should only be called once");
         }
 
         [Fact]
@@ -275,7 +275,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var result3 = await connectionManager.Connect(cts3.Token);
 
             // Assert - Sequential calls should each create a connection (or reuse if already connected)
-            providerCallCount.Should().BeGreaterThanOrEqualTo(1, "at least one connection should be created");
+            providerCallCount.ShouldBeGreaterThanOrEqualTo(1, "at least one connection should be created");
         }
 
         [Fact]
@@ -324,10 +324,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             await EnsureTasksCompleteAsync(8000, tasks);
 
             // Assert - All tasks should complete without exceptions
-            tasks.Should().NotBeNull();
-            tasks.Length.Should().Be(20);
+            tasks.ShouldNotBeNull();
+            tasks.Length.ShouldBe(20);
             // Due to concurrency control, only one connection should be created
-            callCount.Should().Be(1, "concurrent calls should reuse the same connection attempt");
+            callCount.ShouldBe(1, "concurrent calls should reuse the same connection attempt");
         }
 
         #endregion
@@ -357,7 +357,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var result = await connectionManager.Connect(cts.Token);
 
             // Assert
-            result.Should().BeFalse();
+            result.ShouldBeFalse();
         }
 
         [Fact]
@@ -392,7 +392,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var result = await connectTask;
 
             // Assert
-            result.Should().BeFalse();
+            result.ShouldBeFalse();
         }
 
         [Fact]
@@ -423,7 +423,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var result = await connectionManager.Connect(cts.Token);
 
             // Assert
-            result.Should().BeFalse();
+            result.ShouldBeFalse();
         }
 
         [Fact]
@@ -456,7 +456,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var result = await connectionManager.Connect(cts.Token);
 
             // Assert
-            result.Should().BeFalse();
+            result.ShouldBeFalse();
         }
 
         #endregion
@@ -483,7 +483,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var result = await connectionManager.Connect(cts.Token);
 
             // Assert
-            result.Should().BeFalse();
+            result.ShouldBeFalse();
         }
 
         [Fact]
@@ -506,7 +506,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var result = await connectionManager.Connect(cts.Token);
 
             // Assert
-            result.Should().BeFalse();
+            result.ShouldBeFalse();
             // Note: Since we're using a real logger, we can't verify mock calls.
             // The test verifies that the method returns false when an exception occurs,
             // and the actual logging can be observed in the test output.
@@ -594,11 +594,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var firstResult = await firstConnectTask;
             var secondResult = await secondConnectTask;
 
-            firstResult.Should().BeFalse("first connect should be canceled by Disconnect");
-            secondResult.Should().BeFalse("second connect should be canceled by Disconnect");
+            firstResult.ShouldBeFalse("first connect should be canceled by Disconnect");
+            secondResult.ShouldBeFalse("second connect should be canceled by Disconnect");
 
             // Only one connection should have been attempted
-            providerCallCount.Should().Be(1, "only one connection creation should occur despite multiple Connect calls");
+            providerCallCount.ShouldBe(1, "only one connection creation should occur despite multiple Connect calls");
 
             System.Diagnostics.Debug.WriteLine($"Test completed. Provider call count: {providerCallCount}");
         }
@@ -676,12 +676,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var secondResult = await secondConnect;
 
             // Both should fail because Disconnect was called
-            firstResult.Should().BeFalse("first connect should fail due to disconnect");
-            secondResult.Should().BeFalse("second connect should fail because ongoing task was canceled and cleared");
+            firstResult.ShouldBeFalse("first connect should fail due to disconnect");
+            secondResult.ShouldBeFalse("second connect should fail because ongoing task was canceled and cleared");
 
             // CRITICAL: Only ONE provider call should have been made
             // If there are 2 calls, it means Connect #2 created a new connection after Disconnect (BUG!)
-            providerCallCount.Should().Be(1, "second Connect should NOT create a new connection after Disconnect");
+            providerCallCount.ShouldBe(1, "second Connect should NOT create a new connection after Disconnect");
         }
 
         [Fact]
@@ -735,7 +735,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             // Assert
             // The second connect should succeed (or at least attempt to connect)
             // The provider should be called at least twice (once for each Connect)
-            providerCallCount.Should().BeGreaterThanOrEqualTo(2, "reconnection after disconnect should create a new connection");
+            providerCallCount.ShouldBeGreaterThanOrEqualTo(2, "reconnection after disconnect should create a new connection");
         }
 
         [Fact]
@@ -751,7 +751,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
 
             // Act & Assert
             Action act = () => connectionManager.DisconnectImmediate();
-            act.Should().NotThrow("DisconnectImmediate must be safe to call when no connection exists");
+            Should.NotThrow(act); // DisconnectImmediate must be safe to call when no connection exists
         }
 
         [Fact]
@@ -789,14 +789,14 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
 
             // Act: must not deadlock or throw even though Connect holds the gate
             Action act = () => connectionManager.DisconnectImmediate();
-            act.Should().NotThrow("DisconnectImmediate must not deadlock or throw during an in-flight Connect");
+            Should.NotThrow(act); // DisconnectImmediate must not deadlock or throw during an in-flight Connect
 
             // Unblock the provider; token is already canceled so Connect should return false
             allowConnectionToComplete.SetResult(true);
 
-            // Assert: Connect must complete cleanly — no NullReferenceException from the race
+            // Assert: Connect must complete cleanly Ã¢â‚¬â€ no NullReferenceException from the race
             var result = await connectTask;
-            result.Should().BeFalse("Connect should return false because DisconnectImmediate canceled it");
+            result.ShouldBeFalse("Connect should return false because DisconnectImmediate canceled it");
         }
 
         #endregion
@@ -827,7 +827,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var result = await connectionManager.InvokeAsync<string>("TestMethod", cts.Token);
 
             // Assert
-            result.Should().BeNull("InvokeAsync should return default when disposed");
+            result.ShouldBeNull("InvokeAsync should return default when disposed");
         }
 
         [Fact]
@@ -850,7 +850,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var result = await connectionManager.InvokeAsync<string>("TestMethod", cts.Token);
 
             // Assert
-            result.Should().BeNull("InvokeAsync should return default when connection cannot be established");
+            result.ShouldBeNull("InvokeAsync should return default when connection cannot be established");
         }
 
         [Fact]
@@ -876,7 +876,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var result = await connectionManager.InvokeAsync<string>("TestMethod", cts.Token);
 
             // Assert
-            result.Should().BeNull("InvokeAsync should return default when cancellation token is already canceled");
+            result.ShouldBeNull("InvokeAsync should return default when cancellation token is already canceled");
         }
 
         [Fact]
@@ -917,8 +917,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var invokeResult = await invokeTask;
 
             // Assert
-            connectResult.Should().BeFalse("Connect should return false when canceled");
-            invokeResult.Should().BeNull("InvokeAsync should return default when canceled during connection");
+            connectResult.ShouldBeFalse("Connect should return false when canceled");
+            invokeResult.ShouldBeNull("InvokeAsync should return default when canceled during connection");
         }
 
         [Fact]
@@ -941,7 +941,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var result = await connectionManager.InvokeAsync<int>("TestMethod", cts.Token);
 
             // Assert
-            result.Should().Be(0, "InvokeAsync should return default(int) when provider throws");
+            result.ShouldBe(0, "InvokeAsync should return default(int) when provider throws");
         }
 
         [Fact]
@@ -965,7 +965,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var result = await connectionManager.InvokeAsync<bool>("TestMethod", cts.Token);
 
             // Assert
-            result.Should().BeFalse("InvokeAsync should return default(bool) when hub connection is null");
+            result.ShouldBeFalse("InvokeAsync should return default(bool) when hub connection is null");
         }
 
         [Fact]
@@ -996,7 +996,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var result = await connectionManager.InvokeAsync<string>("TestMethod", cts.Token);
 
             // Assert
-            result.Should().BeNull("InvokeAsync should return default when timeout occurs");
+            result.ShouldBeNull("InvokeAsync should return default when timeout occurs");
         }
 
         [Fact]
@@ -1027,7 +1027,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var results = await Task.WhenAll(task1, task2, task3);
 
             // Assert
-            results.Should().AllSatisfy(r => r.Should().BeNull("all InvokeAsync calls should return default when disposed"));
+            results.ShouldAllBe(r => r == null, "all InvokeAsync calls should return default when disposed");
         }
 
         [Fact]
@@ -1075,8 +1075,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var invokeResult = await invokeTask;
 
             // Assert
-            connectResult.Should().BeFalse("Connect should return false when disposed");
-            invokeResult.Should().BeNull("InvokeAsync should return default when disposed during invocation");
+            connectResult.ShouldBeFalse("Connect should return false when disposed");
+            invokeResult.ShouldBeNull("InvokeAsync should return default when disposed during invocation");
         }
 
         #endregion
@@ -1098,7 +1098,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             // - WebSockets + SkipNegotiation avoids the HTTP negotiate step, so no HttpClient
             //   connection pool entry is created. The WebSocket connect attempt fails immediately
             //   (connection refused) at the TCP level, leaving no pooled connections behind. This
-            //   prevents the 60–90 s connection-pool-drain hang when the test host tries to exit.
+            //   prevents the 60Ã¢â‚¬â€œ90 s connection-pool-drain hang when the test host tries to exit.
             return new HubConnectionBuilder()
                 .WithUrl("http://localhost:9999/test", options =>
                 {

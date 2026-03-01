@@ -6,7 +6,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Tests.Infrastructure;
 using com.IvanMurzak.McpPlugin.Utils;
 using com.IvanMurzak.ReflectorNet;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 using Xunit.Abstractions;
 using Version = com.IvanMurzak.McpPlugin.Common.Version;
@@ -70,16 +70,16 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.PromptManager!.RunGetPrompt(request);
 
             // Assert
-            response.Should().NotBeNull();
+            response.ShouldNotBeNull();
             if (response.Status != ResponseStatus.Success)
             {
                 _output.WriteLine($"Error: {response.Message}");
             }
-            response.Status.Should().Be(ResponseStatus.Success);
-            response.Value.Should().NotBeNull();
-            response.Value!.Messages.Should().NotBeNull();
-            response.Value!.Messages.Should().HaveCount(1);
-            response.Value!.Messages![0].Content.Text.Should().Be("OptionB");
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value.ShouldNotBeNull();
+            response.Value!.Messages.ShouldNotBeNull();
+            response.Value!.Messages.Count.ShouldBe(1);
+            response.Value!.Messages![0].Content.Text.ShouldBe("OptionB");
         }
     }
 }

@@ -1,15 +1,15 @@
 /*
-┌────────────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
-│  Copyright (c) 2025 Ivan Murzak                                        │
-│  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
-└────────────────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  Author: Ivan Murzak (https://github.com/IvanMurzak)                   â”‚
+â”‚  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  â”‚
+â”‚  Copyright (c) 2025 Ivan Murzak                                        â”‚
+â”‚  Licensed under the Apache License, Version 2.0.                       â”‚
+â”‚  See the LICENSE file in the project root for more information.        â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 */
 
 using System.Collections.Generic;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Tests.Extensions
@@ -26,7 +26,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Extensions
             var result = strings.Join();
 
             // Assert
-            result.Should().Be("apple, banana, cherry");
+            result.ShouldBe("apple, banana, cherry");
         }
 
         [Fact]
@@ -39,7 +39,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Extensions
             var result = strings.Join(" | ");
 
             // Assert
-            result.Should().Be("apple | banana | cherry");
+            result.ShouldBe("apple | banana | cherry");
         }
 
         [Fact]
@@ -52,7 +52,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Extensions
             var result = strings.Join();
 
             // Assert
-            result.Should().BeEmpty();
+            result.ShouldBeEmpty();
         }
 
         [Fact]
@@ -65,7 +65,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Extensions
             var result = strings.JoinExcept("banana");
 
             // Assert
-            result.Should().Be("apple, cherry");
+            result.ShouldBe("apple, cherry");
         }
 
         [Fact]
@@ -78,7 +78,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Extensions
             var result = strings.JoinExcept("orange");
 
             // Assert
-            result.Should().Be("apple, banana, cherry");
+            result.ShouldBe("apple, banana, cherry");
         }
 
         [Fact]
@@ -91,7 +91,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Extensions
             var result = strings.JoinEnclose();
 
             // Assert
-            result.Should().Be("'apple', 'banana', 'cherry'");
+            result.ShouldBe("'apple', 'banana', 'cherry'");
         }
 
         [Fact]
@@ -104,7 +104,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Extensions
             var result = strings.JoinEnclose(enclose: "\"");
 
             // Assert
-            result.Should().Be("\"apple\", \"banana\", \"cherry\"");
+            result.ShouldBe("\"apple\", \"banana\", \"cherry\"");
         }
 
         [Fact]
@@ -117,7 +117,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Extensions
             var result = strings.JoinEnclose(" | ", "[");
 
             // Assert
-            result.Should().Be("[apple[ | [banana[ | [cherry[");
+            result.ShouldBe("[apple[ | [banana[ | [cherry[");
         }
 
         [Fact]
@@ -130,7 +130,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Extensions
             var result = strings.JoinEncloseExcept("banana");
 
             // Assert
-            result.Should().Be("'apple', 'cherry'");
+            result.ShouldBe("'apple', 'cherry'");
         }
 
         [Fact]
@@ -143,7 +143,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Extensions
             var result = strings.JoinEncloseExcept("banana", " - ", "<<");
 
             // Assert
-            result.Should().Be("<<apple<< - <<cherry<<");
+            result.ShouldBe("<<apple<< - <<cherry<<");
         }
     }
 }

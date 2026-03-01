@@ -1,11 +1,11 @@
 /*
-┌────────────────────────────────────────────────────────────────────────┐
-│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
-│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
-│  Copyright (c) 2025 Ivan Murzak                                        │
-│  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
-└────────────────────────────────────────────────────────────────────────┘
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  Author: Ivan Murzak (https://github.com/IvanMurzak)                   â”‚
+â”‚  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  â”‚
+â”‚  Copyright (c) 2025 Ivan Murzak                                        â”‚
+â”‚  Licensed under the Apache License, Version 2.0.                       â”‚
+â”‚  See the LICENSE file in the project root for more information.        â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 */
 
 using System;
@@ -16,7 +16,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.ReflectorNet;
-using FluentAssertions;
+using Shouldly;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -40,7 +40,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var plugin = mcpPluginBuilder.Build(reflector);
 
             // Assert
-            plugin.Should().NotBeNull();
+            plugin.ShouldNotBeNull();
         }
 
         [Fact]
@@ -56,8 +56,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             Action act = () => mcpPluginBuilder.Build(reflector);
 
             // Assert
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("The builder has already been built.");
+            Should.Throw<InvalidOperationException>(act)
+                .Message.ShouldBe("The builder has already been built.");
         }
 
         [Fact]
@@ -73,8 +73,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             Action act = () => mcpPluginBuilder.WithTool(typeof(McpBuilderTests), typeof(McpBuilderTests).GetMethods()[0]);
 
             // Assert
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("The builder has already been built.");
+            Should.Throw<InvalidOperationException>(act)
+                .Message.ShouldBe("The builder has already been built.");
         }
 
         [Fact]
@@ -90,8 +90,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             Action act = () => mcpPluginBuilder.WithConfig(c => { });
 
             // Assert
-            act.Should().Throw<InvalidOperationException>()
-                .WithMessage("The builder has already been built.");
+            Should.Throw<InvalidOperationException>(act)
+                .Message.ShouldBe("The builder has already been built.");
         }
 
         [Fact]
@@ -109,8 +109,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 methodInfo: method!);
 
             // Assert
-            act.Should().Throw<ArgumentException>()
-                .WithMessage($"Tool name cannot be null or empty. Type: {typeof(TestTool).Name}, Method: {method!.Name}");
+            Should.Throw<ArgumentException>(act)
+                .Message.ShouldContain($"Tool name cannot be null or empty. Type: {typeof(TestTool).Name}, Method: {method!.Name}");
         }
 
         [Fact]
@@ -126,8 +126,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             Action act = () => mcpPluginBuilder.AddTool("tool1", runner);
 
             // Assert
-            act.Should().Throw<ArgumentException>()
-                .WithMessage("Tool with name 'tool1' already exists.");
+            Should.Throw<ArgumentException>(act)
+                .Message.ShouldContain("Tool with name 'tool1' already exists.");
         }
 
         [Fact]
@@ -145,7 +145,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var plugin = mcpPluginBuilder.Build(reflector);
 
             // Assert
-            logs.Should().Contain("McpPlugin Ctor.");
+            logs.ShouldContain("McpPlugin Ctor.");
         }
 
         private class TestTool
@@ -217,8 +217,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var plugin = mcpPluginBuilder.Build(reflector);
 
             // Assert
-            plugin.Version.Should().NotBeNull();
-            plugin.Version.Should().Be(_version);
+            plugin.Version.ShouldNotBeNull();
+            plugin.Version.ShouldBe(_version);
         }
 
 
@@ -233,7 +233,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var plugin = mcpPluginBuilder.Build(reflector);
 
             // Assert
-            plugin.VersionHandshakeStatus.Should().BeNull();
+            plugin.VersionHandshakeStatus.ShouldBeNull();
         }
 
         [Fact]
@@ -247,7 +247,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var plugin = mcpPluginBuilder.Build(reflector);
 
             // Assert
-            plugin.McpManagerHub.Should().NotBeNull();
+            plugin.McpManagerHub.ShouldNotBeNull();
         }
 
         [Fact]
@@ -259,8 +259,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var plugin = mcpPluginBuilder.Build(reflector);
 
             // Act & Assert
-            plugin.McpManagerHub.Should().NotBeNull();
-            plugin.McpManagerHub.VersionHandshakeStatus.Should().BeNull();
+            plugin.McpManagerHub.ShouldNotBeNull();
+            plugin.McpManagerHub.VersionHandshakeStatus.ShouldBeNull();
         }
 
         [Fact]
@@ -274,7 +274,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var plugin = mcpPluginBuilder.Build(reflector);
 
             // Assert
-            plugin.ToolCallsCount.Should().Be(0UL);
+            plugin.ToolCallsCount.ShouldBe(0UL);
         }
 
         [Fact]
@@ -286,8 +286,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var plugin = mcpPluginBuilder.Build(reflector);
 
             // Act & Assert
-            plugin.McpManager.ToolManager.Should().NotBeNull();
-            plugin.McpManager.ToolManager.ToolCallsCount.Should().Be(0UL);
+            plugin.McpManager.ToolManager.ShouldNotBeNull();
+            plugin.McpManager.ToolManager.ToolCallsCount.ShouldBe(0UL);
         }
     }
 }

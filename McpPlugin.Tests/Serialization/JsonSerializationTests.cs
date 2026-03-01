@@ -1,5 +1,5 @@
 using com.IvanMurzak.ReflectorNet;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
@@ -20,7 +20,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
             var reflector = new Reflector();
 
             // Act
-            // Dispose the plugin immediately — Build() configures the reflector synchronously.
+            // Dispose the plugin immediately â€” Build() configures the reflector synchronously.
             // Keeping the plugin alive leaves a ConnectionManager running indefinitely,
             // causing xUnit's AsyncTestSyncContext to wait forever (hang).
             using var plugin = new McpPluginBuilder(new Version())
@@ -28,8 +28,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
                 .Build(reflector);
 
             // Assert
-            reflector.JsonSerializerOptions.PropertyNamingPolicy.Should().BeNull();
-            reflector.JsonSerializerOptions.PropertyNameCaseInsensitive.Should().BeTrue();
+            reflector.JsonSerializerOptions.PropertyNamingPolicy.ShouldBeNull();
+            reflector.JsonSerializerOptions.PropertyNameCaseInsensitive.ShouldBeTrue();
         }
 
         [Fact]
@@ -51,8 +51,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
             var json = reflector.JsonSerializer.Serialize(dto);
 
             // Assert
-            json.Should().Contain("\"PascalCaseProperty\": \"TestValue\"");
-            json.Should().Contain("\"AnotherProperty\": 123");
+            json.ShouldContain("\"PascalCaseProperty\": \"TestValue\"");
+            json.ShouldContain("\"AnotherProperty\": 123");
         }
 
         [Theory]
@@ -78,8 +78,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
             var result = reflector.JsonSerializer.Deserialize<TestDto>(json);
 
             // Assert
-            result.Should().NotBeNull();
-            result!.PascalCaseProperty.Should().Be("TestValue");
+            result.ShouldNotBeNull();
+            result!.PascalCaseProperty.ShouldBe("TestValue");
         }
     }
 }
