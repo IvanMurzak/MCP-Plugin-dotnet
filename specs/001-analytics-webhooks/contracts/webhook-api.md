@@ -13,7 +13,7 @@ This document defines the HTTP contract between McpPlugin.Server (producer) and 
 - **Encoding**: UTF-8
 - **Timeout**: Configurable (default 10s). Requests exceeding timeout are cancelled.
 - **Retry**: None. Fire-and-forget — single delivery attempt per event.
-- **TLS**: Both HTTP and HTTPS accepted. HTTP URLs trigger a startup warning.
+- **TLS**: HTTPS is strongly recommended for all production and internet-exposed endpoints. Plain HTTP is accepted but MUST only be used for local/development targets (e.g., `http://localhost`). HTTP URLs trigger a startup warning — the security token will be transmitted without transport-layer encryption over plain HTTP.
 
 ---
 

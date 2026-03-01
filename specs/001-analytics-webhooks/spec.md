@@ -127,10 +127,10 @@ As a system operator, I want to receive webhook notifications when MCP resources
 - **FR-011**: The server MUST send an HTTP POST to the configured prompt webhook URL when any prompt is retrieved, with a payload containing: prompt name/ID and response byte size.
 - **FR-012**: The server MUST send an HTTP POST to the configured resource webhook URL when any resource is accessed, with a payload containing: resource URI or matched URI template identifier, and response byte size.
 - **FR-013**: All webhook delivery MUST be asynchronous and non-blocking — no webhook operation may add measurable latency to MCP client responses.
-- **FR-016**: The HTTP timeout for each outgoing webhook request MUST be configurable at launch (via launch argument or environment variable) with a default of 10 seconds. Requests exceeding the timeout MUST be cancelled and treated as delivery failures per FR-014.
-- **FR-017**: Both HTTP and HTTPS webhook URLs MUST be accepted. At server startup, if any configured webhook URL uses HTTP (non-TLS), the server MUST log a warning indicating that the security token will be transmitted without transport-layer encryption.
 - **FR-014**: Webhook delivery failures (network errors, DNS failures, HTTP error responses) MUST be logged with: event type, target URL, and failure reason. Security tokens MUST NOT appear in logs.
 - **FR-015**: Each webhook payload MUST include a timestamp (UTC), an event type discriminator, and a `schemaVersion` string (initial value `"1.0"`) to allow consumers to identify, order, and evolve their parsing logic across future payload changes.
+- **FR-016**: The HTTP timeout for each outgoing webhook request MUST be configurable at launch (via launch argument or environment variable) with a default of 10 seconds. Requests exceeding the timeout MUST be cancelled and treated as delivery failures per FR-014.
+- **FR-017**: Both HTTP and HTTPS webhook URLs MUST be accepted. At server startup, if any configured webhook URL uses HTTP (non-TLS), the server MUST log a warning indicating that the security token will be transmitted without transport-layer encryption.
 
 ### Key Entities
 

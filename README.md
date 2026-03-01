@@ -221,6 +221,65 @@ Command-line arguments take priority over environment variables.
 | `token` | `MCP_PLUGIN_TOKEN` | Bearer token required from connecting plugins. | *(none)* |
 | `authorization` | `MCP_AUTHORIZATION` | Authorization mode: `none` or `required`. | `none` |
 
+#### Analytics Webhooks
+
+`McpPlugin.Server` can emit fire-and-forget HTTP POST notifications to external endpoints for observability and analytics. Each event category has an independent URL, so you can route tool, prompt, resource, and connection events to different systems.
+
+| Argument | Env Var | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `webhook-tool-url` | `MCP_PLUGIN_WEBHOOK_TOOL_URL` | Endpoint to receive tool call events. | *(none)* |
+| `webhook-prompt-url` | `MCP_PLUGIN_WEBHOOK_PROMPT_URL` | Endpoint to receive prompt retrieval events. | *(none)* |
+| `webhook-resource-url` | `MCP_PLUGIN_WEBHOOK_RESOURCE_URL` | Endpoint to receive resource access events. | *(none)* |
+| `webhook-connection-url` | `MCP_PLUGIN_WEBHOOK_CONNECTION_URL` | Endpoint to receive client connect/disconnect events. | *(none)* |
+| `webhook-token` | `MCP_PLUGIN_WEBHOOK_TOKEN` | Security token sent in each webhook request header. | *(none)* |
+| `webhook-header` | `MCP_PLUGIN_WEBHOOK_HEADER` | Header name for the security token. | `X-Webhook-Token` |
+| `webhook-timeout` | `MCP_PLUGIN_WEBHOOK_TIMEOUT` | HTTP delivery timeout in milliseconds. | `10000` |
+
+**Example — enable tool and connection analytics:**
+
+```bash
+dotnet run \
+  client-transport=stdio \
+  webhook-tool-url=https://analytics.example.com/hooks/tools \
+  webhook-connection-url=https://analytics.example.com/hooks/connections \
+  webhook-token=my-secret-token
+```
+
+**Event payload structure** (all events follow this envelope):
+
+```json
+{
+  "schemaVersion": "1.0",
+  "eventType": "tool.call.completed",
+  "timestamp": "2026-03-01T12:34:56.789Z",
+  "data": {
+    "toolName": "add",
+    "requestSizeBytes": 42,
+    "responseSizeBytes": 18,
+    "status": "success",
+    "durationMs": 150,
+    "errorDetails": null
+  }
+}
+```
+
+**Supported event types:**
+
+| Event Type | Trigger |
+| :--- | :--- |
+| `tool.call.completed` | Every MCP tool call (success or failure) |
+| `prompt.retrieved` | Every MCP prompt retrieval |
+| `resource.accessed` | Every MCP resource access |
+| `connection.ai-agent.connected` | AI agent (MCP client) connects |
+| `connection.ai-agent.disconnected` | AI agent (MCP client) disconnects |
+| `connection.plugin.connected` | McpPlugin (.NET client) connects via SignalR |
+| `connection.plugin.disconnected` | McpPlugin (.NET client) disconnects |
+
+**Notes:**
+- Webhooks are **fire-and-forget** — delivery failures are logged but never block MCP responses.
+- If no webhook URLs are configured, the entire subsystem is inactive with zero overhead.
+- Use HTTPS endpoints in production to protect the security token in transit.
+
 ### Plugin (`McpPlugin`)
 
 Command-line arguments and environment variables are parsed automatically via `ConnectionConfig.BuildFromArgsOrEnv()`. They can also be overridden programmatically via `McpPluginBuilder.WithConfig(...)`.

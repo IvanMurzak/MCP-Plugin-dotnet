@@ -131,17 +131,17 @@ options.Handlers.CallToolHandler = async (request, ct) =>
 | Request size | Serialize `request.Params.Arguments` | Serialize `request.Params.Arguments` | N/A (URI only) |
 | Response size | Serialize `CallToolResult` | Serialize `GetPromptResult` | Serialize `ReadResourceResult` |
 | Duration | `Stopwatch` around full call | `Stopwatch` around full call | `Stopwatch` around full call |
-| Status | `result.IsError` | `response.Status` | `response.Status` |
-| Error details | `result.Content` text | `response.Message` | `response.Message` |
+| Status | `result.IsError` | `"success"` (router call completed) or `"failure"` (router threw) | `"success"` (router call completed) or `"failure"` (router threw) |
+| Error details | `result.Content` text | Exception message from try/catch (or `null` on success) | Exception message from try/catch (or `null` on success) |
 
 ### Size Measurement
 
 ```csharp
-var json = JsonSerializer.Serialize(obj, JsonOptions.Pretty);
-var sizeBytes = Encoding.UTF8.GetByteCount(json);
+var bytes = JsonSerializer.SerializeToUtf8Bytes(obj);
+var sizeBytes = bytes.Length;
 ```
 
-Uses existing `JsonOptions.Pretty` from `McpPlugin.Common`. This gives wire-format byte count as specified in the requirements.
+Uses a default `JsonSerializer.SerializeToUtf8Bytes` call (no custom options), giving a consistent byte count for measurement. Note: `JsonOptions.Pretty` uses PascalCase naming and should NOT be used for size measurement, as it would give a different byte count than the camelCase wire format used in webhook payloads. The size measurement does not need to match the exact camelCase wire size precisely — it serves as a comparative metric for analytics.
 
 ---
 
@@ -265,9 +265,8 @@ mcpServerBuilder.Services.AddWebhooks(dataArguments);
 | Service | Lifetime | Purpose |
 |---|---|---|
 | `WebhookOptions` | Singleton | Parsed from `IDataArguments` — URLs, token, header, timeout |
-| `IWebhookQueue` / `WebhookQueue` | Singleton | `Channel<WebhookMessage>` producer interface |
-| `WebhookDispatchService` | Hosted | `BackgroundService` consumer — reads channel, POSTs to URLs |
-| `IWebhookEventCollector` / `WebhookEventCollector` | Singleton | Accepts domain events, serializes, enqueues |
+| `IWebhookDispatcher` / `WebhookDispatcher` | Singleton + Hosted | `BackgroundService` consumer — reads `Channel<WebhookMessage>`, POSTs to URLs |
+| `IWebhookEventCollector` / `WebhookEventCollector` | Singleton | Accepts domain events, serializes, enqueues to dispatcher |
 | Named `HttpClient` (`"webhook"`) | Factory | Configured timeout, User-Agent, no default auth |
 
 ### Conditional Registration

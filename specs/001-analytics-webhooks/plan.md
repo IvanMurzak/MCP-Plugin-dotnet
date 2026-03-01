@@ -9,10 +9,10 @@ Add configurable analytics webhooks to McpPlugin.Server that fire HTTP POST requ
 
 ## Technical Context
 
-**Language/Version**: C# / .NET 8.0 + .NET 9.0 (server targets), LangVersion 9.0
+**Language/Version**: C# / .NET 8.0 + .NET 9.0 (server targets). `McpPlugin.Server`: LangVersion 9.0 (no C# 10+ features such as record structs, global usings, `required` properties, or extended property patterns). `McpPlugin.Server.Tests`: LangVersion 11.0 (tests may use C# 11 features).
 **Primary Dependencies**: ASP.NET Core (Kestrel, SignalR), ModelContextProtocol SDK 1.0.0, R3 1.3.0, System.Text.Json, NLog, Microsoft.Extensions.DependencyInjection, com.IvanMurzak.ReflectorNet 3.12.1
 **Storage**: N/A (stateless fire-and-forget delivery)
-**Testing**: xUnit + Shouldly + Moq, `[Collection("McpPlugin")]` isolation, `net8.0` + `net9.0`
+**Testing**: xUnit + Shouldly + Moq, `[Collection("McpPlugin.Server")]` isolation, `net8.0` + `net9.0`
 **Target Platform**: Cross-platform .NET server (Linux/Windows/macOS)
 **Project Type**: NuGet library (McpPlugin.Server bridge/gateway)
 **Performance Goals**: Webhook delivery adds ≤10 ms p99 to tool call round-trip time
@@ -93,14 +93,14 @@ McpPlugin.Server/src/
 ├── Hub/
 │   └── McpServerHub.cs                       # Modified: emit connection events to collector
 └── Mcp/
-    ├── Tool/ToolRouter.Call.cs               # Modified: wrap with timing + event emission
-    ├── Prompt/PromptRouter.Get.cs            # Modified: wrap with event emission
-    └── Resource/ResourceRouter.ReadResource.cs # Modified: wrap with event emission
+    ├── Tool/ToolRouter.Call.cs               # Existing: tool routing entrypoint (wrapped via ExtensionsMcpServer)
+    ├── Prompt/PromptRouter.Get.cs            # Existing: prompt routing entrypoint (wrapped via ExtensionsMcpServer)
+    └── Resource/ResourceRouter.Read.cs       # Existing: resource routing entrypoint (wrapped via ExtensionsMcpServer)
 
 McpPlugin.Common/src/
 ├── Utils/
 │   └── DataArguments.cs                      # Modified: parse webhook CLI args + env vars
-└── Consts.cs                                 # Modified: add webhook arg/env constants
+└── Consts.MCP.Webhook.cs                     # Added: webhook arg/env constant definitions
 
 McpPlugin.Server.Tests/
 └── Webhooks/
@@ -131,7 +131,7 @@ No tool/prompt/resource registration changes.
 
 ### IV. Test-First Discipline — PASS (unchanged)
 
-Test plan covers: WebhookOptions parsing, WebhookDispatcher HTTP behavior, WebhookEventCollector integration, and per-event-type payload correctness. All will use xUnit + Shouldly + Moq with `await using`.
+Test plan covers: WebhookOptions parsing, WebhookDispatcher HTTP behavior, WebhookEventCollector integration, and per-event-type payload correctness. All will use xUnit + Shouldly + Moq with `await using`. Collection isolation: `[Collection("McpPlugin.Server")]`.
 
 ### V. Code Style & Reactive Patterns — PASS (confirmed)
 

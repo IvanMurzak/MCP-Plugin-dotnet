@@ -34,6 +34,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
         public bool IsResourceEnabled => ResourceWebhookUrl != null;
         public bool IsConnectionEnabled => ConnectionWebhookUrl != null;
         public bool HasToken => TokenValue != null;
+        public bool HasInvalidUrls => _invalidUrls.Count > 0;
 
         readonly List<(string Category, string Url)> _invalidUrls = new List<(string, string)>();
 

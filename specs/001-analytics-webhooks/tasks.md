@@ -149,7 +149,7 @@
 
 ### Implementation for User Story 5
 
-- [X] T032 [US5] Wrap ReadResourceHandler in ExtensionsMcpServer.cs: call ResourceRouter.ReadResource, measure response size (serialize ReadResourceResult), resolve IWebhookEventCollector from request.Services, call OnResourceAccessed with resource URI and response byte size in McpPlugin.Server/src/Extension/ExtensionsMcpServer.cs
+- [X] T032 [US5] Wrap ReadResourceHandler in ExtensionsMcpServer.cs: call ResourceRouter.Read, measure response size (serialize ReadResourceResult), resolve IWebhookEventCollector from request.Services, call OnResourceAccessed with resource URI and response byte size in McpPlugin.Server/src/Extension/ExtensionsMcpServer.cs
 
 **Checkpoint**: US5 complete — resource access fires webhooks. Can be tested independently with US1 configuration.
 
@@ -265,10 +265,11 @@ Task T010: IWebhookEventCollector in Services/IWebhookEventCollector.cs
 
 ## File Summary
 
-### New Files (15)
+### New Files (18)
 
 | File | Phase | Story |
 |---|---|---|
+| McpPlugin.Common/src/Utils/Consts.MCP.Webhook.cs | 3 | US1 |
 | McpPlugin.Server/src/Webhooks/Config/WebhookOptions.cs | 3 | US1 |
 | McpPlugin.Server/src/Webhooks/Models/WebhookPayload.cs | 2 | — |
 | McpPlugin.Server/src/Webhooks/Models/ToolCallEvent.cs | 2 | — |
@@ -278,6 +279,8 @@ Task T010: IWebhookEventCollector in Services/IWebhookEventCollector.cs
 | McpPlugin.Server/src/Webhooks/Services/WebhookMessage.cs | 2 | — |
 | McpPlugin.Server/src/Webhooks/Services/IWebhookDispatcher.cs | 2 | — |
 | McpPlugin.Server/src/Webhooks/Services/IWebhookEventCollector.cs | 2 | — |
+| McpPlugin.Server/src/Webhooks/Services/NoOpWebhookDispatcher.cs | 3 | US1 |
+| McpPlugin.Server/src/Webhooks/Services/NoOpWebhookEventCollector.cs | 3 | US1 |
 | McpPlugin.Server/src/Webhooks/Services/WebhookDispatcher.cs | 3 | US1 |
 | McpPlugin.Server/src/Webhooks/Services/WebhookEventCollector.cs | 3 | US1 |
 | McpPlugin.Server/src/Webhooks/Extensions/WebhookServiceExtensions.cs | 3 | US1 |
@@ -294,7 +297,7 @@ Task T010: IWebhookEventCollector in Services/IWebhookEventCollector.cs
 | McpPlugin.Server.Tests/Webhooks/PromptEventTests.cs | 6 | US4 |
 | McpPlugin.Server.Tests/Webhooks/ResourceEventTests.cs | 7 | US5 |
 
-### Modified Files (5)
+### Modified Files (7)
 
 | File | Phase | Story |
 |---|---|---|
@@ -304,6 +307,7 @@ Task T010: IWebhookEventCollector in Services/IWebhookEventCollector.cs
 | McpPlugin.Server/src/Extension/ExtensionsMcpServer.cs | 4-7 | US2, US4, US5 |
 | McpPlugin.Server/src/Hub/McpServerHub.cs | 5 | US3 |
 | McpPlugin.Server/src/McpServerService.cs | 5 | US3 |
+| McpPlugin.Server/src/Transport/StreamableHttpTransportLayer.cs | 3 | US1 |
 
 ---
 

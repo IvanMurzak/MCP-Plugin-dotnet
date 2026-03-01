@@ -10,8 +10,12 @@
 
 using System;
 using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server.Webhooks
 {
@@ -32,6 +36,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             {
                 services.AddSingleton<IWebhookDispatcher, NoOpWebhookDispatcher>();
                 services.AddSingleton<IWebhookEventCollector, NoOpWebhookEventCollector>();
+                // Log any invalid URL warnings even when webhooks are otherwise disabled
+                if (options.HasInvalidUrls)
+                    services.AddHostedService(sp => new WebhookWarningLogger(
+                        sp.GetRequiredService<WebhookOptions>(),
+                        sp.GetRequiredService<ILogger<WebhookWarningLogger>>()));
                 return services;
             }
 
@@ -48,6 +57,26 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             services.AddSingleton<IWebhookEventCollector, WebhookEventCollector>();
 
             return services;
+        }
+
+        sealed class WebhookWarningLogger : IHostedService
+        {
+            readonly WebhookOptions _options;
+            readonly ILogger _logger;
+
+            public WebhookWarningLogger(WebhookOptions options, ILogger<WebhookWarningLogger> logger)
+            {
+                _options = options;
+                _logger = logger;
+            }
+
+            public Task StartAsync(CancellationToken cancellationToken)
+            {
+                _options.LogWarnings(_logger);
+                return Task.CompletedTask;
+            }
+
+            public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         }
     }
 }
