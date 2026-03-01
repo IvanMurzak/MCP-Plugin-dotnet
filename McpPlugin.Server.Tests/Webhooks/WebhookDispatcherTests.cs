@@ -50,9 +50,11 @@ namespace McpPlugin.Server.Tests.Webhooks
             var options = CreateOptions();
 
             HttpRequestMessage? capturedRequest = null;
+            var processed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             var handler = new MockHttpMessageHandler(req =>
             {
                 capturedRequest = req;
+                processed.TrySetResult(true);
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
@@ -68,8 +70,7 @@ namespace McpPlugin.Server.Tests.Webhooks
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             await dispatcher.StartAsync(cts.Token);
 
-            // Give dispatcher time to process
-            await Task.Delay(500);
+            await processed.Task.WaitAsync(cts.Token);
 
             await dispatcher.StopAsync(cts.Token);
 
@@ -86,9 +87,11 @@ namespace McpPlugin.Server.Tests.Webhooks
             var options = new WebhookOptions("https://example.com/hooks", null, null, null, null, null, 10000);
 
             HttpRequestMessage? capturedRequest = null;
+            var processed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             var handler = new MockHttpMessageHandler(req =>
             {
                 capturedRequest = req;
+                processed.TrySetResult(true);
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
@@ -103,7 +106,9 @@ namespace McpPlugin.Server.Tests.Webhooks
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             await dispatcher.StartAsync(cts.Token);
-            await Task.Delay(500);
+
+            await processed.Task.WaitAsync(cts.Token);
+
             await dispatcher.StopAsync(cts.Token);
 
             capturedRequest.ShouldNotBeNull();
@@ -117,11 +122,13 @@ namespace McpPlugin.Server.Tests.Webhooks
             var options = CreateOptions();
 
             var callCount = 0;
+            var allProcessed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             var handler = new MockHttpMessageHandler(req =>
             {
-                callCount++;
-                if (callCount == 1)
+                var current = Interlocked.Increment(ref callCount);
+                if (current == 1)
                     throw new HttpRequestException("Connection refused");
+                allProcessed.TrySetResult(true);
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
@@ -136,7 +143,9 @@ namespace McpPlugin.Server.Tests.Webhooks
 
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             await dispatcher.StartAsync(cts.Token);
-            await Task.Delay(1000);
+
+            await allProcessed.Task.WaitAsync(cts.Token);
+
             await dispatcher.StopAsync(cts.Token);
 
             callCount.ShouldBe(2);

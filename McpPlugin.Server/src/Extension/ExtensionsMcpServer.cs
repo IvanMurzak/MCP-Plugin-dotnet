@@ -11,7 +11,6 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Text.Json;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
@@ -38,6 +37,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             // Validate configuration for the selected deployment mode
             strategy.Validate(dataArguments);
 
+            var webhookOptions = WebhookOptions.FromDataArguments(dataArguments);
+
             // Setup MCP Server -------------------------------------------------------------
             var mcpServerBuilder = services
                 .AddMcpServer(options =>
@@ -53,25 +54,33 @@ namespace com.IvanMurzak.McpPlugin.Server
                         options.Capabilities.Tools.ListChanged = true;
                         options.Handlers.CallToolHandler = async (request, ct) =>
                         {
-                            var stopwatch = Stopwatch.StartNew();
-                            var requestSize = MeasureSize(request?.Params?.Arguments);
+                            Stopwatch? stopwatch = null;
+                            long requestSize = 0;
+                            if (webhookOptions.IsToolEnabled)
+                            {
+                                stopwatch = Stopwatch.StartNew();
+                                requestSize = MeasureSize(request?.Params?.Arguments);
+                            }
 
                             var result = await ToolRouter.Call(request!, ct);
 
-                            stopwatch.Stop();
-                            var collector = request?.Services?.GetService<IWebhookEventCollector>();
-                            if (collector != null)
+                            if (webhookOptions.IsToolEnabled)
                             {
-                                var isError = result.IsError == true;
-                                var responseSize = isError ? 0L : MeasureSize(result);
-                                var errorDetails = isError ? ExtractErrorMessage(result) : null;
-                                collector.OnToolCall(
-                                    request!.Params?.Name ?? "unknown",
-                                    requestSize,
-                                    responseSize,
-                                    isError ? "failure" : "success",
-                                    stopwatch.ElapsedMilliseconds,
-                                    errorDetails);
+                                stopwatch!.Stop();
+                                var collector = request?.Services?.GetService<IWebhookEventCollector>();
+                                if (collector != null)
+                                {
+                                    var isError = result.IsError == true;
+                                    var responseSize = isError ? 0L : MeasureSize(result);
+                                    var errorDetails = isError ? ExtractErrorMessage(result) : null;
+                                    collector.OnToolCall(
+                                        request!.Params?.Name ?? "unknown",
+                                        requestSize,
+                                        responseSize,
+                                        isError ? "failure" : "success",
+                                        stopwatch.ElapsedMilliseconds,
+                                        errorDetails);
+                                }
                             }
 
                             return result;
@@ -85,13 +94,16 @@ namespace com.IvanMurzak.McpPlugin.Server
                         {
                             var result = await ResourceRouter.Read(request, ct);
 
-                            var collector = request?.Services?.GetService<IWebhookEventCollector>();
-                            if (collector != null)
+                            if (webhookOptions.IsResourceEnabled)
                             {
-                                var responseSize = MeasureSize(result);
-                                collector.OnResourceAccessed(
-                                    request!.Params?.Uri ?? "unknown",
-                                    responseSize);
+                                var collector = request?.Services?.GetService<IWebhookEventCollector>();
+                                if (collector != null)
+                                {
+                                    var responseSize = MeasureSize(result);
+                                    collector.OnResourceAccessed(
+                                        request!.Params?.Uri ?? "unknown",
+                                        responseSize);
+                                }
                             }
 
                             return result;
@@ -106,13 +118,16 @@ namespace com.IvanMurzak.McpPlugin.Server
                         {
                             var result = await PromptRouter.Get(request, ct);
 
-                            var collector = request?.Services?.GetService<IWebhookEventCollector>();
-                            if (collector != null)
+                            if (webhookOptions.IsPromptEnabled)
                             {
-                                var responseSize = MeasureSize(result);
-                                collector.OnPromptRetrieved(
-                                    request!.Params?.Name ?? "unknown",
-                                    responseSize);
+                                var collector = request?.Services?.GetService<IWebhookEventCollector>();
+                                if (collector != null)
+                                {
+                                    var responseSize = MeasureSize(result);
+                                    collector.OnPromptRetrieved(
+                                        request!.Params?.Name ?? "unknown",
+                                        responseSize);
+                                }
                             }
 
                             return result;
@@ -148,11 +163,11 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             try
             {
-                var json = JsonSerializer.Serialize(obj);
-                return Encoding.UTF8.GetByteCount(json);
+                return JsonSerializer.SerializeToUtf8Bytes(obj).Length;
             }
-            catch
+            catch (JsonException ex)
             {
+                LogManager.GetCurrentClassLogger().Debug(ex, "Failed to measure size of webhook payload.");
                 return 0;
             }
         }

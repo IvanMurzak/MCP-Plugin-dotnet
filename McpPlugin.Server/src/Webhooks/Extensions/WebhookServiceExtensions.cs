@@ -30,14 +30,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
 
             if (!options.IsEnabled)
             {
+                services.AddSingleton<IWebhookDispatcher, NoOpWebhookDispatcher>();
                 services.AddSingleton<IWebhookEventCollector, NoOpWebhookEventCollector>();
                 return services;
             }
 
-            services.AddHttpClient("webhook", client =>
-            {
-                client.Timeout = TimeSpan.FromMilliseconds(options.TimeoutMs);
-            })
+            services.AddHttpClient("webhook")
             .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
             {
                 ConnectTimeout = TimeSpan.FromSeconds(2)
