@@ -211,19 +211,33 @@ plugin.MethodNameMatchLevel = 3;
 
 ### Server (`McpPlugin.Server`)
 
-| Argument / Env Var | Description | Default |
-| :--- | :--- | :--- |
-| `port` / `MCP_SERVER_PORT` | The port the SignalR hub listens on. | `8080` |
-| `client-transport` / `MCP_CLIENT_TRANSPORT` | `stdio` or `http`. | `http` |
-| `plugin-timeout` / `MCP_PLUGIN_TIMEOUT` | Timeout for plugin operations (ms). | `30000` |
+Command-line arguments take priority over environment variables.
+
+| Argument | Env Var | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `port` | `MCP_PLUGIN_PORT` | The port the SignalR hub listens on. | `8080` |
+| `client-transport` | `MCP_PLUGIN_CLIENT_TRANSPORT` | Transport method: `stdio` or `streamableHttp`. | `streamableHttp` |
+| `plugin-timeout` | `MCP_PLUGIN_CLIENT_TIMEOUT` | Timeout for plugin operations (ms). | `10000` |
+| `token` | `MCP_PLUGIN_TOKEN` | Bearer token required from connecting plugins. | *(none)* |
+| `authorization` | `MCP_AUTHORIZATION` | Authorization mode: `none` or `required`. | `none` |
 
 ### Plugin (`McpPlugin`)
 
+Command-line arguments and environment variables are parsed automatically via `ConnectionConfig.BuildFromArgsOrEnv()`. They can also be overridden programmatically via `McpPluginBuilder.WithConfig(...)`.
+
+| Argument | Env Var | Property | Description | Default |
+| :--- | :--- | :--- | :--- | :--- |
+| `mcp-server-endpoint` | `MCP_SERVER_ENDPOINT` | `Host` | The URL of the bridge server. | `http://localhost:8080` |
+| `mcp-server-timeout` | `MCP_SERVER_TIMEOUT` | `TimeoutMs` | Operation timeout (ms). | `10000` |
+| `mcp-plugin-token` | `MCP_PLUGIN_TOKEN` | `Token` | Bearer token sent to the server for authentication. | *(none)* |
+| `mcp-skills-folder` | `MCP_SKILLS_FOLDER` | `SkillsPath` | Path for generated skill markdown files. | `SKILLS` |
+
+**Programmatic-only properties** (set via `WithConfig(...)`):
+
 | Property | Description | Default |
 | :--- | :--- | :--- |
-| `Host` | The URL of the bridge server. | `http://localhost:8080` |
-| `TimeoutMs` | Operation timeout. | `30000` |
-| `KeepConnected` | Automatically reconnect if connection is lost. | `true` |
+| `KeepConnected` | Automatically reconnect if the connection is lost. | `true` |
+| `GenerateSkillFiles` | Auto-generate skill markdown files for each registered tool. | `true` |
 
 ## Docker Support
 
