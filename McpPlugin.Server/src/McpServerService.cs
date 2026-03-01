@@ -16,7 +16,9 @@ using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
+using System.Collections.Generic;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
+using com.IvanMurzak.McpPlugin.Server.Webhooks;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
@@ -41,6 +43,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly IMcpConnectionStrategy _strategy;
         readonly Common.Version _version;
         readonly IDataArguments _dataArguments;
+        readonly IWebhookEventCollector _webhookCollector;
         readonly CompositeDisposable _disposables = new();
 
         // _physicalSessionId: unique per HTTP/stdio connection (MCP protocol session UUID).
@@ -64,6 +67,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             IHubContext<McpServerHub, IClientMcpRpc> hubContext,
             IMcpSessionTracker sessionTracker,
             IMcpConnectionStrategy strategy,
+            IWebhookEventCollector webhookCollector,
             McpServer? mcpServer = null,
             McpSession? mcpSession = null)
         {
@@ -83,6 +87,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
             _sessionTracker = sessionTracker ?? throw new ArgumentNullException(nameof(sessionTracker));
             _strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
+            _webhookCollector = webhookCollector ?? throw new ArgumentNullException(nameof(webhookCollector));
         }
 
         public McpClientData GetClientData()
@@ -211,6 +216,15 @@ namespace com.IvanMurzak.McpPlugin.Server
                     _sessionTracker.Update(_physicalSessionId, _routingToken, GetClientData(), GetServerData());
 
                     await NotifyClientConnectedAsync();
+
+                    // Emit AI agent connected webhook
+                    var clientInfo = _mcpServer?.ClientInfo;
+                    var metadata = BuildAiAgentMetadata(clientInfo);
+                    _webhookCollector.OnAiAgentConnected(
+                        _physicalSessionId,
+                        clientInfo?.Name,
+                        clientInfo?.Version,
+                        metadata);
                 }
                 catch (OperationCanceledException)
                 {
@@ -232,6 +246,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogDebug("{type} MCP Client disconnected. PhysicalId: {physicalId}.", GetType().GetTypeShortName(), _physicalSessionId);
 
             _disposables.Clear();
+
+            _webhookCollector.OnAiAgentDisconnected(_physicalSessionId);
 
             var isLastConnection = _sessionTracker.Remove(_physicalSessionId);
             if (isLastConnection)
@@ -333,6 +349,25 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 _logger.LogError("{type} Error updating resource list: {Message}", GetType().GetTypeShortName(), ex.Message);
             }
+        }
+
+        static Dictionary<string, string>? BuildAiAgentMetadata(ModelContextProtocol.Protocol.Implementation? clientInfo)
+        {
+            if (clientInfo == null)
+                return null;
+
+            var metadata = new Dictionary<string, string>();
+
+            if (!string.IsNullOrEmpty(clientInfo.Title))
+                metadata["title"] = clientInfo.Title;
+
+            if (!string.IsNullOrEmpty(clientInfo.Description))
+                metadata["description"] = clientInfo.Description;
+
+            if (!string.IsNullOrEmpty(clientInfo.WebsiteUrl))
+                metadata["websiteUrl"] = clientInfo.WebsiteUrl;
+
+            return metadata.Count > 0 ? metadata : null;
         }
     }
 }

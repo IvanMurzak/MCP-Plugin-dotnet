@@ -1,0 +1,160 @@
+/*
+┌────────────────────────────────────────────────────────────────────────┐
+│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
+│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
+│  Copyright (c) 2025 Ivan Murzak                                        │
+│  Licensed under the Apache License, Version 2.0.                       │
+│  See the LICENSE file in the project root for more information.        │
+└────────────────────────────────────────────────────────────────────────┘
+*/
+
+using System;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Server.Webhooks;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Shouldly;
+using Xunit;
+
+namespace McpPlugin.Server.Tests.Webhooks
+{
+    public class WebhookDispatcherTests
+    {
+        static WebhookOptions CreateOptions(string toolUrl = "https://example.com/hooks")
+        {
+            return new WebhookOptions(toolUrl, null, null, null, "test-token", "X-Webhook-Token", 10000);
+        }
+
+        [Fact]
+        public void TryEnqueue_WithValidMessage_ReturnsTrue()
+        {
+            var logger = Mock.Of<ILogger<WebhookDispatcher>>();
+            var httpFactory = Mock.Of<IHttpClientFactory>();
+            var options = CreateOptions();
+
+            var dispatcher = new WebhookDispatcher(logger, httpFactory, options);
+            var message = new WebhookMessage("https://example.com/hooks", "{}", "X-Webhook-Token", "test-token");
+
+            var result = dispatcher.TryEnqueue(message);
+
+            result.ShouldBeTrue();
+        }
+
+        [Fact]
+        public async Task ExecuteAsync_DeliversHttpPost_WithTokenHeader()
+        {
+            var logger = Mock.Of<ILogger<WebhookDispatcher>>();
+            var options = CreateOptions();
+
+            HttpRequestMessage? capturedRequest = null;
+            var handler = new MockHttpMessageHandler(req =>
+            {
+                capturedRequest = req;
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            });
+
+            var httpClient = new HttpClient(handler);
+            var httpFactory = new Mock<IHttpClientFactory>();
+            httpFactory.Setup(f => f.CreateClient("webhook")).Returns(httpClient);
+
+            var dispatcher = new WebhookDispatcher(logger, httpFactory.Object, options);
+            var message = new WebhookMessage("https://example.com/hooks", "{\"test\":true}", "X-Webhook-Token", "test-token");
+
+            dispatcher.TryEnqueue(message);
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await dispatcher.StartAsync(cts.Token);
+
+            // Give dispatcher time to process
+            await Task.Delay(500);
+
+            await dispatcher.StopAsync(cts.Token);
+
+            capturedRequest.ShouldNotBeNull();
+            capturedRequest!.Method.ShouldBe(HttpMethod.Post);
+            capturedRequest.RequestUri!.ToString().ShouldBe("https://example.com/hooks");
+            capturedRequest.Headers.TryGetValues("X-Webhook-Token", out var tokenValues).ShouldBeTrue();
+        }
+
+        [Fact]
+        public async Task ExecuteAsync_WhenNoToken_OmitsHeader()
+        {
+            var logger = Mock.Of<ILogger<WebhookDispatcher>>();
+            var options = new WebhookOptions("https://example.com/hooks", null, null, null, null, null, 10000);
+
+            HttpRequestMessage? capturedRequest = null;
+            var handler = new MockHttpMessageHandler(req =>
+            {
+                capturedRequest = req;
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            });
+
+            var httpClient = new HttpClient(handler);
+            var httpFactory = new Mock<IHttpClientFactory>();
+            httpFactory.Setup(f => f.CreateClient("webhook")).Returns(httpClient);
+
+            var dispatcher = new WebhookDispatcher(logger, httpFactory.Object, options);
+            var message = new WebhookMessage("https://example.com/hooks", "{}", null, null);
+
+            dispatcher.TryEnqueue(message);
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await dispatcher.StartAsync(cts.Token);
+            await Task.Delay(500);
+            await dispatcher.StopAsync(cts.Token);
+
+            capturedRequest.ShouldNotBeNull();
+            capturedRequest!.Headers.TryGetValues("X-Webhook-Token", out _).ShouldBeFalse();
+        }
+
+        [Fact]
+        public async Task ExecuteAsync_WhenHttpFails_LogsErrorAndContinues()
+        {
+            var mockLogger = new Mock<ILogger<WebhookDispatcher>>();
+            var options = CreateOptions();
+
+            var callCount = 0;
+            var handler = new MockHttpMessageHandler(req =>
+            {
+                callCount++;
+                if (callCount == 1)
+                    throw new HttpRequestException("Connection refused");
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            });
+
+            var httpClient = new HttpClient(handler);
+            var httpFactory = new Mock<IHttpClientFactory>();
+            httpFactory.Setup(f => f.CreateClient("webhook")).Returns(httpClient);
+
+            var dispatcher = new WebhookDispatcher(mockLogger.Object, httpFactory.Object, options);
+
+            dispatcher.TryEnqueue(new WebhookMessage("https://example.com/hooks", "{\"first\":true}", null, null));
+            dispatcher.TryEnqueue(new WebhookMessage("https://example.com/hooks", "{\"second\":true}", null, null));
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            await dispatcher.StartAsync(cts.Token);
+            await Task.Delay(1000);
+            await dispatcher.StopAsync(cts.Token);
+
+            callCount.ShouldBe(2);
+        }
+
+        sealed class MockHttpMessageHandler : HttpMessageHandler
+        {
+            readonly Func<HttpRequestMessage, HttpResponseMessage> _handler;
+
+            public MockHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> handler)
+            {
+                _handler = handler;
+            }
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                return Task.FromResult(_handler(request));
+            }
+        }
+    }
+}

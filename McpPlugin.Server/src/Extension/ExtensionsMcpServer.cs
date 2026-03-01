@@ -9,9 +9,14 @@
 */
 
 using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Text.Json;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 using com.IvanMurzak.McpPlugin.Server.Transport;
+using com.IvanMurzak.McpPlugin.Server.Webhooks;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
 
@@ -46,20 +51,72 @@ namespace com.IvanMurzak.McpPlugin.Server
                         options.Capabilities ??= new();
                         options.Capabilities.Tools ??= new();
                         options.Capabilities.Tools.ListChanged = true;
-                        options.Handlers.CallToolHandler = ToolRouter.Call;
+                        options.Handlers.CallToolHandler = async (request, ct) =>
+                        {
+                            var stopwatch = Stopwatch.StartNew();
+                            var requestSize = MeasureSize(request?.Params?.Arguments);
+
+                            var result = await ToolRouter.Call(request!, ct);
+
+                            stopwatch.Stop();
+                            var collector = request?.Services?.GetService<IWebhookEventCollector>();
+                            if (collector != null)
+                            {
+                                var isError = result.IsError == true;
+                                var responseSize = isError ? 0L : MeasureSize(result);
+                                var errorDetails = isError ? ExtractErrorMessage(result) : null;
+                                collector.OnToolCall(
+                                    request!.Params?.Name ?? "unknown",
+                                    requestSize,
+                                    responseSize,
+                                    isError ? "failure" : "success",
+                                    stopwatch.ElapsedMilliseconds,
+                                    errorDetails);
+                            }
+
+                            return result;
+                        };
                         options.Handlers.ListToolsHandler = ToolRouter.ListAll;
 
                         // Setup MCP resources
                         options.Capabilities.Resources ??= new();
                         options.Capabilities.Resources.ListChanged = true;
-                        options.Handlers.ReadResourceHandler = ResourceRouter.Read;
+                        options.Handlers.ReadResourceHandler = async (request, ct) =>
+                        {
+                            var result = await ResourceRouter.Read(request, ct);
+
+                            var collector = request?.Services?.GetService<IWebhookEventCollector>();
+                            if (collector != null)
+                            {
+                                var responseSize = MeasureSize(result);
+                                collector.OnResourceAccessed(
+                                    request!.Params?.Uri ?? "unknown",
+                                    responseSize);
+                            }
+
+                            return result;
+                        };
                         options.Handlers.ListResourcesHandler = ResourceRouter.List;
                         options.Handlers.ListResourceTemplatesHandler = ResourceRouter.ListTemplates;
 
                         // Setup MCP prompts
                         options.Capabilities.Prompts ??= new();
                         options.Capabilities.Prompts.ListChanged = true;
-                        options.Handlers.GetPromptHandler = PromptRouter.Get;
+                        options.Handlers.GetPromptHandler = async (request, ct) =>
+                        {
+                            var result = await PromptRouter.Get(request, ct);
+
+                            var collector = request?.Services?.GetService<IWebhookEventCollector>();
+                            if (collector != null)
+                            {
+                                var responseSize = MeasureSize(result);
+                                collector.OnPromptRetrieved(
+                                    request!.Params?.Name ?? "unknown",
+                                    responseSize);
+                            }
+
+                            return result;
+                        };
                         options.Handlers.ListPromptsHandler = PromptRouter.List;
                     }
                     catch (Exception ex)
@@ -82,6 +139,34 @@ namespace com.IvanMurzak.McpPlugin.Server
             services.AddSingleton(setup);
 
             return mcpServerBuilder;
+        }
+
+        static long MeasureSize(object? obj)
+        {
+            if (obj == null)
+                return 0;
+
+            try
+            {
+                var json = JsonSerializer.Serialize(obj);
+                return Encoding.UTF8.GetByteCount(json);
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        static string? ExtractErrorMessage(ModelContextProtocol.Protocol.CallToolResult result)
+        {
+            if (result.Content == null || result.Content.Count == 0)
+                return null;
+
+            var textContent = result.Content
+                .OfType<ModelContextProtocol.Protocol.TextContentBlock>()
+                .FirstOrDefault();
+
+            return textContent?.Text;
         }
     }
 }

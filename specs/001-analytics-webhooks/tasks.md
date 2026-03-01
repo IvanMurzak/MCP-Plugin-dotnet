@@ -19,8 +19,8 @@
 
 **Purpose**: Create directory structure for webhook subsystem in McpPlugin.Server
 
-- [ ] T001 Create Webhooks directory structure (Config/, Models/, Services/, Extensions/) under McpPlugin.Server/src/Webhooks/
-- [ ] T002 [P] Create Webhooks/ test directory under McpPlugin.Server.Tests/
+- [X] T001 Create Webhooks directory structure (Config/, Models/, Services/, Extensions/) under McpPlugin.Server/src/Webhooks/
+- [X] T002 [P] Create Webhooks/ test directory under McpPlugin.Server.Tests/
 
 ---
 
@@ -30,14 +30,14 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 [P] Create WebhookPayload&lt;T&gt; generic envelope model (schemaVersion, eventType, timestamp, data) in McpPlugin.Server/src/Webhooks/Models/WebhookPayload.cs
-- [ ] T004 [P] Create ToolCallEvent sealed class (toolName, requestSizeBytes, responseSizeBytes, status, durationMs, errorDetails) with [JsonPropertyName] attributes in McpPlugin.Server/src/Webhooks/Models/ToolCallEvent.cs
-- [ ] T005 [P] Create PromptEvent sealed class (promptName, responseSizeBytes) with [JsonPropertyName] attributes in McpPlugin.Server/src/Webhooks/Models/PromptEvent.cs
-- [ ] T006 [P] Create ResourceEvent sealed class (resourceUri, responseSizeBytes) with [JsonPropertyName] attributes in McpPlugin.Server/src/Webhooks/Models/ResourceEvent.cs
-- [ ] T007 [P] Create ConnectionEvent sealed class (eventType, clientType, sessionId, clientName?, clientVersion?, metadata?) with [JsonPropertyName] attributes in McpPlugin.Server/src/Webhooks/Models/ConnectionEvent.cs
-- [ ] T008 [P] Create WebhookMessage sealed record (targetUrl, jsonPayload, headerName?, tokenValue?) in McpPlugin.Server/src/Webhooks/Services/WebhookMessage.cs
-- [ ] T009 [P] Create IWebhookDispatcher interface (EnqueueAsync method accepting WebhookMessage) in McpPlugin.Server/src/Webhooks/Services/IWebhookDispatcher.cs
-- [ ] T010 [P] Create IWebhookEventCollector interface (OnToolCall, OnPromptRetrieved, OnResourceAccessed, OnAiAgentConnected, OnAiAgentDisconnected, OnPluginConnected, OnPluginDisconnected methods) in McpPlugin.Server/src/Webhooks/Services/IWebhookEventCollector.cs
+- [X] T003 [P] Create WebhookPayload&lt;T&gt; generic envelope model (schemaVersion, eventType, timestamp, data) in McpPlugin.Server/src/Webhooks/Models/WebhookPayload.cs
+- [X] T004 [P] Create ToolCallEvent sealed class (toolName, requestSizeBytes, responseSizeBytes, status, durationMs, errorDetails) with [JsonPropertyName] attributes in McpPlugin.Server/src/Webhooks/Models/ToolCallEvent.cs
+- [X] T005 [P] Create PromptEvent sealed class (promptName, responseSizeBytes) with [JsonPropertyName] attributes in McpPlugin.Server/src/Webhooks/Models/PromptEvent.cs
+- [X] T006 [P] Create ResourceEvent sealed class (resourceUri, responseSizeBytes) with [JsonPropertyName] attributes in McpPlugin.Server/src/Webhooks/Models/ResourceEvent.cs
+- [X] T007 [P] Create ConnectionEvent sealed class (eventType, clientType, sessionId, clientName?, clientVersion?, metadata?) with [JsonPropertyName] attributes in McpPlugin.Server/src/Webhooks/Models/ConnectionEvent.cs
+- [X] T008 [P] Create WebhookMessage sealed record (targetUrl, jsonPayload, headerName?, tokenValue?) in McpPlugin.Server/src/Webhooks/Services/WebhookMessage.cs
+- [X] T009 [P] Create IWebhookDispatcher interface (EnqueueAsync method accepting WebhookMessage) in McpPlugin.Server/src/Webhooks/Services/IWebhookDispatcher.cs
+- [X] T010 [P] Create IWebhookEventCollector interface (OnToolCall, OnPromptRetrieved, OnResourceAccessed, OnAiAgentConnected, OnAiAgentDisconnected, OnPluginConnected, OnPluginDisconnected methods) in McpPlugin.Server/src/Webhooks/Services/IWebhookEventCollector.cs
 
 **Checkpoint**: Foundation ready — all shared types and interfaces defined. User story implementation can now begin.
 
@@ -53,20 +53,20 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T011 [P] [US1] Write WebhookOptions parsing tests (CLI args, env vars, defaults, validation, computed properties) in McpPlugin.Server.Tests/Webhooks/WebhookOptionsTests.cs
-- [ ] T012 [P] [US1] Write WebhookDispatcher tests (HTTP POST delivery, token header, timeout cancellation, failure logging, no-op when disabled) using MockHttpMessageHandler in McpPlugin.Server.Tests/Webhooks/WebhookDispatcherTests.cs
-- [ ] T013 [P] [US1] Write WebhookEventCollector tests (event serialization, envelope fields, channel enqueue, no-op when category disabled) in McpPlugin.Server.Tests/Webhooks/WebhookEventCollectorTests.cs
+- [X] T011 [P] [US1] Write WebhookOptions parsing tests (CLI args, env vars, defaults, validation, computed properties) in McpPlugin.Server.Tests/Webhooks/WebhookOptionsTests.cs
+- [X] T012 [P] [US1] Write WebhookDispatcher tests (HTTP POST delivery, token header, timeout cancellation, failure logging, no-op when disabled) using MockHttpMessageHandler in McpPlugin.Server.Tests/Webhooks/WebhookDispatcherTests.cs
+- [X] T013 [P] [US1] Write WebhookEventCollector tests (event serialization, envelope fields, channel enqueue, no-op when category disabled) in McpPlugin.Server.Tests/Webhooks/WebhookEventCollectorTests.cs
 
 ### Implementation for User Story 1
 
-- [ ] T014 [P] [US1] Add webhook argument constants (WebhookToolUrl, WebhookPromptUrl, WebhookResourceUrl, WebhookConnectionUrl, WebhookToken, WebhookHeader, WebhookTimeout) to Consts.MCP.Server.Args and Consts.MCP.Server.Env in McpPlugin.Common/src/Utils/Consts.MCP.cs
-- [ ] T015 [P] [US1] Create WebhookOptions sealed class with URL properties, TokenValue, HeaderName, TimeoutMs, computed IsEnabled/IsToolEnabled/etc, and static factory method parsing from IDataArguments in McpPlugin.Server/src/Webhooks/Config/WebhookOptions.cs
-- [ ] T016 [US1] Extend DataArguments to parse webhook CLI args and env vars (env parsed first, CLI overrides) following existing pattern in McpPlugin.Common/src/Utils/DataArguments.cs
-- [ ] T017 [US1] Implement WebhookDispatcher as BackgroundService with Channel&lt;WebhookMessage&gt; (bounded 1024, DropOldest, SingleReader), IHttpClientFactory named client "webhook", configurable timeout, token header injection, failure logging (no token in logs) in McpPlugin.Server/src/Webhooks/Services/WebhookDispatcher.cs
-- [ ] T018 [US1] Implement WebhookEventCollector (accepts domain event params, creates event models, serializes to JSON with camelCase + WhenWritingNull, wraps in WebhookPayload envelope, enqueues WebhookMessage to dispatcher) in McpPlugin.Server/src/Webhooks/Services/WebhookEventCollector.cs
-- [ ] T019 [US1] Create WebhookServiceExtensions.AddWebhooks(IServiceCollection, IDataArguments) that registers WebhookOptions, named HttpClient with SocketsHttpHandler (ConnectTimeout 2s), WebhookDispatcher as hosted service, WebhookEventCollector as singleton; skip all registration if no URLs configured (register no-op IWebhookEventCollector) in McpPlugin.Server/src/Webhooks/Extensions/WebhookServiceExtensions.cs
-- [ ] T020 [US1] Wire AddWebhooks(dataArguments) call into WithMcpPluginServer extension method in McpPlugin.Server/src/Extension/ExtensionsMcpServerBuilder.cs
-- [ ] T021 [US1] Add startup warnings: log warning for each HTTP (non-TLS) webhook URL, log warning when webhook URLs configured but no token set, in WebhookServiceExtensions.cs or WebhookDispatcher.StartAsync
+- [X] T014 [P] [US1] Add webhook argument constants (WebhookToolUrl, WebhookPromptUrl, WebhookResourceUrl, WebhookConnectionUrl, WebhookToken, WebhookHeader, WebhookTimeout) to Consts.MCP.Server.Args and Consts.MCP.Server.Env in McpPlugin.Common/src/Utils/Consts.MCP.cs
+- [X] T015 [P] [US1] Create WebhookOptions sealed class with URL properties, TokenValue, HeaderName, TimeoutMs, computed IsEnabled/IsToolEnabled/etc, and static factory method parsing from IDataArguments in McpPlugin.Server/src/Webhooks/Config/WebhookOptions.cs
+- [X] T016 [US1] Extend DataArguments to parse webhook CLI args and env vars (env parsed first, CLI overrides) following existing pattern in McpPlugin.Common/src/Utils/DataArguments.cs
+- [X] T017 [US1] Implement WebhookDispatcher as BackgroundService with Channel&lt;WebhookMessage&gt; (bounded 1024, DropOldest, SingleReader), IHttpClientFactory named client "webhook", configurable timeout, token header injection, failure logging (no token in logs) in McpPlugin.Server/src/Webhooks/Services/WebhookDispatcher.cs
+- [X] T018 [US1] Implement WebhookEventCollector (accepts domain event params, creates event models, serializes to JSON with camelCase + WhenWritingNull, wraps in WebhookPayload envelope, enqueues WebhookMessage to dispatcher) in McpPlugin.Server/src/Webhooks/Services/WebhookEventCollector.cs
+- [X] T019 [US1] Create WebhookServiceExtensions.AddWebhooks(IServiceCollection, IDataArguments) that registers WebhookOptions, named HttpClient with SocketsHttpHandler (ConnectTimeout 2s), WebhookDispatcher as hosted service, WebhookEventCollector as singleton; skip all registration if no URLs configured (register no-op IWebhookEventCollector) in McpPlugin.Server/src/Webhooks/Extensions/WebhookServiceExtensions.cs
+- [X] T020 [US1] Wire AddWebhooks(dataArguments) call into WithMcpPluginServer extension method in McpPlugin.Server/src/Extension/ExtensionsMcpServerBuilder.cs
+- [X] T021 [US1] Add startup warnings: log warning for each HTTP (non-TLS) webhook URL, log warning when webhook URLs configured but no token set, in WebhookServiceExtensions.cs or WebhookDispatcher.StartAsync
 
 **Checkpoint**: US1 complete — server accepts webhook configuration via CLI args and env vars, dispatches fire-and-forget HTTP POSTs with security token. No event emission yet (covered by US2-US5).
 
@@ -82,12 +82,12 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T022 [P] [US2] Write ToolCallEvent payload tests (correct JSON shape for success/failure, zero responseSizeBytes on failure, accurate duration, errorDetails presence) in McpPlugin.Server.Tests/Webhooks/ToolCallEventTests.cs
+- [X] T022 [P] [US2] Write ToolCallEvent payload tests (correct JSON shape for success/failure, zero responseSizeBytes on failure, accurate duration, errorDetails presence) in McpPlugin.Server.Tests/Webhooks/ToolCallEventTests.cs
 
 ### Implementation for User Story 2
 
-- [ ] T023 [US2] Wrap CallToolHandler in ExtensionsMcpServer.cs: add Stopwatch timing around ToolRouter.Call, measure request size (serialize request.Params.Arguments), measure response size (serialize CallToolResult), resolve IWebhookEventCollector from request.Services, call OnToolCall with all fields in McpPlugin.Server/src/Extension/ExtensionsMcpServer.cs
-- [ ] T024 [US2] Handle tool call failure path: set status "failure", responseSizeBytes 0 when no response body, extract error message from result.Content for errorDetails field in McpPlugin.Server/src/Extension/ExtensionsMcpServer.cs
+- [X] T023 [US2] Wrap CallToolHandler in ExtensionsMcpServer.cs: add Stopwatch timing around ToolRouter.Call, measure request size (serialize request.Params.Arguments), measure response size (serialize CallToolResult), resolve IWebhookEventCollector from request.Services, call OnToolCall with all fields in McpPlugin.Server/src/Extension/ExtensionsMcpServer.cs
+- [X] T024 [US2] Handle tool call failure path: set status "failure", responseSizeBytes 0 when no response body, extract error message from result.Content for errorDetails field in McpPlugin.Server/src/Extension/ExtensionsMcpServer.cs
 
 **Checkpoint**: US2 complete — every tool call (success/failure) fires a webhook with full analytics payload. Can be tested independently with US1 configuration.
 
@@ -103,13 +103,13 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T025 [P] [US3] Write ConnectionEvent payload tests (all four event types: ai-agent-connected, ai-agent-disconnected, plugin-connected, plugin-disconnected; correct sessionId, metadata inclusion, metadata omission when unavailable) in McpPlugin.Server.Tests/Webhooks/ConnectionEventTests.cs
+- [X] T025 [P] [US3] Write ConnectionEvent payload tests (all four event types: ai-agent-connected, ai-agent-disconnected, plugin-connected, plugin-disconnected; correct sessionId, metadata inclusion, metadata omission when unavailable) in McpPlugin.Server.Tests/Webhooks/ConnectionEventTests.cs
 
 ### Implementation for User Story 3
 
-- [ ] T026 [US3] Inject IWebhookEventCollector into McpServerHub constructor and emit plugin-connected event (with Context.ConnectionId and available metadata) in OnConnectedAsync, plugin-disconnected event in OnDisconnectedAsync in McpPlugin.Server/src/Hub/McpServerHub.cs
-- [ ] T027 [US3] Inject IWebhookEventCollector into McpServerService and emit ai-agent-connected event (with McpServer.SessionId, ClientInfo.Name, ClientInfo.Version, additional metadata from ClientInfo) after MCP initialize handshake in McpPlugin.Server/src/McpServerService.cs
-- [ ] T028 [US3] Emit ai-agent-disconnected event (with session ID) from McpServerService on session end/StopAsync in McpPlugin.Server/src/McpServerService.cs
+- [X] T026 [US3] Inject IWebhookEventCollector into McpServerHub constructor and emit plugin-connected event (with Context.ConnectionId and available metadata) in OnConnectedAsync, plugin-disconnected event in OnDisconnectedAsync in McpPlugin.Server/src/Hub/McpServerHub.cs
+- [X] T027 [US3] Inject IWebhookEventCollector into McpServerService and emit ai-agent-connected event (with McpServer.SessionId, ClientInfo.Name, ClientInfo.Version, additional metadata from ClientInfo) after MCP initialize handshake in McpPlugin.Server/src/McpServerService.cs
+- [X] T028 [US3] Emit ai-agent-disconnected event (with session ID) from McpServerService on session end/StopAsync in McpPlugin.Server/src/McpServerService.cs
 
 **Checkpoint**: US3 complete — all four connection lifecycle events fire correct webhooks. Can be tested independently with US1 configuration.
 
@@ -125,11 +125,11 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T029 [P] [US4] Write PromptEvent payload tests (correct JSON shape, promptName field, responseSizeBytes calculation) in McpPlugin.Server.Tests/Webhooks/PromptEventTests.cs
+- [X] T029 [P] [US4] Write PromptEvent payload tests (correct JSON shape, promptName field, responseSizeBytes calculation) in McpPlugin.Server.Tests/Webhooks/PromptEventTests.cs
 
 ### Implementation for User Story 4
 
-- [ ] T030 [US4] Wrap GetPromptHandler in ExtensionsMcpServer.cs: call PromptRouter.Get, measure response size (serialize GetPromptResult), resolve IWebhookEventCollector from request.Services, call OnPromptRetrieved with prompt name and response byte size in McpPlugin.Server/src/Extension/ExtensionsMcpServer.cs
+- [X] T030 [US4] Wrap GetPromptHandler in ExtensionsMcpServer.cs: call PromptRouter.Get, measure response size (serialize GetPromptResult), resolve IWebhookEventCollector from request.Services, call OnPromptRetrieved with prompt name and response byte size in McpPlugin.Server/src/Extension/ExtensionsMcpServer.cs
 
 **Checkpoint**: US4 complete — prompt retrieval fires webhooks. Can be tested independently with US1 configuration.
 
@@ -145,11 +145,11 @@
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T031 [P] [US5] Write ResourceEvent payload tests (correct JSON shape, resourceUri field including URI template matching, responseSizeBytes calculation) in McpPlugin.Server.Tests/Webhooks/ResourceEventTests.cs
+- [X] T031 [P] [US5] Write ResourceEvent payload tests (correct JSON shape, resourceUri field including URI template matching, responseSizeBytes calculation) in McpPlugin.Server.Tests/Webhooks/ResourceEventTests.cs
 
 ### Implementation for User Story 5
 
-- [ ] T032 [US5] Wrap ReadResourceHandler in ExtensionsMcpServer.cs: call ResourceRouter.ReadResource, measure response size (serialize ReadResourceResult), resolve IWebhookEventCollector from request.Services, call OnResourceAccessed with resource URI and response byte size in McpPlugin.Server/src/Extension/ExtensionsMcpServer.cs
+- [X] T032 [US5] Wrap ReadResourceHandler in ExtensionsMcpServer.cs: call ResourceRouter.ReadResource, measure response size (serialize ReadResourceResult), resolve IWebhookEventCollector from request.Services, call OnResourceAccessed with resource URI and response byte size in McpPlugin.Server/src/Extension/ExtensionsMcpServer.cs
 
 **Checkpoint**: US5 complete — resource access fires webhooks. Can be tested independently with US1 configuration.
 
@@ -159,11 +159,11 @@
 
 **Purpose**: Validation, build verification, and overall quality checks
 
-- [ ] T033 [P] Verify zero-overhead when no webhook URLs configured: confirm no BackgroundService, no HttpClient, no-op collector registered
-- [ ] T034 [P] Verify security token never appears in log output across all logging paths
-- [ ] T035 Run full test suite on net8.0 and net9.0 with dotnet test
-- [ ] T036 Run build verification with dotnet build McpPlugin.sln
-- [ ] T037 Run quickstart.md validation scenarios (minimal, all-categories, env-var-only configurations)
+- [X] T033 [P] Verify zero-overhead when no webhook URLs configured: confirm no BackgroundService, no HttpClient, no-op collector registered
+- [X] T034 [P] Verify security token never appears in log output across all logging paths
+- [X] T035 Run full test suite on net8.0 and net9.0 with dotnet test
+- [X] T036 Run build verification with dotnet build McpPlugin.sln
+- [X] T037 Run quickstart.md validation scenarios (minimal, all-categories, env-var-only configurations)
 
 ---
 

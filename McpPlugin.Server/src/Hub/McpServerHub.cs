@@ -18,6 +18,7 @@ using com.IvanMurzak.McpPlugin.Common.Hub.Server;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
+using com.IvanMurzak.McpPlugin.Server.Webhooks;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server
@@ -31,6 +32,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly HubEventResourcesChange _eventAppResourcesChange;
         readonly IRequestTrackingService _requestTrackingService;
         readonly IMcpSessionTracker _sessionTracker;
+        readonly IWebhookEventCollector _webhookCollector;
 
         public McpServerHub(
             ILogger<McpServerHub> logger,
@@ -41,7 +43,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             HubEventResourcesChange eventAppResourcesChange,
             IRequestTrackingService requestTrackingService,
             IMcpSessionTracker sessionTracker,
-            IMcpConnectionStrategy strategy)
+            IMcpConnectionStrategy strategy,
+            IWebhookEventCollector webhookCollector)
             : base(logger, strategy)
         {
             _version = version ?? throw new ArgumentNullException(nameof(version));
@@ -51,6 +54,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _eventAppResourcesChange = eventAppResourcesChange ?? throw new ArgumentNullException(nameof(eventAppResourcesChange));
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
             _sessionTracker = sessionTracker ?? throw new ArgumentNullException(nameof(sessionTracker));
+            _webhookCollector = webhookCollector ?? throw new ArgumentNullException(nameof(webhookCollector));
         }
 
         public override async Task OnConnectedAsync()
@@ -60,6 +64,14 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogDebug("{method}. {guid}. Sending initial client data. Count: {count}",
                 nameof(OnConnectedAsync), _guid, allActiveClients.Length);
             await Clients.Caller.OnInitialClientData(allActiveClients);
+
+            _webhookCollector.OnPluginConnected(Context.ConnectionId);
+        }
+
+        public override Task OnDisconnectedAsync(Exception? exception)
+        {
+            _webhookCollector.OnPluginDisconnected(Context.ConnectionId);
+            return base.OnDisconnectedAsync(exception);
         }
 
         public Task<ResponseData> NotifyAboutUpdatedTools(RequestToolsUpdated request) => NotifyAboutUpdatedTools(request, default);
