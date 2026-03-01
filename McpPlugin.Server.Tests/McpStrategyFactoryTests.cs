@@ -11,7 +11,7 @@
 using System;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tests
@@ -27,8 +27,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var strategy = _factory.Create(Consts.MCP.Server.AuthOption.none);
 
             // Assert
-            strategy.Should().BeOfType<NoAuthMcpStrategy>();
-            strategy.AuthOption.Should().Be(Consts.MCP.Server.AuthOption.none);
+            strategy.ShouldBeOfType<NoAuthMcpStrategy>();
+            strategy.AuthOption.ShouldBe(Consts.MCP.Server.AuthOption.none);
         }
 
         [Fact]
@@ -38,8 +38,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var strategy = _factory.Create(Consts.MCP.Server.AuthOption.required);
 
             // Assert
-            strategy.Should().BeOfType<RequiredAuthMcpStrategy>();
-            strategy.AuthOption.Should().Be(Consts.MCP.Server.AuthOption.required);
+            strategy.ShouldBeOfType<RequiredAuthMcpStrategy>();
+            strategy.AuthOption.ShouldBe(Consts.MCP.Server.AuthOption.required);
         }
 
         [Fact]
@@ -49,8 +49,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             Action act = () => _factory.Create(Consts.MCP.Server.AuthOption.unknown);
 
             // Assert
-            act.Should().Throw<ArgumentException>()
-                .Which.Message.Should().Contain("Unsupported auth option");
+            Should.Throw<ArgumentException>(act)
+                .Message.ShouldContain("Unsupported auth option");
         }
     }
 }

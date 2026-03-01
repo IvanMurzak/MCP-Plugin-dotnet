@@ -15,9 +15,9 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Shouldly;
 using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tests
@@ -30,13 +30,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void AuthOption_ReturnsNone()
         {
-            _strategy.AuthOption.Should().Be(Consts.MCP.Server.AuthOption.none);
+            _strategy.AuthOption.ShouldBe(Consts.MCP.Server.AuthOption.none);
         }
 
         [Fact]
         public void AllowMultipleConnections_ReturnsFalse()
         {
-            _strategy.AllowMultipleConnections.Should().BeFalse();
+            _strategy.AllowMultipleConnections.ShouldBeFalse();
         }
 
         [Fact]
@@ -46,8 +46,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var dataArguments = new DataArguments(new string[0]);
 
             // Act & Assert
-            var act = () => _strategy.Validate(dataArguments);
-            act.Should().NotThrow();
+            Should.NotThrow(() => _strategy.Validate(dataArguments));
         }
 
         [Fact]
@@ -57,8 +56,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var dataArguments = new DataArguments(new[] { "token=test-token" });
 
             // Act & Assert
-            var act = () => _strategy.Validate(dataArguments);
-            act.Should().NotThrow();
+            Should.NotThrow(() => _strategy.Validate(dataArguments));
         }
 
         [Fact]
@@ -72,8 +70,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             _strategy.ConfigureAuthentication(options, dataArguments);
 
             // Assert
-            options.RequireToken.Should().BeFalse();
-            options.ServerToken.Should().BeNull();
+            options.RequireToken.ShouldBeFalse();
+            options.ServerToken.ShouldBeNull();
         }
 
         [Fact]
@@ -87,8 +85,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             _strategy.ConfigureAuthentication(options, dataArguments);
 
             // Assert — no-auth mode never gates the HTTP endpoint, even if a token is supplied
-            options.RequireToken.Should().BeFalse();
-            options.ServerToken.Should().BeNull();
+            options.RequireToken.ShouldBeFalse();
+            options.ServerToken.ShouldBeNull();
         }
 
         [Fact]
@@ -104,7 +102,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 (id, _) => disconnected.Add(id));
 
             // Assert - client should be registered
-            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).Should().Contain(connectionId);
+            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldContain(connectionId);
 
             // Cleanup
             ClientUtils.RemoveClient(typeof(McpServerHub), connectionId, logger);
@@ -126,7 +124,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 (id, _) => disconnected.Add(id));
 
             // Assert
-            disconnected.Should().Contain(existingId);
+            disconnected.ShouldContain(existingId);
 
             // Cleanup
             ClientUtils.RemoveClient(typeof(McpServerHub), existingId, logger);
@@ -145,15 +143,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             _strategy.OnPluginDisconnected(typeof(McpServerHub), connectionId, logger);
 
             // Assert
-            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).Should().NotContain(connectionId);
+            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldNotContain(connectionId);
         }
 
         [Fact]
         public void ShouldNotifySession_AlwaysReturnsTrue()
         {
             // no-auth mode broadcasts to all sessions
-            _strategy.ShouldNotifySession("any-connection", "any-session").Should().BeTrue();
-            _strategy.ShouldNotifySession("conn1", "session2").Should().BeTrue();
+            _strategy.ShouldNotifySession("any-connection", "any-session").ShouldBeTrue();
+            _strategy.ShouldNotifySession("conn1", "session2").ShouldBeTrue();
         }
 
         [Fact]
@@ -168,7 +166,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = _strategy.GetClientData("some-connection", sessionTracker.Object);
 
             // Assert
-            result.Should().BeSameAs(expectedData);
+            result.ShouldBeSameAs(expectedData);
             sessionTracker.Verify(s => s.GetClientData(), Times.Once);
         }
 
@@ -184,7 +182,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = _strategy.GetServerData("some-connection", sessionTracker.Object);
 
             // Assert
-            result.Should().BeSameAs(expectedData);
+            result.ShouldBeSameAs(expectedData);
             sessionTracker.Verify(s => s.GetServerData(), Times.Once);
         }
     }
