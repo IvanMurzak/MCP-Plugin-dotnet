@@ -1,50 +1,201 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+## Sync Impact Report
+
+**Version Change**: N/A → 1.0.0 (initial ratification — template filled for the first time)
+
+### Modified Principles
+None — initial ratification.
+
+### Added Sections
+- All sections (initial fill of constitution template from project context)
+
+### Removed Sections
+None
+
+### Template Consistency Status
+- `.specify/templates/plan-template.md` ✅ Constitution Check section present; references principles dynamically via /speckit.plan
+- `.specify/templates/spec-template.md` ✅ No constitution-specific mandatory sections needed; generic template is compatible
+- `.specify/templates/tasks-template.md` ✅ Phase structure (Test-First → Implementation) aligns with Principle IV
+- `.specify/templates/commands/` ⚠ Directory does not exist — no command files to validate
+
+### Deferred TODOs
+None — all placeholders resolved from CLAUDE.md, README.md, and repository context.
+-->
+
+# MCP Plugin for .NET Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Bridge Architecture (NON-NEGOTIABLE)
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+The system MUST implement the bridge/gateway pattern to decouple .NET applications from MCP
+clients at all times.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+- .NET applications (Unity, WPF, game servers) MUST connect to `McpPlugin.Server` via SignalR.
+- MCP clients (Claude Desktop, MCP Inspector) MUST connect to `McpPlugin.Server` via stdio or HTTP.
+- No .NET application MUST ever be spawned directly as a subprocess by an MCP client.
+- The hub endpoint MUST be `/hub/mcp-server`. The default bridge port is `8080`.
+- The `McpPlugin` client library MUST include automatic reconnection so applications survive
+  bridge restarts without manual intervention.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+**Rationale**: Heavy .NET applications (Unity, WPF) have independent lifecycles, heavy startup
+costs, and require live-context access. Direct subprocess coupling is architecturally incompatible
+with these constraints, and the bridge pattern solves all three problems cleanly.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### II. Package-First Design
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Every significant capability MUST be delivered as a self-contained, independently buildable and
+testable NuGet package. The three canonical packages are:
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- `McpPlugin` (netstandard2.1 / net8.0 / net9.0) — client library embedded in .NET apps.
+- `McpPlugin.Server` (net8.0 / net9.0) — bridge/gateway hosted via ASP.NET Core.
+- `McpPlugin.Common` (netstandard2.1) — shared DTOs, interfaces, and protocol definitions.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Rules:
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+- Each package MUST be independently buildable and testable.
+- A new NuGet package MUST NOT be introduced unless the boundary is architecturally justified
+  and documented in the Complexity Tracking table of the relevant plan.md.
+- `McpPlugin.Common` MUST remain free of ASP.NET Core and SignalR runtime dependencies.
+
+**Rationale**: NuGet distribution requires clean separation of concerns. The netstandard2.1
+target (required for Unity compatibility) constrains which APIs are available in the client and
+common packages.
+
+### III. Attribute-Based Registration
+
+Tools, prompts, and resources MUST be registered declaratively via attributes, not via imperative
+registration calls.
+
+- Tools: `[McpPluginTool]` on methods inside `[McpPluginToolType]`-annotated classes.
+- Prompts: `[McpPluginPrompt]` on methods inside `[McpPluginPromptType]`-annotated classes.
+- Resources: `[McpPluginResource]` on methods inside `[McpPluginResourceType]`-annotated classes.
+- Reflection MUST use `com.IvanMurzak.ReflectorNet`, not raw `System.Reflection`.
+- Assembly scanning MUST be available via `WithToolsFromAssembly()`, `WithPromptsFromAssembly()`,
+  and `WithResourcesFromAssembly()` builder methods.
+
+**Rationale**: Attribute-based registration enables zero-boilerplate integration for consumers,
+supports fuzzy name matching via ReflectorNet, and enables automatic JSON schema generation so
+LLMs understand parameter types precisely.
+
+### IV. Test-First Discipline (NON-NEGOTIABLE)
+
+All new functionality MUST follow Red-Green-Refactor:
+
+1. Write tests → confirm they FAIL → implement → confirm they PASS → refactor.
+2. Tests MUST use xUnit + FluentAssertions + Moq.
+3. Tests requiring test isolation MUST use `[Collection("McpPlugin")]`.
+4. All tests MUST pass on both `net8.0` and `net9.0` before merging to `main`.
+5. `async` tests MUST use `await using` for disposable resources to prevent
+   `AsyncTestSyncContext` deadlocks under xUnit.
+6. `SubscribeAwait` from R3 MUST NOT be used in production code exercised by tests, as it
+   captures the SynchronizationContext and can cause xUnit's test runner to hang indefinitely.
+
+**Rationale**: The bridge architecture spans process boundaries; regressions are expensive to
+diagnose. The known xUnit `AsyncTestSyncContext` deadlock risk is prevented by strict disposal
+discipline and avoiding SynchronizationContext-capturing reactive operators.
+
+### V. Code Style & Reactive Patterns
+
+All `.cs` files MUST comply with the following non-negotiable rules:
+
+- **Namespace**: Java-style reverse domain — `com.IvanMurzak.McpPlugin.*`.
+- **File header**: ASCII art Apache-2.0 license block (copy from any existing `.cs` file).
+- **Braces**: Allman style — opening brace on its own line.
+- **Fields**: `_camelCase` for private fields; `PascalCase` for public members.
+- **Language version**: LangVersion 9.0 for client/server projects; 11.0 for common.
+  `ImplicitUsings` MUST be disabled. `Nullable` MUST be enabled.
+- **Events/Observables**: MUST use R3 (`Subject<T>`, `Observable<T>`, `ReactiveProperty<T>`).
+  `System.Reactive` or the `event` keyword MUST NOT replace R3 where R3 is established.
+- **Disposal**: MUST use `CompositeDisposable` with `.AddTo(_disposables)`.
+  Per-connection subscriptions MUST use `.RegisterTo(cancellationToken)` instead.
+- **Logging**: MUST use `Microsoft.Extensions.Logging` abstractions (NLog on server).
+- **DI**: MUST use `Microsoft.Extensions.DependencyInjection`.
+- **CLI args**: MUST use `DataArguments`, not raw `IConfiguration`.
+
+**Rationale**: Consistency across Unity (netstandard2.1), server (.NET 8/9), and test projects
+is essential for long-term maintainability. R3 is Unity-safe — it does not capture
+SynchronizationContext by default, unlike `System.Reactive`.
+
+## Technology Stack
+
+### Runtime Targets
+
+| Package | Target Frameworks |
+| --- | --- |
+| `McpPlugin` (client) | `netstandard2.1`, `net8.0`, `net9.0` |
+| `McpPlugin.Server` (bridge) | `net8.0`, `net9.0` |
+| `McpPlugin.Common` (shared) | `netstandard2.1` |
+
+### Required Dependencies
+
+| Dependency | Purpose | Scope |
+| --- | --- | --- |
+| `Microsoft.AspNetCore.SignalR.Client` | Client-bridge transport | McpPlugin |
+| `Microsoft.AspNetCore.SignalR` | Hub hosting | McpPlugin.Server |
+| `com.IvanMurzak.ReflectorNet` | Reflection, fuzzy matching, schema gen | McpPlugin, McpPlugin.Server |
+| `R3` | Reactive observables and properties | All packages |
+| `Microsoft.Extensions.Logging` | Logging abstractions | All packages |
+| `Microsoft.Extensions.DependencyInjection` | DI container | All packages |
+| `xUnit` + `FluentAssertions` + `Moq` | Testing | McpPlugin.Tests |
+
+### Transport Protocol
+
+- MCP clients → bridge: `stdio` (local AI agents) or `HTTP` (remote clients).
+- .NET apps → bridge: SignalR WebSockets over HTTP; default port `8080`.
+
+## Release & Versioning Workflow
+
+### Version Management
+
+- **Single source of truth**: `<Version>` in `McpPlugin/McpPlugin.csproj`.
+- Version MUST follow Semantic Versioning — MAJOR.MINOR.PATCH:
+  - MAJOR: Breaking API or protocol changes.
+  - MINOR: New backward-compatible features.
+  - PATCH: Bug fixes and internal improvements.
+- `commands/bump-version.ps1` MUST be used to propagate version changes across all three
+  projects. Manual edits to version fields in individual project files are NOT permitted.
+
+### Release Gate (CI/CD)
+
+Push to `main` triggers the automated pipeline in sequence:
+
+1. Version check — guard against unchanged versions.
+2. Test suite on `net8.0` AND `net9.0`.
+3. GitHub Release creation.
+4. NuGet package deployment.
+
+All four gates MUST pass before a release is considered successful.
+
+### Branching Convention
+
+- Feature work: `feature/<description>` branched from `main`.
+- Bug fixes: `fix/<description>` branched from `main`.
+- PRs target `main`. Direct commits to `main` are NOT permitted.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other development practices and documentation. In case of
+conflict between this constitution and any other guidance, the constitution takes precedence.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Amendment Procedure**:
+
+1. Open a PR that updates `.specify/memory/constitution.md`.
+2. Increment `CONSTITUTION_VERSION` following semantic versioning:
+   - MAJOR: Backward-incompatible removal or redefinition of a core principle.
+   - MINOR: New principle or section, or materially expanded guidance.
+   - PATCH: Clarifications, wording fixes, or non-semantic refinements.
+3. Update `LAST_AMENDED_DATE` to the current ISO date.
+4. Run `/speckit.constitution` to propagate changes to dependent templates.
+5. Provide a migration plan in the PR if the amendment affects existing feature specs or tasks.
+
+**Compliance**:
+
+- All PRs MUST be reviewed for constitution compliance before merge.
+- The Constitution Check gate in plan.md MUST be completed before Phase 0 research begins and
+  re-verified after Phase 1 design.
+- Complexity violations (extra packages, deviation from established patterns) MUST be documented
+  in the Complexity Tracking table of plan.md.
+- Use `CLAUDE.md` as the runtime development guidance file for day-to-day coding instructions.
+
+**Version**: 1.0.0 | **Ratified**: 2026-02-28 | **Last Amended**: 2026-02-28
