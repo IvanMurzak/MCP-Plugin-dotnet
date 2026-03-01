@@ -9,7 +9,7 @@
 */
 using Xunit;
 
-namespace McpServer.Tests;
+namespace com.IvanMurzak.McpPlugin.Server.Tests;
 
 public class UnitTest1
 {

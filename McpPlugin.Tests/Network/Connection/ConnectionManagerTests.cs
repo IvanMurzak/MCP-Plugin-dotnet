@@ -794,7 +794,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             // Unblock the provider; token is already canceled so Connect should return false
             allowConnectionToComplete.SetResult(true);
 
-            // Assert: Connect must complete cleanly Ã¢â‚¬â€ no NullReferenceException from the race
+            // Assert: Connect must complete cleanly — no NullReferenceException from the race
             var result = await connectTask;
             result.ShouldBeFalse("Connect should return false because DisconnectImmediate canceled it");
         }
@@ -1098,7 +1098,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             // - WebSockets + SkipNegotiation avoids the HTTP negotiate step, so no HttpClient
             //   connection pool entry is created. The WebSocket connect attempt fails immediately
             //   (connection refused) at the TCP level, leaving no pooled connections behind. This
-            //   prevents the 60Ã¢â‚¬â€œ90 s connection-pool-drain hang when the test host tries to exit.
+            //   prevents the 60–90 s connection-pool-drain hang when the test host tries to exit.
             return new HubConnectionBuilder()
                 .WithUrl("http://localhost:9999/test", options =>
                 {

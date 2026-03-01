@@ -674,7 +674,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert - Should succeed but with default value for unmatched parameter
-            // "value" = 0 (default), "vAlue" = 2, "vaLue" = 3 Ã¢â€ â€™ 0 + 2 + 3 = 5
+            // "value" = 0 (default), "vAlue" = 2, "vaLue" = 3 → 0 + 2 + 3 = 5
             response.ShouldNotBeNull();
             response.Status.ShouldBe(ResponseStatus.Success, "call succeeds but with default values for unmatched params");
             response.Value.ShouldNotBeNull();
@@ -700,7 +700,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert - Should succeed but with default values for missing params
-            // Only "value" = 1 is provided, "vAlue" = 0, "vaLue" = 0 Ã¢â€ â€™ 1 + 0 + 0 = 1
+            // Only "value" = 1 is provided, "vAlue" = 0, "vaLue" = 0 → 1 + 0 + 0 = 1
             response.ShouldNotBeNull();
             response.Status.ShouldBe(ResponseStatus.Success);
             response.Value.ShouldNotBeNull();
@@ -721,7 +721,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var response = await mcpPlugin.McpManager.ToolManager!.RunCallTool(request);
 
             // Assert - "vaLue" gets default value (0) since "VALUE" doesn't match exactly
-            // "value" = 1, "vAlue" = 2, "vaLue" = 0 Ã¢â€ â€™ 1 + 2 + 0 = 3
+            // "value" = 1, "vAlue" = 2, "vaLue" = 0 → 1 + 2 + 0 = 3
             response.ShouldNotBeNull();
             response.Status.ShouldBe(ResponseStatus.Success, "call succeeds with default value for unmatched param");
             response.Value.ShouldNotBeNull();
