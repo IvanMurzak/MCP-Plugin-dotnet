@@ -11,7 +11,7 @@
 using System;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Server.Transport;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tests
@@ -27,8 +27,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var transport = _factory.Create(Consts.MCP.Server.TransportMethod.stdio);
 
             // Assert
-            transport.Should().BeOfType<StdioTransportLayer>();
-            transport.TransportMethod.Should().Be(Consts.MCP.Server.TransportMethod.stdio);
+            transport.ShouldBeOfType<StdioTransportLayer>();
+            transport.TransportMethod.ShouldBe(Consts.MCP.Server.TransportMethod.stdio);
         }
 
         [Fact]
@@ -38,8 +38,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var transport = _factory.Create(Consts.MCP.Server.TransportMethod.streamableHttp);
 
             // Assert
-            transport.Should().BeOfType<StreamableHttpTransportLayer>();
-            transport.TransportMethod.Should().Be(Consts.MCP.Server.TransportMethod.streamableHttp);
+            transport.ShouldBeOfType<StreamableHttpTransportLayer>();
+            transport.TransportMethod.ShouldBe(Consts.MCP.Server.TransportMethod.streamableHttp);
         }
 
         [Fact]
@@ -49,8 +49,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             Action act = () => _factory.Create(Consts.MCP.Server.TransportMethod.unknown);
 
             // Assert
-            act.Should().Throw<ArgumentException>()
-                .Which.Message.Should().Contain("Unsupported transport method");
+            Should.Throw<ArgumentException>(act)
+                .Message.ShouldContain("Unsupported transport method");
         }
     }
 }

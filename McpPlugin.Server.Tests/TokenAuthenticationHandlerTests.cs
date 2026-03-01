@@ -10,14 +10,15 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Server.Auth;
-using FluentAssertions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using Shouldly;
 using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tests
@@ -85,29 +86,29 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         public async Task RequireTokenFalse_ReturnsNoResult()
         {
             var result = await AuthenticateAsync(null, requireToken: false);
-            result.None.Should().BeTrue();
+            result.None.ShouldBeTrue();
         }
 
         [Fact]
         public async Task NoAuthHeader_ReturnsNoResult()
         {
             var result = await AuthenticateAsync(null, requireToken: true);
-            result.None.Should().BeTrue();
+            result.None.ShouldBeTrue();
         }
 
         [Fact]
         public async Task NonBearerHeader_ReturnsNoResult()
         {
             var result = await AuthenticateAsync("Basic abc123", requireToken: true);
-            result.None.Should().BeTrue();
+            result.None.ShouldBeTrue();
         }
 
         [Fact]
         public async Task EmptyBearerToken_ReturnsFail()
         {
             var result = await AuthenticateAsync("Bearer ", requireToken: true);
-            result.Succeeded.Should().BeFalse();
-            result.Failure?.Message.Should().Be("Empty Bearer token.");
+            result.Succeeded.ShouldBeFalse();
+            result.Failure!.Message.ShouldBe("Empty Bearer token.");
         }
 
         [Fact]
@@ -122,10 +123,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 registeredToken: token,
                 registeredConnectionId: connId);
 
-            result.Succeeded.Should().BeTrue();
-            result.Principal.Should().NotBeNull();
-            result.Principal!.HasClaim(TokenAuthenticationHandler.TokenClaimType, token).Should().BeTrue();
-            result.Principal.HasClaim("connection_id", connId).Should().BeTrue();
+            result.Succeeded.ShouldBeTrue();
+            result.Principal.ShouldNotBeNull();
+            result.Principal!.HasClaim(TokenAuthenticationHandler.TokenClaimType, token).ShouldBeTrue();
+            result.Principal.HasClaim("connection_id", connId).ShouldBeTrue();
         }
 
         [Fact]
@@ -138,9 +139,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 requireToken: true,
                 serverToken: serverToken);
 
-            result.Succeeded.Should().BeTrue();
-            result.Principal.Should().NotBeNull();
-            result.Principal!.HasClaim(TokenAuthenticationHandler.TokenClaimType, serverToken).Should().BeTrue();
+            result.Succeeded.ShouldBeTrue();
+            result.Principal.ShouldNotBeNull();
+            result.Principal!.HasClaim(TokenAuthenticationHandler.TokenClaimType, serverToken).ShouldBeTrue();
         }
 
         [Fact]
@@ -151,8 +152,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 requireToken: true,
                 serverToken: "different-token");
 
-            result.Succeeded.Should().BeFalse();
-            result.Failure?.Message.Should().Be("Invalid or unrecognized token.");
+            result.Succeeded.ShouldBeFalse();
+            result.Failure!.Message.ShouldBe("Invalid or unrecognized token.");
         }
 
         [Fact]
@@ -170,8 +171,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 registeredToken: token,
                 registeredConnectionId: connId);
 
-            result.Succeeded.Should().BeTrue();
-            result.Principal!.HasClaim("connection_id", connId).Should().BeTrue();
+            result.Succeeded.ShouldBeTrue();
+            result.Principal!.HasClaim("connection_id", connId).ShouldBeTrue();
         }
 
         async Task<AuthenticateResult> AuthenticateWithDcrTokenAsync(
@@ -221,10 +222,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = await AuthenticateWithDcrTokenAsync(token!);
 
             // Assert
-            result.Succeeded.Should().BeTrue();
-            result.Principal.Should().NotBeNull();
-            result.Principal!.HasClaim(TokenAuthenticationHandler.TokenClaimType, token!).Should().BeTrue();
-            result.Principal.HasClaim("client_id", client.ClientId).Should().BeTrue();
+            result.Succeeded.ShouldBeTrue();
+            result.Principal.ShouldNotBeNull();
+            result.Principal!.HasClaim(TokenAuthenticationHandler.TokenClaimType, token!).ShouldBeTrue();
+            result.Principal.HasClaim("client_id", client.ClientId).ShouldBeTrue();
         }
 
         [Fact]
@@ -237,8 +238,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = await AuthenticateWithDcrTokenAsync(randomToken);
 
             // Assert
-            result.Succeeded.Should().BeFalse();
-            result.Failure!.Message.Should().Be("Invalid or unrecognized token.");
+            result.Succeeded.ShouldBeFalse();
+            result.Failure!.Message.ShouldBe("Invalid or unrecognized token.");
         }
 
         [Fact]
@@ -253,10 +254,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = await AuthenticateWithDcrTokenAsync(dcrToken!, serverToken: differentServerToken);
 
             // Assert
-            result.Succeeded.Should().BeTrue();
-            result.Principal.Should().NotBeNull();
-            result.Principal!.HasClaim("client_id", client.ClientId).Should().BeTrue();
-            result.Principal.Claims.Should().NotContain(c => c.Type == "connection_id");
+            result.Succeeded.ShouldBeTrue();
+            result.Principal.ShouldNotBeNull();
+            result.Principal!.HasClaim("client_id", client.ClientId).ShouldBeTrue();
+            result.Principal.Claims.ShouldNotContain(c => c.Type == "connection_id");
         }
 
         (TokenAuthenticationHandler Handler, DefaultHttpContext Context, AuthenticationScheme Scheme) CreateHandlerContext(
@@ -304,15 +305,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             await handler.ChallengeAsync(null);
 
             // Assert
-            context.Response.StatusCode.Should().Be(401);
-            context.Response.ContentType.Should().Contain("application/json");
-            context.Response.Headers["WWW-Authenticate"].ToString().Should().Contain("Bearer realm=");
+            context.Response.StatusCode.ShouldBe(401);
+            context.Response.ContentType!.ShouldContain("application/json");
+            context.Response.Headers["WWW-Authenticate"].ToString().ShouldContain("Bearer realm=");
 
             context.Response.Body.Seek(0, SeekOrigin.Begin);
             var body = await new StreamReader(context.Response.Body).ReadToEndAsync();
-            body.Should().Contain("\"error\"");
-            body.Should().Contain("\"Unauthorized\"");
-            body.Should().Contain("\"message\"");
+            body.ShouldContain("\"error\"");
+            body.ShouldContain("\"Unauthorized\"");
+            body.ShouldContain("\"message\"");
         }
 
         [Fact]
@@ -326,14 +327,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             await handler.ForbidAsync(null);
 
             // Assert
-            context.Response.StatusCode.Should().Be(403);
-            context.Response.ContentType.Should().Contain("application/json");
+            context.Response.StatusCode.ShouldBe(403);
+            context.Response.ContentType!.ShouldContain("application/json");
 
             context.Response.Body.Seek(0, SeekOrigin.Begin);
             var body = await new StreamReader(context.Response.Body).ReadToEndAsync();
-            body.Should().Contain("\"error\"");
-            body.Should().Contain("\"Forbidden\"");
-            body.Should().Contain("\"message\"");
+            body.ShouldContain("\"error\"");
+            body.ShouldContain("\"Forbidden\"");
+            body.ShouldContain("\"message\"");
         }
     }
 }

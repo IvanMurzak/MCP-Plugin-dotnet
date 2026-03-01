@@ -8,15 +8,16 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+using System.Linq;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Shouldly;
 using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tests
@@ -44,10 +45,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var method = typeof(IClientMcpRpc).GetMethod(nameof(IClientMcpRpc.OnInitialClientData));
 
             // Assert
-            method.Should().NotBeNull();
-            method!.ReturnType.Should().Be(typeof(Task));
-            var param = method.GetParameters().Should().ContainSingle().Subject;
-            param.ParameterType.Should().Be(typeof(McpClientData[]));
+            method.ShouldNotBeNull();
+            method!.ReturnType.ShouldBe(typeof(Task));
+            var parameters = method.GetParameters();
+            parameters.Length.ShouldBe(1);
+            parameters[0].ParameterType.ShouldBe(typeof(McpClientData[]));
         }
 
         // ─── NoAuthMcpStrategy ────────────────────────────────────────────────────
@@ -63,7 +65,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = strategy.GetAllClientData("any-connection", tracker);
 
             // Assert
-            result.Should().BeEmpty();
+            result.ShouldBeEmpty();
         }
 
         [Fact]
@@ -84,9 +86,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = strategy.GetAllClientData("any-connection", tracker);
 
             // Assert
-            result.Should().HaveCount(2);
-            result.Should().Contain(c => c.ClientName == "Claude");
-            result.Should().Contain(c => c.ClientName == "GPT");
+            result.Count().ShouldBe(2);
+            result.ShouldContain(c => c.ClientName == "Claude");
+            result.ShouldContain(c => c.ClientName == "GPT");
         }
 
         [Fact]
@@ -106,8 +108,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var resultForConn1 = strategy.GetAllClientData("conn-1", tracker);
             var resultForConn2 = strategy.GetAllClientData("conn-999", tracker);
 
-            resultForConn1.Should().HaveCount(2);
-            resultForConn2.Should().HaveCount(2);
+            resultForConn1.Count().ShouldBe(2);
+            resultForConn2.Count().ShouldBe(2);
         }
 
         // ─── RequiredAuthMcpStrategy ─────────────────────────────────────────────
@@ -138,8 +140,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 var result = strategy.GetAllClientData(connId, tracker);
 
                 // Assert
-                result.Should().HaveCount(1);
-                result[0].ClientName.Should().Be("Claude");
+                result.Count().ShouldBe(1);
+                result[0].ClientName.ShouldBe("Claude");
             }
             finally
             {
@@ -176,10 +178,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 var result = strategy.GetAllClientData(connId, tracker);
 
                 // Assert — only the two sessions with matching token are returned
-                result.Should().HaveCount(2);
-                result.Should().Contain(c => c.ClientName == "ClientA");
-                result.Should().Contain(c => c.ClientName == "ClientB");
-                result.Should().NotContain(c => c.ClientName == "ClientC");
+                result.Count().ShouldBe(2);
+                result.ShouldContain(c => c.ClientName == "ClientA");
+                result.ShouldContain(c => c.ClientName == "ClientB");
+                result.ShouldNotContain(c => c.ClientName == "ClientC");
             }
             finally
             {
@@ -208,7 +210,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 var result = strategy.GetAllClientData(connId, tracker);
 
                 // Assert — unscoped access denied; empty array returned
-                result.Should().BeEmpty();
+                result.ShouldBeEmpty();
             }
             finally
             {
@@ -234,7 +236,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 var result = strategy.GetAllClientData(connId, tracker);
 
                 // Assert
-                result.Should().BeEmpty();
+                result.ShouldBeEmpty();
             }
             finally
             {

@@ -10,7 +10,7 @@
 
 using System;
 using com.IvanMurzak.McpPlugin.Server.Auth;
-using FluentAssertions;
+using Shouldly;
 using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tests
@@ -30,10 +30,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var client = ClientRegistrationStore.Register(clientName);
 
             // Assert
-            client.ClientId.Should().NotBeNullOrEmpty();
-            client.ClientSecret.Should().NotBeNullOrEmpty();
-            client.ClientName.Should().Be(clientName);
-            client.IssuedAt.Should().BeCloseTo(DateTimeOffset.UtcNow, TimeSpan.FromSeconds(5));
+            client.ClientId.ShouldNotBeNullOrEmpty();
+            client.ClientSecret.ShouldNotBeNullOrEmpty();
+            client.ClientName.ShouldBe(clientName);
+            (DateTimeOffset.UtcNow - client.IssuedAt).Duration().ShouldBeLessThanOrEqualTo(TimeSpan.FromSeconds(5));
         }
 
         [Fact]
@@ -43,9 +43,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var client = ClientRegistrationStore.Register(null);
 
             // Assert
-            client.ClientName.Should().BeNull();
-            client.ClientId.Should().NotBeNullOrEmpty();
-            client.ClientSecret.Should().NotBeNullOrEmpty();
+            client.ClientName.ShouldBeNull();
+            client.ClientId.ShouldNotBeNullOrEmpty();
+            client.ClientSecret.ShouldNotBeNullOrEmpty();
         }
 
         [Fact]
@@ -56,8 +56,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var clientB = ClientRegistrationStore.Register("ClientB_" + UniqueId());
 
             // Assert
-            clientA.ClientId.Should().NotBe(clientB.ClientId);
-            clientA.ClientSecret.Should().NotBe(clientB.ClientSecret);
+            clientA.ClientId.ShouldNotBe(clientB.ClientId);
+            clientA.ClientSecret.ShouldNotBe(clientB.ClientSecret);
         }
 
         [Fact]
@@ -70,7 +70,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var token = ClientRegistrationStore.IssueAccessToken(client.ClientId, client.ClientSecret);
 
             // Assert
-            token.Should().NotBeNullOrEmpty();
+            token.ShouldNotBeNullOrEmpty();
         }
 
         [Fact]
@@ -83,7 +83,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var token = ClientRegistrationStore.IssueAccessToken(client.ClientId, "wrong-secret");
 
             // Assert
-            token.Should().BeNull();
+            token.ShouldBeNull();
         }
 
         [Fact]
@@ -93,7 +93,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var token = ClientRegistrationStore.IssueAccessToken("nonexistent-id", "any-secret");
 
             // Assert
-            token.Should().BeNull();
+            token.ShouldBeNull();
         }
 
         [Fact]
@@ -107,9 +107,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var token2 = ClientRegistrationStore.IssueAccessToken(client.ClientId, client.ClientSecret);
 
             // Assert
-            token1.Should().NotBeNullOrEmpty();
-            token2.Should().NotBeNullOrEmpty();
-            token1.Should().NotBe(token2);
+            token1.ShouldNotBeNullOrEmpty();
+            token2.ShouldNotBeNullOrEmpty();
+            token1.ShouldNotBe(token2);
         }
 
         [Fact]
@@ -123,7 +123,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var resolvedClientId = ClientRegistrationStore.TryGetClientIdByAccessToken(token!);
 
             // Assert
-            resolvedClientId.Should().Be(client.ClientId);
+            resolvedClientId.ShouldBe(client.ClientId);
         }
 
         [Fact]
@@ -133,7 +133,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var resolvedClientId = ClientRegistrationStore.TryGetClientIdByAccessToken("nonexistent-token");
 
             // Assert
-            resolvedClientId.Should().BeNull();
+            resolvedClientId.ShouldBeNull();
         }
 
         [Fact]
@@ -148,8 +148,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var resolvedClientId = ClientRegistrationStore.TryGetClientIdByAccessToken(tokenForA!);
 
             // Assert
-            resolvedClientId.Should().Be(clientA.ClientId);
-            resolvedClientId.Should().NotBe(clientB.ClientId);
+            resolvedClientId.ShouldBe(clientA.ClientId);
+            resolvedClientId.ShouldNotBe(clientB.ClientId);
         }
     }
 }

@@ -8,12 +8,13 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+using System.Linq;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Shouldly;
 using Xunit;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tests
@@ -37,16 +38,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         public void GetClientData_NoSessions_ReturnsDisconnected()
         {
             var result = _tracker.GetClientData();
-            result.IsConnected.Should().BeFalse();
+            result.IsConnected.ShouldBeFalse();
         }
 
         [Fact]
         public void GetServerData_NoSessions_ReturnsFallbackData()
         {
             var result = _tracker.GetServerData();
-            result.IsAiAgentConnected.Should().BeFalse();
-            result.ServerApiVersion.Should().Be("1.0.0");
-            result.ServerTransport.Should().Be(Consts.MCP.Server.TransportMethod.stdio);
+            result.IsAiAgentConnected.ShouldBeFalse();
+            result.ServerApiVersion.ShouldBe("1.0.0");
+            result.ServerTransport.ShouldBe(Consts.MCP.Server.TransportMethod.stdio);
         }
 
         // ─── Update / GetClientData(physicalId) ──────────────────────────────────
@@ -63,24 +64,24 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // Assert
             var retrievedClient = _tracker.GetClientData("phys-1");
-            retrievedClient.IsConnected.Should().BeTrue();
-            retrievedClient.ClientName.Should().Be("TestClient");
+            retrievedClient.IsConnected.ShouldBeTrue();
+            retrievedClient.ClientName.ShouldBe("TestClient");
 
             var retrievedServer = _tracker.GetServerData("phys-1");
-            retrievedServer.IsAiAgentConnected.Should().BeTrue();
-            retrievedServer.ServerVersion.Should().Be("2.0.0");
+            retrievedServer.IsAiAgentConnected.ShouldBeTrue();
+            retrievedServer.ServerVersion.ShouldBe("2.0.0");
         }
 
         [Fact]
         public void GetClientData_ByPhysicalId_UnknownSession_ReturnsDisconnected()
         {
-            _tracker.GetClientData("nonexistent").IsConnected.Should().BeFalse();
+            _tracker.GetClientData("nonexistent").IsConnected.ShouldBeFalse();
         }
 
         [Fact]
         public void GetServerData_ByPhysicalId_UnknownSession_ReturnsFallback()
         {
-            _tracker.GetServerData("nonexistent").IsAiAgentConnected.Should().BeFalse();
+            _tracker.GetServerData("nonexistent").IsAiAgentConnected.ShouldBeFalse();
         }
 
         [Fact]
@@ -91,8 +92,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // Act
             _tracker.Update("phys-1", null, new McpClientData { IsConnected = true, ClientName = "Updated" }, new McpServerData { IsAiAgentConnected = false });
             // Assert
-            _tracker.GetClientData("phys-1").ClientName.Should().Be("Updated");
-            _tracker.GetServerData("phys-1").IsAiAgentConnected.Should().BeFalse();
+            _tracker.GetClientData("phys-1").ClientName.ShouldBe("Updated");
+            _tracker.GetServerData("phys-1").IsAiAgentConnected.ShouldBeFalse();
         }
 
         // ─── Remove / ref-counting ────────────────────────────────────────────────
@@ -104,18 +105,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             var result = _tracker.Remove("phys-1");
 
-            result.Should().BeTrue();
-            _tracker.GetClientData("phys-1").IsConnected.Should().BeFalse();
-            _tracker.GetServerData("phys-1").IsAiAgentConnected.Should().BeFalse();
+            result.ShouldBeTrue();
+            _tracker.GetClientData("phys-1").IsConnected.ShouldBeFalse();
+            _tracker.GetServerData("phys-1").IsAiAgentConnected.ShouldBeFalse();
         }
 
         [Fact]
         public void Remove_NonexistentSession_ReturnsTrueAndDoesNotThrow()
         {
             bool result = false;
-            var act = () => result = _tracker.Remove("nonexistent");
-            act.Should().NotThrow();
-            result.Should().BeTrue();
+            Should.NotThrow(() => result = _tracker.Remove("nonexistent"));
+            result.ShouldBeTrue();
         }
 
         [Fact]
@@ -126,8 +126,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             var result = _tracker.Remove("phys-1");
 
-            result.Should().BeTrue();
-            _tracker.GetClientData("phys-1").IsConnected.Should().BeFalse();
+            result.ShouldBeTrue();
+            _tracker.GetClientData("phys-1").IsConnected.ShouldBeFalse();
         }
 
         [Fact]
@@ -140,8 +140,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             var firstResult = _tracker.Remove("phys-A"); // connection 1 disconnects
 
-            firstResult.Should().BeFalse();
-            _tracker.GetClientData("phys-A").IsConnected.Should().BeTrue();
+            firstResult.ShouldBeFalse();
+            _tracker.GetClientData("phys-A").IsConnected.ShouldBeTrue();
         }
 
         [Fact]
@@ -154,9 +154,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var firstResult  = _tracker.Remove("phys-A");
             var secondResult = _tracker.Remove("phys-A");
 
-            firstResult.Should().BeFalse();
-            secondResult.Should().BeTrue();
-            _tracker.GetClientData("phys-A").IsConnected.Should().BeFalse();
+            firstResult.ShouldBeFalse();
+            secondResult.ShouldBeTrue();
+            _tracker.GetClientData("phys-A").IsConnected.ShouldBeFalse();
         }
 
         // ─── Parameterless queries (multiple sessions) ────────────────────────────
@@ -169,8 +169,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             var result = _tracker.GetClientData();
 
-            result.IsConnected.Should().BeTrue();
-            result.ClientName.Should().Be("Connected");
+            result.IsConnected.ShouldBeTrue();
+            result.ClientName.ShouldBe("Connected");
         }
 
         [Fact]
@@ -187,10 +187,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             var result = _tracker.GetServerData();
 
-            result.IsAiAgentConnected.Should().BeTrue();
-            result.ServerVersion.Should().Be("3.0.0");
-            result.ServerApiVersion.Should().Be("2.0.0");
-            result.ServerTransport.Should().Be(Consts.MCP.Server.TransportMethod.streamableHttp);
+            result.IsAiAgentConnected.ShouldBeTrue();
+            result.ServerVersion.ShouldBe("3.0.0");
+            result.ServerApiVersion.ShouldBe("2.0.0");
+            result.ServerTransport.ShouldBe(Consts.MCP.Server.TransportMethod.streamableHttp);
         }
 
         // ─── GetAllClientData (no filter) ─────────────────────────────────────────
@@ -202,7 +202,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             _tracker.Update("phys-2", "tokenA", new McpClientData { ClientName = "B" }, new McpServerData());
             _tracker.Update("phys-3", "tokenB", new McpClientData { ClientName = "C" }, new McpServerData());
 
-            _tracker.GetAllClientData().Should().HaveCount(3);
+            _tracker.GetAllClientData().Count().ShouldBe(3);
         }
 
         // ─── GetAllClientData (routing-token filter) ──────────────────────────────
@@ -218,12 +218,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var forA = _tracker.GetAllClientData("tokenA");
             var forB = _tracker.GetAllClientData("tokenB");
 
-            forA.Should().HaveCount(2);
-            forA.Should().Contain(x => x.ClientName == "A1");
-            forA.Should().Contain(x => x.ClientName == "A2");
+            forA.Count().ShouldBe(2);
+            forA.ShouldContain(x => x.ClientName == "A1");
+            forA.ShouldContain(x => x.ClientName == "A2");
 
-            forB.Should().HaveCount(1);
-            forB.Should().Contain(x => x.ClientName == "B1");
+            forB.Count().ShouldBe(1);
+            forB.ShouldContain(x => x.ClientName == "B1");
         }
 
         [Fact]
@@ -239,8 +239,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             var remaining = _tracker.GetAllClientData("tokenA");
 
-            remaining.Should().HaveCount(1);
-            remaining.Should().Contain(x => x.ClientName == "A2");
+            remaining.Count().ShouldBe(1);
+            remaining.ShouldContain(x => x.ClientName == "A2");
         }
 
         // ─── GetClientDataByToken ─────────────────────────────────────────────────
@@ -253,7 +253,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             var result = _tracker.GetClientDataByToken("tokenA");
 
-            result.ClientName.Should().Be("Online");
+            result.ClientName.ShouldBe("Online");
         }
 
         [Fact]
@@ -263,7 +263,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             var result = _tracker.GetClientDataByToken(null);
 
-            result.ClientName.Should().Be("NoToken");
+            result.ClientName.ShouldBe("NoToken");
         }
 
         // ─── Multi-physical-ID per routing token (core multi-client scenario) ─────
@@ -278,11 +278,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 new McpServerData { IsAiAgentConnected = false, ServerVersion = "2.0" });
 
             // Both entries exist independently
-            _tracker.GetClientData("phys-1").ClientName.Should().Be("ClientA");
-            _tracker.GetClientData("phys-2").ClientName.Should().Be("ClientB");
+            _tracker.GetClientData("phys-1").ClientName.ShouldBe("ClientA");
+            _tracker.GetClientData("phys-2").ClientName.ShouldBe("ClientB");
 
             // GetAllClientData scoped to the shared token returns both
-            _tracker.GetAllClientData("sharedToken").Should().HaveCount(2);
+            _tracker.GetAllClientData("sharedToken").Count().ShouldBe(2);
         }
 
         [Fact]
@@ -293,10 +293,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             _tracker.Update("phys-B", "tokenB", new McpClientData { IsConnected = true, ClientName = "ClientB" },
                 new McpServerData { IsAiAgentConnected = false, ServerVersion = "2.0" });
 
-            _tracker.GetClientData("phys-A").ClientName.Should().Be("ClientA");
-            _tracker.GetClientData("phys-B").ClientName.Should().Be("ClientB");
-            _tracker.GetServerData("phys-A").ServerVersion.Should().Be("1.0");
-            _tracker.GetServerData("phys-B").ServerVersion.Should().Be("2.0");
+            _tracker.GetClientData("phys-A").ClientName.ShouldBe("ClientA");
+            _tracker.GetClientData("phys-B").ClientName.ShouldBe("ClientB");
+            _tracker.GetServerData("phys-A").ServerVersion.ShouldBe("1.0");
+            _tracker.GetServerData("phys-B").ServerVersion.ShouldBe("2.0");
         }
     }
 }

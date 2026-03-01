@@ -25,7 +25,7 @@
 
 - **Build**: `dotnet build McpPlugin.sln`
 - **Test**: `dotnet test` (Runs `McpPlugin.Tests` and `McpPlugin.Server.Tests`)
-  - Testing uses **xUnit**, **FluentAssertions**, and **Moq**.
+  - Testing uses **xUnit**, **Shouldly**, and **Moq**.
 - **Automation**: Check `commands/` for PowerShell scripts (e.g., `bump-version.ps1`, `update-reflectornet.ps1`).
 
 ## Project Conventions
