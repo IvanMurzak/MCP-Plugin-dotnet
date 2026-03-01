@@ -1,0 +1,68 @@
+McpPlugin.Server/src/Webhooks/Services/WebhookDispatcher.cs
+  ecf376face477696 93,96,103-104,106,108
+McpPlugin.Server/src/Extension/ExtensionsMcpServer.cs
+  88f847ec1d51c86f 55,58,66,96-97,121-122
+McpPlugin.Server/src/Webhooks/Config/WebhookOptions.cs
+  3095e8d897b860ab 12,38-39,49-52,73-78,100,111
+McpPlugin.Server.Tests/Webhooks/WebhookDispatcherTests.cs
+  9fec260d44af26c5 154-202,217-229
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "8f95360199cc113283aaf5e7423db32707268c23",
+  "prompts": {
+    "3095e8d897b860ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd428799-4b1f-4bce-b21f-ae8829e681f9",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 134,
+      "total_deletions": 124,
+      "accepted_lines": 31,
+      "overriden_lines": 0
+    },
+    "88f847ec1d51c86f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bc1a11e3-7b07-4a25-b7e8-fe1b0bc6a036",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 188,
+      "total_deletions": 187,
+      "accepted_lines": 34,
+      "overriden_lines": 0
+    },
+    "9fec260d44af26c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40f2235b-3e18-4515-94e6-b3e1e8f897a4",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 233,
+      "total_deletions": 169,
+      "accepted_lines": 101,
+      "overriden_lines": 0
+    },
+    "ecf376face477696": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c39364f4-a860-4f26-ad52-10d9ed413546",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 112,
+      "total_deletions": 105,
+      "accepted_lines": 21,
+      "overriden_lines": 0
+    }
+  }
+}
