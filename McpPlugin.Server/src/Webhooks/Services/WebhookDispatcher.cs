@@ -52,6 +52,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             await base.StartAsync(cancellationToken);
         }
 
+        public override async Task StopAsync(CancellationToken cancellationToken)
+        {
+            _channel.Writer.TryComplete();
+            await base.StopAsync(cancellationToken);
+        }
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             _logger.LogDebug("WebhookDispatcher started.");

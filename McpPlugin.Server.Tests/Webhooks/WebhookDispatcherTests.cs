@@ -59,9 +59,8 @@ namespace McpPlugin.Server.Tests.Webhooks
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-            var httpClient = new HttpClient(handler);
             var httpFactory = new Mock<IHttpClientFactory>();
-            httpFactory.Setup(f => f.CreateClient("webhook")).Returns(httpClient);
+            httpFactory.Setup(f => f.CreateClient("webhook")).Returns(() => new HttpClient(handler, disposeHandler: false));
 
             var dispatcher = new WebhookDispatcher(logger, httpFactory.Object, options);
             var message = new WebhookMessage("https://example.com/hooks", "{\"test\":true}", "X-Webhook-Token", "test-token");
@@ -96,9 +95,8 @@ namespace McpPlugin.Server.Tests.Webhooks
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-            var httpClient = new HttpClient(handler);
             var httpFactory = new Mock<IHttpClientFactory>();
-            httpFactory.Setup(f => f.CreateClient("webhook")).Returns(httpClient);
+            httpFactory.Setup(f => f.CreateClient("webhook")).Returns(() => new HttpClient(handler, disposeHandler: false));
 
             var dispatcher = new WebhookDispatcher(logger, httpFactory.Object, options);
             var message = new WebhookMessage("https://example.com/hooks", "{}", null, null);
@@ -133,9 +131,8 @@ namespace McpPlugin.Server.Tests.Webhooks
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-            var httpClient = new HttpClient(handler);
             var httpFactory = new Mock<IHttpClientFactory>();
-            httpFactory.Setup(f => f.CreateClient("webhook")).Returns(httpClient);
+            httpFactory.Setup(f => f.CreateClient("webhook")).Returns(() => new HttpClient(handler, disposeHandler: false));
 
             var dispatcher = new WebhookDispatcher(mockLogger.Object, httpFactory.Object, options);
 
@@ -181,9 +178,8 @@ namespace McpPlugin.Server.Tests.Webhooks
                 return new HttpResponseMessage(HttpStatusCode.OK);
             });
 
-            var httpClient = new HttpClient(handler);
             var httpFactory = new Mock<IHttpClientFactory>();
-            httpFactory.Setup(f => f.CreateClient("webhook")).Returns(httpClient);
+            httpFactory.Setup(f => f.CreateClient("webhook")).Returns(() => new HttpClient(handler, disposeHandler: false));
 
             var dispatcher = new WebhookDispatcher(mockLogger.Object, httpFactory.Object, options);
 
