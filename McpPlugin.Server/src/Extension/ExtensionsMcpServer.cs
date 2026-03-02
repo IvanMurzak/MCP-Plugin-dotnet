@@ -47,20 +47,16 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                     try
                     {
-                        // Cached singleton references — resolved once on first request
-                        WebhookOptions? cachedWebhookOptions = null;
-                        IWebhookEventCollector? cachedCollector = null;
-
                         // Setup MCP tools
                         options.Capabilities ??= new();
                         options.Capabilities.Tools ??= new();
                         options.Capabilities.Tools.ListChanged = true;
                         options.Handlers.CallToolHandler = async (request, ct) =>
                         {
-                            cachedWebhookOptions ??= request?.Services?.GetService<WebhookOptions>();
+                            var webhookOptions = request?.Services?.GetService<WebhookOptions>();
                             Stopwatch? stopwatch = null;
                             long requestSize = 0;
-                            if (cachedWebhookOptions?.IsToolEnabled == true)
+                            if (webhookOptions?.IsToolEnabled == true)
                             {
                                 stopwatch = Stopwatch.StartNew();
                                 requestSize = MeasureSize(request?.Params?.Arguments);
@@ -68,16 +64,16 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                             var result = await ToolRouter.Call(request!, ct);
 
-                            if (cachedWebhookOptions?.IsToolEnabled == true)
+                            if (webhookOptions?.IsToolEnabled == true)
                             {
                                 stopwatch!.Stop();
-                                cachedCollector ??= request?.Services?.GetService<IWebhookEventCollector>();
-                                if (cachedCollector != null)
+                                var collector = request?.Services?.GetService<IWebhookEventCollector>();
+                                if (collector != null)
                                 {
                                     var isError = result.IsError == true;
                                     var responseSize = isError ? 0L : MeasureSize(result);
                                     var errorDetails = isError ? ExtractErrorMessage(result) : null;
-                                    cachedCollector.OnToolCall(
+                                    collector.OnToolCall(
                                         request!.Params?.Name ?? "unknown",
                                         requestSize,
                                         responseSize,
@@ -98,14 +94,14 @@ namespace com.IvanMurzak.McpPlugin.Server
                         {
                             var result = await ResourceRouter.Read(request, ct);
 
-                            cachedWebhookOptions ??= request?.Services?.GetService<WebhookOptions>();
-                            if (cachedWebhookOptions?.IsResourceEnabled == true)
+                            var webhookOptions = request?.Services?.GetService<WebhookOptions>();
+                            if (webhookOptions?.IsResourceEnabled == true)
                             {
-                                cachedCollector ??= request?.Services?.GetService<IWebhookEventCollector>();
-                                if (cachedCollector != null)
+                                var collector = request?.Services?.GetService<IWebhookEventCollector>();
+                                if (collector != null)
                                 {
                                     var responseSize = MeasureSize(result);
-                                    cachedCollector.OnResourceAccessed(
+                                    collector.OnResourceAccessed(
                                         request!.Params?.Uri ?? "unknown",
                                         responseSize);
                                 }
@@ -123,14 +119,14 @@ namespace com.IvanMurzak.McpPlugin.Server
                         {
                             var result = await PromptRouter.Get(request, ct);
 
-                            cachedWebhookOptions ??= request?.Services?.GetService<WebhookOptions>();
-                            if (cachedWebhookOptions?.IsPromptEnabled == true)
+                            var webhookOptions = request?.Services?.GetService<WebhookOptions>();
+                            if (webhookOptions?.IsPromptEnabled == true)
                             {
-                                cachedCollector ??= request?.Services?.GetService<IWebhookEventCollector>();
-                                if (cachedCollector != null)
+                                var collector = request?.Services?.GetService<IWebhookEventCollector>();
+                                if (collector != null)
                                 {
                                     var responseSize = MeasureSize(result);
-                                    cachedCollector.OnPromptRetrieved(
+                                    collector.OnPromptRetrieved(
                                         request!.Params?.Name ?? "unknown",
                                         responseSize);
                                 }
