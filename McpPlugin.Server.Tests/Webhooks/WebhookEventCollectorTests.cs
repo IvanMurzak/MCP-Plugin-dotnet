@@ -268,6 +268,10 @@ namespace McpPlugin.Server.Tests.Webhooks
                 dispatcher.Object,
                 options);
 
+            // Must register a successful handshake first
+            collector.OnPluginConnected("conn-abc");
+            captured = null; // reset to capture only the disconnect message
+
             collector.OnPluginDisconnected("conn-abc");
 
             captured.ShouldNotBeNull();

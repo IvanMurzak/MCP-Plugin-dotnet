@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -27,6 +28,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
         readonly ILogger<WebhookEventCollector> _logger;
         readonly IWebhookDispatcher _dispatcher;
         readonly WebhookOptions _options;
+        readonly ConcurrentDictionary<string, byte> _handshakeCompletedConnections = new();
 
         public WebhookEventCollector(
             ILogger<WebhookEventCollector> logger,
@@ -119,6 +121,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
 
         public void OnPluginConnected(string connectionId, string? clientName = null, string? clientVersion = null)
         {
+            _handshakeCompletedConnections.TryAdd(connectionId, 0);
+
             if (!_options.IsConnectionEnabled)
                 return;
 
@@ -136,6 +140,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
 
         public void OnPluginDisconnected(string connectionId)
         {
+            if (!_handshakeCompletedConnections.TryRemove(connectionId, out _))
+                return;
+
             if (!_options.IsConnectionEnabled)
                 return;
 
