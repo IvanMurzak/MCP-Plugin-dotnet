@@ -36,7 +36,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             _options = options ?? throw new ArgumentNullException(nameof(options));
             _channel = Channel.CreateBounded<WebhookMessage>(new BoundedChannelOptions(1024)
             {
-                FullMode = BoundedChannelFullMode.DropOldest,
+                FullMode = BoundedChannelFullMode.DropWrite,
                 SingleReader = true
             });
         }

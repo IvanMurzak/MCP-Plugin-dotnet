@@ -10,6 +10,7 @@
 
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using com.IvanMurzak.McpPlugin.Common.Utils;
@@ -46,16 +47,20 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                     try
                     {
+                        // Cached singleton references — resolved once on first request
+                        WebhookOptions? cachedWebhookOptions = null;
+                        IWebhookEventCollector? cachedCollector = null;
+
                         // Setup MCP tools
                         options.Capabilities ??= new();
                         options.Capabilities.Tools ??= new();
                         options.Capabilities.Tools.ListChanged = true;
                         options.Handlers.CallToolHandler = async (request, ct) =>
                         {
-                            var webhookOptions = request?.Services?.GetService<WebhookOptions>();
+                            cachedWebhookOptions ??= request?.Services?.GetService<WebhookOptions>();
                             Stopwatch? stopwatch = null;
                             long requestSize = 0;
-                            if (webhookOptions?.IsToolEnabled == true)
+                            if (cachedWebhookOptions?.IsToolEnabled == true)
                             {
                                 stopwatch = Stopwatch.StartNew();
                                 requestSize = MeasureSize(request?.Params?.Arguments);
@@ -63,16 +68,16 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                             var result = await ToolRouter.Call(request!, ct);
 
-                            if (webhookOptions?.IsToolEnabled == true)
+                            if (cachedWebhookOptions?.IsToolEnabled == true)
                             {
                                 stopwatch!.Stop();
-                                var collector = request?.Services?.GetService<IWebhookEventCollector>();
-                                if (collector != null)
+                                cachedCollector ??= request?.Services?.GetService<IWebhookEventCollector>();
+                                if (cachedCollector != null)
                                 {
                                     var isError = result.IsError == true;
                                     var responseSize = isError ? 0L : MeasureSize(result);
                                     var errorDetails = isError ? ExtractErrorMessage(result) : null;
-                                    collector.OnToolCall(
+                                    cachedCollector.OnToolCall(
                                         request!.Params?.Name ?? "unknown",
                                         requestSize,
                                         responseSize,
@@ -93,14 +98,14 @@ namespace com.IvanMurzak.McpPlugin.Server
                         {
                             var result = await ResourceRouter.Read(request, ct);
 
-                            var webhookOptions = request?.Services?.GetService<WebhookOptions>();
-                            if (webhookOptions?.IsResourceEnabled == true)
+                            cachedWebhookOptions ??= request?.Services?.GetService<WebhookOptions>();
+                            if (cachedWebhookOptions?.IsResourceEnabled == true)
                             {
-                                var collector = request?.Services?.GetService<IWebhookEventCollector>();
-                                if (collector != null)
+                                cachedCollector ??= request?.Services?.GetService<IWebhookEventCollector>();
+                                if (cachedCollector != null)
                                 {
                                     var responseSize = MeasureSize(result);
-                                    collector.OnResourceAccessed(
+                                    cachedCollector.OnResourceAccessed(
                                         request!.Params?.Uri ?? "unknown",
                                         responseSize);
                                 }
@@ -118,14 +123,14 @@ namespace com.IvanMurzak.McpPlugin.Server
                         {
                             var result = await PromptRouter.Get(request, ct);
 
-                            var webhookOptions = request?.Services?.GetService<WebhookOptions>();
-                            if (webhookOptions?.IsPromptEnabled == true)
+                            cachedWebhookOptions ??= request?.Services?.GetService<WebhookOptions>();
+                            if (cachedWebhookOptions?.IsPromptEnabled == true)
                             {
-                                var collector = request?.Services?.GetService<IWebhookEventCollector>();
-                                if (collector != null)
+                                cachedCollector ??= request?.Services?.GetService<IWebhookEventCollector>();
+                                if (cachedCollector != null)
                                 {
                                     var responseSize = MeasureSize(result);
-                                    collector.OnPromptRetrieved(
+                                    cachedCollector.OnPromptRetrieved(
                                         request!.Params?.Name ?? "unknown",
                                         responseSize);
                                 }
@@ -164,13 +169,34 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             try
             {
-                return JsonSerializer.SerializeToUtf8Bytes(obj).Length;
+                var stream = new ByteCountingStream();
+                JsonSerializer.Serialize(stream, obj, obj.GetType());
+                return stream.BytesWritten;
             }
             catch (JsonException ex)
             {
                 LogManager.GetCurrentClassLogger().Debug(ex, "Failed to measure size of webhook payload.");
                 return 0;
             }
+        }
+
+        sealed class ByteCountingStream : Stream
+        {
+            public long BytesWritten { get; private set; }
+            public override bool CanRead => false;
+            public override bool CanSeek => false;
+            public override bool CanWrite => true;
+            public override long Length => BytesWritten;
+            public override long Position
+            {
+                get => BytesWritten;
+                set => throw new NotSupportedException();
+            }
+            public override void Write(byte[] buffer, int offset, int count) => BytesWritten += count;
+            public override void Flush() { }
+            public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+            public override void SetLength(long value) => throw new NotSupportedException();
         }
 
         static string? ExtractErrorMessage(ModelContextProtocol.Protocol.CallToolResult result)

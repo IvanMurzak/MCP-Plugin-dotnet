@@ -64,8 +64,6 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogDebug("{method}. {guid}. Sending initial client data. Count: {count}",
                 nameof(OnConnectedAsync), _guid, allActiveClients.Length);
             await Clients.Caller.OnInitialClientData(allActiveClients);
-
-            _webhookCollector.OnPluginConnected(Context.ConnectionId);
         }
 
         public override Task OnDisconnectedAsync(Exception? exception)
@@ -165,6 +163,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                 {
                     _logger.LogInformation("Version handshake successful. Plugin: {pluginVersion}, API: {apiVersion}, Environment: {environment}",
                         request.PluginVersion, request.ApiVersion, request.Environment);
+
+                    _webhookCollector.OnPluginConnected(Context.ConnectionId, request.Environment, request.PluginVersion);
                 }
 
                 return Task.FromResult(response);
