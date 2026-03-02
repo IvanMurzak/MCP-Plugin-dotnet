@@ -45,6 +45,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly IDataArguments _dataArguments;
         readonly IWebhookEventCollector _webhookCollector;
         readonly CompositeDisposable _disposables = new();
+        volatile bool _aiAgentConnectedEmitted;
 
         // _physicalSessionId: unique per HTTP/stdio connection (MCP protocol session UUID).
         //   Used as the tracker key and ref-count key so every physical connection
@@ -225,6 +226,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                         clientInfo?.Name,
                         clientInfo?.Version,
                         metadata);
+                    _aiAgentConnectedEmitted = true;
                 }
                 catch (OperationCanceledException)
                 {
@@ -247,7 +249,8 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             _disposables.Clear();
 
-            _webhookCollector.OnAiAgentDisconnected(_physicalSessionId);
+            if (_aiAgentConnectedEmitted)
+                _webhookCollector.OnAiAgentDisconnected(_physicalSessionId);
 
             var isLastConnection = _sessionTracker.Remove(_physicalSessionId);
             if (isLastConnection)
