@@ -18,6 +18,7 @@ using Xunit;
 
 namespace McpPlugin.Server.Tests.Webhooks
 {
+    [Collection("McpPlugin.Server")]
     public class WebhookEventCollectorTests
     {
         static WebhookOptions CreateOptions(

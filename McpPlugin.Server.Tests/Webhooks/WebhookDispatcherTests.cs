@@ -21,6 +21,7 @@ using Xunit;
 
 namespace McpPlugin.Server.Tests.Webhooks
 {
+    [Collection("McpPlugin.Server")]
     public class WebhookDispatcherTests
     {
         static WebhookOptions CreateOptions(string toolUrl = "https://example.com/hooks")

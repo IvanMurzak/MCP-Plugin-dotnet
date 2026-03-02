@@ -16,6 +16,7 @@ using Xunit;
 
 namespace McpPlugin.Server.Tests.Webhooks
 {
+    [Collection("McpPlugin.Server")]
     public class ResourceEventTests
     {
         static readonly JsonSerializerOptions JsonOptions = new()

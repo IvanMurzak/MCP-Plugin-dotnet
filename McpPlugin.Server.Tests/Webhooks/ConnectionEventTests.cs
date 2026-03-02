@@ -17,6 +17,7 @@ using Xunit;
 
 namespace McpPlugin.Server.Tests.Webhooks
 {
+    [Collection("McpPlugin.Server")]
     public class ConnectionEventTests
     {
         static readonly JsonSerializerOptions JsonOptions = new()
