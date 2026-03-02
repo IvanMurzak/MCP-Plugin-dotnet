@@ -46,6 +46,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly IWebhookEventCollector _webhookCollector;
         readonly CompositeDisposable _disposables = new();
         volatile bool _aiAgentConnectedEmitted;
+        CancellationTokenSource? _notifyCts;
+        Task? _notifyTask;
 
         // _physicalSessionId: unique per HTTP/stdio connection (MCP protocol session UUID).
         //   Used as the tracker key and ref-count key so every physical connection
@@ -207,11 +209,14 @@ namespace com.IvanMurzak.McpPlugin.Server
                 })
                 .AddTo(_disposables);
 
-            _ = Task.Run(async () =>
+            _notifyCts?.Dispose();
+            _notifyCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var notifyCt = _notifyCts.Token;
+            _notifyTask = Task.Run(async () =>
             {
                 try
                 {
-                    await Task.Delay(2000, cancellationToken); // Wait a bit to ensure connection is fully established
+                    await Task.Delay(2000, notifyCt); // Wait a bit to ensure connection is fully established
 
                     // Update session tracker with fresh data after MCP initialize handshake has completed
                     _sessionTracker.Update(_physicalSessionId, _routingToken, GetClientData(), GetServerData());
@@ -237,7 +242,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 {
                     _logger.LogError(ex, "Error notifying client connected.");
                 }
-            }, cancellationToken);
+            }, notifyCt);
 
             return Task.CompletedTask;
         }
@@ -248,6 +253,19 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogDebug("{type} MCP Client disconnected. PhysicalId: {physicalId}.", GetType().GetTypeShortName(), _physicalSessionId);
 
             _disposables.Clear();
+
+            // Cancel and await the background notify task so we get a consistent
+            // read of _aiAgentConnectedEmitted — prevents a connected event with
+            // no matching disconnected event.
+            _notifyCts?.Cancel();
+            if (_notifyTask != null)
+            {
+                try { await _notifyTask; }
+                catch (OperationCanceledException) { }
+            }
+            _notifyCts?.Dispose();
+            _notifyCts = null;
+            _notifyTask = null;
 
             if (_aiAgentConnectedEmitted)
                 _webhookCollector.OnAiAgentDisconnected(_physicalSessionId);

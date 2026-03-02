@@ -51,7 +51,7 @@
                 "webhook-prompt-url=http://localhost/api/webhooks/prompt",
                 "webhook-resource-url=http://localhost/api/webhooks/resource",
                 "webhook-connection-url=http://localhost/api/webhooks/connection",
-                "webhook-token=z1360yaGuPDciWYL-AfbGBEFRaRnoY_Y3KHz2QyvAwg"
+                "webhook-token=your-dev-webhook-token-here"
             ],
             "cwd": "${workspaceFolder}/DemoWebApp",
             "stopAtEntry": false,
