@@ -75,8 +75,7 @@ Fired after every MCP tool call completes (success or failure).
     "requestSizeBytes": 42,
     "responseSizeBytes": 18,
     "status": "success",
-    "durationMs": 150,
-    "errorDetails": null
+    "durationMs": 150
   }
 }
 ```

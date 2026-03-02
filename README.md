@@ -257,8 +257,7 @@ dotnet run \
     "requestSizeBytes": 42,
     "responseSizeBytes": 18,
     "status": "success",
-    "durationMs": 150,
-    "errorDetails": null
+    "durationMs": 150
   }
 }
 ```
