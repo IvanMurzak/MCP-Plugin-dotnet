@@ -173,7 +173,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 JsonSerializer.Serialize(stream, obj, obj.GetType());
                 return stream.BytesWritten;
             }
-            catch (JsonException ex)
+            catch (Exception ex)
             {
                 LogManager.GetCurrentClassLogger().Debug(ex, "Failed to measure size of webhook payload.");
                 return 0;
