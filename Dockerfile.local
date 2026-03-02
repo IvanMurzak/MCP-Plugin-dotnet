@@ -1,0 +1,39 @@
+# Dockerfile for local development builds of the MCP server (DemoWebApp).
+# Build context: repository root (MCP-Plugin-dotnet/)
+#
+# Usage (standalone):
+#   docker build -f Dockerfile.local -t mcp-server:local-dev .
+#
+# Usage (via AI-Game-Dev-Server compose):
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml -f docker-compose.local-build.yml up -d
+
+# ── Build stage ──────────────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+# Copy project files first for layer caching on restore
+COPY McpPlugin.Common/McpPlugin.Common.csproj McpPlugin.Common/
+COPY McpPlugin.Server/McpPlugin.Server.csproj McpPlugin.Server/
+COPY DemoWebApp/DemoWebApp.csproj DemoWebApp/
+
+# Restore dependencies
+RUN dotnet restore DemoWebApp/DemoWebApp.csproj
+
+# Copy source code
+COPY McpPlugin.Common/ McpPlugin.Common/
+COPY McpPlugin.Server/ McpPlugin.Server/
+COPY DemoWebApp/ DemoWebApp/
+COPY LICENSE .
+COPY README.md .
+
+# Publish
+RUN dotnet publish DemoWebApp/DemoWebApp.csproj -c Release -o /app/publish /p:UseAppHost=false /p:ErrorOnDuplicatePublishOutputFiles=false
+
+# ── Runtime stage ────────────────────────────────────────────────────────────
+FROM mcr.microsoft.com/dotnet/aspnet:9.0
+WORKDIR /app
+COPY --from=build /app/publish .
+
+EXPOSE 9090
+
+ENTRYPOINT ["dotnet", "DemoWebApp.dll"]
