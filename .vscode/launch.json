@@ -38,6 +38,30 @@
             }
         },
         {
+            "name": "analytics webhooks (http) 59479",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net9.0/DemoWebApp.dll",
+            "args": [
+                "port=59479",
+                "client-transport=streamableHttp",
+                "authorization=required",
+                "webhook-tool-url=http://localhost/api/webhooks/tool",
+                "webhook-prompt-url=http://localhost/api/webhooks/prompt",
+                "webhook-resource-url=http://localhost/api/webhooks/resource",
+                "webhook-connection-url=http://localhost/api/webhooks/connection",
+                "webhook-token=your-dev-webhook-token-here"
+            ],
+            "cwd": "${workspaceFolder}/DemoWebApp",
+            "stopAtEntry": false,
+            "console": "internalConsole",
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development",
+                "MCP_PLUGIN_WEBHOOK_HEADER": "X-Webhook-Token"
+            }
+        },
+        {
             "name": "Launch Demo Web App (http)",
             "type": "coreclr",
             "request": "launch",

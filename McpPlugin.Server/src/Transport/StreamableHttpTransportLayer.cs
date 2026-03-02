@@ -78,6 +78,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                             services.GetRequiredService<IHubContext<McpServerHub, IClientMcpRpc>>(),
                             services.GetRequiredService<IMcpSessionTracker>(),
                             services.GetRequiredService<IMcpConnectionStrategy>(),
+                            services.GetRequiredService<Webhooks.IWebhookEventCollector>(),
                             mcpServer: server,
                             mcpSession: null
                         );

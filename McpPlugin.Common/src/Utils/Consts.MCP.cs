@@ -35,7 +35,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string McpSkillsFolder = "MCP_SKILLS_FOLDER";
                 }
             }
-            public static class Server
+            public static partial class Server
             {
                 public static partial class Args
                 {
@@ -46,7 +46,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string Authorization = "authorization";
                 }
 
-                public static class Env
+                public static partial class Env
                 {
                     public const string Port = "MCP_PLUGIN_PORT";
                     public const string PluginTimeout = "MCP_PLUGIN_CLIENT_TIMEOUT";

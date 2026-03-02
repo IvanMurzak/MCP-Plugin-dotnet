@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,6 +18,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
+using com.IvanMurzak.McpPlugin.Server.Webhooks;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Hosting;
@@ -41,7 +43,11 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly IMcpConnectionStrategy _strategy;
         readonly Common.Version _version;
         readonly IDataArguments _dataArguments;
+        readonly IWebhookEventCollector _webhookCollector;
         readonly CompositeDisposable _disposables = new();
+        volatile bool _aiAgentConnectedEmitted;
+        CancellationTokenSource? _notifyCts;
+        Task? _notifyTask;
 
         // _physicalSessionId: unique per HTTP/stdio connection (MCP protocol session UUID).
         //   Used as the tracker key and ref-count key so every physical connection
@@ -64,6 +70,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             IHubContext<McpServerHub, IClientMcpRpc> hubContext,
             IMcpSessionTracker sessionTracker,
             IMcpConnectionStrategy strategy,
+            IWebhookEventCollector webhookCollector,
             McpServer? mcpServer = null,
             McpSession? mcpSession = null)
         {
@@ -83,6 +90,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _hubContext = hubContext ?? throw new ArgumentNullException(nameof(hubContext));
             _sessionTracker = sessionTracker ?? throw new ArgumentNullException(nameof(sessionTracker));
             _strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
+            _webhookCollector = webhookCollector ?? throw new ArgumentNullException(nameof(webhookCollector));
         }
 
         public McpClientData GetClientData()
@@ -201,16 +209,29 @@ namespace com.IvanMurzak.McpPlugin.Server
                 })
                 .AddTo(_disposables);
 
-            _ = Task.Run(async () =>
+            _notifyCts?.Dispose();
+            _notifyCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var notifyCt = _notifyCts.Token;
+            _notifyTask = Task.Run(async () =>
             {
                 try
                 {
-                    await Task.Delay(2000, cancellationToken); // Wait a bit to ensure connection is fully established
+                    await Task.Delay(2000, notifyCt); // Wait a bit to ensure connection is fully established
 
                     // Update session tracker with fresh data after MCP initialize handshake has completed
                     _sessionTracker.Update(_physicalSessionId, _routingToken, GetClientData(), GetServerData());
 
                     await NotifyClientConnectedAsync();
+
+                    // Emit AI agent connected webhook
+                    var clientInfo = _mcpServer?.ClientInfo;
+                    var metadata = BuildAiAgentMetadata(clientInfo);
+                    _webhookCollector.OnAiAgentConnected(
+                        _physicalSessionId,
+                        clientInfo?.Name,
+                        clientInfo?.Version,
+                        metadata);
+                    _aiAgentConnectedEmitted = true;
                 }
                 catch (OperationCanceledException)
                 {
@@ -221,7 +242,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 {
                     _logger.LogError(ex, "Error notifying client connected.");
                 }
-            }, cancellationToken);
+            }, notifyCt);
 
             return Task.CompletedTask;
         }
@@ -232,6 +253,22 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogDebug("{type} MCP Client disconnected. PhysicalId: {physicalId}.", GetType().GetTypeShortName(), _physicalSessionId);
 
             _disposables.Clear();
+
+            // Cancel and await the background notify task so we get a consistent
+            // read of _aiAgentConnectedEmitted — prevents a connected event with
+            // no matching disconnected event.
+            _notifyCts?.Cancel();
+            if (_notifyTask != null)
+            {
+                try { await _notifyTask; }
+                catch (OperationCanceledException) { }
+            }
+            _notifyCts?.Dispose();
+            _notifyCts = null;
+            _notifyTask = null;
+
+            if (_aiAgentConnectedEmitted)
+                _webhookCollector.OnAiAgentDisconnected(_physicalSessionId);
 
             var isLastConnection = _sessionTracker.Remove(_physicalSessionId);
             if (isLastConnection)
@@ -333,6 +370,25 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 _logger.LogError("{type} Error updating resource list: {Message}", GetType().GetTypeShortName(), ex.Message);
             }
+        }
+
+        static Dictionary<string, string>? BuildAiAgentMetadata(ModelContextProtocol.Protocol.Implementation? clientInfo)
+        {
+            if (clientInfo == null)
+                return null;
+
+            var metadata = new Dictionary<string, string>();
+
+            if (!string.IsNullOrEmpty(clientInfo.Title))
+                metadata["title"] = clientInfo.Title;
+
+            if (!string.IsNullOrEmpty(clientInfo.Description))
+                metadata["description"] = clientInfo.Description;
+
+            if (!string.IsNullOrEmpty(clientInfo.WebsiteUrl))
+                metadata["websiteUrl"] = clientInfo.WebsiteUrl;
+
+            return metadata.Count > 0 ? metadata : null;
         }
     }
 }

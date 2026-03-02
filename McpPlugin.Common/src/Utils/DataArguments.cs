@@ -20,6 +20,15 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         Consts.MCP.Server.TransportMethod ClientTransport { get; }
         Consts.MCP.Server.AuthOption Authorization { get; }
         string? Token { get; }
+
+        // Webhook configuration
+        string? WebhookToolUrl { get; }
+        string? WebhookPromptUrl { get; }
+        string? WebhookResourceUrl { get; }
+        string? WebhookConnectionUrl { get; }
+        string? WebhookToken { get; }
+        string? WebhookHeader { get; }
+        int WebhookTimeoutMs { get; }
     }
     public class DataArguments : IDataArguments
     {
@@ -28,6 +37,15 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         public Consts.MCP.Server.TransportMethod ClientTransport { get; private set; }
         public Consts.MCP.Server.AuthOption Authorization { get; private set; } = Consts.MCP.Server.AuthOption.none;
         public string? Token { get; private set; }
+
+        // Webhook configuration
+        public string? WebhookToolUrl { get; private set; }
+        public string? WebhookPromptUrl { get; private set; }
+        public string? WebhookResourceUrl { get; private set; }
+        public string? WebhookConnectionUrl { get; private set; }
+        public string? WebhookToken { get; private set; }
+        public string? WebhookHeader { get; private set; }
+        public int WebhookTimeoutMs { get; private set; } = 10000;
 
         public DataArguments(string[] args)
         {
@@ -74,6 +92,36 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var envDeployment = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.Authorization);
             if (envDeployment != null && Enum.TryParse(envDeployment, true, out Consts.MCP.Server.AuthOption parsedEnvDeployment))
                 Authorization = parsedEnvDeployment;
+
+            // --- Webhook variables ---
+
+            var envWebhookToolUrl = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.WebhookToolUrl);
+            if (envWebhookToolUrl != null)
+                WebhookToolUrl = envWebhookToolUrl;
+
+            var envWebhookPromptUrl = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.WebhookPromptUrl);
+            if (envWebhookPromptUrl != null)
+                WebhookPromptUrl = envWebhookPromptUrl;
+
+            var envWebhookResourceUrl = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.WebhookResourceUrl);
+            if (envWebhookResourceUrl != null)
+                WebhookResourceUrl = envWebhookResourceUrl;
+
+            var envWebhookConnectionUrl = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.WebhookConnectionUrl);
+            if (envWebhookConnectionUrl != null)
+                WebhookConnectionUrl = envWebhookConnectionUrl;
+
+            var envWebhookToken = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.WebhookToken);
+            if (envWebhookToken != null)
+                WebhookToken = envWebhookToken;
+
+            var envWebhookHeader = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.WebhookHeader);
+            if (envWebhookHeader != null)
+                WebhookHeader = envWebhookHeader;
+
+            var envWebhookTimeout = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.WebhookTimeout);
+            if (envWebhookTimeout != null && int.TryParse(envWebhookTimeout, out var parsedEnvWebhookTimeout))
+                WebhookTimeoutMs = parsedEnvWebhookTimeout;
         }
         void ParseCommandLineArguments(string[] args)
         {
@@ -108,6 +156,36 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var argDeployment = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.Authorization.TrimStart('-'));
             if (argDeployment != null && Enum.TryParse(argDeployment, true, out Consts.MCP.Server.AuthOption parsedArgDeployment))
                 Authorization = parsedArgDeployment;
+
+            // --- Webhook variables ---
+
+            var argWebhookToolUrl = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.WebhookToolUrl.TrimStart('-'));
+            if (argWebhookToolUrl != null)
+                WebhookToolUrl = argWebhookToolUrl;
+
+            var argWebhookPromptUrl = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.WebhookPromptUrl.TrimStart('-'));
+            if (argWebhookPromptUrl != null)
+                WebhookPromptUrl = argWebhookPromptUrl;
+
+            var argWebhookResourceUrl = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.WebhookResourceUrl.TrimStart('-'));
+            if (argWebhookResourceUrl != null)
+                WebhookResourceUrl = argWebhookResourceUrl;
+
+            var argWebhookConnectionUrl = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.WebhookConnectionUrl.TrimStart('-'));
+            if (argWebhookConnectionUrl != null)
+                WebhookConnectionUrl = argWebhookConnectionUrl;
+
+            var argWebhookToken = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.WebhookToken.TrimStart('-'));
+            if (argWebhookToken != null)
+                WebhookToken = argWebhookToken;
+
+            var argWebhookHeader = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.WebhookHeader.TrimStart('-'));
+            if (argWebhookHeader != null)
+                WebhookHeader = argWebhookHeader;
+
+            var argWebhookTimeout = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.WebhookTimeout.TrimStart('-'));
+            if (argWebhookTimeout != null && int.TryParse(argWebhookTimeout, out var parsedArgWebhookTimeout))
+                WebhookTimeoutMs = parsedArgWebhookTimeout;
         }
     }
 }

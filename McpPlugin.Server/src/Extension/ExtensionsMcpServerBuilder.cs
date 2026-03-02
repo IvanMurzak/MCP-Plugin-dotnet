@@ -13,6 +13,7 @@ using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
+using com.IvanMurzak.McpPlugin.Server.Webhooks;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -98,6 +99,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             mcpServerBuilder.Services.AddSingleton<HubEventResourcesChange>();
             mcpServerBuilder.Services.AddSingleton<IRequestTrackingService, RequestTrackingService>();
             mcpServerBuilder.Services.AddSingleton<IMcpSessionTracker, McpSessionTracker>();
+
+            mcpServerBuilder.Services.AddWebhooks(dataArguments);
 
             mcpServerBuilder.Services.AddSingleton<RemoteToolRunner>();
             mcpServerBuilder.Services.AddSingleton<IClientToolHub>(sp => sp.GetRequiredService<RemoteToolRunner>());
