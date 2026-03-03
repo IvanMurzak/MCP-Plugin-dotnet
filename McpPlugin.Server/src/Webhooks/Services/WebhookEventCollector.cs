@@ -30,7 +30,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
         readonly IWebhookDispatcher _dispatcher;
         readonly WebhookOptions _options;
         readonly ConcurrentDictionary<string, byte> _handshakeCompletedConnections = new();
-        readonly ConcurrentDictionary<string, string> _connectionTokens = new();
 
         public WebhookEventCollector(
             ILogger<WebhookEventCollector> logger,
@@ -128,9 +127,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
         {
             _handshakeCompletedConnections.TryAdd(connectionId, 0);
 
-            if (!string.IsNullOrEmpty(token))
-                _connectionTokens[connectionId] = token;
-
             if (!_options.IsConnectionEnabled)
                 return;
 
@@ -149,8 +145,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
 
         public void OnPluginDisconnected(string connectionId)
         {
-            _connectionTokens.TryRemove(connectionId, out _);
-
             if (!_handshakeCompletedConnections.TryRemove(connectionId, out _))
                 return;
 
