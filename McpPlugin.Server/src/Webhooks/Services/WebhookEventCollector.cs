@@ -13,6 +13,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server.Webhooks
@@ -29,6 +30,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
         readonly IWebhookDispatcher _dispatcher;
         readonly WebhookOptions _options;
         readonly ConcurrentDictionary<string, byte> _handshakeCompletedConnections = new();
+        readonly ConcurrentDictionary<string, string> _connectionTokens = new();
 
         public WebhookEventCollector(
             ILogger<WebhookEventCollector> logger,
@@ -52,7 +54,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
                 ResponseSizeBytes = responseSizeBytes,
                 Status = status,
                 DurationMs = durationMs,
-                ErrorDetails = errorDetails
+                ErrorDetails = errorDetails,
+                BearerToken = McpSessionTokenContext.CurrentToken
             };
 
             Enqueue(_options.ToolWebhookUrl!, "tool.call.completed", evt);
@@ -66,7 +69,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             var evt = new PromptEvent
             {
                 PromptName = promptName,
-                ResponseSizeBytes = responseSizeBytes
+                ResponseSizeBytes = responseSizeBytes,
+                BearerToken = McpSessionTokenContext.CurrentToken
             };
 
             Enqueue(_options.PromptWebhookUrl!, "prompt.retrieved", evt);
@@ -80,7 +84,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             var evt = new ResourceEvent
             {
                 ResourceUri = resourceUri,
-                ResponseSizeBytes = responseSizeBytes
+                ResponseSizeBytes = responseSizeBytes,
+                BearerToken = McpSessionTokenContext.CurrentToken
             };
 
             Enqueue(_options.ResourceWebhookUrl!, "resource.accessed", evt);
@@ -119,9 +124,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             Enqueue(_options.ConnectionWebhookUrl!, "connection.ai-agent.disconnected", evt);
         }
 
-        public void OnPluginConnected(string connectionId, string? clientName = null, string? clientVersion = null)
+        public void OnPluginConnected(string connectionId, string? token, string? clientName = null, string? clientVersion = null)
         {
             _handshakeCompletedConnections.TryAdd(connectionId, 0);
+
+            if (!string.IsNullOrEmpty(token))
+                _connectionTokens[connectionId] = token;
 
             if (!_options.IsConnectionEnabled)
                 return;
@@ -132,7 +140,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
                 ClientType = "plugin",
                 SessionId = connectionId,
                 ClientName = clientName,
-                ClientVersion = clientVersion
+                ClientVersion = clientVersion,
+                BearerToken = token
             };
 
             Enqueue(_options.ConnectionWebhookUrl!, "connection.plugin.connected", evt);
@@ -140,6 +149,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
 
         public void OnPluginDisconnected(string connectionId)
         {
+            _connectionTokens.TryRemove(connectionId, out _);
+
             if (!_handshakeCompletedConnections.TryRemove(connectionId, out _))
                 return;
 

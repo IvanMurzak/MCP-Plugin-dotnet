@@ -31,5 +31,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
 
         [JsonPropertyName("errorDetails")]
         public string? ErrorDetails { get; set; }
+
+        [JsonPropertyName("bearerToken")]
+        public string? BearerToken { get; set; }
     }
 }

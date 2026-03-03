@@ -164,7 +164,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                     _logger.LogInformation("Version handshake successful. Plugin: {pluginVersion}, API: {apiVersion}, Environment: {environment}",
                         request.PluginVersion, request.ApiVersion, request.Environment);
 
-                    _webhookCollector.OnPluginConnected(Context.ConnectionId, request.Environment, request.PluginVersion);
+                    var pluginToken = ClientUtils.GetTokenByConnectionId(Context.ConnectionId);
+                    _webhookCollector.OnPluginConnected(Context.ConnectionId, pluginToken, request.Environment, request.PluginVersion);
                 }
 
                 return Task.FromResult(response);

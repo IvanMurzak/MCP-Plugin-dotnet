@@ -240,7 +240,7 @@ namespace McpPlugin.Server.Tests.Webhooks
                 dispatcher.Object,
                 options);
 
-            collector.OnPluginConnected("conn-abc", "MyUnityApp", "2.0.0");
+            collector.OnPluginConnected("conn-abc", "test-token", "MyUnityApp", "2.0.0");
 
             captured.ShouldNotBeNull();
             var doc = JsonDocument.Parse(captured!.JsonPayload);
@@ -269,7 +269,7 @@ namespace McpPlugin.Server.Tests.Webhooks
                 options);
 
             // Must register a successful handshake first
-            collector.OnPluginConnected("conn-abc");
+            collector.OnPluginConnected("conn-abc", null);
             captured = null; // reset to capture only the disconnect message
 
             collector.OnPluginDisconnected("conn-abc");

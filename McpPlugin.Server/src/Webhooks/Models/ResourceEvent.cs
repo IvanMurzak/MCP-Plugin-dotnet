@@ -19,5 +19,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
 
         [JsonPropertyName("responseSizeBytes")]
         public long ResponseSizeBytes { get; set; }
+
+        [JsonPropertyName("bearerToken")]
+        public string? BearerToken { get; set; }
     }
 }
