@@ -10,6 +10,7 @@
 
 using System.Collections.Generic;
 using System.Text.Json;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Webhooks;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -240,7 +241,7 @@ namespace McpPlugin.Server.Tests.Webhooks
                 dispatcher.Object,
                 options);
 
-            collector.OnPluginConnected("conn-abc", "MyUnityApp", "2.0.0");
+            collector.OnPluginConnected("conn-abc", "test-token", "MyUnityApp", "2.0.0");
 
             captured.ShouldNotBeNull();
             var doc = JsonDocument.Parse(captured!.JsonPayload);
@@ -269,7 +270,7 @@ namespace McpPlugin.Server.Tests.Webhooks
                 options);
 
             // Must register a successful handshake first
-            collector.OnPluginConnected("conn-abc");
+            collector.OnPluginConnected("conn-abc", null);
             captured = null; // reset to capture only the disconnect message
 
             collector.OnPluginDisconnected("conn-abc");
@@ -327,6 +328,163 @@ namespace McpPlugin.Server.Tests.Webhooks
             data.TryGetProperty("metadata", out _).ShouldBeFalse(); // empty metadata omitted
             data.TryGetProperty("clientName", out _).ShouldBeFalse(); // null omitted
             data.TryGetProperty("clientVersion", out _).ShouldBeFalse(); // null omitted
+        }
+
+        [Fact]
+        public void OnPluginConnected_IncludesBearerToken_InPayload()
+        {
+            var options = CreateOptions();
+            var dispatcher = new Mock<IWebhookDispatcher>();
+            WebhookMessage? captured = null;
+            dispatcher.Setup(d => d.TryEnqueue(It.IsAny<WebhookMessage>()))
+                .Callback<WebhookMessage>(m => captured = m)
+                .Returns(true);
+
+            var collector = new WebhookEventCollector(
+                Mock.Of<ILogger<WebhookEventCollector>>(),
+                dispatcher.Object,
+                options);
+
+            collector.OnPluginConnected("conn-xyz", "plugin-bearer-token", "MyApp", "1.0.0");
+
+            captured.ShouldNotBeNull();
+            var data = JsonDocument.Parse(captured!.JsonPayload).RootElement.GetProperty("data");
+            data.GetProperty("bearerToken").GetString().ShouldBe("plugin-bearer-token");
+        }
+
+        [Fact]
+        public void OnPluginConnected_WithNullToken_OmitsBearerTokenFromPayload()
+        {
+            var options = CreateOptions();
+            var dispatcher = new Mock<IWebhookDispatcher>();
+            WebhookMessage? captured = null;
+            dispatcher.Setup(d => d.TryEnqueue(It.IsAny<WebhookMessage>()))
+                .Callback<WebhookMessage>(m => captured = m)
+                .Returns(true);
+
+            var collector = new WebhookEventCollector(
+                Mock.Of<ILogger<WebhookEventCollector>>(),
+                dispatcher.Object,
+                options);
+
+            collector.OnPluginConnected("conn-xyz", null, "MyApp", "1.0.0");
+
+            captured.ShouldNotBeNull();
+            var data = JsonDocument.Parse(captured!.JsonPayload).RootElement.GetProperty("data");
+            data.TryGetProperty("bearerToken", out _).ShouldBeFalse(); // null omitted by DefaultIgnoreCondition
+        }
+
+        [Fact]
+        public void OnToolCall_IncludesBearerToken_WhenSessionTokenSet()
+        {
+            var options = CreateOptions();
+            var dispatcher = new Mock<IWebhookDispatcher>();
+            WebhookMessage? captured = null;
+            dispatcher.Setup(d => d.TryEnqueue(It.IsAny<WebhookMessage>()))
+                .Callback<WebhookMessage>(m => captured = m)
+                .Returns(true);
+
+            var collector = new WebhookEventCollector(
+                Mock.Of<ILogger<WebhookEventCollector>>(),
+                dispatcher.Object,
+                options);
+
+            McpSessionTokenContext.CurrentToken = "ai-session-token";
+            try
+            {
+                collector.OnToolCall("multiply", 10, 20, "success", 5, null);
+            }
+            finally
+            {
+                McpSessionTokenContext.CurrentToken = null;
+            }
+
+            captured.ShouldNotBeNull();
+            var data = JsonDocument.Parse(captured!.JsonPayload).RootElement.GetProperty("data");
+            data.GetProperty("bearerToken").GetString().ShouldBe("ai-session-token");
+        }
+
+        [Fact]
+        public void OnToolCall_OmitsBearerToken_WhenNoSessionToken()
+        {
+            var options = CreateOptions();
+            var dispatcher = new Mock<IWebhookDispatcher>();
+            WebhookMessage? captured = null;
+            dispatcher.Setup(d => d.TryEnqueue(It.IsAny<WebhookMessage>()))
+                .Callback<WebhookMessage>(m => captured = m)
+                .Returns(true);
+
+            var collector = new WebhookEventCollector(
+                Mock.Of<ILogger<WebhookEventCollector>>(),
+                dispatcher.Object,
+                options);
+
+            McpSessionTokenContext.CurrentToken = null;
+            collector.OnToolCall("add", 10, 20, "success", 5, null);
+
+            captured.ShouldNotBeNull();
+            var data = JsonDocument.Parse(captured!.JsonPayload).RootElement.GetProperty("data");
+            data.TryGetProperty("bearerToken", out _).ShouldBeFalse(); // null omitted
+        }
+
+        [Fact]
+        public void OnPromptRetrieved_IncludesBearerToken_WhenSessionTokenSet()
+        {
+            var options = CreateOptions();
+            var dispatcher = new Mock<IWebhookDispatcher>();
+            WebhookMessage? captured = null;
+            dispatcher.Setup(d => d.TryEnqueue(It.IsAny<WebhookMessage>()))
+                .Callback<WebhookMessage>(m => captured = m)
+                .Returns(true);
+
+            var collector = new WebhookEventCollector(
+                Mock.Of<ILogger<WebhookEventCollector>>(),
+                dispatcher.Object,
+                options);
+
+            McpSessionTokenContext.CurrentToken = "ai-session-token";
+            try
+            {
+                collector.OnPromptRetrieved("summary", 512);
+            }
+            finally
+            {
+                McpSessionTokenContext.CurrentToken = null;
+            }
+
+            captured.ShouldNotBeNull();
+            var data = JsonDocument.Parse(captured!.JsonPayload).RootElement.GetProperty("data");
+            data.GetProperty("bearerToken").GetString().ShouldBe("ai-session-token");
+        }
+
+        [Fact]
+        public void OnResourceAccessed_IncludesBearerToken_WhenSessionTokenSet()
+        {
+            var options = CreateOptions();
+            var dispatcher = new Mock<IWebhookDispatcher>();
+            WebhookMessage? captured = null;
+            dispatcher.Setup(d => d.TryEnqueue(It.IsAny<WebhookMessage>()))
+                .Callback<WebhookMessage>(m => captured = m)
+                .Returns(true);
+
+            var collector = new WebhookEventCollector(
+                Mock.Of<ILogger<WebhookEventCollector>>(),
+                dispatcher.Object,
+                options);
+
+            McpSessionTokenContext.CurrentToken = "ai-session-token";
+            try
+            {
+                collector.OnResourceAccessed("file:///project/config.json", 256);
+            }
+            finally
+            {
+                McpSessionTokenContext.CurrentToken = null;
+            }
+
+            captured.ShouldNotBeNull();
+            var data = JsonDocument.Parse(captured!.JsonPayload).RootElement.GetProperty("data");
+            data.GetProperty("bearerToken").GetString().ShouldBe("ai-session-token");
         }
     }
 }

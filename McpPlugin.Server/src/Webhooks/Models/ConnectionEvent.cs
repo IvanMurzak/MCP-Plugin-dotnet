@@ -32,5 +32,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
 
         [JsonPropertyName("metadata")]
         public Dictionary<string, string>? Metadata { get; set; }
+
+        [JsonPropertyName("bearerToken")]
+        public string? BearerToken { get; set; }
     }
 }

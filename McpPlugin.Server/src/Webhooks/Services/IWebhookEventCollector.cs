@@ -19,7 +19,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
         void OnResourceAccessed(string resourceUri, long responseSizeBytes);
         void OnAiAgentConnected(string sessionId, string? clientName, string? clientVersion, Dictionary<string, string>? metadata);
         void OnAiAgentDisconnected(string sessionId);
-        void OnPluginConnected(string connectionId, string? clientName = null, string? clientVersion = null);
+        void OnPluginConnected(string connectionId, string? token, string? clientName = null, string? clientVersion = null);
         void OnPluginDisconnected(string connectionId);
     }
 }
