@@ -23,7 +23,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
         Task OnMcpClientDisconnected(McpClientData disconnectedClient, McpClientData[] remainingClients);
 
         /// <summary>
-        /// Called once on initial connection to populate ActiveClients with the server's current
+        /// Called once on initial connection to modifie ActiveClients with the server's current
         /// snapshot, covering the edge case where clients were already connected before the plugin joined.
         /// </summary>
         Task OnInitialClientData(McpClientData[] allActiveClients);

@@ -512,10 +512,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var builder = new McpPluginBuilder(_version, _loggerProvider)
                 .WithToolsFromAssembly(testAssembly);
 
-            // Act - Query count first (populates cache)
+            // Act - Query count first (modifies cache)
             var countBefore = builder.GetIgnoredAssembliesCount();
 
-            // Add ignore after cache is populated
+            // Add ignore after cache is modified
             builder.IgnoreAssembly(testAssembly);
             var countAfter = builder.GetIgnoredAssembliesCount();
 
@@ -533,10 +533,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var builder = new McpPluginBuilder(_version, _loggerProvider)
                 .WithToolsFromAssembly(testAssembly);
 
-            // Act - Query count first (populates cache)
+            // Act - Query count first (modifies cache)
             var countBefore = builder.GetIgnoredAssembliesCount();
 
-            // Add ignore after cache is populated
+            // Add ignore after cache is modified
             builder.IgnoreAssembly(assemblyName);
             var countAfter = builder.GetIgnoredAssembliesCount();
 
@@ -554,10 +554,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 .WithToolsFromAssembly(testAssembly)
                 .IgnoreAssembly(testAssembly);
 
-            // Act - Query count first (populates cache with ignored state)
+            // Act - Query count first (modifies cache with ignored state)
             var countBefore = builder.GetIgnoredAssembliesCount();
 
-            // Remove ignore after cache is populated
+            // Remove ignore after cache is modified
             builder.RemoveIgnoredAssembly(testAssembly);
             var countAfter = builder.GetIgnoredAssembliesCount();
 
@@ -576,10 +576,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 .WithToolsFromAssembly(testAssembly)
                 .IgnoreAssembly(assemblyName);
 
-            // Act - Query count first (populates cache with ignored state)
+            // Act - Query count first (modifies cache with ignored state)
             var countBefore = builder.GetIgnoredAssembliesCount();
 
-            // Remove ignore after cache is populated
+            // Remove ignore after cache is modified
             builder.RemoveIgnoredAssembly(assemblyName);
             var countAfter = builder.GetIgnoredAssembliesCount();
 
@@ -597,10 +597,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 .WithToolsFromAssembly(testAssembly)
                 .IgnoreAssembly(testAssembly);
 
-            // Act - Query count first (populates cache with ignored state)
+            // Act - Query count first (modifies cache with ignored state)
             var countBefore = builder.GetIgnoredAssembliesCount();
 
-            // Clear all ignored assemblies after cache is populated
+            // Clear all ignored assemblies after cache is modified
             builder.ClearIgnoredAssemblies();
             var countAfter = builder.GetIgnoredAssembliesCount();
 
@@ -618,10 +618,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 .WithTools<IgnoreTestToolClass>()
                 .WithTools<IncludeTestToolClass>();
 
-            // Act - Query count first (populates cache)
+            // Act - Query count first (modifies cache)
             var countBefore = builder.GetIgnoredTypesCount();
 
-            // Add namespace ignore after cache is populated
+            // Add namespace ignore after cache is modified
             builder.IgnoreNamespace("com.IvanMurzak.McpPlugin.Tests.Data.Ignored");
             var countAfter = builder.GetIgnoredTypesCount();
 
@@ -638,10 +638,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 .WithTools<IgnoreTestToolClass>()
                 .WithTools<IncludeTestToolClass>();
 
-            // Act - Query count first (populates cache)
+            // Act - Query count first (modifies cache)
             var countBefore = builder.GetIgnoredTypesCount();
 
-            // Add namespace ignores after cache is populated
+            // Add namespace ignores after cache is modified
             builder.IgnoreNamespaces(
                 "com.IvanMurzak.McpPlugin.Tests.Data.Ignored",
                 "com.IvanMurzak.McpPlugin.Tests.Data.Included");
@@ -661,10 +661,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 .WithTools<IncludeTestToolClass>()
                 .IgnoreNamespace("com.IvanMurzak.McpPlugin.Tests.Data.Ignored");
 
-            // Act - Query count first (populates cache with ignored state)
+            // Act - Query count first (modifies cache with ignored state)
             var countBefore = builder.GetIgnoredTypesCount();
 
-            // Remove namespace ignore after cache is populated
+            // Remove namespace ignore after cache is modified
             builder.RemoveIgnoredNamespace("com.IvanMurzak.McpPlugin.Tests.Data.Ignored");
             var countAfter = builder.GetIgnoredTypesCount();
 
@@ -684,10 +684,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     "com.IvanMurzak.McpPlugin.Tests.Data.Ignored",
                     "com.IvanMurzak.McpPlugin.Tests.Data.Included");
 
-            // Act - Query count first (populates cache with ignored state)
+            // Act - Query count first (modifies cache with ignored state)
             var countBefore = builder.GetIgnoredTypesCount();
 
-            // Remove namespace ignores after cache is populated
+            // Remove namespace ignores after cache is modified
             builder.RemoveIgnoredNamespaces(
                 "com.IvanMurzak.McpPlugin.Tests.Data.Ignored",
                 "com.IvanMurzak.McpPlugin.Tests.Data.Included");
@@ -707,10 +707,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 .WithTools<IncludeTestToolClass>()
                 .IgnoreNamespace("com.IvanMurzak.McpPlugin.Tests.Data.Ignored");
 
-            // Act - Query count first (populates cache with ignored state)
+            // Act - Query count first (modifies cache with ignored state)
             var countBefore = builder.GetIgnoredTypesCount();
 
-            // Clear all ignored namespaces after cache is populated
+            // Clear all ignored namespaces after cache is modified
             builder.ClearIgnoredNamespaces();
             var countAfter = builder.GetIgnoredTypesCount();
 
@@ -729,11 +729,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 .IgnoreAssembly(testAssembly)
                 .IgnoreNamespace("com.IvanMurzak.McpPlugin.Tests.Data.Ignored");
 
-            // Act - Query counts first (populates both caches with ignored state)
+            // Act - Query counts first (modifies both caches with ignored state)
             var assemblyCountBefore = builder.GetIgnoredAssembliesCount();
             builder.GetIgnoredTypesCount();
 
-            // Clear all ignores after caches are populated
+            // Clear all ignores after caches are modified
             builder.ClearAllIgnored();
             var assemblyCountAfter = builder.GetIgnoredAssembliesCount();
             var typeCountAfter = builder.GetIgnoredTypesCount();
@@ -753,10 +753,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var builder = new McpPluginBuilder(_version, _loggerProvider)
                 .WithToolsFromAssembly(testAssembly);
 
-            // Act - Query count first (populates cache)
+            // Act - Query count first (modifies cache)
             var countBefore = builder.GetIgnoredAssembliesCount();
 
-            // Add multiple ignores after cache is populated
+            // Add multiple ignores after cache is modified
             builder.IgnoreAssemblies(new[] { testAssembly });
             var countAfter = builder.GetIgnoredAssembliesCount();
 
@@ -774,10 +774,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var builder = new McpPluginBuilder(_version, _loggerProvider)
                 .WithToolsFromAssembly(testAssembly);
 
-            // Act - Query count first (populates cache)
+            // Act - Query count first (modifies cache)
             var countBefore = builder.GetIgnoredAssembliesCount();
 
-            // Add multiple ignores by name after cache is populated
+            // Add multiple ignores by name after cache is modified
             builder.IgnoreAssemblies(assemblyName);
             var countAfter = builder.GetIgnoredAssembliesCount();
 
@@ -795,10 +795,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 .WithToolsFromAssembly(testAssembly)
                 .IgnoreAssembly(testAssembly);
 
-            // Act - Query count first (populates cache with ignored state)
+            // Act - Query count first (modifies cache with ignored state)
             var countBefore = builder.GetIgnoredAssembliesCount();
 
-            // Remove multiple ignores after cache is populated
+            // Remove multiple ignores after cache is modified
             builder.RemoveIgnoredAssemblies(new[] { testAssembly });
             var countAfter = builder.GetIgnoredAssembliesCount();
 
@@ -817,10 +817,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 .WithToolsFromAssembly(testAssembly)
                 .IgnoreAssembly(assemblyName);
 
-            // Act - Query count first (populates cache with ignored state)
+            // Act - Query count first (modifies cache with ignored state)
             var countBefore = builder.GetIgnoredAssembliesCount();
 
-            // Remove multiple ignores by name after cache is populated
+            // Remove multiple ignores by name after cache is modified
             builder.RemoveIgnoredAssemblies(assemblyName);
             var countAfter = builder.GetIgnoredAssembliesCount();
 

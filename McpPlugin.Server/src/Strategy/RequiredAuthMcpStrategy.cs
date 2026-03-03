@@ -81,7 +81,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             if (!string.IsNullOrEmpty(token))
                 return ClientUtils.GetConnectionIdByToken(token);
 
-            // Session token is null — stdio transport has no HTTP context and never populates
+            // Session token is null — stdio transport has no HTTP context and never modifies
             // McpSessionTokenContext.CurrentToken. Fall back to the server-configured token so
             // that the plugin registered with that token can still be reached.
             if (!string.IsNullOrEmpty(_serverToken))

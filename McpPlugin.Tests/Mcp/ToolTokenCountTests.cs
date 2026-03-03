@@ -102,7 +102,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             count1.ShouldBe(count2);
             count2.ShouldBe(count3);
 
-            // Verify caching by checking that the private field is populated using reflection
+            // Verify caching by checking that the private field is modified using reflection
             var runTool = tool as RunTool;
             runTool.ShouldNotBeNull();
             var cacheField = typeof(RunTool).GetField("_cachedTokenCount", BindingFlags.NonPublic | BindingFlags.Instance);
