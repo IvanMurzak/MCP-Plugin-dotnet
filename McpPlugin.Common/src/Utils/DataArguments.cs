@@ -29,6 +29,10 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         string? WebhookToken { get; }
         string? WebhookHeader { get; }
         int WebhookTimeoutMs { get; }
+
+        // Authorization webhook configuration
+        string? WebhookAuthorizationUrl { get; }
+        bool WebhookAuthorizationFailOpen { get; }
     }
     public class DataArguments : IDataArguments
     {
@@ -46,6 +50,10 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         public string? WebhookToken { get; private set; }
         public string? WebhookHeader { get; private set; }
         public int WebhookTimeoutMs { get; private set; } = 10000;
+
+        // Authorization webhook configuration
+        public string? WebhookAuthorizationUrl { get; private set; }
+        public bool WebhookAuthorizationFailOpen { get; private set; } = false;
 
         public DataArguments(string[] args)
         {
@@ -122,6 +130,16 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var envWebhookTimeout = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.WebhookTimeout);
             if (envWebhookTimeout != null && int.TryParse(envWebhookTimeout, out var parsedEnvWebhookTimeout))
                 WebhookTimeoutMs = parsedEnvWebhookTimeout;
+
+            // --- Authorization webhook variables ---
+
+            var envWebhookAuthorizationUrl = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.WebhookAuthorizationUrl);
+            if (envWebhookAuthorizationUrl != null)
+                WebhookAuthorizationUrl = envWebhookAuthorizationUrl;
+
+            var envWebhookAuthorizationFailOpen = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.WebhookAuthorizationFailOpen);
+            if (envWebhookAuthorizationFailOpen != null && bool.TryParse(envWebhookAuthorizationFailOpen, out var parsedEnvWebhookAuthorizationFailOpen))
+                WebhookAuthorizationFailOpen = parsedEnvWebhookAuthorizationFailOpen;
         }
         void ParseCommandLineArguments(string[] args)
         {
@@ -186,6 +204,16 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var argWebhookTimeout = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.WebhookTimeout.TrimStart('-'));
             if (argWebhookTimeout != null && int.TryParse(argWebhookTimeout, out var parsedArgWebhookTimeout))
                 WebhookTimeoutMs = parsedArgWebhookTimeout;
+
+            // --- Authorization webhook variables ---
+
+            var argWebhookAuthorizationUrl = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.WebhookAuthorizationUrl.TrimStart('-'));
+            if (argWebhookAuthorizationUrl != null)
+                WebhookAuthorizationUrl = argWebhookAuthorizationUrl;
+
+            var argWebhookAuthorizationFailOpen = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.WebhookAuthorizationFailOpen.TrimStart('-'));
+            if (argWebhookAuthorizationFailOpen != null && bool.TryParse(argWebhookAuthorizationFailOpen, out var parsedArgWebhookAuthorizationFailOpen))
+                WebhookAuthorizationFailOpen = parsedArgWebhookAuthorizationFailOpen;
         }
     }
 }

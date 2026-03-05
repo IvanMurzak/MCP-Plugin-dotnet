@@ -13,6 +13,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
+using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using R3;
@@ -24,17 +25,20 @@ namespace com.IvanMurzak.McpPlugin.Server
     {
         protected readonly ILogger _logger;
         protected readonly IMcpConnectionStrategy _strategy;
+        protected readonly IAuthorizationWebhookService _authorizationWebhookService;
         protected readonly CompositeDisposable _disposables = new();
         protected readonly string _guid = Guid.NewGuid().ToString();
+        protected bool _connectionRejected = false;
 
-        protected BaseHub(ILogger logger, IMcpConnectionStrategy strategy)
+        protected BaseHub(ILogger logger, IMcpConnectionStrategy strategy, IAuthorizationWebhookService authorizationWebhookService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
+            _authorizationWebhookService = authorizationWebhookService ?? throw new ArgumentNullException(nameof(authorizationWebhookService));
             _logger.LogTrace("Ctor. {guid}", _guid);
         }
 
-        public override Task OnConnectedAsync()
+        public override async Task OnConnectedAsync()
         {
             var httpContext = Context.GetHttpContext();
             var token = httpContext?.Request.Query["access_token"].FirstOrDefault();
@@ -43,6 +47,27 @@ namespace com.IvanMurzak.McpPlugin.Server
                 var authHeader = httpContext?.Request.Headers["Authorization"].FirstOrDefault();
                 if (authHeader != null && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                     token = authHeader.Substring("Bearer ".Length).Trim();
+            }
+
+            // Check authorization webhook
+            var allowed = await _authorizationWebhookService.AuthorizePluginAsync(
+                connectionId: Context.ConnectionId,
+                bearerToken: token,
+                clientName: null,
+                clientVersion: null,
+                cancellationToken: Context.ConnectionAborted);
+
+            if (!allowed)
+            {
+                _connectionRejected = true;
+                var client = Clients.Client(Context.ConnectionId);
+                if (client != null)
+                {
+                    _ = client.ForceDisconnect("Authorization webhook denied the connection.");
+                }
+                _logger.LogDebug("{guid} MCP Plugin connection rejected by authorization webhook. ConnectionId: {connectionId}.",
+                    _guid, Context.ConnectionId);
+                return;
             }
 
             _strategy.OnPluginConnected(GetType(), Context.ConnectionId, token, _logger,
@@ -59,7 +84,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             _logger.LogDebug("{guid} MCP Plugin connected. ConnectionId: {connectionId}, Token: {hasToken}.",
                 _guid, Context.ConnectionId, !string.IsNullOrEmpty(token) ? "present" : "absent");
-            return base.OnConnectedAsync();
+            await base.OnConnectedAsync();
         }
 
         public override Task OnDisconnectedAsync(Exception? exception)

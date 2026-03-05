@@ -13,6 +13,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Server.Auth;
+using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -60,7 +61,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 var handler = new TokenAuthenticationHandler(
                     optionsMonitor.Object,
                     loggerFactory.Object,
-                    System.Text.Encodings.Web.UrlEncoder.Default);
+                    System.Text.Encodings.Web.UrlEncoder.Default,
+                    new NoOpAuthorizationWebhookService());
 
                 var context = new DefaultHttpContext();
                 if (authorizationHeader != null)
@@ -197,7 +199,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var handler = new TokenAuthenticationHandler(
                 optionsMonitor.Object,
                 loggerFactory.Object,
-                System.Text.Encodings.Web.UrlEncoder.Default);
+                System.Text.Encodings.Web.UrlEncoder.Default,
+                new NoOpAuthorizationWebhookService());
 
             var context = new DefaultHttpContext();
             context.Request.Headers["Authorization"] = $"Bearer {accessToken}";
@@ -281,7 +284,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var handler = new TokenAuthenticationHandler(
                 optionsMonitor.Object,
                 loggerFactory.Object,
-                System.Text.Encodings.Web.UrlEncoder.Default);
+                System.Text.Encodings.Web.UrlEncoder.Default,
+                new NoOpAuthorizationWebhookService());
 
             var context = new DefaultHttpContext();
             context.Response.Body = new MemoryStream();

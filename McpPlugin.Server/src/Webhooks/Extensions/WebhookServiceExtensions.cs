@@ -13,6 +13,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -32,6 +33,22 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
 
             services.AddSingleton(options);
 
+            // Register authorization webhook service (independent of fire-and-forget webhooks)
+            if (options.IsAuthorizationEnabled)
+            {
+                services.AddHttpClient("webhook")
+                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+                {
+                    ConnectTimeout = TimeSpan.FromSeconds(2)
+                });
+
+                services.AddSingleton<IAuthorizationWebhookService, AuthorizationWebhookService>();
+            }
+            else
+            {
+                services.AddSingleton<IAuthorizationWebhookService, NoOpAuthorizationWebhookService>();
+            }
+
             if (!options.IsEnabled)
             {
                 services.AddSingleton<IWebhookDispatcher, NoOpWebhookDispatcher>();
@@ -44,11 +61,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
                 return services;
             }
 
-            services.AddHttpClient("webhook")
-            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+            // HttpClient for fire-and-forget webhooks (if not already added for authorization)
+            if (!options.IsAuthorizationEnabled)
             {
-                ConnectTimeout = TimeSpan.FromSeconds(2)
-            });
+                services.AddHttpClient("webhook")
+                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+                {
+                    ConnectTimeout = TimeSpan.FromSeconds(2)
+                });
+            }
 
             services.AddSingleton<WebhookDispatcher>();
             services.AddSingleton<IWebhookDispatcher>(sp => sp.GetRequiredService<WebhookDispatcher>());

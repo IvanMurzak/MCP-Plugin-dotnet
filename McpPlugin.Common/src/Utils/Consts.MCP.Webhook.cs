@@ -25,6 +25,8 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string WebhookToken = "webhook-token";
                     public const string WebhookHeader = "webhook-header";
                     public const string WebhookTimeout = "webhook-timeout";
+                    public const string WebhookAuthorizationUrl = "webhook-authorization-url";
+                    public const string WebhookAuthorizationFailOpen = "webhook-authorization-fail-open";
                 }
 
                 public static partial class Env
@@ -36,6 +38,8 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string WebhookToken = "MCP_PLUGIN_WEBHOOK_TOKEN";
                     public const string WebhookHeader = "MCP_PLUGIN_WEBHOOK_HEADER";
                     public const string WebhookTimeout = "MCP_PLUGIN_WEBHOOK_TIMEOUT";
+                    public const string WebhookAuthorizationUrl = "MCP_PLUGIN_WEBHOOK_AUTHORIZATION_URL";
+                    public const string WebhookAuthorizationFailOpen = "MCP_PLUGIN_WEBHOOK_AUTHORIZATION_FAIL_OPEN";
                 }
             }
         }
