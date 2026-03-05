@@ -36,8 +36,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (request.Services == null)
                 return new ListToolsResult().SetError("[Error] 'request.Services' is null");
 
-            var toolRunner = request.Services.GetRequiredService<IClientToolHub>();
-            logger.Trace("Using ToolRunner: {0}", toolRunner.GetType().GetTypeShortName());
+            var clientToolHub = request.Services.GetRequiredService<IClientToolHub>();
+            logger.Trace("ListAll Using ClientToolHub: {0}", clientToolHub.GetType().GetTypeShortName());
 
             var requestData = new RequestListTool();
 
@@ -47,7 +47,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             ResponseData<ResponseListTool[]>? response = null;
             try
             {
-                response = await toolRunner.RunListTool(requestData, linkedCts.Token);
+                response = await clientToolHub.RunListTool(requestData, linkedCts.Token);
             }
             catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
             {

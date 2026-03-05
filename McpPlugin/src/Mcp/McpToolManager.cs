@@ -27,8 +27,6 @@ namespace com.IvanMurzak.McpPlugin
 {
     public class McpToolManager : IToolManager
     {
-        static readonly JsonElement EmptyInputSchema = JsonDocument.Parse("{ \"type\": \"object\", \"additionalProperties\": false }").RootElement;
-
         protected readonly ILogger _logger;
         protected readonly Reflector _reflector;
         protected readonly CompositeDisposable _disposables = new();
@@ -61,7 +59,7 @@ namespace com.IvanMurzak.McpPlugin
         #region Tools
         public int EnabledToolsCount => _tools.Count(kvp => kvp.Value.Enabled);
         public int TotalToolsCount => _tools.Count;
-        
+
         /// <summary>
         /// Gets the total token count for all enabled tools.
         /// This is calculated as the sum of TokenCount for each enabled tool.
@@ -70,7 +68,7 @@ namespace com.IvanMurzak.McpPlugin
         public int EnabledToolsTokenCount => _tools
             .Where(kvp => kvp.Value.Enabled)
             .Sum(kvp => kvp.Value.TokenCount);
-        
+
         public bool HasTool(string name) => _tools.ContainsKey(name);
         public bool AddTool(string name, IRunTool runner)
         {
@@ -179,7 +177,7 @@ namespace com.IvanMurzak.McpPlugin
                             Enabled = kvp.Value.Enabled,
                             Title = kvp.Value.Title,
                             Description = kvp.Value.Description,
-                            InputSchema = kvp.Value.InputSchema.ToJsonElement() ?? EmptyInputSchema,
+                            InputSchema = kvp.Value.InputSchema.ToJsonElement() ?? Common.Consts.MCP.EmptyInputSchema,
                             ReadOnlyHint = kvp.Value.ReadOnlyHint,
                             DestructiveHint = kvp.Value.DestructiveHint,
                             IdempotentHint = kvp.Value.IdempotentHint,
