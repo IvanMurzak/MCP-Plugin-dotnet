@@ -337,7 +337,7 @@ or
 
 **Security:**
 
-- The server sends the `X-Webhook-Token` header (same token configured via `webhook-token`)
+- The server sends the configured security token in the header named by `webhook-header` (default: `X-Webhook-Token`)
 - Your webhook must validate this token to prevent unauthorized authorization requests
 - Use HTTPS endpoints in production
 
