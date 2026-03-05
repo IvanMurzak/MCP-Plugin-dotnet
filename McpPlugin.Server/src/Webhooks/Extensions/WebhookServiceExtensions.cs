@@ -53,8 +53,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             {
                 services.AddSingleton<IWebhookDispatcher, NoOpWebhookDispatcher>();
                 services.AddSingleton<IWebhookEventCollector, NoOpWebhookEventCollector>();
-                // Log any invalid URL warnings even when webhooks are otherwise disabled
-                if (options.HasInvalidUrls)
+                // Log URL/token warnings when auth webhook is active or any URL is invalid
+                if (options.IsAuthorizationEnabled || options.HasInvalidUrls)
                     services.AddHostedService(sp => new WebhookWarningLogger(
                         sp.GetRequiredService<WebhookOptions>(),
                         sp.GetRequiredService<ILogger<WebhookWarningLogger>>()));

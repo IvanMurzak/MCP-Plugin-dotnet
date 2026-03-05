@@ -60,13 +60,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (!allowed)
             {
                 _connectionRejected = true;
-                var client = Clients.Client(Context.ConnectionId);
-                if (client != null)
-                {
-                    _ = client.ForceDisconnect("Authorization webhook denied the connection.");
-                }
                 _logger.LogDebug("{guid} MCP Plugin connection rejected by authorization webhook. ConnectionId: {connectionId}.",
                     _guid, Context.ConnectionId);
+                Context.Abort();
                 return;
             }
 

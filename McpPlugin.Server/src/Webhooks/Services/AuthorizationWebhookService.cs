@@ -89,17 +89,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cts.CancelAfter(_options.TimeoutMs);
 
-                var content = new StringContent(
+                using var content = new StringContent(
                     JsonSerializer.Serialize(request),
                     System.Text.Encoding.UTF8,
                     "application/json");
+                using var httpRequest = new HttpRequestMessage(HttpMethod.Post, _options.AuthorizationWebhookUrl)
+                {
+                    Content = content
+                };
 
                 if (_options.HasToken)
-                {
-                    content.Headers.Add(_options.HeaderName, $"Bearer {_options.TokenValue}");
-                }
+                    httpRequest.Headers.TryAddWithoutValidation(_options.HeaderName, _options.TokenValue);
 
-                var response = await client.PostAsync(_options.AuthorizationWebhookUrl, content, cts.Token);
+                using var response = await client.SendAsync(httpRequest, cts.Token);
 
                 if (!response.IsSuccessStatusCode)
                 {
