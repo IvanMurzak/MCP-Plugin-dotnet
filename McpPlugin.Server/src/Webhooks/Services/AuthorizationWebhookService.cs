@@ -20,6 +20,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
 {
     public class AuthorizationWebhookService : IAuthorizationWebhookService
     {
+        static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
         readonly WebhookOptions _options;
         readonly IHttpClientFactory _httpClientFactory;
         readonly ILogger _logger;
@@ -112,7 +114,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
                 }
 
                 var responseBody = await response.Content.ReadAsStringAsync(cts.Token);
-                var authResponse = JsonSerializer.Deserialize<AuthorizationResponse>(responseBody);
+                var authResponse = JsonSerializer.Deserialize<AuthorizationResponse>(responseBody, _jsonOptions);
 
                 if (authResponse == null)
                 {
