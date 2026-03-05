@@ -7,6 +7,7 @@
 │  See the LICENSE file in the project root for more information.        │
 └────────────────────────────────────────────────────────────────────────┘
 */
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace com.IvanMurzak.McpPlugin.Common
@@ -15,6 +16,16 @@ namespace com.IvanMurzak.McpPlugin.Common
     {
         public static partial class MCP
         {
+            public static readonly JsonElement EmptyInputSchema = JsonDocument.Parse("{ \"type\": \"object\", \"additionalProperties\": false }").RootElement;
+
+            private static readonly JsonNode _emptyInputSchemaNodeTemplate = new JsonObject()
+            {
+                ["type"] = "object",
+                ["additionalProperties"] = false
+            };
+
+            public static JsonNode EmptyInputSchemaNode => _emptyInputSchemaNodeTemplate.DeepClone();
+
             public static class Plugin
             {
                 public const int LinesLimit = 1000;
