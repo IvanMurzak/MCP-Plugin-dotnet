@@ -48,6 +48,15 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
             return this;
         }
 
+        public JsonObjectBuilder SetAdditionalPropertiesFalse()
+        {
+            if (Result == null)
+                throw new InvalidOperationException("Cannot set additionalProperties on a null schema.");
+
+            Result[JsonSchema.AdditionalProperties] = false;
+            return this;
+        }
+
         public JsonObjectBuilder AddRequired(string name)
         {
             if (Result == null)

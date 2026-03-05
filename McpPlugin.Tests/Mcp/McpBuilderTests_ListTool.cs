@@ -225,6 +225,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 method: typeof(Method_NoArgs_Void).GetMethod(nameof(Method_NoArgs_Void.Do))!,
                 expectedInputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
+                    .SetAdditionalPropertiesFalse()
                     .BuildJsonElement(),
                 expectedOutputSchema: null);
         }
@@ -316,6 +317,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 method: typeof(Method_Async_Task).GetMethod(nameof(Method_Async_Task.DoAsync))!,
                 expectedInputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
+                    .SetAdditionalPropertiesFalse()
                     .BuildJsonElement(),
                 expectedOutputSchema: null);
         }
@@ -345,6 +347,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 method: typeof(Method_NoArgs_ListOfIntReturn).GetMethod(nameof(Method_NoArgs_ListOfIntReturn.Do))!,
                 expectedInputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
+                    .SetAdditionalPropertiesFalse()
                     .BuildJsonElement(),
                 expectedOutputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
@@ -364,6 +367,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 method: method,
                 expectedInputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
+                    .SetAdditionalPropertiesFalse()
                     .BuildJsonElement(),
                 expectedOutputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
