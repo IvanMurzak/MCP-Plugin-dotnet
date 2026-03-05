@@ -33,15 +33,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
 
             services.AddSingleton(options);
 
-            // Register authorization webhook service (independent of fire-and-forget webhooks)
-            if (options.IsAuthorizationEnabled)
+            // Register HTTP client for both authorization and fire-and-forget webhooks
+            if (options.IsAuthorizationEnabled || options.IsEnabled)
             {
                 services.AddHttpClient("webhook")
-                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-                {
-                    ConnectTimeout = TimeSpan.FromSeconds(2)
-                });
+                    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+                    {
+                        ConnectTimeout = TimeSpan.FromSeconds(2)
+                    });
+            }
 
+            // Register authorization webhook service
+            if (options.IsAuthorizationEnabled)
+            {
                 services.AddSingleton<IAuthorizationWebhookService, AuthorizationWebhookService>();
             }
             else
@@ -59,16 +63,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
                         sp.GetRequiredService<WebhookOptions>(),
                         sp.GetRequiredService<ILogger<WebhookWarningLogger>>()));
                 return services;
-            }
-
-            // HttpClient for fire-and-forget webhooks (if not already added for authorization)
-            if (!options.IsAuthorizationEnabled)
-            {
-                services.AddHttpClient("webhook")
-                .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-                {
-                    ConnectTimeout = TimeSpan.FromSeconds(2)
-                });
             }
 
             services.AddSingleton<WebhookDispatcher>();

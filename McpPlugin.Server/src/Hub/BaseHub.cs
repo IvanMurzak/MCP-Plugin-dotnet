@@ -28,7 +28,12 @@ namespace com.IvanMurzak.McpPlugin.Server
         protected readonly IAuthorizationWebhookService _authorizationWebhookService;
         protected readonly CompositeDisposable _disposables = new();
         protected readonly string _guid = Guid.NewGuid().ToString();
-        protected bool _connectionRejected = false;
+        /// <summary>
+        /// Set to true if the connection is rejected by the authorization webhook.
+        /// This flag prevents subsequent connection setup from executing after Context.Abort() is called.
+        /// Marked volatile to ensure visibility across threads.
+        /// </summary>
+        protected volatile bool _connectionRejected = false;
 
         protected BaseHub(ILogger logger, IMcpConnectionStrategy strategy, IAuthorizationWebhookService authorizationWebhookService)
         {
