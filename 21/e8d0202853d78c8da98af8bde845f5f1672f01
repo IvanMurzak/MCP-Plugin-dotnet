@@ -1,0 +1,36 @@
+McpPlugin.Server.Tests/Webhooks/WebhookOptionsTests.cs
+  35a09d3700a7eedc 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "21e8d0202853d78c8da98af8bde845f5f1672f01",
+  "prompts": {
+    "041b1243a82600dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8558537-2e08-4df9-be25-3d8e981714ae",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    },
+    "35a09d3700a7eedc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cf3beb1-f154-497e-8b7f-75c04a28db33",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
