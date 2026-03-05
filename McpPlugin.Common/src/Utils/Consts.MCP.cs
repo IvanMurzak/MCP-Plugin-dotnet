@@ -18,11 +18,13 @@ namespace com.IvanMurzak.McpPlugin.Common
         {
             public static readonly JsonElement EmptyInputSchema = JsonDocument.Parse("{ \"type\": \"object\", \"additionalProperties\": false }").RootElement;
 
-            public static readonly JsonNode EmptyInputSchemaNode = new JsonObject()
+            private static readonly JsonNode _emptyInputSchemaNodeTemplate = new JsonObject()
             {
                 ["type"] = "object",
                 ["additionalProperties"] = false
             };
+
+            public static JsonNode EmptyInputSchemaNode => _emptyInputSchemaNodeTemplate.DeepClone();
 
             public static class Plugin
             {
