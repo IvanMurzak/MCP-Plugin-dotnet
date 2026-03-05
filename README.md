@@ -275,6 +275,7 @@ dotnet run \
 | `connection.plugin.disconnected` | McpPlugin (.NET client) disconnects |
 
 **Notes:**
+
 - Webhooks are **fire-and-forget** — delivery failures are logged but never block MCP responses.
 - If no webhook URLs are configured, the entire subsystem is inactive with zero overhead.
 - Use HTTPS endpoints in production to protect the security token in transit.
@@ -307,7 +308,7 @@ dotnet run \
   "timestamp": "2025-03-04T22:45:30.1234567Z",
   "connectionId": "trace-id-or-connection-id",
   "clientType": "ai-agent",
-  "bearerToken": "Bearer <token-from-client>",
+  "bearerToken": "<token-from-client>",
   "remoteIpAddress": "192.168.1.100",
   "userAgent": "claude-ai/1.0",
   "requestPath": "/mcp",
@@ -329,18 +330,19 @@ or
 ```
 
 **Behavior:**
+
 - **2xx response with `allowed: true`** → Connection proceeds
 - **2xx response with `allowed: false`** → Connection denied (reason logged as warning)
 - **Non-2xx response, timeout, or parse error** → Connection denied (unless `fail-open=true`)
 
 **Security:**
+
 - The server sends the `X-Webhook-Token` header (same token configured via `webhook-token`)
 - Your webhook must validate this token to prevent unauthorized authorization requests
 - Use HTTPS endpoints in production
 
-For a complete implementation guide with examples in C#, Node.js, and Python, see [`docs/AUTHORIZATION_WEBHOOK.md`](docs/AUTHORIZATION_WEBHOOK.md).
-
 **Notes:**
+
 - Authorization webhooks are **synchronous** — the server waits (default timeout 10 seconds) for your response
 - Keep webhook response times under 1 second for best performance
 - Authorization webhooks operate independently from the analytics webhooks above
