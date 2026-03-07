@@ -8,8 +8,11 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+using System;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Webhooks;
+using Microsoft.Extensions.Logging;
+using Moq;
 using Shouldly;
 using Xunit;
 
@@ -197,6 +200,209 @@ namespace McpPlugin.Server.Tests.Webhooks
         {
             var options = new WebhookOptions(null, null, null, null, null, headerName, 10000);
             options.HeaderName.ShouldBe(WebhookOptions.DefaultHeaderName);
+        }
+
+        // --- Authorization webhook ---
+
+        [Fact]
+        public void IsAuthorizationEnabled_WhenAuthorizationUrlSet_ReturnsTrue()
+        {
+            var options = new WebhookOptions(null, null, null, null, null, null, 10000,
+                authorizationWebhookUrl: "https://example.com/auth");
+
+            options.IsAuthorizationEnabled.ShouldBeTrue();
+            options.AuthorizationWebhookUrl.ShouldBe("https://example.com/auth");
+        }
+
+        [Fact]
+        public void IsAuthorizationEnabled_WhenAuthorizationUrlNull_ReturnsFalse()
+        {
+            var options = new WebhookOptions(null, null, null, null, null, null, 10000);
+
+            options.IsAuthorizationEnabled.ShouldBeFalse();
+            options.AuthorizationWebhookUrl.ShouldBeNull();
+        }
+
+        [Fact]
+        public void IsEnabled_WhenOnlyAuthorizationUrlSet_ReturnsFalse()
+        {
+            // IsEnabled covers tool/prompt/resource/connection only — authorization is separate
+            var options = new WebhookOptions(null, null, null, null, null, null, 10000,
+                authorizationWebhookUrl: "https://example.com/auth");
+
+            options.IsEnabled.ShouldBeFalse();
+            options.IsAuthorizationEnabled.ShouldBeTrue();
+        }
+
+        [Fact]
+        public void AuthorizationFailOpen_DefaultsFalse()
+        {
+            var options = new WebhookOptions(null, null, null, null, null, null, 10000);
+
+            options.AuthorizationFailOpen.ShouldBeFalse();
+        }
+
+        [Fact]
+        public void AuthorizationFailOpen_WhenSetToTrue_ReturnsTrue()
+        {
+            var options = new WebhookOptions(null, null, null, null, null, null, 10000,
+                authorizationWebhookUrl: "https://example.com/auth",
+                authorizationFailOpen: true);
+
+            options.AuthorizationFailOpen.ShouldBeTrue();
+        }
+
+        [Fact]
+        public void AuthorizationUrl_WhenInvalid_TreatedAsNullAndTracked()
+        {
+            var options = new WebhookOptions(null, null, null, null, null, null, 10000,
+                authorizationWebhookUrl: "not-a-url");
+
+            options.AuthorizationWebhookUrl.ShouldBeNull();
+            options.IsAuthorizationEnabled.ShouldBeFalse();
+            options.HasInvalidUrls.ShouldBeTrue();
+        }
+
+        [Fact]
+        public void AuthorizationUrl_WhenFtpScheme_TreatedAsNull()
+        {
+            var options = new WebhookOptions(null, null, null, null, null, null, 10000,
+                authorizationWebhookUrl: "ftp://example.com/auth");
+
+            options.AuthorizationWebhookUrl.ShouldBeNull();
+            options.IsAuthorizationEnabled.ShouldBeFalse();
+        }
+
+        [Fact]
+        public void FromDataArguments_ParsesAuthorizationUrl()
+        {
+            var args = new DataArguments(new[]
+            {
+                "webhook-authorization-url=https://example.com/auth",
+                "webhook-token=secret"
+            });
+
+            var options = WebhookOptions.FromDataArguments(args);
+
+            options.AuthorizationWebhookUrl.ShouldBe("https://example.com/auth");
+            options.IsAuthorizationEnabled.ShouldBeTrue();
+            options.AuthorizationFailOpen.ShouldBeFalse();
+        }
+
+        [Fact]
+        public void FromDataArguments_ParsesAuthorizationFailOpen()
+        {
+            var args = new DataArguments(new[]
+            {
+                "webhook-authorization-url=https://example.com/auth",
+                "webhook-authorization-fail-open=true"
+            });
+
+            var options = WebhookOptions.FromDataArguments(args);
+
+            options.AuthorizationFailOpen.ShouldBeTrue();
+        }
+
+        [Fact]
+        public void FromDataArguments_DefaultsAuthorizationWhenNotProvided()
+        {
+            var args = new DataArguments(System.Array.Empty<string>());
+            var options = WebhookOptions.FromDataArguments(args);
+
+            options.AuthorizationWebhookUrl.ShouldBeNull();
+            options.IsAuthorizationEnabled.ShouldBeFalse();
+            options.AuthorizationFailOpen.ShouldBeFalse();
+        }
+
+        // --- LogWarnings with authorization ---
+
+        [Fact]
+        public void LogWarnings_WhenNothingEnabled_DoesNotLogTokenWarning()
+        {
+            var options = new WebhookOptions(null, null, null, null, null, null, 10000);
+            var mockLogger = new Mock<ILogger>();
+
+            options.LogWarnings(mockLogger.Object);
+
+            mockLogger.Verify(l => l.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public void LogWarnings_WhenOnlyAuthorizationEnabled_NoToken_LogsTokenWarning()
+        {
+            var options = new WebhookOptions(null, null, null, null, tokenValue: null, null, 10000,
+                authorizationWebhookUrl: "https://example.com/auth");
+            var mockLogger = new Mock<ILogger>();
+
+            options.LogWarnings(mockLogger.Object);
+
+            mockLogger.Verify(l => l.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("no security token")),
+                It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public void LogWarnings_WhenOnlyAuthorizationEnabled_WithToken_NoTokenWarning()
+        {
+            var options = new WebhookOptions(null, null, null, null, tokenValue: "secret", null, 10000,
+                authorizationWebhookUrl: "https://example.com/auth");
+            var mockLogger = new Mock<ILogger>();
+
+            options.LogWarnings(mockLogger.Object);
+
+            mockLogger.Verify(l => l.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("no security token")),
+                It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public void LogWarnings_WhenAuthorizationUrlIsHttp_LogsHttpWarning()
+        {
+            var options = new WebhookOptions(null, null, null, null, null, null, 10000,
+                authorizationWebhookUrl: "http://example.com/auth");
+            var mockLogger = new Mock<ILogger>();
+
+            options.LogWarnings(mockLogger.Object);
+
+            mockLogger.Verify(l => l.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("Authorization") && v.ToString()!.Contains("HTTP")),
+                It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public void LogWarnings_WhenAuthorizationUrlInvalid_LogsInvalidUrlWarning()
+        {
+            var options = new WebhookOptions(null, null, null, null, null, null, 10000,
+                authorizationWebhookUrl: "not-a-url");
+            var mockLogger = new Mock<ILogger>();
+
+            options.LogWarnings(mockLogger.Object);
+
+            mockLogger.Verify(l => l.Log(
+                LogLevel.Warning,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("Authorization") && v.ToString()!.Contains("not-a-url")),
+                It.IsAny<Exception?>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
         }
     }
 }

@@ -11,8 +11,10 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Server.Auth;
+using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -60,7 +62,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 var handler = new TokenAuthenticationHandler(
                     optionsMonitor.Object,
                     loggerFactory.Object,
-                    System.Text.Encodings.Web.UrlEncoder.Default);
+                    System.Text.Encodings.Web.UrlEncoder.Default,
+                    new NoOpAuthorizationWebhookService());
 
                 var context = new DefaultHttpContext();
                 if (authorizationHeader != null)
@@ -197,7 +200,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var handler = new TokenAuthenticationHandler(
                 optionsMonitor.Object,
                 loggerFactory.Object,
-                System.Text.Encodings.Web.UrlEncoder.Default);
+                System.Text.Encodings.Web.UrlEncoder.Default,
+                new NoOpAuthorizationWebhookService());
 
             var context = new DefaultHttpContext();
             context.Request.Headers["Authorization"] = $"Bearer {accessToken}";
@@ -281,7 +285,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var handler = new TokenAuthenticationHandler(
                 optionsMonitor.Object,
                 loggerFactory.Object,
-                System.Text.Encodings.Web.UrlEncoder.Default);
+                System.Text.Encodings.Web.UrlEncoder.Default,
+                new NoOpAuthorizationWebhookService());
 
             var context = new DefaultHttpContext();
             context.Response.Body = new MemoryStream();
@@ -335,6 +340,103 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             body.ShouldContain("\"error\"");
             body.ShouldContain("\"Forbidden\"");
             body.ShouldContain("\"message\"");
+        }
+
+        // --- Authorization webhook deny tests ---
+
+        Mock<IAuthorizationWebhookService> DenyingWebhook()
+        {
+            var mock = new Mock<IAuthorizationWebhookService>();
+            mock.Setup(x => x.AuthorizeAiAgentAsync(
+                    It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+            return mock;
+        }
+
+        async Task<AuthenticateResult> AuthenticateWithWebhookAsync(
+            IAuthorizationWebhookService webhookService,
+            string authorizationHeader,
+            string? serverToken = null)
+        {
+            var options = new TokenAuthenticationOptions
+            {
+                RequireToken = true,
+                ServerToken = serverToken
+            };
+
+            var optionsMonitor = new Mock<IOptionsMonitor<TokenAuthenticationOptions>>();
+            optionsMonitor.Setup(x => x.CurrentValue).Returns(options);
+            optionsMonitor.Setup(x => x.Get(TokenAuthenticationHandler.SchemeName)).Returns(options);
+
+            var loggerFactory = new Mock<ILoggerFactory>();
+            loggerFactory.Setup(x => x.CreateLogger(It.IsAny<string>()))
+                .Returns(new Mock<ILogger>().Object);
+
+            var handler = new TokenAuthenticationHandler(
+                optionsMonitor.Object,
+                loggerFactory.Object,
+                System.Text.Encodings.Web.UrlEncoder.Default,
+                webhookService);
+
+            var context = new DefaultHttpContext();
+            context.Request.Headers["Authorization"] = authorizationHeader;
+
+            var scheme = new AuthenticationScheme(
+                TokenAuthenticationHandler.SchemeName,
+                TokenAuthenticationHandler.SchemeName,
+                typeof(TokenAuthenticationHandler));
+
+            await handler.InitializeAsync(scheme, context);
+            return await handler.AuthenticateAsync();
+        }
+
+        [Fact]
+        public async Task WebhookDenies_ServerToken_ReturnsFail()
+        {
+            var serverToken = UniqueId();
+            var result = await AuthenticateWithWebhookAsync(
+                DenyingWebhook().Object,
+                $"Bearer {serverToken}",
+                serverToken: serverToken);
+
+            result.Succeeded.ShouldBeFalse();
+            result.Failure!.Message.ShouldBe("Authorization webhook denied the connection.");
+        }
+
+        [Fact]
+        public async Task WebhookDenies_RegisteredPluginToken_ReturnsFail()
+        {
+            var token = UniqueId();
+            var connId = UniqueId();
+            ClientUtils.AddClient<McpServerHub>(connId, null, token);
+            try
+            {
+                var result = await AuthenticateWithWebhookAsync(
+                    DenyingWebhook().Object,
+                    $"Bearer {token}");
+
+                result.Succeeded.ShouldBeFalse();
+                result.Failure!.Message.ShouldBe("Authorization webhook denied the connection.");
+            }
+            finally
+            {
+                ClientUtils.RemoveClient<McpServerHub>(connId, null);
+            }
+        }
+
+        [Fact]
+        public async Task WebhookDenies_DcrToken_ReturnsFail()
+        {
+            var client = ClientRegistrationStore.Register("WebhookDeny_" + UniqueId());
+            var dcrToken = ClientRegistrationStore.IssueAccessToken(client.ClientId, client.ClientSecret);
+
+            var result = await AuthenticateWithWebhookAsync(
+                DenyingWebhook().Object,
+                $"Bearer {dcrToken}");
+
+            result.Succeeded.ShouldBeFalse();
+            result.Failure!.Message.ShouldBe("Authorization webhook denied the connection.");
         }
     }
 }
