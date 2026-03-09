@@ -30,7 +30,7 @@ namespace McpPlugin.Server.Tests.Webhooks
     {
         const string WebhookUrl = "https://example.com/authorize";
 
-        Mock<IHttpClientFactory> CreateMockHttpClientFactory(HttpResponseMessage response)
+        (Mock<IHttpClientFactory> Factory, HttpClient Client) CreateMockHttpClientFactory(HttpResponseMessage response)
         {
             var handler = new Mock<HttpMessageHandler>();
             handler.Protected()
@@ -45,7 +45,7 @@ namespace McpPlugin.Server.Tests.Webhooks
             factory.Setup(x => x.CreateClient("webhook"))
                 .Returns(httpClient);
 
-            return factory;
+            return (factory, httpClient);
         }
 
         WebhookOptions CreateOptions(bool authorizationEnabled = true, bool failOpen = false)
@@ -70,7 +70,7 @@ namespace McpPlugin.Server.Tests.Webhooks
         [Fact]
         public async Task AuthorizeAiAgentAsync_WebhookAllows_ReturnsTrue()
         {
-            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            using var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(
                     JsonSerializer.Serialize(new AuthorizationResponse { Allowed = true }),
@@ -78,26 +78,28 @@ namespace McpPlugin.Server.Tests.Webhooks
                     "application/json")
             };
 
-            var factory = CreateMockHttpClientFactory(response);
-            var options = CreateOptions();
-            var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
+            var (factory, httpClient) = CreateMockHttpClientFactory(response);
+            using (httpClient)
+            {
+                var options = CreateOptions();
+                var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
 
-            var result = await service.AuthorizeAiAgentAsync(
-                connectionId: "conn123",
-                bearerToken: "token123",
-                remoteIpAddress: "192.168.1.1",
-                userAgent: "TestAgent/1.0",
-                requestPath: "/api/test",
-                cancellationToken: CancellationToken.None);
+                var result = await service.AuthorizeAiAgentAsync(
+                    connectionId: "conn123",
+                    bearerToken: "token123",
+                    remoteIpAddress: "192.168.1.1",
+                    userAgent: "TestAgent/1.0",
+                    requestPath: "/api/test",
+                    cancellationToken: CancellationToken.None);
 
-            result.ShouldBeTrue();
-            response.Dispose();
+                result.ShouldBeTrue();
+            }
         }
 
         [Fact]
         public async Task AuthorizeAiAgentAsync_WebhookDenies_ReturnsFalse()
         {
-            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            using var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(
                     JsonSerializer.Serialize(new AuthorizationResponse { Allowed = false, Reason = "Access denied" }),
@@ -105,25 +107,27 @@ namespace McpPlugin.Server.Tests.Webhooks
                     "application/json")
             };
 
-            var factory = CreateMockHttpClientFactory(response);
-            var options = CreateOptions();
-            var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
+            var (factory, httpClient) = CreateMockHttpClientFactory(response);
+            using (httpClient)
+            {
+                var options = CreateOptions();
+                var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
 
-            var result = await service.AuthorizeAiAgentAsync(
-                connectionId: "conn123",
-                bearerToken: "token123",
-                remoteIpAddress: "192.168.1.1",
-                userAgent: "TestAgent/1.0",
-                requestPath: "/api/test");
+                var result = await service.AuthorizeAiAgentAsync(
+                    connectionId: "conn123",
+                    bearerToken: "token123",
+                    remoteIpAddress: "192.168.1.1",
+                    userAgent: "TestAgent/1.0",
+                    requestPath: "/api/test");
 
-            result.ShouldBeFalse();
-            response.Dispose();
+                result.ShouldBeFalse();
+            }
         }
 
         [Fact]
         public async Task AuthorizePluginAsync_WebhookAllows_ReturnsTrue()
         {
-            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            using var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(
                     JsonSerializer.Serialize(new AuthorizationResponse { Allowed = true }),
@@ -131,24 +135,26 @@ namespace McpPlugin.Server.Tests.Webhooks
                     "application/json")
             };
 
-            var factory = CreateMockHttpClientFactory(response);
-            var options = CreateOptions();
-            var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
+            var (factory, httpClient) = CreateMockHttpClientFactory(response);
+            using (httpClient)
+            {
+                var options = CreateOptions();
+                var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
 
-            var result = await service.AuthorizePluginAsync(
-                connectionId: "conn456",
-                bearerToken: "plugin-token",
-                clientName: "MyPlugin",
-                clientVersion: "1.0.0");
+                var result = await service.AuthorizePluginAsync(
+                    connectionId: "conn456",
+                    bearerToken: "plugin-token",
+                    clientName: "MyPlugin",
+                    clientVersion: "1.0.0");
 
-            result.ShouldBeTrue();
-            response.Dispose();
+                result.ShouldBeTrue();
+            }
         }
 
         [Fact]
         public async Task AuthorizePluginAsync_WebhookDenies_ReturnsFalse()
         {
-            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            using var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(
                     JsonSerializer.Serialize(new AuthorizationResponse { Allowed = false }),
@@ -156,102 +162,112 @@ namespace McpPlugin.Server.Tests.Webhooks
                     "application/json")
             };
 
-            var factory = CreateMockHttpClientFactory(response);
-            var options = CreateOptions();
-            var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
+            var (factory, httpClient) = CreateMockHttpClientFactory(response);
+            using (httpClient)
+            {
+                var options = CreateOptions();
+                var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
 
-            var result = await service.AuthorizePluginAsync(
-                connectionId: "conn456",
-                bearerToken: "plugin-token",
-                clientName: "MyPlugin",
-                clientVersion: "1.0.0");
+                var result = await service.AuthorizePluginAsync(
+                    connectionId: "conn456",
+                    bearerToken: "plugin-token",
+                    clientName: "MyPlugin",
+                    clientVersion: "1.0.0");
 
-            result.ShouldBeFalse();
-            response.Dispose();
+                result.ShouldBeFalse();
+            }
         }
 
         [Fact]
         public async Task NonSuccessStatusCode_FailOpenFalse_ReturnsFalse()
         {
-            var response = new HttpResponseMessage(HttpStatusCode.InternalServerError);
-            var factory = CreateMockHttpClientFactory(response);
-            var options = CreateOptions(failOpen: false);
-            var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
+            using var response = new HttpResponseMessage(HttpStatusCode.InternalServerError);
+            var (factory, httpClient) = CreateMockHttpClientFactory(response);
+            using (httpClient)
+            {
+                var options = CreateOptions(failOpen: false);
+                var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
 
-            var result = await service.AuthorizeAiAgentAsync(
-                connectionId: "conn123",
-                bearerToken: "token123",
-                remoteIpAddress: null,
-                userAgent: null,
-                requestPath: null);
+                var result = await service.AuthorizeAiAgentAsync(
+                    connectionId: "conn123",
+                    bearerToken: "token123",
+                    remoteIpAddress: null,
+                    userAgent: null,
+                    requestPath: null);
 
-            result.ShouldBeFalse();
-            response.Dispose();
+                result.ShouldBeFalse();
+            }
         }
 
         [Fact]
         public async Task NonSuccessStatusCode_FailOpenTrue_ReturnsTrue()
         {
-            var response = new HttpResponseMessage(HttpStatusCode.InternalServerError);
-            var factory = CreateMockHttpClientFactory(response);
-            var options = CreateOptions(failOpen: true);
-            var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
+            using var response = new HttpResponseMessage(HttpStatusCode.InternalServerError);
+            var (factory, httpClient) = CreateMockHttpClientFactory(response);
+            using (httpClient)
+            {
+                var options = CreateOptions(failOpen: true);
+                var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
 
-            var result = await service.AuthorizeAiAgentAsync(
-                connectionId: "conn123",
-                bearerToken: "token123",
-                remoteIpAddress: null,
-                userAgent: null,
-                requestPath: null);
+                var result = await service.AuthorizeAiAgentAsync(
+                    connectionId: "conn123",
+                    bearerToken: "token123",
+                    remoteIpAddress: null,
+                    userAgent: null,
+                    requestPath: null);
 
-            result.ShouldBeTrue();
-            response.Dispose();
+                result.ShouldBeTrue();
+            }
         }
 
         [Fact]
         public async Task InvalidJsonResponse_FailOpenFalse_ReturnsFalse()
         {
-            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            using var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent("{ invalid json", System.Text.Encoding.UTF8, "application/json")
             };
 
-            var factory = CreateMockHttpClientFactory(response);
-            var options = CreateOptions(failOpen: false);
-            var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
+            var (factory, httpClient) = CreateMockHttpClientFactory(response);
+            using (httpClient)
+            {
+                var options = CreateOptions(failOpen: false);
+                var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
 
-            var result = await service.AuthorizeAiAgentAsync(
-                connectionId: "conn123",
-                bearerToken: "token123",
-                remoteIpAddress: null,
-                userAgent: null,
-                requestPath: null);
+                var result = await service.AuthorizeAiAgentAsync(
+                    connectionId: "conn123",
+                    bearerToken: "token123",
+                    remoteIpAddress: null,
+                    userAgent: null,
+                    requestPath: null);
 
-            result.ShouldBeFalse();
-            response.Dispose();
+                result.ShouldBeFalse();
+            }
         }
 
         [Fact]
         public async Task InvalidJsonResponse_FailOpenTrue_ReturnsTrue()
         {
-            var response = new HttpResponseMessage(HttpStatusCode.OK)
+            using var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent("{ invalid json", System.Text.Encoding.UTF8, "application/json")
             };
 
-            var factory = CreateMockHttpClientFactory(response);
-            var options = CreateOptions(failOpen: true);
-            var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
+            var (factory, httpClient) = CreateMockHttpClientFactory(response);
+            using (httpClient)
+            {
+                var options = CreateOptions(failOpen: true);
+                var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
 
-            var result = await service.AuthorizeAiAgentAsync(
-                connectionId: "conn123",
-                bearerToken: "token123",
-                remoteIpAddress: null,
-                userAgent: null,
-                requestPath: null);
+                var result = await service.AuthorizeAiAgentAsync(
+                    connectionId: "conn123",
+                    bearerToken: "token123",
+                    remoteIpAddress: null,
+                    userAgent: null,
+                    requestPath: null);
 
-            result.ShouldBeTrue();
-            response.Dispose();
+                result.ShouldBeTrue();
+            }
         }
 
         [Fact]
@@ -270,7 +286,7 @@ namespace McpPlugin.Server.Tests.Webhooks
                     throw new OperationCanceledException();
                 });
 
-            var httpClient = new HttpClient(handler.Object);
+            using var httpClient = new HttpClient(handler.Object);
             var factory = new Mock<IHttpClientFactory>();
             factory.Setup(x => x.CreateClient("webhook")).Returns(httpClient);
 
@@ -312,7 +328,7 @@ namespace McpPlugin.Server.Tests.Webhooks
                     throw new OperationCanceledException();
                 });
 
-            var httpClient = new HttpClient(handler.Object);
+            using var httpClient = new HttpClient(handler.Object);
             var factory = new Mock<IHttpClientFactory>();
             factory.Setup(x => x.CreateClient("webhook")).Returns(httpClient);
 
@@ -350,7 +366,7 @@ namespace McpPlugin.Server.Tests.Webhooks
                     ItExpr.IsAny<CancellationToken>())
                 .Throws(new HttpRequestException("Network error"));
 
-            var httpClient = new HttpClient(handler.Object);
+            using var httpClient = new HttpClient(handler.Object);
             var factory = new Mock<IHttpClientFactory>();
             factory.Setup(x => x.CreateClient("webhook")).Returns(httpClient);
 
@@ -378,7 +394,7 @@ namespace McpPlugin.Server.Tests.Webhooks
                     ItExpr.IsAny<CancellationToken>())
                 .Throws(new HttpRequestException("Network error"));
 
-            var httpClient = new HttpClient(handler.Object);
+            using var httpClient = new HttpClient(handler.Object);
             var factory = new Mock<IHttpClientFactory>();
             factory.Setup(x => x.CreateClient("webhook")).Returns(httpClient);
 
@@ -407,7 +423,7 @@ namespace McpPlugin.Server.Tests.Webhooks
                     ItExpr.IsAny<CancellationToken>())
                 .Returns(async (HttpRequestMessage req, CancellationToken ct) =>
                 {
-                    capturedBody = await req.Content.ReadAsStringAsync(ct);
+                    capturedBody = await req.Content!.ReadAsStringAsync(ct);
                     return new HttpResponseMessage(HttpStatusCode.OK)
                     {
                         Content = new StringContent(
@@ -417,7 +433,7 @@ namespace McpPlugin.Server.Tests.Webhooks
                     };
                 });
 
-            var httpClient = new HttpClient(handler.Object);
+            using var httpClient = new HttpClient(handler.Object);
             var factory = new Mock<IHttpClientFactory>();
             factory.Setup(x => x.CreateClient("webhook")).Returns(httpClient);
 
@@ -444,7 +460,7 @@ namespace McpPlugin.Server.Tests.Webhooks
                     ItExpr.IsAny<CancellationToken>())
                 .Returns(async (HttpRequestMessage req, CancellationToken ct) =>
                 {
-                    capturedBody = await req.Content.ReadAsStringAsync(ct);
+                    capturedBody = await req.Content!.ReadAsStringAsync(ct);
                     return new HttpResponseMessage(HttpStatusCode.OK)
                     {
                         Content = new StringContent(
@@ -454,7 +470,7 @@ namespace McpPlugin.Server.Tests.Webhooks
                     };
                 });
 
-            var httpClient = new HttpClient(handler.Object);
+            using var httpClient = new HttpClient(handler.Object);
             var factory = new Mock<IHttpClientFactory>();
             factory.Setup(x => x.CreateClient("webhook")).Returns(httpClient);
 
