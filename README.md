@@ -161,7 +161,8 @@ using com.IvanMurzak.ReflectorNet;
 var reflector = new Reflector();
 
 // 2. Configure and build the plugin
-var plugin = new McpPluginBuilder()
+var version = new Version(1, 0, 0);
+var plugin = new McpPluginBuilder(version)
     .WithConfig(config => {
         config.Host = "http://localhost:11111"; // Match your server port
     })
@@ -191,20 +192,6 @@ public class UserProfile {
 public static void UpdateUser(UserProfile profile) {
     // ReflectorNet automatically deserializes the JSON from the AI into this object
 }
-```
-
-### 🔍 Fuzzy Matching
-
-You can configure how strictly the AI must match your method names. This is useful when LLMs use slightly different terminology:
-
-```csharp
-var plugin = new McpPluginBuilder()
-    // ...
-    .Build(reflector);
-
-// Configure fuzzy matching level (1-6)
-// 6: Exact, 3: StartsWith (Case-Insensitive), 1: Contains (Case-Insensitive)
-plugin.MethodNameMatchLevel = 3;
 ```
 
 ## Configuration Reference
