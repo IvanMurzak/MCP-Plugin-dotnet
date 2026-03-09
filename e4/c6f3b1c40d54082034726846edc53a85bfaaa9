@@ -1,0 +1,38 @@
+CLAUDE.md
+  b449748acfcdcf74 34,73
+README.md
+  b449748acfcdcf74 164-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "e4c6f3b1c40d54082034726846edc53a85bfaaa9",
+  "prompts": {
+    "0d4971bfc8bae53c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f65c819-f312-4d0c-a390-6a48fafeb706",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 893,
+      "total_deletions": 629,
+      "accepted_lines": 367,
+      "overriden_lines": 0
+    },
+    "b449748acfcdcf74": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e72472ff-0373-4e5d-bd32-b78c139c058e",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 471,
+      "total_deletions": 484,
+      "accepted_lines": 282,
+      "overriden_lines": 0
+    }
+  }
+}
