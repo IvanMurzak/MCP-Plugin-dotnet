@@ -38,17 +38,18 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
         public bool HasToken => TokenValue != null;
         public bool HasInvalidUrls => _invalidUrls.Count > 0;
         public bool IsAuthorizationEnabled => AuthorizationWebhookUrl != null;
+        public bool RequiresHttpClient => IsEnabled || IsAuthorizationEnabled;
 
         readonly List<(string Category, string Url)> _invalidUrls = new List<(string, string)>();
 
         public WebhookOptions(
-            string? toolWebhookUrl,
-            string? promptWebhookUrl,
-            string? resourceWebhookUrl,
-            string? connectionWebhookUrl,
-            string? tokenValue,
-            string? headerName,
-            int timeoutMs,
+            string? toolWebhookUrl = null,
+            string? promptWebhookUrl = null,
+            string? resourceWebhookUrl = null,
+            string? connectionWebhookUrl = null,
+            string? tokenValue = null,
+            string? headerName = null,
+            int timeoutMs = DefaultTimeoutMs,
             string? authorizationWebhookUrl = null,
             bool authorizationFailOpen = false)
         {
@@ -90,7 +91,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
                 return;
 
             if (!HasToken && (IsEnabled || IsAuthorizationEnabled))
-                logger.LogWarning("Webhook URLs configured but no security token set. Webhooks will be sent without authentication.");
+                logger.LogWarning("Webhook URLs configured but no security token set. Webhooks will be sent without authentication. HMAC request signing will be disabled.");
 
             CheckHttpWarning(logger, ToolWebhookUrl, "Tool");
             CheckHttpWarning(logger, PromptWebhookUrl, "Prompt");

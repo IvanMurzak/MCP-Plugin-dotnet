@@ -10,6 +10,8 @@
 
 using System;
 using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -91,10 +93,18 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 cts.CancelAfter(_options.TimeoutMs);
 
-                using var content = new StringContent(
-                    JsonSerializer.Serialize(request),
-                    System.Text.Encoding.UTF8,
-                    "application/json");
+                var jsonBody = JsonSerializer.Serialize(request);
+
+                // Compute HMAC-SHA256 signature if a webhook token is configured
+                var signedRequest = _options.HasToken
+                    ? request with { HmacSignature = ComputeHmacSha256(jsonBody, _options.TokenValue!) }
+                    : request;
+
+                var signedJsonBody = _options.HasToken
+                    ? JsonSerializer.Serialize(signedRequest)
+                    : jsonBody;
+
+                using var content = new StringContent(signedJsonBody, Encoding.UTF8, "application/json");
                 using var httpRequest = new HttpRequestMessage(HttpMethod.Post, _options.AuthorizationWebhookUrl)
                 {
                     Content = content
@@ -150,6 +160,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
                     request.EventType);
                 return _options.AuthorizationFailOpen;
             }
+        }
+
+        static string ComputeHmacSha256(string payload, string secret)
+        {
+            var keyBytes = Encoding.UTF8.GetBytes(secret);
+            var payloadBytes = Encoding.UTF8.GetBytes(payload);
+
+            using var hmac = new HMACSHA256(keyBytes);
+            var hash = hmac.ComputeHash(payloadBytes);
+            return "sha256=" + BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
         }
     }
 }

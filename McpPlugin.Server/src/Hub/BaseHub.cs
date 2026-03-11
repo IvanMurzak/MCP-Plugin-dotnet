@@ -67,6 +67,13 @@ namespace com.IvanMurzak.McpPlugin.Server
                 _connectionRejected = true;
                 _logger.LogDebug("{guid} MCP Plugin connection rejected by authorization webhook. ConnectionId: {connectionId}.",
                     _guid, Context.ConnectionId);
+
+                // Context.Abort() signals SignalR to tear down the connection.
+                // However, the rest of OnConnectedAsync (and overrides in derived classes)
+                // may still execute before SignalR processes the abort. The _connectionRejected
+                // flag acts as a guard so derived hubs can skip their post-connection logic.
+                // SignalR will eventually invoke OnDisconnectedAsync — derived classes should
+                // also check _connectionRejected there to skip cleanup for never-established connections.
                 Context.Abort();
                 return;
             }

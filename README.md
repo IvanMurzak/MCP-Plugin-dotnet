@@ -194,6 +194,20 @@ public static void UpdateUser(UserProfile profile) {
 }
 ```
 
+### 🔍 Fuzzy Matching
+
+You can configure how strictly the AI must match your method names. This is useful when LLMs use slightly different terminology:
+
+```csharp
+var plugin = new McpPluginBuilder(version)
+    // ...
+    .Build(reflector);
+
+// Configure fuzzy matching level (1-6)
+// 6: Exact, 3: StartsWith (Case-Insensitive), 1: Contains (Case-Insensitive)
+plugin.MethodNameMatchLevel = 3;
+```
+
 ## Configuration Reference
 
 ### Server (`McpPlugin.Server`)

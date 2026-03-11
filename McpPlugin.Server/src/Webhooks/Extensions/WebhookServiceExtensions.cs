@@ -34,7 +34,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             services.AddSingleton(options);
 
             // Register HTTP client for both authorization and fire-and-forget webhooks
-            if (options.IsAuthorizationEnabled || options.IsEnabled)
+            if (options.RequiresHttpClient)
             {
                 services.AddHttpClient("webhook")
                     .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
@@ -43,10 +43,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
                     });
             }
 
-            // Register authorization webhook service
+            // Register authorization webhook service (with caching when enabled)
             if (options.IsAuthorizationEnabled)
             {
-                services.AddSingleton<IAuthorizationWebhookService, AuthorizationWebhookService>();
+                services.AddSingleton<AuthorizationWebhookService>();
+                services.AddSingleton<IAuthorizationWebhookService>(sp =>
+                    new CachedAuthorizationWebhookService(
+                        sp.GetRequiredService<AuthorizationWebhookService>(),
+                        TimeSpan.FromSeconds(30)));
             }
             else
             {
@@ -58,7 +62,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
                 services.AddSingleton<IWebhookDispatcher, NoOpWebhookDispatcher>();
                 services.AddSingleton<IWebhookEventCollector, NoOpWebhookEventCollector>();
                 // Log URL/token warnings when auth webhook is active or any URL is invalid
-                if (options.IsAuthorizationEnabled || options.HasInvalidUrls)
+                if (options.RequiresHttpClient || options.HasInvalidUrls)
                     services.AddHostedService(sp => new WebhookWarningLogger(
                         sp.GetRequiredService<WebhookOptions>(),
                         sp.GetRequiredService<ILogger<WebhookWarningLogger>>()));
