@@ -97,6 +97,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             CheckHttpWarning(logger, ResourceWebhookUrl, "Resource");
             CheckHttpWarning(logger, ConnectionWebhookUrl, "Connection");
             CheckHttpWarning(logger, AuthorizationWebhookUrl, "Authorization");
+
+            if (AuthorizationFailOpen && IsAuthorizationEnabled)
+                logger.LogWarning("Authorization webhook is configured with fail-open enabled. Connections will be allowed if the webhook is unreachable.");
         }
 
         static void CheckHttpWarning(ILogger logger, string? url, string category)

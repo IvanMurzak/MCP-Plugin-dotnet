@@ -47,7 +47,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
             var request = new AuthorizationRequest
             {
                 EventType = "authorization.ai-agent",
-                Timestamp = DateTime.UtcNow.ToString("O"),
+                Timestamp = DateTimeOffset.UtcNow.ToString("O"),
                 ConnectionId = connectionId,
                 ClientType = "ai-agent",
                 BearerToken = bearerToken,
@@ -69,7 +69,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
             var request = new AuthorizationRequest
             {
                 EventType = "authorization.plugin",
-                Timestamp = DateTime.UtcNow.ToString("O"),
+                Timestamp = DateTimeOffset.UtcNow.ToString("O"),
                 ConnectionId = connectionId,
                 ClientType = "plugin",
                 BearerToken = bearerToken,

@@ -94,6 +94,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             // The first successful match wins.
 
             // Tier 1 — plugin connection token
+            AuthenticationTicket? ticket = null;
             var connectionId = ClientUtils.GetConnectionIdByToken(token);
             if (connectionId != null)
             {
@@ -104,35 +105,30 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 };
                 var identity = new ClaimsIdentity(claims, SchemeName);
                 var principal = new ClaimsPrincipal(identity);
-                var ticket = new AuthenticationTicket(principal, SchemeName);
-
-                if (!await AuthorizeAiAgentAsync(token))
-                    return AuthenticateResult.Fail("Authorization webhook denied the connection.");
-
-                return AuthenticateResult.Success(ticket);
+                ticket = new AuthenticationTicket(principal, SchemeName);
             }
 
             // Tier 2 — DCR access token (RFC 7591)
-            var registeredClientId = ClientRegistrationStore.TryGetClientIdByAccessToken(token);
-            if (registeredClientId != null)
+            if (ticket == null)
             {
-                var registeredClaims = new[]
+                var registeredClientId = ClientRegistrationStore.TryGetClientIdByAccessToken(token);
+                if (registeredClientId != null)
                 {
-                    new Claim(TokenClaimType, token),
-                    new Claim("client_id", registeredClientId)
-                };
-                var registeredIdentity = new ClaimsIdentity(registeredClaims, SchemeName);
-                var registeredPrincipal = new ClaimsPrincipal(registeredIdentity);
-                var registeredTicket = new AuthenticationTicket(registeredPrincipal, SchemeName);
-
-                if (!await AuthorizeAiAgentAsync(token))
-                    return AuthenticateResult.Fail("Authorization webhook denied the connection.");
-
-                return AuthenticateResult.Success(registeredTicket);
+                    var registeredClaims = new[]
+                    {
+                        new Claim(TokenClaimType, token),
+                        new Claim("client_id", registeredClientId)
+                    };
+                    var registeredIdentity = new ClaimsIdentity(registeredClaims, SchemeName);
+                    var registeredPrincipal = new ClaimsPrincipal(registeredIdentity);
+                    ticket = new AuthenticationTicket(registeredPrincipal, SchemeName);
+                }
             }
 
             // Tier 3 — static ServerToken fallback
-            if (!string.IsNullOrEmpty(Options.ServerToken) && string.Equals(token, Options.ServerToken, StringComparison.Ordinal))
+            if (ticket == null
+                && !string.IsNullOrEmpty(Options.ServerToken)
+                && string.Equals(token, Options.ServerToken, StringComparison.Ordinal))
             {
                 var claims = new[]
                 {
@@ -140,15 +136,18 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 };
                 var identity = new ClaimsIdentity(claims, SchemeName);
                 var principal = new ClaimsPrincipal(identity);
-                var ticket = new AuthenticationTicket(principal, SchemeName);
-
-                if (!await AuthorizeAiAgentAsync(token))
-                    return AuthenticateResult.Fail("Authorization webhook denied the connection.");
-
-                return AuthenticateResult.Success(ticket);
+                ticket = new AuthenticationTicket(principal, SchemeName);
             }
 
-            return AuthenticateResult.Fail("Invalid or unrecognized token.");
+            // No tier matched — unrecognized token
+            if (ticket == null)
+                return AuthenticateResult.Fail("Invalid or unrecognized token.");
+
+            // Single authorization webhook check for whichever tier matched
+            if (!await AuthorizeAiAgentAsync(token))
+                return AuthenticateResult.Fail("Authorization webhook denied the connection.");
+
+            return AuthenticateResult.Success(ticket);
         }
 
         Task<bool> AuthorizeAiAgentAsync(string token)

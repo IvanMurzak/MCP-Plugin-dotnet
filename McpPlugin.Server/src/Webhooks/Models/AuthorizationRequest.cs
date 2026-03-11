@@ -12,39 +12,39 @@ using System.Text.Json.Serialization;
 
 namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Models
 {
-    public class AuthorizationRequest
+    public record AuthorizationRequest
     {
         [JsonPropertyName("schemaVersion")]
-        public string SchemaVersion { get; set; } = "1.0";
+        public string SchemaVersion { get; init; } = "1.0";
 
         [JsonPropertyName("eventType")]
-        public string EventType { get; set; } = string.Empty;
+        public string EventType { get; init; } = string.Empty;
 
         [JsonPropertyName("timestamp")]
-        public string Timestamp { get; set; } = string.Empty;
+        public string Timestamp { get; init; } = string.Empty;
 
         [JsonPropertyName("connectionId")]
-        public string ConnectionId { get; set; } = string.Empty;
+        public string ConnectionId { get; init; } = string.Empty;
 
         [JsonPropertyName("clientType")]
-        public string ClientType { get; set; } = string.Empty;
+        public string ClientType { get; init; } = string.Empty;
 
         [JsonPropertyName("bearerToken")]
-        public string? BearerToken { get; set; }
+        public string? BearerToken { get; init; }
 
         [JsonPropertyName("remoteIpAddress")]
-        public string? RemoteIpAddress { get; set; }
+        public string? RemoteIpAddress { get; init; }
 
         [JsonPropertyName("userAgent")]
-        public string? UserAgent { get; set; }
+        public string? UserAgent { get; init; }
 
         [JsonPropertyName("requestPath")]
-        public string? RequestPath { get; set; }
+        public string? RequestPath { get; init; }
 
         [JsonPropertyName("clientName")]
-        public string? ClientName { get; set; }
+        public string? ClientName { get; init; }
 
         [JsonPropertyName("clientVersion")]
-        public string? ClientVersion { get; set; }
+        public string? ClientVersion { get; init; }
     }
 }
