@@ -143,9 +143,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             if (ticket == null)
                 return AuthenticateResult.Fail("Invalid or unrecognized token.");
 
-            // Single authorization webhook check for whichever tier matched
+            // Single authorization webhook check for whichever tier matched.
+            // Note: AuthorizeAiAgentAsync returns false for both explicit denials
+            // and webhook failures (timeout/network error) when fail-open is disabled.
             if (!await AuthorizeAiAgentAsync(token))
-                return AuthenticateResult.Fail("Authorization webhook denied the connection.");
+                return AuthenticateResult.Fail("Authorization webhook rejected the connection.");
 
             return AuthenticateResult.Success(ticket);
         }

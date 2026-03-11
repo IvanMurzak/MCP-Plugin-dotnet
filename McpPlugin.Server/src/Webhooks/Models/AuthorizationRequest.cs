@@ -46,5 +46,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Models
 
         [JsonPropertyName("clientVersion")]
         public string? ClientVersion { get; init; }
+
+        [JsonPropertyName("hmacSignature")]
+        public string? HmacSignature { get; init; }
     }
 }

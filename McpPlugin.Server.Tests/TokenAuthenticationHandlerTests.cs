@@ -401,7 +401,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 serverToken: serverToken);
 
             result.Succeeded.ShouldBeFalse();
-            result.Failure!.Message.ShouldBe("Authorization webhook denied the connection.");
+            result.Failure!.Message.ShouldBe("Authorization webhook rejected the connection.");
         }
 
         [Fact]
@@ -417,7 +417,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                     $"Bearer {token}");
 
                 result.Succeeded.ShouldBeFalse();
-                result.Failure!.Message.ShouldBe("Authorization webhook denied the connection.");
+                result.Failure!.Message.ShouldBe("Authorization webhook rejected the connection.");
             }
             finally
             {
@@ -436,7 +436,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 $"Bearer {dcrToken}");
 
             result.Succeeded.ShouldBeFalse();
-            result.Failure!.Message.ShouldBe("Authorization webhook denied the connection.");
+            result.Failure!.Message.ShouldBe("Authorization webhook rejected the connection.");
         }
     }
 }
