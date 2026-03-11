@@ -155,14 +155,17 @@ public static class MyMcpComponents
 
 ```csharp
 using com.IvanMurzak.McpPlugin;
-using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.ReflectorNet;
 
 // 1. Initialize Reflector (The core engine)
 var reflector = new Reflector();
 
 // 2. Configure and build the plugin
-var version = new Version { Api = "1.0.0", Plugin = "1.0.0" };
+var version = new com.IvanMurzak.McpPlugin.Common.Version
+{
+    Api = "1.0.0",
+    Plugin = "1.0.0"
+};
 var plugin = new McpPluginBuilder(version)
     .WithConfig(config => {
         config.Host = "http://localhost:11111"; // Match your server port
