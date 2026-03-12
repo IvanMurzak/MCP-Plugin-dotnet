@@ -13,6 +13,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
+using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using R3;
@@ -24,17 +25,25 @@ namespace com.IvanMurzak.McpPlugin.Server
     {
         protected readonly ILogger _logger;
         protected readonly IMcpConnectionStrategy _strategy;
+        protected readonly IAuthorizationWebhookService _authorizationWebhookService;
         protected readonly CompositeDisposable _disposables = new();
         protected readonly string _guid = Guid.NewGuid().ToString();
+        /// <summary>
+        /// Set to true if the connection is rejected by the authorization webhook.
+        /// This flag prevents subsequent connection setup from executing after Context.Abort() is called.
+        /// Marked volatile to ensure visibility across threads.
+        /// </summary>
+        protected volatile bool _connectionRejected = false;
 
-        protected BaseHub(ILogger logger, IMcpConnectionStrategy strategy)
+        protected BaseHub(ILogger logger, IMcpConnectionStrategy strategy, IAuthorizationWebhookService authorizationWebhookService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
+            _authorizationWebhookService = authorizationWebhookService ?? throw new ArgumentNullException(nameof(authorizationWebhookService));
             _logger.LogTrace("Ctor. {guid}", _guid);
         }
 
-        public override Task OnConnectedAsync()
+        public override async Task OnConnectedAsync()
         {
             var httpContext = Context.GetHttpContext();
             var token = httpContext?.Request.Query["access_token"].FirstOrDefault();
@@ -43,6 +52,30 @@ namespace com.IvanMurzak.McpPlugin.Server
                 var authHeader = httpContext?.Request.Headers["Authorization"].FirstOrDefault();
                 if (authHeader != null && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                     token = authHeader.Substring("Bearer ".Length).Trim();
+            }
+
+            // Check authorization webhook
+            var allowed = await _authorizationWebhookService.AuthorizePluginAsync(
+                connectionId: Context.ConnectionId,
+                bearerToken: token,
+                clientName: null,
+                clientVersion: null,
+                cancellationToken: Context.ConnectionAborted);
+
+            if (!allowed)
+            {
+                _connectionRejected = true;
+                _logger.LogDebug("{guid} MCP Plugin connection rejected by authorization webhook. ConnectionId: {connectionId}.",
+                    _guid, Context.ConnectionId);
+
+                // Context.Abort() signals SignalR to tear down the connection.
+                // However, the rest of OnConnectedAsync (and overrides in derived classes)
+                // may still execute before SignalR processes the abort. The _connectionRejected
+                // flag acts as a guard so derived hubs can skip their post-connection logic.
+                // SignalR will eventually invoke OnDisconnectedAsync — derived classes should
+                // also check _connectionRejected there to skip cleanup for never-established connections.
+                Context.Abort();
+                return;
             }
 
             _strategy.OnPluginConnected(GetType(), Context.ConnectionId, token, _logger,
@@ -59,11 +92,17 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             _logger.LogDebug("{guid} MCP Plugin connected. ConnectionId: {connectionId}, Token: {hasToken}.",
                 _guid, Context.ConnectionId, !string.IsNullOrEmpty(token) ? "present" : "absent");
-            return base.OnConnectedAsync();
+            await base.OnConnectedAsync();
         }
 
         public override Task OnDisconnectedAsync(Exception? exception)
         {
+            if (_connectionRejected)
+            {
+                _logger.LogDebug("{guid} MCP Plugin disconnected (rejected connection, skipping cleanup). ConnectionId: {connectionId}.", _guid, Context.ConnectionId);
+                return Task.CompletedTask;
+            }
+
             _logger.LogDebug("{guid} MCP Plugin disconnected. ConnectionId: {connectionId}.", _guid, Context.ConnectionId);
             _strategy.OnPluginDisconnected(GetType(), Context.ConnectionId, _logger);
             return base.OnDisconnectedAsync(exception);

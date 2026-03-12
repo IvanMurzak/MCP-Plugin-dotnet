@@ -12,6 +12,7 @@ using System;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -24,12 +25,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         public const string SchemeName = "McpPluginToken";
         public const string TokenClaimType = "mcp_plugin_token";
 
+        readonly IAuthorizationWebhookService _authorizationWebhookService;
+
         public TokenAuthenticationHandler(
             IOptionsMonitor<TokenAuthenticationOptions> options,
             ILoggerFactory logger,
-            UrlEncoder encoder)
+            UrlEncoder encoder,
+            IAuthorizationWebhookService authorizationWebhookService)
             : base(options, logger, encoder)
         {
+            _authorizationWebhookService = authorizationWebhookService ?? throw new ArgumentNullException(nameof(authorizationWebhookService));
         }
 
         protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
@@ -54,20 +59,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             });
         }
 
-        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             // If no plugins have connected with tokens and no server token is configured,
             // allow anonymous access for backward compatibility
             if (!Options.RequireToken)
-                return Task.FromResult(AuthenticateResult.NoResult());
+                return AuthenticateResult.NoResult();
 
             var authHeader = Request.Headers["Authorization"].ToString();
             if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                return Task.FromResult(AuthenticateResult.NoResult());
+                return AuthenticateResult.NoResult();
 
             var token = authHeader.Substring("Bearer ".Length).Trim();
             if (string.IsNullOrEmpty(token))
-                return Task.FromResult(AuthenticateResult.Fail("Empty Bearer token."));
+                return AuthenticateResult.Fail("Empty Bearer token.");
 
             // Token resolution — three additive sources, checked in priority order:
             //
@@ -89,6 +94,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             // The first successful match wins.
 
             // Tier 1 — plugin connection token
+            AuthenticationTicket? ticket = null;
             var connectionId = ClientUtils.GetConnectionIdByToken(token);
             if (connectionId != null)
             {
@@ -99,27 +105,30 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 };
                 var identity = new ClaimsIdentity(claims, SchemeName);
                 var principal = new ClaimsPrincipal(identity);
-                var ticket = new AuthenticationTicket(principal, SchemeName);
-                return Task.FromResult(AuthenticateResult.Success(ticket));
+                ticket = new AuthenticationTicket(principal, SchemeName);
             }
 
             // Tier 2 — DCR access token (RFC 7591)
-            var registeredClientId = ClientRegistrationStore.TryGetClientIdByAccessToken(token);
-            if (registeredClientId != null)
+            if (ticket == null)
             {
-                var registeredClaims = new[]
+                var registeredClientId = ClientRegistrationStore.TryGetClientIdByAccessToken(token);
+                if (registeredClientId != null)
                 {
-                    new Claim(TokenClaimType, token),
-                    new Claim("client_id", registeredClientId)
-                };
-                var registeredIdentity = new ClaimsIdentity(registeredClaims, SchemeName);
-                var registeredPrincipal = new ClaimsPrincipal(registeredIdentity);
-                var registeredTicket = new AuthenticationTicket(registeredPrincipal, SchemeName);
-                return Task.FromResult(AuthenticateResult.Success(registeredTicket));
+                    var registeredClaims = new[]
+                    {
+                        new Claim(TokenClaimType, token),
+                        new Claim("client_id", registeredClientId)
+                    };
+                    var registeredIdentity = new ClaimsIdentity(registeredClaims, SchemeName);
+                    var registeredPrincipal = new ClaimsPrincipal(registeredIdentity);
+                    ticket = new AuthenticationTicket(registeredPrincipal, SchemeName);
+                }
             }
 
             // Tier 3 — static ServerToken fallback
-            if (!string.IsNullOrEmpty(Options.ServerToken) && string.Equals(token, Options.ServerToken, StringComparison.Ordinal))
+            if (ticket == null
+                && !string.IsNullOrEmpty(Options.ServerToken)
+                && string.Equals(token, Options.ServerToken, StringComparison.Ordinal))
             {
                 var claims = new[]
                 {
@@ -127,11 +136,31 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 };
                 var identity = new ClaimsIdentity(claims, SchemeName);
                 var principal = new ClaimsPrincipal(identity);
-                var ticket = new AuthenticationTicket(principal, SchemeName);
-                return Task.FromResult(AuthenticateResult.Success(ticket));
+                ticket = new AuthenticationTicket(principal, SchemeName);
             }
 
-            return Task.FromResult(AuthenticateResult.Fail("Invalid or unrecognized token."));
+            // No tier matched — unrecognized token
+            if (ticket == null)
+                return AuthenticateResult.Fail("Invalid or unrecognized token.");
+
+            // Single authorization webhook check for whichever tier matched.
+            // Note: AuthorizeAiAgentAsync returns false for both explicit denials
+            // and webhook failures (timeout/network error) when fail-open is disabled.
+            if (!await AuthorizeAiAgentAsync(token))
+                return AuthenticateResult.Fail("Authorization webhook rejected the connection.");
+
+            return AuthenticateResult.Success(ticket);
+        }
+
+        Task<bool> AuthorizeAiAgentAsync(string token)
+        {
+            return _authorizationWebhookService.AuthorizeAiAgentAsync(
+                connectionId: Context.TraceIdentifier,
+                bearerToken: token,
+                remoteIpAddress: Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                userAgent: Request.Headers.UserAgent.ToString() is { Length: > 0 } ua ? ua : null,
+                requestPath: Request.Path.Value,
+                cancellationToken: Context.RequestAborted);
         }
     }
 

@@ -19,6 +19,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 using com.IvanMurzak.McpPlugin.Server.Webhooks;
+using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server
@@ -44,8 +45,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             IRequestTrackingService requestTrackingService,
             IMcpSessionTracker sessionTracker,
             IMcpConnectionStrategy strategy,
-            IWebhookEventCollector webhookCollector)
-            : base(logger, strategy)
+            IWebhookEventCollector webhookCollector,
+            IAuthorizationWebhookService authorizationWebhookService)
+            : base(logger, strategy, authorizationWebhookService)
         {
             _version = version ?? throw new ArgumentNullException(nameof(version));
             _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
@@ -60,6 +62,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         public override async Task OnConnectedAsync()
         {
             await base.OnConnectedAsync();
+            if (_connectionRejected)
+                return;
             var allActiveClients = _strategy.GetAllClientData(Context.ConnectionId, _sessionTracker);
             _logger.LogDebug("{method}. {guid}. Sending initial client data. Count: {count}",
                 nameof(OnConnectedAsync), _guid, allActiveClients.Length);
@@ -68,6 +72,9 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public override Task OnDisconnectedAsync(Exception? exception)
         {
+            if (_connectionRejected)
+                return Task.CompletedTask;
+
             _webhookCollector.OnPluginDisconnected(Context.ConnectionId);
             return base.OnDisconnectedAsync(exception);
         }

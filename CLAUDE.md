@@ -31,7 +31,7 @@ cd DemoWebApp && dotnet run port=11111 client-transport=stdio
 Three NuGet packages, one version (currently in `McpPlugin/McpPlugin.csproj`):
 
 - **McpPlugin** (client library, netstandard2.1/net8.0/net9.0) — Embedded in .NET apps. Connects to the bridge via SignalR. Key classes: `McpPlugin`, `McpPluginBuilder`, `McpManager`, `McpToolManager`, `ConnectionManager`.
-- **McpPlugin.Server** (bridge/gateway, net8.0/net9.0) — ASP.NET Core hosted service. MCP clients (Claude) connect via stdio/HTTP; .NET apps connect via SignalR. Key classes: `McpServerService`, `McpServerHub`, `ToolRouter`, `PromptRouter`, `ResourceRouter`.
+- **McpPlugin.Server** (bridge/gateway, net8.0/net9.0) — ASP.NET Core hosted service. MCP clients (Claude) connect via stdio/HTTP; .NET apps connect via SignalR. Key classes: `McpServerService`, `McpServerHub`, `ToolRouter` (static partial), `PromptRouter` (static partial), `ResourceRouter` (static partial).
 - **McpPlugin.Common** (shared, netstandard2.1) — DTOs, hub interfaces, `DataArguments` (CLI arg parsing), `Version` handshake.
 
 ```
@@ -70,7 +70,7 @@ public static class MyTools
 - **Namespaces**: Java-style reverse domain — `com.IvanMurzak.McpPlugin.*` (not standard C# convention)
 - **File headers**: ALL `.cs` files must start with the ASCII art license header. Copy from any existing file.
 - **Formatting**: Allman braces, `_camelCase` private fields, `PascalCase` public members
-- **Language**: `LangVersion` 9.0 (client/server) or 11.0 (common), `ImplicitUsings` disabled, `Nullable` enabled
+- **Language**: `LangVersion` 9.0 for main libraries, 11.0 for test projects. `ImplicitUsings` disabled, `Nullable` enabled
 - **Reactive**: Use `R3` library (`Subject<T>`, `Observable<T>`) for event handling
 - **Reflection**: Use `com.IvanMurzak.ReflectorNet` over `System.Reflection`
 - **Logging**: `Microsoft.Extensions.Logging` abstractions (NLog backend on server)

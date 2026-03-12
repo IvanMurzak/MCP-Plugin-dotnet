@@ -161,7 +161,12 @@ using com.IvanMurzak.ReflectorNet;
 var reflector = new Reflector();
 
 // 2. Configure and build the plugin
-var plugin = new McpPluginBuilder()
+var version = new com.IvanMurzak.McpPlugin.Common.Version
+{
+    Api = "1.0.0",
+    Plugin = "1.0.0"
+};
+var plugin = new McpPluginBuilder(version)
     .WithConfig(config => {
         config.Host = "http://localhost:11111"; // Match your server port
     })
@@ -198,7 +203,7 @@ public static void UpdateUser(UserProfile profile) {
 You can configure how strictly the AI must match your method names. This is useful when LLMs use slightly different terminology:
 
 ```csharp
-var plugin = new McpPluginBuilder()
+var plugin = new McpPluginBuilder(version)
     // ...
     .Build(reflector);
 
@@ -275,9 +280,102 @@ dotnet run \
 | `connection.plugin.disconnected` | McpPlugin (.NET client) disconnects |
 
 **Notes:**
+
 - Webhooks are **fire-and-forget** — delivery failures are logged but never block MCP responses.
 - If no webhook URLs are configured, the entire subsystem is inactive with zero overhead.
 - Use HTTPS endpoints in production to protect the security token in transit.
+
+#### Authorization Webhooks
+
+`McpPlugin.Server` can be configured with a **synchronous authorization webhook** that gates connections from both MCP clients (AI agents via HTTP) and McpPlugin clients (.NET apps via SignalR). Unlike the fire-and-forget analytics webhooks above, authorization webhooks block the connection until your endpoint responds.
+
+| Argument | Env Var | Description | Default |
+| :--- | :--- | :--- | :--- |
+| `webhook-authorization-url` | `MCP_PLUGIN_WEBHOOK_AUTHORIZATION_URL` | Endpoint that authorizes/denies connections. | *(none)* |
+| `webhook-authorization-fail-open` | `MCP_PLUGIN_WEBHOOK_AUTHORIZATION_FAIL_OPEN` | When `true`, allow connections if webhook times out or errors. When `false`, deny on failure. | `false` |
+
+**Example — enable connection authorization with fail-closed behavior:**
+
+```bash
+dotnet run \
+  client-transport=stdio \
+  webhook-authorization-url=https://auth.example.com/authorize \
+  webhook-token=my-secret-token \
+  webhook-authorization-fail-open=false
+```
+
+**Request format** (POST from server to your webhook):
+
+For AI agent connections (`authorization.ai-agent`):
+
+```json
+{
+  "schemaVersion": "1.0",
+  "eventType": "authorization.ai-agent",
+  "timestamp": "2025-03-04T22:45:30.1234567Z",
+  "connectionId": "trace-id-or-connection-id",
+  "clientType": "ai-agent",
+  "bearerToken": "<token-from-client>",
+  "remoteIpAddress": "192.168.1.100",
+  "userAgent": "claude-ai/1.0",
+  "requestPath": "/mcp",
+  "clientName": null,
+  "clientVersion": null,
+  "hmacSignature": "sha256=abc123..."
+}
+```
+
+For plugin connections (`authorization.plugin`):
+
+```json
+{
+  "schemaVersion": "1.0",
+  "eventType": "authorization.plugin",
+  "timestamp": "2025-03-04T22:45:30.1234567Z",
+  "connectionId": "trace-id-or-connection-id",
+  "clientType": "plugin",
+  "bearerToken": "<token-from-plugin>",
+  "remoteIpAddress": null,
+  "userAgent": null,
+  "requestPath": null,
+  "clientName": "my-unity-plugin",
+  "clientVersion": "1.2.0",
+  "hmacSignature": "sha256=def456..."
+}
+```
+
+> **Note:** The `hmacSignature` field is only present when `webhook-token` is configured. It contains an HMAC-SHA256 signature of the request body (before the signature field is added), computed using the webhook token as the secret key.
+
+**Expected response format** (from your webhook to server):
+
+```json
+{ "allowed": true }
+```
+
+or
+
+```json
+{ "allowed": false, "reason": "IP not in allowlist" }
+```
+
+**Behavior:**
+
+- **2xx response with `allowed: true`** → Connection proceeds
+- **2xx response with `allowed: false`** → Connection denied (reason logged as warning)
+- **Non-2xx response, timeout, or parse error** → Connection denied (unless `fail-open=true`)
+
+**Security:**
+
+- The server sends the configured security token in the header named by `webhook-header` (default: `X-Webhook-Token`)
+- Your webhook must validate this token to prevent unauthorized authorization requests
+- Use HTTPS endpoints in production
+
+**Notes:**
+
+- Authorization webhooks are **synchronous** — the server waits (default timeout 10 seconds) for your response
+- Keep webhook response times under 1 second for best performance
+- Authorization webhooks operate independently from the analytics webhooks above
+- If `webhook-authorization-url` is not configured, authorization is disabled (all connections allowed)
 
 ### Plugin (`McpPlugin`)
 

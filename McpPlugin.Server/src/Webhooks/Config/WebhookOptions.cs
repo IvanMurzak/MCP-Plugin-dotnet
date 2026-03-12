@@ -27,6 +27,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
         public string? TokenValue { get; }
         public string HeaderName { get; }
         public int TimeoutMs { get; }
+        public string? AuthorizationWebhookUrl { get; }
+        public bool AuthorizationFailOpen { get; }
 
         public bool IsEnabled => ToolWebhookUrl != null || PromptWebhookUrl != null || ResourceWebhookUrl != null || ConnectionWebhookUrl != null;
         public bool IsToolEnabled => ToolWebhookUrl != null;
@@ -35,17 +37,21 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
         public bool IsConnectionEnabled => ConnectionWebhookUrl != null;
         public bool HasToken => TokenValue != null;
         public bool HasInvalidUrls => _invalidUrls.Count > 0;
+        public bool IsAuthorizationEnabled => AuthorizationWebhookUrl != null;
+        public bool RequiresHttpClient => IsEnabled || IsAuthorizationEnabled;
 
         readonly List<(string Category, string Url)> _invalidUrls = new List<(string, string)>();
 
         public WebhookOptions(
-            string? toolWebhookUrl,
-            string? promptWebhookUrl,
-            string? resourceWebhookUrl,
-            string? connectionWebhookUrl,
-            string? tokenValue,
-            string? headerName,
-            int timeoutMs)
+            string? toolWebhookUrl = null,
+            string? promptWebhookUrl = null,
+            string? resourceWebhookUrl = null,
+            string? connectionWebhookUrl = null,
+            string? tokenValue = null,
+            string? headerName = null,
+            int timeoutMs = DefaultTimeoutMs,
+            string? authorizationWebhookUrl = null,
+            bool authorizationFailOpen = false)
         {
             ToolWebhookUrl = ValidateUrl(toolWebhookUrl, "Tool");
             PromptWebhookUrl = ValidateUrl(promptWebhookUrl, "Prompt");
@@ -54,6 +60,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             TokenValue = tokenValue;
             HeaderName = IsValidHeaderName(headerName) ? headerName! : DefaultHeaderName;
             TimeoutMs = timeoutMs > 0 ? timeoutMs : DefaultTimeoutMs;
+            AuthorizationWebhookUrl = ValidateUrl(authorizationWebhookUrl, "Authorization");
+            AuthorizationFailOpen = authorizationFailOpen;
         }
 
         public static WebhookOptions FromDataArguments(IDataArguments dataArguments)
@@ -65,7 +73,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
                 connectionWebhookUrl: dataArguments.WebhookConnectionUrl,
                 tokenValue: dataArguments.WebhookToken,
                 headerName: dataArguments.WebhookHeader,
-                timeoutMs: dataArguments.WebhookTimeoutMs
+                timeoutMs: dataArguments.WebhookTimeoutMs,
+                authorizationWebhookUrl: dataArguments.WebhookAuthorizationUrl,
+                authorizationFailOpen: dataArguments.WebhookAuthorizationFailOpen
             );
         }
 
@@ -77,16 +87,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
                     category, url);
             }
 
-            if (!IsEnabled)
+            if (!IsEnabled && !IsAuthorizationEnabled)
                 return;
 
-            if (!HasToken)
-                logger.LogWarning("Webhook URLs configured but no security token set. Webhooks will be sent without authentication.");
+            if (!HasToken && (IsEnabled || IsAuthorizationEnabled))
+                logger.LogWarning("Webhook URLs configured but no security token set. Webhooks will be sent without authentication. HMAC request signing will be disabled.");
 
             CheckHttpWarning(logger, ToolWebhookUrl, "Tool");
             CheckHttpWarning(logger, PromptWebhookUrl, "Prompt");
             CheckHttpWarning(logger, ResourceWebhookUrl, "Resource");
             CheckHttpWarning(logger, ConnectionWebhookUrl, "Connection");
+            CheckHttpWarning(logger, AuthorizationWebhookUrl, "Authorization");
+
+            if (AuthorizationFailOpen && IsAuthorizationEnabled)
+                logger.LogWarning("Authorization webhook is configured with fail-open enabled. Connections will be allowed if the webhook is unreachable.");
         }
 
         static void CheckHttpWarning(ILogger logger, string? url, string category)
