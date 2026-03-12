@@ -152,6 +152,9 @@ jobs:
   deploy:
     needs: release-at-github
     if: needs.release-at-github.outputs.success == 'true'
+    permissions:
+      id-token: write
+      contents: read
     uses: ./.github/workflows/deploy.yml
     with:
       version: ${{ needs.release-at-github.outputs.version }}
