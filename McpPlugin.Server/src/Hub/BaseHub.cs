@@ -97,6 +97,12 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public override Task OnDisconnectedAsync(Exception? exception)
         {
+            if (_connectionRejected)
+            {
+                _logger.LogDebug("{guid} MCP Plugin disconnected (rejected connection, skipping cleanup). ConnectionId: {connectionId}.", _guid, Context.ConnectionId);
+                return Task.CompletedTask;
+            }
+
             _logger.LogDebug("{guid} MCP Plugin disconnected. ConnectionId: {connectionId}.", _guid, Context.ConnectionId);
             _strategy.OnPluginDisconnected(GetType(), Context.ConnectionId, _logger);
             return base.OnDisconnectedAsync(exception);

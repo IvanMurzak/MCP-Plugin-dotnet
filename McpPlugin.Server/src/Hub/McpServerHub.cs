@@ -73,7 +73,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         public override Task OnDisconnectedAsync(Exception? exception)
         {
             if (_connectionRejected)
-                return base.OnDisconnectedAsync(exception);
+                return Task.CompletedTask;
 
             _webhookCollector.OnPluginDisconnected(Context.ConnectionId);
             return base.OnDisconnectedAsync(exception);

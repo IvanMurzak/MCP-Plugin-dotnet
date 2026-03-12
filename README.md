@@ -306,6 +306,8 @@ dotnet run \
 
 **Request format** (POST from server to your webhook):
 
+For AI agent connections (`authorization.ai-agent`):
+
 ```json
 {
   "schemaVersion": "1.0",
@@ -318,9 +320,31 @@ dotnet run \
   "userAgent": "claude-ai/1.0",
   "requestPath": "/mcp",
   "clientName": null,
-  "clientVersion": null
+  "clientVersion": null,
+  "hmacSignature": "sha256=abc123..."
 }
 ```
+
+For plugin connections (`authorization.plugin`):
+
+```json
+{
+  "schemaVersion": "1.0",
+  "eventType": "authorization.plugin",
+  "timestamp": "2025-03-04T22:45:30.1234567Z",
+  "connectionId": "trace-id-or-connection-id",
+  "clientType": "plugin",
+  "bearerToken": "<token-from-plugin>",
+  "remoteIpAddress": null,
+  "userAgent": null,
+  "requestPath": null,
+  "clientName": "my-unity-plugin",
+  "clientVersion": "1.2.0",
+  "hmacSignature": "sha256=def456..."
+}
+```
+
+> **Note:** The `hmacSignature` field is only present when `webhook-token` is configured. It contains an HMAC-SHA256 signature of the request body (before the signature field is added), computed using the webhook token as the secret key.
 
 **Expected response format** (from your webhook to server):
 
