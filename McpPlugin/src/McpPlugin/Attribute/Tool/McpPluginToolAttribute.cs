@@ -27,7 +27,7 @@ namespace com.IvanMurzak.McpPlugin
         private bool _idempotentHint;
         private bool _idempotentHintSet;
 
-        private bool _enabled;
+        private bool _enabled = true;
         private bool _enabledSet;
 
         private bool _openWorldHint;

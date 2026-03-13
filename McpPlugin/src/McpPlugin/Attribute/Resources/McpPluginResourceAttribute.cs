@@ -21,7 +21,7 @@ namespace com.IvanMurzak.McpPlugin
         public string? MimeType { get; set; }
         public string ListResources { get; set; } = string.Empty;
 
-        private bool _enabled;
+        private bool _enabled = true;
         private bool _enabledSet;
 
         /// <summary>

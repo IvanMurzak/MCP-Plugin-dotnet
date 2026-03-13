@@ -22,7 +22,7 @@ namespace com.IvanMurzak.McpPlugin
         // Not used for now
         // public string? Title { get; set; }
 
-        private bool _enabled;
+        private bool _enabled = true;
         private bool _enabledSet;
 
         /// <summary>

@@ -51,6 +51,15 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             return builder.Build(reflector);
         }
 
+        private IMcpPlugin BuildWithResources()
+        {
+            var reflector = new Reflector();
+            var builder = new McpPluginBuilder(_version, _loggerProvider)
+                .AddLogging(b => b.AddXunitTestOutput(_output))
+                .WithResources(typeof(AnnotatedResourceClass));
+            return builder.Build(reflector);
+        }
+
         // ── Tool: Enabled attribute ──────────────────────────────────────
 
         [Fact]
@@ -211,6 +220,80 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         {
             var attr = new McpPluginResourceAttribute { Enabled = false };
             attr.EnabledValue.ShouldBe(false);
+        }
+
+        // ── Resource: Enabled attribute ──────────────────────────────────
+
+        [Fact]
+        public void Resource_DefaultEnabled_ShouldBeTrue()
+        {
+            var plugin = BuildWithResources();
+            var resources = plugin.McpManager.ResourceManager!.GetAllResources().ToList();
+
+            var resource = resources.First(r => r.Name == "resource-enabled-default");
+            resource.Enabled.ShouldBeTrue();
+        }
+
+        [Fact]
+        public void Resource_EnabledTrue_ShouldBeTrue()
+        {
+            var plugin = BuildWithResources();
+            var resources = plugin.McpManager.ResourceManager!.GetAllResources().ToList();
+
+            var resource = resources.First(r => r.Name == "resource-enabled-true");
+            resource.Enabled.ShouldBeTrue();
+        }
+
+        [Fact]
+        public void Resource_EnabledFalse_ShouldBeFalse()
+        {
+            var plugin = BuildWithResources();
+            var resources = plugin.McpManager.ResourceManager!.GetAllResources().ToList();
+
+            var resource = resources.First(r => r.Name == "resource-enabled-false");
+            resource.Enabled.ShouldBeFalse();
+        }
+
+        [Fact]
+        public void Resource_EnabledFalse_ShouldBeExcludedFromEnabledCount()
+        {
+            var plugin = BuildWithResources();
+            var resourceManager = plugin.McpManager.ResourceManager!;
+            var allResources = resourceManager.GetAllResources().ToList();
+
+            resourceManager.EnabledResourcesCount.ShouldBe(allResources.Count - 1);
+        }
+
+        [Fact]
+        public async Task Resource_RunListResources_ShouldExcludeDisabledResources()
+        {
+            var plugin = BuildWithResources();
+            var resourceManager = plugin.McpManager.ResourceManager!;
+
+            var response = await resourceManager.RunListResources(new RequestListResources());
+
+            response.ShouldNotBeNull();
+            response.Status.ShouldBe(ResponseStatus.Success);
+
+            var names = response.Value!.Select(r => r.Name).ToList();
+            names.ShouldContain("resource-enabled-default");
+            names.ShouldContain("resource-enabled-true");
+            names.ShouldNotContain("resource-enabled-false");
+        }
+
+        [Fact]
+        public void Resource_RunnerEnabled_ShouldMatchAttribute()
+        {
+            var plugin = BuildWithResources();
+            var resources = plugin.McpManager.ResourceManager!.GetAllResources().ToList();
+
+            var defaultResource = resources.First(r => r.Name == "resource-enabled-default");
+            var enabledResource = resources.First(r => r.Name == "resource-enabled-true");
+            var disabledResource = resources.First(r => r.Name == "resource-enabled-false");
+
+            defaultResource.Enabled.ShouldBeTrue();
+            enabledResource.Enabled.ShouldBeTrue();
+            disabledResource.Enabled.ShouldBeFalse();
         }
     }
 }
