@@ -34,5 +34,14 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data.Annotations
             IdempotentHint = true,
             OpenWorldHint = false)]
         public static void AllHints() { }
+
+        [McpPluginTool("tool-enabled-default", "Tool With Default Enabled")]
+        public static void EnabledDefault() { }
+
+        [McpPluginTool("tool-enabled-true", "Tool With Enabled True", Enabled = true)]
+        public static void EnabledTrue() { }
+
+        [McpPluginTool("tool-enabled-false", "Tool With Enabled False", Enabled = false)]
+        public static void EnabledFalse() { }
     }
 }

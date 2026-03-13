@@ -33,7 +33,7 @@ namespace com.IvanMurzak.McpPlugin
             {
                 var attr = method.Attribute;
                 this[attr.Name] = method.MethodInfo.IsStatic
-                    ? RunTool.CreateFromStaticMethod(
+                    ? (IRunTool)RunTool.CreateFromStaticMethod(
                         reflector: reflector,
                         logger: _logger,
                         name: attr.Name,
@@ -42,7 +42,8 @@ namespace com.IvanMurzak.McpPlugin
                         readOnlyHint: attr.ReadOnlyHintValue,
                         destructiveHint: attr.DestructiveHintValue,
                         idempotentHint: attr.IdempotentHintValue,
-                        openWorldHint: attr.OpenWorldHintValue) as IRunTool
+                        openWorldHint: attr.OpenWorldHintValue,
+                        enabled: attr.EnabledValue)
                     : RunTool.CreateFromClassMethod(
                         reflector: reflector,
                         logger: _logger,
@@ -53,7 +54,8 @@ namespace com.IvanMurzak.McpPlugin
                         readOnlyHint: attr.ReadOnlyHintValue,
                         destructiveHint: attr.DestructiveHintValue,
                         idempotentHint: attr.IdempotentHintValue,
-                        openWorldHint: attr.OpenWorldHintValue);
+                        openWorldHint: attr.OpenWorldHintValue,
+                        enabled: attr.EnabledValue);
             }
             return this;
         }

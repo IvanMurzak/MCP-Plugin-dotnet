@@ -40,10 +40,11 @@ namespace com.IvanMurzak.McpPlugin
         /// Initializes the Prompt with the target method information.
         /// </summary>
         /// <param name="type">The type containing the static method.</param>
-        public static RunPrompt CreateFromStaticMethod(Reflector reflector, string name, ILogger? logger, MethodInfo methodInfo, string? title = null)
+        public static RunPrompt CreateFromStaticMethod(Reflector reflector, string name, ILogger? logger, MethodInfo methodInfo, string? title = null, bool? enabled = null)
             => new RunPrompt(reflector, name, logger, methodInfo)
             {
                 Title = title,
+                Enabled = enabled ?? true
             };
 
         /// <summary>
@@ -51,10 +52,11 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         /// <param name="targetInstance">The instance of the object containing the method.</param>
         /// <param name="methodInfo">The MethodInfo of the instance method to execute.</param>
-        public static RunPrompt CreateFromInstanceMethod(Reflector reflector, ILogger? logger, string name, object targetInstance, MethodInfo methodInfo, string? title = null)
+        public static RunPrompt CreateFromInstanceMethod(Reflector reflector, ILogger? logger, string name, object targetInstance, MethodInfo methodInfo, string? title = null, bool? enabled = null)
             => new RunPrompt(reflector, name, logger, targetInstance, methodInfo)
             {
                 Title = title,
+                Enabled = enabled ?? true
             };
 
         /// <summary>
@@ -62,10 +64,11 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         /// <param name="targetInstance">The instance of the object containing the method.</param>
         /// <param name="methodInfo">The MethodInfo of the instance method to execute.</param>
-        public static RunPrompt CreateFromClassMethod(Reflector reflector, string name, ILogger? logger, Type classType, MethodInfo methodInfo, string? title = null)
+        public static RunPrompt CreateFromClassMethod(Reflector reflector, string name, ILogger? logger, Type classType, MethodInfo methodInfo, string? title = null, bool? enabled = null)
             => new RunPrompt(reflector, name, logger, classType, methodInfo)
             {
                 Title = title,
+                Enabled = enabled ?? true
             };
 
         public RunPrompt(Reflector reflector, string name, ILogger? logger, MethodInfo methodInfo) : base(reflector, logger, methodInfo)
