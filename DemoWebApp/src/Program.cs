@@ -69,11 +69,8 @@ namespace com.IvanMurzak.McpPlugin.DemoWebApp
                     .WithMcpServer(dataArguments, logger)
                     .WithMcpPluginServer(dataArguments);
 
-                builder.WebHost.UseKestrel(options =>
-                {
-                    logger.Info($"Start listening on port: {dataArguments.Port}");
-                    options.ListenAnyIP(dataArguments.Port);
-                });
+                logger.Info($"Start listening on port: {dataArguments.Port}");
+                builder.WebHost.UseKestrelForMcpPlugin(dataArguments.Port);
 
                 // ---------------------------------------------------------------------------------
 

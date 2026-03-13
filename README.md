@@ -115,9 +115,12 @@ builder.Services
     .WithMcpServer(dataArguments) // Configures transport based on dataArguments.ClientTransport
     .WithMcpPluginServer(dataArguments);
 
+// 3. Configure Kestrel with separate IPv4/IPv6 bindings (avoids dual-stack issues on macOS)
+builder.WebHost.UseKestrelForMcpPlugin(dataArguments.Port);
+
 var app = builder.Build();
 
-// 3. Use MCP Server middleware
+// 4. Use MCP Server middleware
 app.UseMcpPluginServer(dataArguments);
 
 app.Run();
