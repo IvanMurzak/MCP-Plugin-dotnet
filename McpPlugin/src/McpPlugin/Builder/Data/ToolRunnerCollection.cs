@@ -33,7 +33,7 @@ namespace com.IvanMurzak.McpPlugin
             {
                 var attr = method.Attribute;
                 this[attr.Name] = method.MethodInfo.IsStatic
-                    ? RunTool.CreateFromStaticMethod(
+                    ? (IRunTool)RunTool.CreateFromStaticMethod(
                         reflector: reflector,
                         logger: _logger,
                         name: attr.Name,
@@ -43,7 +43,7 @@ namespace com.IvanMurzak.McpPlugin
                         destructiveHint: attr.DestructiveHintValue,
                         idempotentHint: attr.IdempotentHintValue,
                         openWorldHint: attr.OpenWorldHintValue,
-                        enabled: attr.EnabledValue) as IRunTool
+                        enabled: attr.EnabledValue)
                     : RunTool.CreateFromClassMethod(
                         reflector: reflector,
                         logger: _logger,
