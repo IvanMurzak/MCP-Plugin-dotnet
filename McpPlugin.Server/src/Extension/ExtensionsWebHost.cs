@@ -27,6 +27,9 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// </summary>
         public static IWebHostBuilder UseKestrelForMcpPlugin(this IWebHostBuilder webHost, int port)
         {
+            if (webHost == null) throw new ArgumentNullException(nameof(webHost));
+            if (port < 0 || port > 65535) throw new ArgumentOutOfRangeException(nameof(port), port, "Port must be between 0 and 65535.");
+
             return webHost
                 .UseKestrel(options =>
                 {
@@ -82,6 +85,9 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         private static Socket CreateDefaultBoundListenSocket(EndPoint endpoint)
         {
+            if (endpoint is not IPEndPoint)
+                throw new NotSupportedException($"Endpoint type '{endpoint.GetType().Name}' is not supported by the default socket factory.");
+
             var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             try
             {

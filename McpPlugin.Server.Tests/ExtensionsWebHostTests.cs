@@ -147,7 +147,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var result = builder.WebHost.UseKestrelForMcpPlugin(port);
 
             // Assert - should return the builder for method chaining
-            result.ShouldNotBeNull();
+            result.ShouldBeSameAs(builder.WebHost);
         }
     }
 }
