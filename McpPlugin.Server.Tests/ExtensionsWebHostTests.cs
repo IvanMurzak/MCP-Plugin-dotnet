@@ -41,6 +41,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void UseKestrelForMcpPlugin_CustomSocketFactory_DisablesDualModeOnIPv6()
         {
+            // Skip on hosts where IPv6 is unavailable
+            if (!Socket.OSSupportsIPv6)
+                return;
+
             // Arrange
             var port = 19878;
             var builder = WebApplication.CreateBuilder();
@@ -108,6 +112,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void UseKestrelForMcpPlugin_CustomSocketFactory_IPv6SocketIsStreamTcp()
         {
+            // Skip on hosts where IPv6 is unavailable
+            if (!Socket.OSSupportsIPv6)
+                return;
+
             // Arrange
             var port = 19881;
             var builder = WebApplication.CreateBuilder();
