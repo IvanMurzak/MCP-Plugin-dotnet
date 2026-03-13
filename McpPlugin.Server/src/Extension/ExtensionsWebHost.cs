@@ -12,7 +12,6 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Server.Kestrel.Transport.Sockets;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -51,8 +50,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                         var defaultFactory = socketOptions.CreateBoundListenSocket;
                         socketOptions.CreateBoundListenSocket = endpoint =>
                         {
-                            if (endpoint is IPEndPoint ipEndPoint
-                                && ipEndPoint.AddressFamily == AddressFamily.InterNetworkV6)
+                            if (endpoint is IPEndPoint ipEndPoint && ipEndPoint.AddressFamily == AddressFamily.InterNetworkV6)
                             {
                                 return CreateBoundIPv6Socket(endpoint);
                             }
