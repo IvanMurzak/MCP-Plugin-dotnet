@@ -31,12 +31,13 @@ namespace com.IvanMurzak.McpPlugin
         {
             foreach (var method in methods.Where(resource => !string.IsNullOrEmpty(resource.Attribute?.Name)))
             {
-                this[method.Attribute.Name!] = new RunResource
+                var attr = method.Attribute;
+                var runner = new RunResource
                 (
-                    route: method.Attribute!.Route ?? throw new InvalidOperationException($"Method {method.ClassType.FullName}{method.GetContentMethod.Name} does not have a 'routing'."),
-                    name: method.Attribute.Name ?? throw new InvalidOperationException($"Method {method.ClassType.FullName}{method.GetContentMethod.Name} does not have a 'name'."),
-                    description: method.Attribute.Description,
-                    mimeType: method.Attribute.MimeType,
+                    route: attr!.Route ?? throw new InvalidOperationException($"Method {method.ClassType.FullName}{method.GetContentMethod.Name} does not have a 'routing'."),
+                    name: attr.Name ?? throw new InvalidOperationException($"Method {method.ClassType.FullName}{method.GetContentMethod.Name} does not have a 'name'."),
+                    description: attr.Description,
+                    mimeType: attr.MimeType,
                     runnerGetContent: method.GetContentMethod.IsStatic
                         ? RunResourceContent.CreateFromStaticMethod(reflector, _logger, method.GetContentMethod)
                         : RunResourceContent.CreateFromClassMethod(reflector, _logger, method.ClassType, method.GetContentMethod),
@@ -44,6 +45,8 @@ namespace com.IvanMurzak.McpPlugin
                         ? RunResourceList.CreateFromStaticMethod(reflector, _logger, method.ListResourcesMethod)
                         : RunResourceList.CreateFromClassMethod(reflector, _logger, method.ClassType, method.ListResourcesMethod)
                 );
+                runner.Enabled = attr.EnabledValue ?? true;
+                this[attr.Name!] = runner;
             }
             return this;
         }

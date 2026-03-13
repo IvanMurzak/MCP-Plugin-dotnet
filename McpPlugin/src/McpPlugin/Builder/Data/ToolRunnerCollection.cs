@@ -42,7 +42,8 @@ namespace com.IvanMurzak.McpPlugin
                         readOnlyHint: attr.ReadOnlyHintValue,
                         destructiveHint: attr.DestructiveHintValue,
                         idempotentHint: attr.IdempotentHintValue,
-                        openWorldHint: attr.OpenWorldHintValue) as IRunTool
+                        openWorldHint: attr.OpenWorldHintValue,
+                        enabled: attr.EnabledValue) as IRunTool
                     : RunTool.CreateFromClassMethod(
                         reflector: reflector,
                         logger: _logger,
@@ -53,7 +54,8 @@ namespace com.IvanMurzak.McpPlugin
                         readOnlyHint: attr.ReadOnlyHintValue,
                         destructiveHint: attr.DestructiveHintValue,
                         idempotentHint: attr.IdempotentHintValue,
-                        openWorldHint: attr.OpenWorldHintValue);
+                        openWorldHint: attr.OpenWorldHintValue,
+                        enabled: attr.EnabledValue);
             }
             return this;
         }

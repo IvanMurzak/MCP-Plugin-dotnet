@@ -37,14 +37,16 @@ namespace com.IvanMurzak.McpPlugin
             bool? readOnlyHint = null,
             bool? destructiveHint = null,
             bool? idempotentHint = null,
-            bool? openWorldHint = null)
+            bool? openWorldHint = null,
+            bool? enabled = null)
             => new RunTool(reflector, logger, name, methodInfo)
             {
                 Title = title,
                 ReadOnlyHint = readOnlyHint,
                 DestructiveHint = destructiveHint,
                 IdempotentHint = idempotentHint,
-                OpenWorldHint = openWorldHint
+                OpenWorldHint = openWorldHint,
+                Enabled = enabled ?? true
             };
 
         /// <summary>
@@ -62,14 +64,16 @@ namespace com.IvanMurzak.McpPlugin
             bool? readOnlyHint = null,
             bool? destructiveHint = null,
             bool? idempotentHint = null,
-            bool? openWorldHint = null)
+            bool? openWorldHint = null,
+            bool? enabled = null)
             => new RunTool(reflector, logger, name, targetInstance, methodInfo)
             {
                 Title = title,
                 ReadOnlyHint = readOnlyHint,
                 DestructiveHint = destructiveHint,
                 IdempotentHint = idempotentHint,
-                OpenWorldHint = openWorldHint
+                OpenWorldHint = openWorldHint,
+                Enabled = enabled ?? true
             };
 
         /// <summary>
@@ -90,14 +94,16 @@ namespace com.IvanMurzak.McpPlugin
             bool? readOnlyHint = null,
             bool? destructiveHint = null,
             bool? idempotentHint = null,
-            bool? openWorldHint = null)
+            bool? openWorldHint = null,
+            bool? enabled = null)
             => new RunTool(reflector, logger, name, classType, methodInfo)
             {
                 Title = title,
                 ReadOnlyHint = readOnlyHint,
                 DestructiveHint = destructiveHint,
                 IdempotentHint = idempotentHint,
-                OpenWorldHint = openWorldHint
+                OpenWorldHint = openWorldHint,
+                Enabled = enabled ?? true
             };
     }
 }

@@ -22,6 +22,22 @@ namespace com.IvanMurzak.McpPlugin
         // Not used for now
         // public string? Title { get; set; }
 
+        private bool _enabled;
+        private bool _enabledSet;
+
+        /// <summary>
+        /// If set to false, the prompt will be disabled by default when first discovered.
+        /// When not set, the prompt defaults to enabled.
+        /// </summary>
+        public bool Enabled
+        {
+            get => _enabled;
+            set { _enabled = value; _enabledSet = true; }
+        }
+
+        /// <summary>Gets the Enabled value, or null if it was not explicitly set.</summary>
+        public bool? EnabledValue => _enabledSet ? _enabled : null;
+
         public McpPluginPromptAttribute() { }
     }
 }
