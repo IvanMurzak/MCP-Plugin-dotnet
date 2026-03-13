@@ -32,7 +32,7 @@ namespace com.IvanMurzak.McpPlugin
             foreach (var method in methods.Where(resource => !string.IsNullOrEmpty(resource.Attribute?.Name)))
             {
                 var attr = method.Attribute;
-                var runner = new RunResource
+                this[attr.Name!] = new RunResource
                 (
                     route: attr!.Route ?? throw new InvalidOperationException($"Method {method.ClassType.FullName}{method.GetContentMethod.Name} does not have a 'routing'."),
                     name: attr.Name ?? throw new InvalidOperationException($"Method {method.ClassType.FullName}{method.GetContentMethod.Name} does not have a 'name'."),
@@ -43,10 +43,9 @@ namespace com.IvanMurzak.McpPlugin
                         : RunResourceContent.CreateFromClassMethod(reflector, _logger, method.ClassType, method.GetContentMethod),
                     runnerListContext: method.ListResourcesMethod.IsStatic
                         ? RunResourceList.CreateFromStaticMethod(reflector, _logger, method.ListResourcesMethod)
-                        : RunResourceList.CreateFromClassMethod(reflector, _logger, method.ClassType, method.ListResourcesMethod)
+                        : RunResourceList.CreateFromClassMethod(reflector, _logger, method.ClassType, method.ListResourcesMethod),
+                    enabled: attr.EnabledValue
                 );
-                runner.Enabled = attr.EnabledValue ?? true;
-                this[attr.Name!] = runner;
             }
             return this;
         }

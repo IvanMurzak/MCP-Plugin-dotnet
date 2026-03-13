@@ -32,11 +32,9 @@ namespace com.IvanMurzak.McpPlugin
             foreach (var method in methods.Where(resource => !string.IsNullOrEmpty(resource.Attribute?.Name)))
             {
                 var attr = method.Attribute;
-                var runner = (IRunPrompt)(method.MethodInfo.IsStatic
-                    ? RunPrompt.CreateFromStaticMethod(reflector, attr.Name, _logger, method.MethodInfo)
-                    : RunPrompt.CreateFromClassMethod(reflector, attr.Name, _logger, method.ClassType, method.MethodInfo));
-                runner.Enabled = attr.EnabledValue ?? true;
-                this[attr.Name!] = runner;
+                this[attr.Name!] = method.MethodInfo.IsStatic
+                    ? RunPrompt.CreateFromStaticMethod(reflector, attr.Name, _logger, method.MethodInfo, enabled: attr.EnabledValue)
+                    : RunPrompt.CreateFromClassMethod(reflector, attr.Name, _logger, method.ClassType, method.MethodInfo, enabled: attr.EnabledValue);
             }
             return this;
         }
