@@ -34,8 +34,8 @@ namespace com.IvanMurzak.McpPlugin
                 var attr = method.Attribute;
                 this[attr.Name!] = new RunResource
                 (
-                    route: string.IsNullOrWhiteSpace(attr!.Route) ? throw new InvalidOperationException($"Method {method.ClassType.FullName}{method.GetContentMethod.Name} does not have a 'route'.") : attr.Route,
-                    name: attr.Name ?? throw new InvalidOperationException($"Method {method.ClassType.FullName}{method.GetContentMethod.Name} does not have a 'name'."),
+                    route: string.IsNullOrWhiteSpace(attr!.Route) ? throw new InvalidOperationException($"Method {method.ClassType.FullName}.{method.GetContentMethod.Name} does not have a 'route'.") : attr.Route,
+                    name: attr.Name ?? throw new InvalidOperationException($"Method {method.ClassType.FullName}.{method.GetContentMethod.Name} does not have a 'name'."),
                     description: attr.Description,
                     mimeType: attr.MimeType,
                     runnerGetContent: method.GetContentMethod.IsStatic
