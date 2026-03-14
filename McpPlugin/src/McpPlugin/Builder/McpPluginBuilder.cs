@@ -286,6 +286,12 @@ namespace com.IvanMurzak.McpPlugin
             config.TimeoutMs = ConnectionConfig.GetTimeoutFromArgsOrEnv(args);
         });
 
+        /// <summary>
+        /// Builds the plugin instance. This is a one-time operation - once Build() is called, the builder cannot be modified or built again.
+        /// </summary>
+        /// <param name="reflector">The reflector instance used for reflection operations.</param>
+        /// <returns>The built plugin instance.</returns>
+        /// <exception cref="ArgumentNullException">Thrown if the reflector is null.</exception>
         public virtual IMcpPlugin Build(Reflector reflector)
         {
             ThrowIfBuilt();
