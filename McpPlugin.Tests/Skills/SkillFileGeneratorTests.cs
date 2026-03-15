@@ -54,7 +54,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             result.ShouldBeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "add", "SKILL.md"));
-            content.ShouldContain($"run-tool add --url {host}");
+            content.ShouldContain($"{host}/api/tools/add");
         }
 
         [Theory]
@@ -71,7 +71,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             result.ShouldBeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "ping", "SKILL.md"));
-            content.ShouldContain($"run-tool ping --url {host}");
+            content.ShouldContain($"{host}/api/tools/ping");
         }
 
         [Fact]
@@ -101,11 +101,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             result.ShouldBeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "secure-op", "SKILL.md"));
-            content.ShouldContain("run-tool secure-op --url https://secure.example.com");
+            content.ShouldContain("https://secure.example.com/api/tools/secure-op");
         }
 
         [Fact]
-        public void Generate_BothCliSnippets_ContainHost()
+        public void Generate_BothCurlSnippets_ContainHost()
         {
             var generator = new SkillFileGenerator();
             var tool = new MockRunTool { Name = "compute" };
@@ -115,9 +115,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             result.ShouldBeTrue();
             var content = File.ReadAllText(Path.Combine(_tempDir, "compute", "SKILL.md"));
-            // Both the plain and the auth CLI snippets must use the given host
-            content.ShouldContain($"run-tool compute --url {host} --input");
-            content.ShouldContain($"run-tool compute --url {host} --token YOUR_TOKEN --input");
+            // Both the plain and the auth-header curl snippets must use the given host
+            var expectedUrl = $"{host}/api/tools/compute";
+            content.Split(expectedUrl).Length.ShouldBeGreaterThanOrEqualTo(3,
+                "because the host URL appears in both curl examples");
         }
 
         // ── file creation ────────────────────────────────────────────────────────
@@ -443,7 +444,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
-            content.ShouldContain("--token YOUR_TOKEN");
+            content.ShouldContain("Authorization: Bearer");
         }
 
         [Fact]
@@ -455,7 +456,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
-            content.ShouldNotContain("--token YOUR_TOKEN");
+            content.ShouldNotContain("Authorization: Bearer");
         }
 
         [Fact]
@@ -667,58 +668,6 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
 
             Directory.Exists(Path.Combine(_tempDir, "prefixed-my-tool")).ShouldBeTrue(
                 "overridden BuildNameMap should produce the custom directory name");
-        }
-
-        // ── CLI command format ────────────────────────────────────────────────────
-
-        [Fact]
-        public void Generate_CliCommand_ContainsToolName()
-        {
-            var generator = new SkillFileGenerator();
-            var tool = new MockRunTool { Name = "my-custom-tool" };
-
-            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
-
-            var content = File.ReadAllText(Path.Combine(_tempDir, "my-custom-tool", "SKILL.md"));
-            content.ShouldContain("unity-mcp-cli run-tool my-custom-tool");
-        }
-
-        [Fact]
-        public void Generate_CliCommand_ContainsInputFlag()
-        {
-            var schema = JsonNode.Parse("""{"type":"object","properties":{"x":{"type":"integer"}}}""")!;
-            var generator = new SkillFileGenerator();
-            var tool = new MockRunTool { Name = "calc", InputSchema = schema };
-
-            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
-
-            var content = File.ReadAllText(Path.Combine(_tempDir, "calc", "SKILL.md"));
-            content.ShouldContain("--input '");
-        }
-
-        [Fact]
-        public void Generate_CliCommand_DoesNotContainCurl()
-        {
-            var generator = new SkillFileGenerator();
-            var tool = new MockRunTool { Name = "op" };
-
-            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
-
-            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
-            content.ShouldNotContain("curl");
-        }
-
-        [Fact]
-        public void Generate_CliCommand_ContainsCliSection()
-        {
-            var generator = new SkillFileGenerator();
-            var tool = new MockRunTool { Name = "op" };
-
-            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
-
-            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
-            content.ShouldContain("### CLI (Direct Tool Execution)");
-            content.ShouldContain("Execute this tool directly via the Unity-MCP CLI:");
         }
 
         // ── helpers ───────────────────────────────────────────────────────────────
