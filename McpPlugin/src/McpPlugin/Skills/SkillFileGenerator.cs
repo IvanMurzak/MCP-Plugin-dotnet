@@ -21,7 +21,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
     /// <summary>
     /// Generates AI skill markdown files for each registered MCP tool.
     /// Skill files follow the AI Skills template format and describe how to call each tool
-    /// via the direct HTTP API or MCP protocol, including JSON schemas for input and output.
+    /// via the Unity-MCP CLI or MCP protocol, including JSON schemas for input and output.
     /// <para>
     /// Override virtual members to customise any aspect of file generation without replacing
     /// the entire class. Register a custom subclass via
@@ -45,7 +45,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
         // ── Customisation properties ─────────────────────────────────────────
 
         /// <summary>
-        /// When <see langword="true"/> (default), a "With Authorization" curl block is included
+        /// When <see langword="true"/> (default), a "With Authorization" CLI block is included
         /// in the "How to Call" section of each SKILL.md.
         /// Override and return <see langword="false"/> to omit it.
         /// </summary>
@@ -290,17 +290,15 @@ namespace com.IvanMurzak.McpPlugin.Skills
             // How to Call section
             sb.AppendLine("## How to Call");
             sb.AppendLine();
-            sb.AppendLine("### HTTP API (Direct Tool Execution)");
+            sb.AppendLine("### CLI (Direct Tool Execution)");
             sb.AppendLine();
-            sb.AppendLine("Execute this tool directly via the MCP Plugin HTTP API:");
+            sb.AppendLine("Execute this tool directly via the Unity-MCP CLI:");
             sb.AppendLine();
             BuildHowToCallIntroNotes(sb);
 
             var inputExample = BuildInputExample(tool.InputSchema);
             sb.AppendLine("```bash");
-            sb.AppendLine($"curl -X POST {host}/api/tools/{tool.Name} \\");
-            sb.AppendLine("  -H \"Content-Type: application/json\" \\");
-            sb.AppendLine($"  -d '{inputExample}'");
+            sb.AppendLine($"unity-mcp-cli run-tool {tool.Name} --url {host} --input '{inputExample}'");
             sb.AppendLine("```");
             sb.AppendLine();
             BuildInputExampleNotes(sb);
@@ -310,10 +308,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
                 sb.AppendLine("#### With Authorization (if required)");
                 sb.AppendLine();
                 sb.AppendLine("```bash");
-                sb.AppendLine($"curl -X POST {host}/api/tools/{tool.Name} \\");
-                sb.AppendLine("  -H \"Content-Type: application/json\" \\");
-                sb.AppendLine("  -H \"Authorization: Bearer YOUR_TOKEN\" \\");
-                sb.AppendLine($"  -d '{inputExample}'");
+                sb.AppendLine($"unity-mcp-cli run-tool {tool.Name} --url {host} --token YOUR_TOKEN --input '{inputExample}'");
                 sb.AppendLine("```");
                 sb.AppendLine();
                 BuildInputAuthorizationNotes(sb);
@@ -418,18 +413,18 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
         /// <summary>
         /// Override to inject additional markdown content after the
-        /// <c>Execute this tool directly via the MCP Plugin HTTP API:</c> intro line and
-        /// before the first curl example block in the <c>## How to Call → ### HTTP API</c> section.
+        /// <c>Execute this tool directly via the Unity-MCP CLI:</c> intro line and
+        /// before the first CLI example block in the <c>## How to Call → ### CLI</c> section.
         /// <para>
         /// Injected position in the generated document:
         /// <code>
-        /// ### HTTP API (Direct Tool Execution)
+        /// ### CLI (Direct Tool Execution)
         ///
-        /// Execute this tool directly via the MCP Plugin HTTP API:
+        /// Execute this tool directly via the Unity-MCP CLI:
         ///
         ///                          ← content appended HERE
         /// ```bash
-        /// curl -X POST {host}/api/tools/{name} \
+        /// unity-mcp-cli run-tool {name} --url {host} --input '...'
         /// ```
         /// </code>
         /// </para>
@@ -441,15 +436,13 @@ namespace com.IvanMurzak.McpPlugin.Skills
         }
 
         /// <summary>
-        /// Override to inject additional markdown content immediately after the basic curl
-        /// input example block in the <c>## How to Call → ### HTTP API</c> section.
+        /// Override to inject additional markdown content immediately after the basic CLI
+        /// input example block in the <c>## How to Call → ### CLI</c> section.
         /// <para>
         /// Injected position in the generated document:
         /// <code>
         /// ```bash
-        /// curl -X POST {host}/api/tools/{name} \
-        ///   -H "Content-Type: application/json" \
-        ///   -d '{...}'
+        /// unity-mcp-cli run-tool {name} --url {host} --input '...'
         /// ```
         ///                          ← content appended HERE
         /// #### With Authorization (if required)   (when IncludeAuthorizationExample = true)
@@ -464,18 +457,15 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
         /// <summary>
         /// Override to inject additional markdown content immediately after the
-        /// <c>#### With Authorization (if required)</c> curl example block in the
-        /// <c>## How to Call → ### HTTP API</c> section.
+        /// <c>#### With Authorization (if required)</c> CLI example block in the
+        /// <c>## How to Call → ### CLI</c> section.
         /// This method is only called when <see cref="IncludeAuthorizationExample"/> is <c>true</c>.
         /// <para>
         /// Injected position in the generated document:
         /// <code>
         /// #### With Authorization (if required)
         /// ```bash
-        /// curl -X POST {host}/api/tools/{name} \
-        ///   -H "Content-Type: application/json" \
-        ///   -H "Authorization: Bearer YOUR_TOKEN" \
-        ///   -d '{...}'
+        /// unity-mcp-cli run-tool {name} --url {host} --token YOUR_TOKEN --input '...'
         /// ```
         ///                          ← content appended HERE
         /// ## Input
