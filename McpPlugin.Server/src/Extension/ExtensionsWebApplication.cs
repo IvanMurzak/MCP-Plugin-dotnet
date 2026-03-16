@@ -12,6 +12,7 @@ using System;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Api;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Transport;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http.Connections;
@@ -34,6 +35,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             // Setup auth -------------------------------------------------------
             app.UseAuthentication();
+            app.UseMiddleware<McpSessionTokenMiddleware>();
             app.UseAuthorization();
 
             // Setup SignalR ----------------------------------------------------
