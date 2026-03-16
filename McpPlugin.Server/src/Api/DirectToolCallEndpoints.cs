@@ -17,6 +17,7 @@ using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -71,6 +72,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
         /// </summary>
         static async Task ListToolsHandler(HttpContext context)
         {
+            var authHeader = context.Request.Headers.Authorization.ToString();
+            if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                McpSessionTokenContext.CurrentToken = authHeader.Substring("Bearer ".Length).Trim();
+
             var toolHub = context.RequestServices.GetRequiredService<IClientToolHub>();
             var request = new RequestListTool();
             var response = await toolHub.RunListTool(request, context.RequestAborted);
@@ -124,6 +129,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
         /// </summary>
         static async Task CallToolHandler(HttpContext context)
         {
+            // Propagate the bearer token into McpSessionTokenContext so that
+            // RemoteToolRunner can route the call to the correct Unity plugin
+            // via the token-based connection strategy.
+            var authHeader = context.Request.Headers.Authorization.ToString();
+            if (authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                McpSessionTokenContext.CurrentToken = authHeader.Substring("Bearer ".Length).Trim();
+
             var toolHub = context.RequestServices.GetRequiredService<IClientToolHub>();
             var name = context.Request.RouteValues["name"]?.ToString() ?? string.Empty;
 
