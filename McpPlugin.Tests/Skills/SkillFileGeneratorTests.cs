@@ -498,6 +498,100 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             content.ShouldNotContain("## Output");
         }
 
+        [Fact]
+        public void Generate_IncludeDescriptionBodyFalse_OmitsDescriptionParagraph()
+        {
+            var generator = new CustomFlagsGenerator(includeDescBody: false);
+            const string desc = "A mock tool for testing.";
+            var tool = new MockRunTool { Name = "op", Description = desc };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            // Front-matter still has the description
+            content.ShouldContain($"description: {desc}");
+            // Body paragraph between title and "## How to Call" should be gone
+            var titleIdx = content.IndexOf("# Mock Tool", StringComparison.Ordinal);
+            var howToIdx = content.IndexOf("## How to Call", StringComparison.Ordinal);
+            var between = content.Substring(titleIdx, howToIdx - titleIdx);
+            between.ShouldNotContain(desc);
+        }
+
+        [Fact]
+        public void Generate_IncludeDescriptionBodyDefault_IncludesDescriptionParagraph()
+        {
+            var generator = new SkillFileGenerator();
+            const string desc = "A mock tool for testing.";
+            var tool = new MockRunTool { Name = "op", Description = desc };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            var titleIdx = content.IndexOf("# Mock Tool", StringComparison.Ordinal);
+            var howToIdx = content.IndexOf("## How to Call", StringComparison.Ordinal);
+            var between = content.Substring(titleIdx, howToIdx - titleIdx);
+            between.ShouldContain(desc);
+        }
+
+        [Fact]
+        public void Generate_IncludeInputSchemaPropertyDescriptionsFalse_StripsPropertyDescriptions()
+        {
+            var schema = JsonNode.Parse("""
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": { "type": "string", "description": "The name of the thing" },
+                        "count": { "type": "integer", "description": "How many" }
+                    },
+                    "$defs": {
+                        "MyType": { "type": "object", "description": "Should stay" }
+                    },
+                    "required": ["name"]
+                }
+                """)!;
+            var generator = new CustomFlagsGenerator(includeSchemaDesc: false);
+            var tool = new MockRunTool { Name = "op", InputSchema = schema };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            // Extract just the Input JSON Schema code block
+            var schemaStart = content.IndexOf("### Input JSON Schema", StringComparison.Ordinal);
+            var nextSection = content.IndexOf("## Output", StringComparison.Ordinal);
+            var schemaSection = content.Substring(schemaStart, nextSection - schemaStart);
+            // Property descriptions should be stripped from the JSON schema block
+            schemaSection.ShouldNotContain("The name of the thing");
+            schemaSection.ShouldNotContain("How many");
+            // $defs descriptions should remain
+            schemaSection.ShouldContain("Should stay");
+            // Parameter table should still have descriptions (it reads from original schema)
+            content.ShouldContain("| `name`");
+            content.ShouldContain("The name of the thing");
+        }
+
+        [Fact]
+        public void Generate_IncludeInputSchemaPropertyDescriptionsDefault_PreservesPropertyDescriptions()
+        {
+            var schema = JsonNode.Parse("""
+                {
+                    "type": "object",
+                    "properties": {
+                        "name": { "type": "string", "description": "The name of the thing" }
+                    }
+                }
+                """)!;
+            var generator = new SkillFileGenerator();
+            var tool = new MockRunTool { Name = "op", InputSchema = schema };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            // JSON schema block should preserve the description
+            var schemaIdx = content.IndexOf("### Input JSON Schema", StringComparison.Ordinal);
+            var afterSchema = content.Substring(schemaIdx);
+            afterSchema.ShouldContain("The name of the thing");
+        }
+
         // ── additional content injection ─────────────────────────────────────────
 
         [Fact]
@@ -670,6 +764,76 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
                 "overridden BuildNameMap should produce the custom directory name");
         }
 
+        [Fact]
+        public void Generate_OverriddenBuildHowToCallHeading_WritesCustomHeading()
+        {
+            var generator = new CustomHowToCallHeadingGenerator();
+            var tool = new MockRunTool { Name = "op" };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.ShouldContain("### Custom CLI");
+            content.ShouldContain("Execute via custom CLI:");
+            content.ShouldNotContain("### HTTP API (Direct Tool Execution)");
+            content.ShouldNotContain("Execute this tool directly via the MCP Plugin HTTP API:");
+        }
+
+        [Fact]
+        public void Generate_OverriddenBuildToolCommand_WritesCustomCommand()
+        {
+            // Also disable auth example so the only command block is our custom one
+            var generator = new CustomToolCommandNoAuthGenerator();
+            var tool = new MockRunTool { Name = "op" };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.ShouldContain("my-cli run op");
+            content.ShouldNotContain("curl -X POST");
+        }
+
+        [Fact]
+        public void Generate_OverriddenBuildToolCommandWithAuth_WritesCustomAuthCommand()
+        {
+            var generator = new CustomToolCommandWithAuthGenerator();
+            var tool = new MockRunTool { Name = "op" };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.ShouldContain("CUSTOM_AUTH_COMMAND");
+            content.ShouldNotContain("Authorization: Bearer YOUR_TOKEN");
+        }
+
+        [Fact]
+        public void Generate_OverriddenBuildInputJsonSchemaBlock_WritesCustomSchemaBlock()
+        {
+            var schema = JsonNode.Parse("""{"type":"object","properties":{"x":{"type":"integer"}}}""")!;
+            var generator = new CustomInputJsonSchemaBlockGenerator();
+            var tool = new MockRunTool { Name = "op", InputSchema = schema };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.ShouldContain("CUSTOM_INPUT_SCHEMA_BLOCK");
+            content.ShouldNotContain("### Input JSON Schema");
+        }
+
+        [Fact]
+        public void Generate_OverriddenBuildOutputSchemaBlock_WritesCustomOutputBlock()
+        {
+            var outputSchema = JsonNode.Parse("""{"type":"object","properties":{"result":{"type":"integer"}}}""")!;
+            var generator = new CustomOutputSchemaBlockGenerator();
+            var tool = new MockRunTool { Name = "op", OutputSchema = outputSchema };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "op", "SKILL.md"));
+            content.ShouldContain("CUSTOM_OUTPUT_BLOCK");
+            content.ShouldNotContain("### Output JSON Schema");
+        }
+
         // ── helpers ───────────────────────────────────────────────────────────────
 
         private class MockRunTool : IRunTool
@@ -697,22 +861,30 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             private readonly bool _includeParamTable;
             private readonly bool _includeInputJsonSchema;
             private readonly bool _includeOutput;
+            private readonly bool _includeDescBody;
+            private readonly bool _includeSchemaDesc;
 
             public override bool IncludeAuthorizationExample => _includeAuth;
             public override bool IncludeParameterTable => _includeParamTable;
             public override bool IncludeInputJsonSchema => _includeInputJsonSchema;
             public override bool IncludeOutputSection => _includeOutput;
+            public override bool IncludeDescriptionBody => _includeDescBody;
+            public override bool IncludeInputSchemaPropertyDescriptions => _includeSchemaDesc;
 
             public CustomFlagsGenerator(
                 bool includeAuth = true,
                 bool includeParamTable = true,
                 bool includeInputJsonSchema = true,
-                bool includeOutput = true)
+                bool includeOutput = true,
+                bool includeDescBody = true,
+                bool includeSchemaDesc = true)
             {
                 _includeAuth = includeAuth;
                 _includeParamTable = includeParamTable;
                 _includeInputJsonSchema = includeInputJsonSchema;
                 _includeOutput = includeOutput;
+                _includeDescBody = includeDescBody;
+                _includeSchemaDesc = includeSchemaDesc;
             }
         }
 
@@ -780,6 +952,73 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
                 foreach (var tool in tools)
                     map[tool.Name] = "prefixed-" + SanitizeSkillName(tool.Name);
                 return map;
+            }
+        }
+
+        /// <summary>Overrides BuildHowToCallHeading to emit a custom CLI heading.</summary>
+        private sealed class CustomHowToCallHeadingGenerator : SkillFileGenerator
+        {
+            protected override void BuildHowToCallHeading(StringBuilder sb)
+            {
+                sb.AppendLine("### Custom CLI");
+                sb.AppendLine();
+                sb.AppendLine("Execute via custom CLI:");
+                sb.AppendLine();
+            }
+        }
+
+        /// <summary>Overrides BuildToolCommand to emit a custom CLI command instead of curl.</summary>
+        private sealed class CustomToolCommandGenerator : SkillFileGenerator
+        {
+            protected override void BuildToolCommand(StringBuilder sb, IRunTool tool, string host, string inputExample)
+            {
+                sb.AppendLine("```bash");
+                sb.AppendLine($"my-cli run {tool.Name}");
+                sb.AppendLine("```");
+                sb.AppendLine();
+            }
+        }
+
+        /// <summary>Overrides BuildToolCommand and disables auth to verify no curl remains.</summary>
+        private sealed class CustomToolCommandNoAuthGenerator : SkillFileGenerator
+        {
+            public override bool IncludeAuthorizationExample => false;
+
+            protected override void BuildToolCommand(StringBuilder sb, IRunTool tool, string host, string inputExample)
+            {
+                sb.AppendLine("```bash");
+                sb.AppendLine($"my-cli run {tool.Name}");
+                sb.AppendLine("```");
+                sb.AppendLine();
+            }
+        }
+
+        /// <summary>Overrides BuildToolCommandWithAuth to emit a custom auth block.</summary>
+        private sealed class CustomToolCommandWithAuthGenerator : SkillFileGenerator
+        {
+            protected override void BuildToolCommandWithAuth(StringBuilder sb, IRunTool tool, string host, string inputExample)
+            {
+                sb.AppendLine("CUSTOM_AUTH_COMMAND");
+                sb.AppendLine();
+            }
+        }
+
+        /// <summary>Overrides BuildInputJsonSchemaBlock to emit a custom marker.</summary>
+        private sealed class CustomInputJsonSchemaBlockGenerator : SkillFileGenerator
+        {
+            protected override void BuildInputJsonSchemaBlock(StringBuilder sb, IRunTool tool)
+            {
+                sb.AppendLine("CUSTOM_INPUT_SCHEMA_BLOCK");
+                sb.AppendLine();
+            }
+        }
+
+        /// <summary>Overrides BuildOutputSchemaBlock to emit a custom marker.</summary>
+        private sealed class CustomOutputSchemaBlockGenerator : SkillFileGenerator
+        {
+            protected override void BuildOutputSchemaBlock(StringBuilder sb, IRunTool tool)
+            {
+                sb.AppendLine("CUSTOM_OUTPUT_BLOCK");
             }
         }
     }
