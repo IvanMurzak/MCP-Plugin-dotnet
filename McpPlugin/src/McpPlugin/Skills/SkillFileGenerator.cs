@@ -32,6 +32,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
     public class SkillFileGenerator : ISkillFileGenerator
     {
         readonly ILogger? _logger;
+        static readonly UTF8Encoding _utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
         static readonly JsonSerializerOptions _prettyJsonOptions = new JsonSerializerOptions
         {
@@ -259,7 +260,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             {
                 Directory.CreateDirectory(skillDir);
                 var content = BuildMarkdown(tool, skillName, host);
-                File.WriteAllText(filePath, content, Encoding.UTF8);
+                File.WriteAllText(filePath, content, _utf8NoBom);
                 _logger?.LogDebug("{class}.{method}: Skill file written for tool '{tool}' → '{path}'.",
                     nameof(SkillFileGenerator), nameof(GenerateFor), tool.Name, filePath);
                 return true;
