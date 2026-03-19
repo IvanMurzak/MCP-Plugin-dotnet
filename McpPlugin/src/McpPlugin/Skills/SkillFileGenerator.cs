@@ -472,7 +472,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
         protected virtual void BuildToolCommand(StringBuilder sb, IRunTool tool, string host, string inputExample)
         {
             sb.AppendLine("```bash");
-            sb.AppendLine($"curl -X POST {host}/api/tools/{tool.Name} \\");
+            sb.AppendLine($"curl -X POST {host}{GetApiRoutePrefix(tool)}/{tool.Name} \\");
             sb.AppendLine("  -H \"Content-Type: application/json\" \\");
             sb.AppendLine($"  -d '{inputExample}'");
             sb.AppendLine("```");
@@ -530,7 +530,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine("#### With Authorization (if required)");
             sb.AppendLine();
             sb.AppendLine("```bash");
-            sb.AppendLine($"curl -X POST {host}/api/tools/{tool.Name} \\");
+            sb.AppendLine($"curl -X POST {host}{GetApiRoutePrefix(tool)}/{tool.Name} \\");
             sb.AppendLine("  -H \"Content-Type: application/json\" \\");
             sb.AppendLine("  -H \"Authorization: Bearer YOUR_TOKEN\" \\");
             sb.AppendLine($"  -d '{inputExample}'");
@@ -831,6 +831,15 @@ namespace com.IvanMurzak.McpPlugin.Skills
         }
 
         // ── Protected static utilities ───────────────────────────────────────
+
+        /// <summary>
+        /// Returns the HTTP API route prefix for a tool based on its <see cref="IRunTool.ToolType"/>.
+        /// Standard tools use <c>/api/tools</c>; system tools use <c>/api/system-tools</c>.
+        /// </summary>
+        protected static string GetApiRoutePrefix(IRunTool tool)
+        {
+            return tool.ToolType == McpToolType.System ? "/api/system-tools" : "/api/tools";
+        }
 
         /// <summary>
         /// Creates a placeholder JSON value for the given JSON Schema type string.

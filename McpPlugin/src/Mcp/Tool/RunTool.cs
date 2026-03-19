@@ -29,6 +29,7 @@ namespace com.IvanMurzak.McpPlugin
     {
         public string Name { get; private set; }
         public bool Enabled { get; set; } = true;
+        public McpToolType ToolType { get; protected set; } = McpToolType.Standard;
         public string? Title { get; protected set; }
         public bool? ReadOnlyHint { get; protected set; }
         public bool? DestructiveHint { get; protected set; }
