@@ -36,5 +36,6 @@ namespace com.IvanMurzak.McpPlugin
         IToolManager? ToolManager { get; }
         IPromptManager? PromptManager { get; }
         IResourceManager? ResourceManager { get; }
+        McpSystemToolManager? SystemToolManager { get; }
     }
 }

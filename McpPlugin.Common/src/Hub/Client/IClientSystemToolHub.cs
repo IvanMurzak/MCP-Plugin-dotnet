@@ -8,25 +8,19 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+#nullable enable
+using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 
 namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
 {
-    public interface IClientMcpManager : IClientDisconnectable
+    /// <summary>
+    /// Hub interface for system tools — internal tools available via HTTP API
+    /// but NOT exposed to MCP clients or AI agents.
+    /// </summary>
+    public interface IClientSystemToolHub
     {
-        IClientToolHub? ToolHub { get; }
-        IClientPromptHub? PromptHub { get; }
-        IClientResourceHub? ResourceHub { get; }
-        IClientSystemToolHub? SystemToolHub { get; }
-
-        Task OnMcpClientConnected(McpClientData connectedClient, McpClientData[] allActiveClients);
-        Task OnMcpClientDisconnected(McpClientData disconnectedClient, McpClientData[] remainingClients);
-
-        /// <summary>
-        /// Called once on initial connection to populate ActiveClients with the server's current
-        /// snapshot, covering the edge case where clients were already connected before the plugin joined.
-        /// </summary>
-        Task OnInitialClientData(McpClientData[] allActiveClients);
+        Task<ResponseData<ResponseCallTool>> RunSystemTool(RequestCallTool request, CancellationToken cancellationToken = default);
     }
 }

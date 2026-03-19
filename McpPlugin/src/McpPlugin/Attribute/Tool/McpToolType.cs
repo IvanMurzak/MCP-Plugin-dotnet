@@ -8,25 +8,23 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Threading.Tasks;
-using com.IvanMurzak.McpPlugin.Common.Model;
-
-namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
+namespace com.IvanMurzak.McpPlugin
 {
-    public interface IClientMcpManager : IClientDisconnectable
+    /// <summary>
+    /// Specifies the type of an MCP tool.
+    /// </summary>
+    public enum McpToolType
     {
-        IClientToolHub? ToolHub { get; }
-        IClientPromptHub? PromptHub { get; }
-        IClientResourceHub? ResourceHub { get; }
-        IClientSystemToolHub? SystemToolHub { get; }
-
-        Task OnMcpClientConnected(McpClientData connectedClient, McpClientData[] allActiveClients);
-        Task OnMcpClientDisconnected(McpClientData disconnectedClient, McpClientData[] remainingClients);
+        /// <summary>
+        /// Standard tool — exposed to MCP clients and AI agents via the MCP protocol.
+        /// </summary>
+        Standard = 0,
 
         /// <summary>
-        /// Called once on initial connection to populate ActiveClients with the server's current
-        /// snapshot, covering the edge case where clients were already connected before the plugin joined.
+        /// System tool — available via the HTTP API (<c>/api/system-tools/</c>) but NOT
+        /// exposed to MCP clients or AI agents. Used for internal operations like
+        /// skill file generation.
         /// </summary>
-        Task OnInitialClientData(McpClientData[] allActiveClients);
+        System = 1
     }
 }

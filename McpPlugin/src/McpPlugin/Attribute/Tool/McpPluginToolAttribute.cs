@@ -18,6 +18,13 @@ namespace com.IvanMurzak.McpPlugin
         public string Name { get; set; }
         public string? Title { get; set; }
 
+        /// <summary>
+        /// The type of tool. Standard tools are exposed to MCP clients;
+        /// System tools are only available via the HTTP API.
+        /// Defaults to <see cref="McpToolType.Standard"/>.
+        /// </summary>
+        public McpToolType ToolType { get; set; } = McpToolType.Standard;
+
         private bool _readOnlyHint;
         private bool _readOnlyHintSet;
 

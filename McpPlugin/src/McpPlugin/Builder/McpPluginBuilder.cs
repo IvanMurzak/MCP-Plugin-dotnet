@@ -10,6 +10,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
@@ -80,6 +81,8 @@ namespace com.IvanMurzak.McpPlugin
             _services.AddSingleton<IToolManager, McpToolManager>();
             _services.AddSingleton<IPromptManager, McpPromptManager>();
             _services.AddSingleton<IResourceManager, McpResourceManager>();
+
+            _services.AddSingleton<McpSystemToolManager>();
 
             _services.AddSingleton<IMcpPlugin, McpPlugin>();
             _services.AddSingleton<IMcpManagerHub, McpManagerClientHub>();
@@ -304,9 +307,15 @@ namespace com.IvanMurzak.McpPlugin
 
             _services.AddSingleton(reflector);
 
+            var standardMethods = _toolMethods.Where(m => m.Attribute.ToolType == McpToolType.Standard).ToList();
+            var systemMethods = _toolMethods.Where(m => m.Attribute.ToolType == McpToolType.System).ToList();
+
             _services.AddSingleton(new ToolRunnerCollection(reflector, _loggerProvider?.CreateLogger(nameof(ToolRunnerCollection)))
-                .Add(_toolMethods)
+                .Add(standardMethods)
                 .Add(_toolRunners));
+
+            _services.AddSingleton(new SystemToolRunnerCollection(reflector, _loggerProvider?.CreateLogger(nameof(SystemToolRunnerCollection)))
+                .Add(systemMethods));
 
             _services.AddSingleton(new PromptRunnerCollection(reflector, _loggerProvider?.CreateLogger(nameof(PromptRunnerCollection)))
                 .Add(_promptMethods)
