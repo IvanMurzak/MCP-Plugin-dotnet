@@ -13,18 +13,18 @@ using System.Reflection;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public class SkillFieldData
+    public class SkillMemberData
     {
         public string Name => Attribute.Name;
         public Type ClassType { get; set; }
-        public FieldInfo FieldInfo { get; set; }
+        public MemberInfo MemberInfo { get; set; }
         public McpPluginSkillAttribute Attribute { get; set; }
         public string Content { get; set; }
 
-        public SkillFieldData(Type classType, FieldInfo fieldInfo, McpPluginSkillAttribute attribute, string content)
+        public SkillMemberData(Type classType, MemberInfo memberInfo, McpPluginSkillAttribute attribute, string content)
         {
             ClassType = classType;
-            FieldInfo = fieldInfo;
+            MemberInfo = memberInfo;
             Attribute = attribute;
             Content = content;
         }

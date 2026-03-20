@@ -102,8 +102,42 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var builder = BuildWithSkills();
 
             var collection = builder.ServiceProvider!.GetRequiredService<SkillContentCollection>();
-            // Only the two enabled skills should be present
-            collection.Count.ShouldBe(2);
+            // 2 enabled const fields + 1 enabled property = 3 skills
+            collection.Count.ShouldBe(3);
+        }
+
+        // ── Static property support ─────────────────────────────────────────
+
+        [Fact]
+        public void WithSkills_StaticProperty_IsDiscovered()
+        {
+            var builder = BuildWithSkills();
+
+            var collection = builder.ServiceProvider!.GetRequiredService<SkillContentCollection>();
+            collection.ContainsKey("platform-info").ShouldBeTrue();
+        }
+
+        [Fact]
+        public void WithSkills_StaticProperty_HasCorrectContent()
+        {
+            var builder = BuildWithSkills();
+
+            var collection = builder.ServiceProvider!.GetRequiredService<SkillContentCollection>();
+            var skill = collection["platform-info"];
+
+            skill.Name.ShouldBe("platform-info");
+            skill.Description.ShouldBe("Platform-specific instructions");
+            skill.Content.ShouldNotBeNullOrWhiteSpace();
+            skill.Enabled.ShouldBeTrue();
+        }
+
+        [Fact]
+        public void WithSkills_DisabledProperty_IsExcluded()
+        {
+            var builder = BuildWithSkills();
+
+            var collection = builder.ServiceProvider!.GetRequiredService<SkillContentCollection>();
+            collection.ContainsKey("disabled-prop").ShouldBeFalse();
         }
 
         // ── WithSkillsFromAssembly discovers [McpPluginSkillType] classes ───
@@ -120,6 +154,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var collection = builder.ServiceProvider!.GetRequiredService<SkillContentCollection>();
             collection.ContainsKey("deploy-guide").ShouldBeTrue();
             collection.ContainsKey("troubleshoot").ShouldBeTrue();
+            collection.ContainsKey("platform-info").ShouldBeTrue();
         }
 
         // ── SKILL.md generation ─────────────────────────────────────────────

@@ -71,7 +71,7 @@ namespace com.IvanMurzak.McpPlugin
                     ProcessTypeMethods(type, hasToolTypeAttr, hasPromptTypeAttr, hasResourceTypeAttr);
 
                     if (hasSkillTypeAttr)
-                        ProcessTypeFields(type);
+                        ProcessTypeMembers(type);
                 }
             }
         }
@@ -97,7 +97,7 @@ namespace com.IvanMurzak.McpPlugin
                 ProcessTypeMethods(type, processTool: true, processPrompt: inPromptTypes, processResource: inResourceTypes);
 
                 if (skillTypeSet.Contains(type) && processedSkillTypes.Add(type))
-                    ProcessTypeFields(type);
+                    ProcessTypeMembers(type);
             }
 
             foreach (var type in _promptTypes)
@@ -111,7 +111,7 @@ namespace com.IvanMurzak.McpPlugin
                 ProcessTypeMethods(type, processTool: false, processPrompt: true, processResource: inResourceTypes);
 
                 if (skillTypeSet.Contains(type) && processedSkillTypes.Add(type))
-                    ProcessTypeFields(type);
+                    ProcessTypeMembers(type);
             }
 
             foreach (var type in _resourceTypes)
@@ -123,7 +123,7 @@ namespace com.IvanMurzak.McpPlugin
                 ProcessTypeMethods(type, processTool: false, processPrompt: false, processResource: true);
 
                 if (skillTypeSet.Contains(type) && processedSkillTypes.Add(type))
-                    ProcessTypeFields(type);
+                    ProcessTypeMembers(type);
             }
 
             foreach (var type in _skillTypes)
@@ -131,7 +131,7 @@ namespace com.IvanMurzak.McpPlugin
                 if (_ignoreConfig.IsIgnored(type) || !processedSkillTypes.Add(type))
                     continue;
 
-                ProcessTypeFields(type);
+                ProcessTypeMembers(type);
             }
         }
 
@@ -165,8 +165,9 @@ namespace com.IvanMurzak.McpPlugin
             }
         }
 
-        private void ProcessTypeFields(Type type)
+        private void ProcessTypeMembers(Type type)
         {
+            // Scan const string fields
             foreach (var field in type.GetFields(FieldBindingFlags))
             {
                 var skillAttr = field.GetCustomAttribute<McpPluginSkillAttribute>();
@@ -176,7 +177,7 @@ namespace com.IvanMurzak.McpPlugin
                 if (!field.IsLiteral || field.FieldType != typeof(string))
                     throw new ArgumentException(
                         $"Field '{field.Name}' in type '{type.Name}' has [McpPluginSkill] but is not a const string. " +
-                        "Only const string fields are supported.");
+                        "Only const string fields and static string properties are supported.");
 
                 if (string.IsNullOrEmpty(skillAttr.Name))
                     throw new ArgumentException(
@@ -189,11 +190,47 @@ namespace com.IvanMurzak.McpPlugin
                         "Only non-null const string values are supported.");
                 var content = (string)rawValue;
 
-                _skillFields.Add(new SkillFieldData(
+                _skillFields.Add(new SkillMemberData(
                     classType: type,
-                    fieldInfo: field,
+                    memberInfo: field,
                     attribute: skillAttr,
                     content: content
+                ));
+            }
+
+            // Scan static string properties
+            foreach (var property in type.GetProperties(FieldBindingFlags))
+            {
+                var skillAttr = property.GetCustomAttribute<McpPluginSkillAttribute>();
+                if (skillAttr == null)
+                    continue;
+
+                if (property.PropertyType != typeof(string))
+                    throw new ArgumentException(
+                        $"Property '{property.Name}' in type '{type.Name}' has [McpPluginSkill] but is not a string property. " +
+                        "Only const string fields and static string properties are supported.");
+
+                var getter = property.GetGetMethod(nonPublic: true);
+                if (getter == null || !getter.IsStatic)
+                    throw new ArgumentException(
+                        $"Property '{property.Name}' in type '{type.Name}' has [McpPluginSkill] but is not a static property with a getter. " +
+                        "Only const string fields and static string properties are supported.");
+
+                if (string.IsNullOrEmpty(skillAttr.Name))
+                    throw new ArgumentException(
+                        $"Skill name cannot be null or empty. Type: {type.Name}, Property: {property.Name}");
+
+                var value = (string?)property.GetValue(null);
+                if (value == null)
+                    throw new ArgumentException(
+                        $"Skill property '{property.Name}' in type '{type.Name}' returned null. " +
+                        "Only non-null string values are supported.");
+
+                _skillFields.Add(new SkillMemberData(
+                    classType: type,
+                    memberInfo: property,
+                    attribute: skillAttr,
+                    content: value
                 ));
             }
         }

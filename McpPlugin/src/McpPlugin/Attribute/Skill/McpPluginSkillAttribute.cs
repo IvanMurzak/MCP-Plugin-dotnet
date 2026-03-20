@@ -12,7 +12,7 @@ using System;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    [AttributeUsage(AttributeTargets.Field)]
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
     public sealed class McpPluginSkillAttribute : Attribute
     {
         public string Name { get; set; }

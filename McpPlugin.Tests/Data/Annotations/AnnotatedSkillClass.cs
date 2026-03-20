@@ -37,10 +37,24 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data.Annotations
 This should not appear.
 ";
 
+        // Static property — should be picked up
+        [McpPluginSkill("platform-info", "Platform-specific instructions")]
+        public static string PlatformInfo => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
+            System.Runtime.InteropServices.OSPlatform.Windows)
+            ? "# Windows\nUse PowerShell."
+            : "# Linux\nUse bash.";
+
+        // Static property with disabled attribute — should NOT be picked up
+        [McpPluginSkill("disabled-prop", "Disabled property skill", Enabled = false)]
+        public static string DisabledProp => "# Disabled prop";
+
         // Non-const field — should NOT be picked up
         public static string NotAConst = "I am not const";
 
         // No attribute — should NOT be picked up
         public const string NoAttribute = "I have no attribute";
+
+        // Property without attribute — should NOT be picked up
+        public static string NoPropAttribute => "I have no attribute";
     }
 }

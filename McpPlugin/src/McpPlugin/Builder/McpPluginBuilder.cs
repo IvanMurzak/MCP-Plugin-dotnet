@@ -38,7 +38,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly List<ResourceMethodData> _resourceMethods = new();
         protected readonly Dictionary<string, IRunResource> _resourceRunners = new();
 
-        protected readonly List<SkillFieldData> _skillFields = new();
+        protected readonly List<SkillMemberData> _skillFields = new();
 
         // Ignore configuration for filtering assemblies, namespaces, and types
         protected readonly McpPluginBuilderIgnoreConfig _ignoreConfig = new();

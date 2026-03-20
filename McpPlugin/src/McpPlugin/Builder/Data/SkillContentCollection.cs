@@ -25,7 +25,7 @@ namespace com.IvanMurzak.McpPlugin
             _logger?.LogTrace("Ctor.");
         }
 
-        public SkillContentCollection Add(IEnumerable<SkillFieldData> fields)
+        public SkillContentCollection Add(IEnumerable<SkillMemberData> fields)
         {
             foreach (var field in fields.Where(f => !string.IsNullOrEmpty(f.Attribute?.Name)))
             {
