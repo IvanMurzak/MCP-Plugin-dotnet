@@ -14,7 +14,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
 {
     public interface IWebhookEventCollector
     {
-        void OnToolCall(string toolName, long requestSizeBytes, long responseSizeBytes, string status, long durationMs, string? errorDetails);
+        void OnToolCall(string toolName, long requestSizeBytes, long responseSizeBytes, string status, long durationMs, string? errorDetails, string channel = "mcp");
         void OnPromptRetrieved(string promptName, long responseSizeBytes);
         void OnResourceAccessed(string resourceUri, long responseSizeBytes);
         void OnAiAgentConnected(string sessionId, string? clientName, string? clientVersion, Dictionary<string, string>? metadata);

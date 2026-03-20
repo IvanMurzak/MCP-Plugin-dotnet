@@ -14,7 +14,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
 {
     public sealed class NoOpWebhookEventCollector : IWebhookEventCollector
     {
-        public void OnToolCall(string toolName, long requestSizeBytes, long responseSizeBytes, string status, long durationMs, string? errorDetails) { }
+        public void OnToolCall(string toolName, long requestSizeBytes, long responseSizeBytes, string status, long durationMs, string? errorDetails, string channel = "mcp") { }
         public void OnPromptRetrieved(string promptName, long responseSizeBytes) { }
         public void OnResourceAccessed(string resourceUri, long responseSizeBytes) { }
         public void OnAiAgentConnected(string sessionId, string? clientName, string? clientVersion, Dictionary<string, string>? metadata) { }

@@ -41,7 +41,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             _options = options ?? throw new ArgumentNullException(nameof(options));
         }
 
-        public void OnToolCall(string toolName, long requestSizeBytes, long responseSizeBytes, string status, long durationMs, string? errorDetails)
+        public void OnToolCall(string toolName, long requestSizeBytes, long responseSizeBytes, string status, long durationMs, string? errorDetails, string channel = "mcp")
         {
             if (!_options.IsToolEnabled)
                 return;
@@ -54,7 +54,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
                 Status = status,
                 DurationMs = durationMs,
                 ErrorDetails = errorDetails,
-                BearerToken = McpSessionTokenContext.CurrentToken
+                BearerToken = McpSessionTokenContext.CurrentToken,
+                Channel = channel
             };
 
             Enqueue(_options.ToolWebhookUrl!, "tool.call.completed", evt);
