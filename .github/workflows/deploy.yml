@@ -76,7 +76,7 @@ jobs:
             exit 1
           fi
           echo "Deploying NuGet package: $nupkg_file (version: ${{ steps.version.outputs.version }})"
-          dotnet nuget push "$nupkg_file" --api-key ${{ steps.nuget_login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+          dotnet nuget push "$nupkg_file" --api-key ${{ steps.nuget_login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
 
       - name: Deploy McpPlugin NuGet package
         run: |
@@ -86,7 +86,7 @@ jobs:
             exit 1
           fi
           echo "Deploying NuGet package: $nupkg_file (version: ${{ steps.version.outputs.version }})"
-          dotnet nuget push "$nupkg_file" --api-key ${{ steps.nuget_login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+          dotnet nuget push "$nupkg_file" --api-key ${{ steps.nuget_login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
 
       - name: Deploy McpPlugin.Server NuGet package
         run: |
@@ -96,4 +96,4 @@ jobs:
             exit 1
           fi
           echo "Deploying NuGet package: $nupkg_file (version: ${{ steps.version.outputs.version }})"
-          dotnet nuget push "$nupkg_file" --api-key ${{ steps.nuget_login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+          dotnet nuget push "$nupkg_file" --api-key ${{ steps.nuget_login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
