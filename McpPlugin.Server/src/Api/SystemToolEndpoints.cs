@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
@@ -28,6 +29,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
     /// to MCP clients or AI agents. These are only accessible via direct HTTP calls.
     ///
     /// Endpoints:
+    ///   GET  /api/system-tools        — list all available system tools with schemas
     ///   POST /api/system-tools/{name} — execute a named system tool with JSON arguments
     /// </summary>
     public static class SystemToolEndpoints
@@ -49,15 +51,71 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
             var requireAuth = dataArguments.Authorization == Consts.MCP.Server.AuthOption.required;
             var group = app.MapGroup(RoutePrefix);
 
+            // GET /api/system-tools — list all registered system tools
+            var listEndpoint = group.MapGet("/", ListSystemToolsHandler);
+
             // POST /api/system-tools/{name} — invoke a system tool by name
             var callEndpoint = group.MapPost("/{name}", CallSystemToolHandler);
 
             if (requireAuth)
             {
+                listEndpoint.RequireAuthorization();
                 callEndpoint.RequireAuthorization();
             }
 
             return app;
+        }
+
+        /// <summary>
+        /// Returns a JSON array of all available system tools with their name, title, description, and schemas.
+        /// </summary>
+        static async Task ListSystemToolsHandler(HttpContext context)
+        {
+            var systemToolHub = context.RequestServices.GetRequiredService<IClientSystemToolHub>();
+            var request = new RequestListTool();
+            var response = await systemToolHub.RunListSystemTool(request, context.RequestAborted);
+
+            if (response == null)
+            {
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "System tool hub returned a null response." });
+                return;
+            }
+
+            if (response.Status == ResponseStatus.Error)
+            {
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = response.Message ?? "Failed to list system tools." });
+                return;
+            }
+
+            var tools = new List<JsonObject>();
+            if (response.Value != null)
+            {
+                foreach (var tool in response.Value)
+                {
+                    if (tool == null) continue;
+
+                    var entry = new JsonObject
+                    {
+                        ["name"] = tool.Name,
+                        ["enabled"] = tool.Enabled
+                    };
+                    if (tool.Title != null)
+                        entry["title"] = tool.Title;
+                    if (tool.Description != null)
+                        entry["description"] = tool.Description;
+                    if (tool.InputSchema is JsonElement inputEl)
+                        entry["inputSchema"] = JsonNode.Parse(inputEl.GetRawText());
+                    if (tool.OutputSchema is JsonElement outputEl)
+                        entry["outputSchema"] = JsonNode.Parse(outputEl.GetRawText());
+
+                    tools.Add(entry);
+                }
+            }
+
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(tools);
         }
 
         /// <summary>
@@ -78,7 +136,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
             IReadOnlyDictionary<string, JsonElement> arguments;
             try
             {
-                if (context.Request.ContentLength == 0 || !context.Request.HasJsonContentType())
+                if ((context.Request.ContentLength ?? 0) == 0 || !context.Request.HasJsonContentType())
                 {
                     arguments = new Dictionary<string, JsonElement>();
                 }

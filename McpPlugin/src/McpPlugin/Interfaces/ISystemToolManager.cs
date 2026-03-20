@@ -8,20 +8,16 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-#nullable enable
-using System.Threading;
-using System.Threading.Tasks;
+using System.Collections.Generic;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 
-namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
+namespace com.IvanMurzak.McpPlugin
 {
-    /// <summary>
-    /// Hub interface for system tools — internal tools available via HTTP API
-    /// but NOT exposed to MCP clients or AI agents.
-    /// </summary>
-    public interface IClientSystemToolHub
+    public interface ISystemToolManager : IClientSystemToolHub
     {
-        Task<ResponseData<ResponseCallTool>> RunSystemTool(RequestCallTool request, CancellationToken cancellationToken = default);
-        Task<ResponseData<ResponseListTool[]>> RunListSystemTool(RequestListTool request, CancellationToken cancellationToken = default);
+        int TotalToolsCount { get; }
+        IEnumerable<IRunTool> GetAllTools();
+        bool HasTool(string name);
     }
 }

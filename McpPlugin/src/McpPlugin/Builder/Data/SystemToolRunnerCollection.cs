@@ -35,35 +35,18 @@ namespace com.IvanMurzak.McpPlugin
         public SystemToolRunnerCollection Add(IEnumerable<ToolMethodData> methods)
         {
             foreach (var method in methods.Where(m => !string.IsNullOrEmpty(m.Attribute?.Name)))
-            {
-                var attr = method.Attribute;
-                this[attr.Name] = method.MethodInfo.IsStatic
-                    ? (IRunTool)RunTool.CreateFromStaticMethod(
-                        reflector: reflector,
-                        logger: _logger,
-                        name: attr.Name,
-                        methodInfo: method.MethodInfo,
-                        title: attr.Title,
-                        readOnlyHint: attr.ReadOnlyHintValue,
-                        destructiveHint: attr.DestructiveHintValue,
-                        idempotentHint: attr.IdempotentHintValue,
-                        openWorldHint: attr.OpenWorldHintValue,
-                        enabled: attr.EnabledValue,
-                        toolType: attr.ToolType)
-                    : RunTool.CreateFromClassMethod(
-                        reflector: reflector,
-                        logger: _logger,
-                        name: attr.Name,
-                        classType: method.ClassType,
-                        methodInfo: method.MethodInfo,
-                        title: attr.Title,
-                        readOnlyHint: attr.ReadOnlyHintValue,
-                        destructiveHint: attr.DestructiveHintValue,
-                        idempotentHint: attr.IdempotentHintValue,
-                        openWorldHint: attr.OpenWorldHintValue,
-                        enabled: attr.EnabledValue,
-                        toolType: attr.ToolType);
-            }
+                this[method.Attribute.Name] = RunToolFactory.Create(method, reflector, _logger);
+
+            return this;
+        }
+        public SystemToolRunnerCollection Add(IDictionary<string, IRunTool> runners)
+        {
+            if (runners == null)
+                throw new ArgumentNullException(nameof(runners));
+
+            foreach (var runner in runners)
+                this[runner.Key] = runner.Value;
+
             return this;
         }
     }

@@ -77,6 +77,27 @@ namespace com.IvanMurzak.McpPlugin.Server
             return response.Pack(request.RequestID);
         }
 
+        public async Task<ResponseData<ResponseListTool[]>> RunListSystemTool(RequestListTool request, CancellationToken cancellationToken = default)
+        {
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
+            cancellationToken = linkedCts.Token;
+
+            var response = await ClientUtils.InvokeAsync<RequestListTool, ResponseListTool[], McpServerHub>(
+                logger: _logger,
+                hubContext: _remoteAppContext,
+                methodName: nameof(IClientSystemToolHub.RunListSystemTool),
+                request: request,
+                dataArguments: _dataArguments,
+                strategy: _strategy,
+                token: McpSessionTokenContext.CurrentToken,
+                cancellationToken: cancellationToken);
+
+            if (response.Status == ResponseStatus.Error)
+                return ResponseData<ResponseListTool[]>.Error(request.RequestID, response.Message ?? "Got an error during listing system tools");
+
+            return response;
+        }
+
         public void Dispose()
         {
             _logger.LogTrace("{0} Dispose.", typeof(RemoteSystemToolRunner).Name);

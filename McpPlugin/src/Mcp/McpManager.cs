@@ -35,13 +35,13 @@ namespace com.IvanMurzak.McpPlugin
         readonly IToolManager? _tools;
         readonly IPromptManager? _prompts;
         readonly IResourceManager? _resources;
-        readonly McpSystemToolManager? _systemTools;
+        readonly ISystemToolManager? _systemTools;
 
         public Reflector Reflector => _reflector;
         public IToolManager? ToolManager => _tools;
         public IPromptManager? PromptManager => _prompts;
         public IResourceManager? ResourceManager => _resources;
-        public McpSystemToolManager? SystemToolManager => _systemTools;
+        public ISystemToolManager? SystemToolManager => _systemTools;
 
         public IClientToolHub? ToolHub => _tools;
         public IClientPromptHub? PromptHub => _prompts;
@@ -60,7 +60,7 @@ namespace com.IvanMurzak.McpPlugin
             IToolManager? tools = null,
             IPromptManager? prompts = null,
             IResourceManager? resources = null,
-            McpSystemToolManager? systemTools = null)
+            ISystemToolManager? systemTools = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("Ctor");

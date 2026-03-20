@@ -1,4 +1,4 @@
-﻿/*
+/*
 ┌────────────────────────────────────────────────────────────────────────┐
 │  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
 │  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
@@ -185,6 +185,13 @@ namespace com.IvanMurzak.McpPlugin
                     {
                         _logger.LogDebug("{class}.{method}", nameof(IClientSystemToolHub), nameof(IClientSystemToolHub.RunSystemTool));
                         return _mcpManager.SystemToolHub.RunSystemTool(data);
+                    })
+                    .AddTo(_serverEventsDisposables);
+
+                hubConnection.On<RequestListTool, ResponseData<ResponseListTool[]>>(nameof(IClientSystemToolHub.RunListSystemTool), data =>
+                    {
+                        _logger.LogDebug("{class}.{method}", nameof(IClientSystemToolHub), nameof(IClientSystemToolHub.RunListSystemTool));
+                        return _mcpManager.SystemToolHub.RunListSystemTool(data);
                     })
                     .AddTo(_serverEventsDisposables);
             }

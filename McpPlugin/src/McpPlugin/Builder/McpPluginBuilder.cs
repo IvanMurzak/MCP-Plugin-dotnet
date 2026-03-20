@@ -83,6 +83,7 @@ namespace com.IvanMurzak.McpPlugin
             _services.AddSingleton<IResourceManager, McpResourceManager>();
 
             _services.AddSingleton<McpSystemToolManager>();
+            _services.AddSingleton<ISystemToolManager>(sp => sp.GetRequiredService<McpSystemToolManager>());
 
             _services.AddSingleton<IMcpPlugin, McpPlugin>();
             _services.AddSingleton<IMcpManagerHub, McpManagerClientHub>();
@@ -310,12 +311,16 @@ namespace com.IvanMurzak.McpPlugin
             var standardMethods = _toolMethods.Where(m => m.Attribute.ToolType == McpToolType.Standard).ToList();
             var systemMethods = _toolMethods.Where(m => m.Attribute.ToolType == McpToolType.System).ToList();
 
+            var standardRunners = _toolRunners.Where(r => r.Value.ToolType == McpToolType.Standard).ToDictionary(r => r.Key, r => r.Value);
+            var systemRunners = _toolRunners.Where(r => r.Value.ToolType == McpToolType.System).ToDictionary(r => r.Key, r => r.Value);
+
             _services.AddSingleton(new ToolRunnerCollection(reflector, _loggerProvider?.CreateLogger(nameof(ToolRunnerCollection)))
                 .Add(standardMethods)
-                .Add(_toolRunners));
+                .Add(standardRunners));
 
             _services.AddSingleton(new SystemToolRunnerCollection(reflector, _loggerProvider?.CreateLogger(nameof(SystemToolRunnerCollection)))
-                .Add(systemMethods));
+                .Add(systemMethods)
+                .Add(systemRunners));
 
             _services.AddSingleton(new PromptRunnerCollection(reflector, _loggerProvider?.CreateLogger(nameof(PromptRunnerCollection)))
                 .Add(_promptMethods)

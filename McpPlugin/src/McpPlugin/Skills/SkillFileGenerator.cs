@@ -477,7 +477,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine($"  -d '{inputExample}'");
             sb.AppendLine("```");
             sb.AppendLine();
-            AppendInputFileHint(sb, tool, inputExample);
+            AppendInputFileHint(sb, tool, host, inputExample);
         }
 
         /// <summary>
@@ -485,7 +485,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// Only emitted when the input example is non-trivial (not empty <c>{}</c>).
         /// Override to suppress or customise the hint.
         /// </summary>
-        protected virtual void AppendInputFileHint(StringBuilder sb, IRunTool tool, string inputExample)
+        protected virtual void AppendInputFileHint(StringBuilder sb, IRunTool tool, string host, string inputExample)
         {
             if (inputExample == "{}")
                 return;
@@ -493,7 +493,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine(">");
             sb.AppendLine("> Or pipe via stdin:");
             sb.AppendLine("> ```bash");
-            sb.AppendLine($"> curl -X POST ${{HOST}}{GetApiRoutePrefix(tool)}/{tool.Name} -H \"Content-Type: application/json\" -d @- <<'EOF'");
+            sb.AppendLine($"> curl -X POST {host}{GetApiRoutePrefix(tool)}/{tool.Name} -H \"Content-Type: application/json\" -d @- <<'EOF'");
             sb.AppendLine("> {\"param\": \"value\"}");
             sb.AppendLine("> EOF");
             sb.AppendLine("> ```");
