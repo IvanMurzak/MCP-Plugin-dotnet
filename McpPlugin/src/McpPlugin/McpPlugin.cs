@@ -176,7 +176,11 @@ namespace com.IvanMurzak.McpPlugin
             var success = true;
 
             var tools = McpManager.ToolManager?.GetAllTools();
-            if (tools != null)
+            if (tools == null)
+            {
+                success = false;
+            }
+            else
             {
                 var systemTools = McpManager.SystemToolManager?.GetAllTools();
                 var allTools = systemTools != null ? tools.Concat(systemTools) : tools;
@@ -199,7 +203,11 @@ namespace com.IvanMurzak.McpPlugin
             var success = true;
 
             var tools = McpManager.ToolManager?.GetAllTools();
-            if (tools != null)
+            if (tools == null)
+            {
+                success = false;
+            }
+            else
             {
                 var systemTools = McpManager.SystemToolManager?.GetAllTools();
                 var allTools = systemTools != null ? tools.Concat(systemTools) : tools;

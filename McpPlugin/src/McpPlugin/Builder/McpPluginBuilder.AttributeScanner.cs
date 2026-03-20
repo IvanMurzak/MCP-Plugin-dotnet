@@ -128,7 +128,7 @@ namespace com.IvanMurzak.McpPlugin
 
             foreach (var type in _skillTypes)
             {
-                if (_ignoreConfig.IsIgnored(type) || processedSkillTypes.Contains(type))
+                if (_ignoreConfig.IsIgnored(type) || !processedSkillTypes.Add(type))
                     continue;
 
                 ProcessTypeFields(type);
@@ -182,7 +182,12 @@ namespace com.IvanMurzak.McpPlugin
                     throw new ArgumentException(
                         $"Skill name cannot be null or empty. Type: {type.Name}, Field: {field.Name}");
 
-                var content = (string)field.GetRawConstantValue()!;
+                var rawValue = field.GetRawConstantValue();
+                if (rawValue == null)
+                    throw new ArgumentException(
+                        $"Skill field '{field.Name}' in type '{type.Name}' has a null constant value. " +
+                        "Only non-null const string values are supported.");
+                var content = (string)rawValue;
 
                 _skillFields.Add(new SkillFieldData(
                     classType: type,

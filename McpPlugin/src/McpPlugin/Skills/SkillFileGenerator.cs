@@ -1113,7 +1113,8 @@ namespace com.IvanMurzak.McpPlugin.Skills
             if (value.Contains('\n'))
             {
                 var indent = "  ";
-                var indented = string.Join("\n" + indent, value.TrimEnd('\n', '\r').Split('\n'));
+                var normalized = value.Replace("\r\n", "\n").Replace("\r", "\n");
+                var indented = string.Join("\n" + indent, normalized.TrimEnd('\n').Split('\n'));
                 return $"|-\n{indent}{indented}";
             }
             if (value.Contains(':') || value.Contains('"'))
