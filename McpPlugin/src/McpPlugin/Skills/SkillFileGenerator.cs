@@ -24,7 +24,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
     /// Skill files follow the AI Skills template format and describe how to call each tool
     /// via the direct HTTP API or MCP protocol, including JSON schemas for input and output.
     /// <para>
-    /// Override virtual members to customise any aspect of file generation without replacing
+    /// Override virtual members to customize any aspect of file generation without replacing
     /// the entire class. Register a custom subclass via
     /// <c>McpPluginBuilder.WithSkillFileGenerator&lt;T&gt;()</c>.
     /// </para>
@@ -45,7 +45,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             _logger = logger;
         }
 
-        // ── Customisation properties ─────────────────────────────────────────
+        // ── Customization properties ─────────────────────────────────────────
 
         /// <summary>
         /// When <see langword="true"/> (default), a "With Authorization" curl block is included
@@ -277,7 +277,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// Builds the full markdown content for a single tool's SKILL.md.
         /// Override to replace or extend the entire document structure.
         /// For targeted changes, prefer overriding individual section helpers or the
-        /// customisation properties/methods instead.
+        /// customization properties/methods instead.
         /// </summary>
         protected virtual string BuildMarkdown(IRunTool tool, string skillName, string host)
         {
@@ -473,10 +473,31 @@ namespace com.IvanMurzak.McpPlugin.Skills
         protected virtual void BuildToolCommand(StringBuilder sb, IRunTool tool, string host, string inputExample)
         {
             sb.AppendLine("```bash");
-            sb.AppendLine($"curl -X POST {host}/api/tools/{tool.Name} \\");
+            sb.AppendLine($"curl -X POST {host}{GetApiRoutePrefix(tool)}/{tool.Name} \\");
             sb.AppendLine("  -H \"Content-Type: application/json\" \\");
             sb.AppendLine($"  -d '{inputExample}'");
             sb.AppendLine("```");
+            sb.AppendLine();
+            AppendInputFileHint(sb, tool, host, inputExample);
+        }
+
+        /// <summary>
+        /// Appends a short hint about using <c>--input-file</c> (or <c>-d @file</c>) for complex input.
+        /// Only emitted when the input example is non-trivial (not empty <c>{}</c>).
+        /// Override to suppress or customize the hint.
+        /// </summary>
+        protected virtual void AppendInputFileHint(StringBuilder sb, IRunTool tool, string host, string inputExample)
+        {
+            if (inputExample == "{}")
+                return;
+            sb.AppendLine("> For complex input (multi-line strings, code), save the JSON to a file and use `-d @args.json`.");
+            sb.AppendLine(">");
+            sb.AppendLine("> Or pipe via stdin:");
+            sb.AppendLine("> ```bash");
+            sb.AppendLine($"> curl -X POST {host}{GetApiRoutePrefix(tool)}/{tool.Name} -H \"Content-Type: application/json\" -d @- <<'EOF'");
+            sb.AppendLine("> {\"param\": \"value\"}");
+            sb.AppendLine("> EOF");
+            sb.AppendLine("> ```");
             sb.AppendLine();
         }
 
@@ -531,7 +552,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine("#### With Authorization (if required)");
             sb.AppendLine();
             sb.AppendLine("```bash");
-            sb.AppendLine($"curl -X POST {host}/api/tools/{tool.Name} \\");
+            sb.AppendLine($"curl -X POST {host}{GetApiRoutePrefix(tool)}/{tool.Name} \\");
             sb.AppendLine("  -H \"Content-Type: application/json\" \\");
             sb.AppendLine("  -H \"Authorization: Bearer YOUR_TOKEN\" \\");
             sb.AppendLine($"  -d '{inputExample}'");
@@ -814,7 +835,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
         /// <summary>
         /// Pretty-prints a <see cref="JsonNode"/> to an indented JSON string.
-        /// Override to change serialisation options or handle errors differently.
+        /// Override to change serialization options or handle errors differently.
         /// </summary>
         protected virtual string PrettyPrintJson(JsonNode? node)
         {
@@ -832,6 +853,15 @@ namespace com.IvanMurzak.McpPlugin.Skills
         }
 
         // ── Protected static utilities ───────────────────────────────────────
+
+        /// <summary>
+        /// Returns the HTTP API route prefix for a tool based on its <see cref="IRunTool.ToolType"/>.
+        /// Standard tools use <c>/api/tools</c>; system tools use <c>/api/system-tools</c>.
+        /// </summary>
+        protected static string GetApiRoutePrefix(IRunTool tool)
+        {
+            return tool.ToolType == McpToolType.System ? "/api/system-tools" : "/api/tools";
+        }
 
         /// <summary>
         /// Creates a placeholder JSON value for the given JSON Schema type string.

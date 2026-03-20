@@ -173,8 +173,11 @@ namespace com.IvanMurzak.McpPlugin
             if (tools == null)
                 return false;
 
+            var systemTools = McpManager.SystemToolManager?.GetAllTools();
+            var allTools = systemTools != null ? tools.Concat(systemTools) : tools;
+
             var skillsPath = ResolveSkillsPath(path);
-            return _skillFileGenerator.Generate(tools, skillsPath, _connectionConfig.Host);
+            return _skillFileGenerator.Generate(allTools, skillsPath, _connectionConfig.Host);
         }
 
         public bool DeleteSkillFiles(string? path = null)
@@ -183,8 +186,11 @@ namespace com.IvanMurzak.McpPlugin
             if (tools == null)
                 return false;
 
+            var systemTools = McpManager.SystemToolManager?.GetAllTools();
+            var allTools = systemTools != null ? tools.Concat(systemTools) : tools;
+
             var skillsPath = ResolveSkillsPath(path);
-            return _skillFileGenerator.Delete(tools, skillsPath);
+            return _skillFileGenerator.Delete(allTools, skillsPath);
         }
 
         private string ResolveSkillsPath(string? basePath)

@@ -16,31 +16,36 @@ using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public class ToolRunnerCollection : Dictionary<string, IRunTool>
+    /// <summary>
+    /// Collection of system tool runners — built from methods with
+    /// <see cref="McpPluginToolAttribute.ToolType"/> set to <see cref="McpToolType.System"/>.
+    /// </summary>
+    public class SystemToolRunnerCollection : Dictionary<string, IRunTool>
     {
         readonly Reflector reflector;
         readonly ILogger? _logger;
 
-        public ToolRunnerCollection(Reflector reflector, ILogger? logger)
+        public SystemToolRunnerCollection(Reflector reflector, ILogger? logger)
         {
             this.reflector = reflector ?? throw new ArgumentNullException(nameof(reflector));
             _logger = logger;
             _logger?.LogTrace("Ctor.");
         }
-        public ToolRunnerCollection Add(IEnumerable<ToolMethodData> methods)
+
+        public SystemToolRunnerCollection Add(IEnumerable<ToolMethodData> methods)
         {
-            foreach (var method in methods.Where(resource => !string.IsNullOrEmpty(resource.Attribute?.Name)))
+            foreach (var method in methods.Where(m => !string.IsNullOrEmpty(m.Attribute?.Name)))
                 this[method.Attribute.Name] = RunToolFactory.Create(method, reflector, _logger);
 
             return this;
         }
-        public ToolRunnerCollection Add(IDictionary<string, IRunTool> runners)
+        public SystemToolRunnerCollection Add(IDictionary<string, IRunTool> runners)
         {
             if (runners == null)
                 throw new ArgumentNullException(nameof(runners));
 
             foreach (var runner in runners)
-                Add(runner.Key, runner.Value);
+                this[runner.Key] = runner.Value;
 
             return this;
         }
