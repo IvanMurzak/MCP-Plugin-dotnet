@@ -203,6 +203,179 @@ namespace com.IvanMurzak.McpPlugin.Skills
             return success;
         }
 
+        // ── Custom skill content generation ──────────────────────────────────
+
+        /// <summary>
+        /// Generates skill markdown files for custom skill content entries.
+        /// Each skill gets YAML frontmatter (name, description) plus its verbatim content body.
+        /// </summary>
+        public virtual bool Generate(IEnumerable<ISkillContent> skills, string skillsPath)
+        {
+            if (skills == null)
+            {
+                _logger?.LogWarning("{class}.{method}: skills collection is null, skipping.",
+                    nameof(SkillFileGenerator), nameof(Generate));
+                return false;
+            }
+
+            var skillsDir = skillsPath;
+
+            try
+            {
+                Directory.CreateDirectory(skillsDir);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "{class}.{method}: Failed to create skills directory '{dir}'.",
+                    nameof(SkillFileGenerator), nameof(Generate), skillsDir);
+                return false;
+            }
+
+            var skillList = new List<ISkillContent>();
+            foreach (var skill in skills)
+                if (skill != null) skillList.Add(skill);
+
+            var nameMap = BuildSkillNameMap(skillList, nameof(Generate));
+            var success = true;
+            foreach (var skill in skillList)
+                if (!GenerateForSkillContent(skill, skillsDir, nameMap[skill.Name]))
+                    success = false;
+
+            return success;
+        }
+
+        /// <summary>
+        /// Deletes the skill subdirectory for each custom skill from <paramref name="skillsPath"/>.
+        /// </summary>
+        public virtual bool Delete(IEnumerable<ISkillContent> skills, string skillsPath)
+        {
+            if (skills == null)
+            {
+                _logger?.LogWarning("{class}.{method}: skills collection is null, skipping.",
+                    nameof(SkillFileGenerator), nameof(Delete));
+                return false;
+            }
+
+            var skillsDir = skillsPath;
+
+            if (!Directory.Exists(skillsDir))
+                return true;
+
+            var skillList = new List<ISkillContent>();
+            foreach (var skill in skills)
+                if (skill != null) skillList.Add(skill);
+
+            var nameMap = BuildSkillNameMap(skillList, nameof(Delete));
+
+            var success = true;
+            foreach (var skill in skillList)
+            {
+                var skillDir = Path.Combine(skillsDir, nameMap[skill.Name]);
+                if (!Directory.Exists(skillDir))
+                    continue;
+
+                try
+                {
+                    Directory.Delete(skillDir, recursive: true);
+                    _logger?.LogDebug("{class}.{method}: Deleted skill directory for skill '{skill}' → '{path}'.",
+                        nameof(SkillFileGenerator), nameof(Delete), skill.Name, skillDir);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "{class}.{method}: Failed to delete skill directory for skill '{skill}' at '{path}'.",
+                        nameof(SkillFileGenerator), nameof(Delete), skill.Name, skillDir);
+                    success = false;
+                }
+            }
+
+            return success;
+        }
+
+        /// <summary>
+        /// Generates a skill subdirectory and SKILL.md file for a custom skill content entry.
+        /// </summary>
+        protected virtual bool GenerateForSkillContent(ISkillContent skill, string skillsDir, string skillName)
+        {
+            skillName = SanitizeSkillName(skillName);
+            var skillDir = Path.Combine(skillsDir, skillName);
+            var filePath = Path.Combine(skillDir, "SKILL.md");
+
+            try
+            {
+                Directory.CreateDirectory(skillDir);
+                var content = BuildSkillContentMarkdown(skill, skillName);
+                File.WriteAllText(filePath, content, _utf8NoBom);
+                _logger?.LogDebug("{class}.{method}: Skill file written for skill '{skill}' → '{path}'.",
+                    nameof(SkillFileGenerator), nameof(GenerateForSkillContent), skill.Name, filePath);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "{class}.{method}: Failed to write skill file for skill '{skill}' at '{path}'.",
+                    nameof(SkillFileGenerator), nameof(GenerateForSkillContent), skill.Name, filePath);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Builds the full markdown content for a custom skill's SKILL.md.
+        /// Contains YAML frontmatter (name, description) followed by the verbatim content body.
+        /// </summary>
+        protected virtual string BuildSkillContentMarkdown(ISkillContent skill, string skillName)
+        {
+            var sb = new StringBuilder();
+            var description = skill.Description ?? string.Empty;
+
+            // YAML front-matter
+            sb.AppendLine("---");
+            sb.AppendLine($"name: {EscapeYaml(skillName)}");
+            sb.AppendLine($"description: {EscapeYaml(description)}");
+            sb.AppendLine("---");
+
+            // Verbatim content body
+            sb.Append(skill.Content);
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Builds a mapping from each skill's raw name to its final skill directory name,
+        /// applying <see cref="SanitizeSkillName"/> and appending a stable hash suffix on collisions.
+        /// </summary>
+        protected virtual Dictionary<string, string> BuildSkillNameMap(List<ISkillContent> skills, string callerName)
+        {
+            var sanitizedGroups = new Dictionary<string, List<ISkillContent>>(StringComparer.Ordinal);
+            foreach (var skill in skills)
+            {
+                var sanitized = SanitizeSkillName(skill.Name);
+                if (!sanitizedGroups.TryGetValue(sanitized, out var group))
+                    sanitizedGroups[sanitized] = group = new List<ISkillContent>();
+                group.Add(skill);
+            }
+
+            var nameMap = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var kvp in sanitizedGroups)
+            {
+                if (kvp.Value.Count == 1)
+                {
+                    nameMap[kvp.Value[0].Name] = kvp.Key;
+                }
+                else
+                {
+                    _logger?.LogWarning(
+                        "{class}.{method}: Skills [{skills}] all sanitize to '{sanitized}'. Appending hash suffixes to avoid directory collisions.",
+                        nameof(SkillFileGenerator), callerName,
+                        string.Join(", ", kvp.Value.ConvertAll(s => "'" + s.Name + "'")),
+                        kvp.Key);
+
+                    foreach (var skill in kvp.Value)
+                        nameMap[skill.Name] = kvp.Key + "-" + StableShortHash(skill.Name);
+                }
+            }
+
+            return nameMap;
+        }
+
         // ── Protected virtual helpers ────────────────────────────────────────
 
         /// <summary>
@@ -931,11 +1104,20 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
         /// <summary>
         /// Escapes a string for safe use as a YAML scalar value.
+        /// For multi-line values, returns a YAML literal block scalar (<c>|-</c>)
+        /// with each line indented by two spaces.
         /// Available to subclasses for use in custom <see cref="BuildMarkdown"/> overrides.
         /// </summary>
         protected static string EscapeYaml(string value)
         {
-            if (value.Contains(':') || value.Contains('"') || value.Contains('\n'))
+            if (value.Contains('\n'))
+            {
+                var indent = "  ";
+                var normalized = value.Replace("\r\n", "\n").Replace("\r", "\n");
+                var indented = string.Join("\n" + indent, normalized.TrimEnd('\n').Split('\n'));
+                return $"|-\n{indent}{indented}";
+            }
+            if (value.Contains(':') || value.Contains('"'))
                 return $"\"{value.Replace("\"", "\\\"")}\"";
             return value;
         }

@@ -32,6 +32,7 @@ namespace com.IvanMurzak.McpPlugin
         private readonly ThreadSafeBool _isDisposed = new(false);
         private readonly Common.Version _version;
         private readonly ISkillFileGenerator _skillFileGenerator;
+        private readonly SkillContentCollection _skillContentCollection;
         private readonly ConnectionConfig _connectionConfig;
 
         public ILogger Logger => _logger;
@@ -51,6 +52,7 @@ namespace com.IvanMurzak.McpPlugin
             IMcpManagerHub mcpManagerHub,
             Common.Version version,
             ISkillFileGenerator skillFileGenerator,
+            SkillContentCollection skillContentCollection,
             IOptions<ConnectionConfig>? connectionConfig = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -63,6 +65,7 @@ namespace com.IvanMurzak.McpPlugin
             _version = version ?? throw new ArgumentNullException(nameof(version));
             _connectionConfig = connectionConfig?.Value ?? new ConnectionConfig();
             _skillFileGenerator = skillFileGenerator ?? throw new ArgumentNullException(nameof(skillFileGenerator));
+            _skillContentCollection = skillContentCollection ?? throw new ArgumentNullException(nameof(skillContentCollection));
             _mcpManagerHub.ConnectionState
                 .Where(state => state == HubConnectionState.Connected)
                 .Where(state => !_cancellationTokenSource.Token.IsCancellationRequested)
@@ -169,28 +172,56 @@ namespace com.IvanMurzak.McpPlugin
 
         public bool GenerateSkillFiles(string? path = null)
         {
+            var skillsPath = ResolveSkillsPath(path);
+            var success = true;
+
             var tools = McpManager.ToolManager?.GetAllTools();
             if (tools == null)
-                return false;
+            {
+                success = false;
+            }
+            else
+            {
+                var systemTools = McpManager.SystemToolManager?.GetAllTools();
+                var allTools = systemTools != null ? tools.Concat(systemTools) : tools;
+                if (!_skillFileGenerator.Generate(allTools, skillsPath, _connectionConfig.Host))
+                    success = false;
+            }
 
-            var systemTools = McpManager.SystemToolManager?.GetAllTools();
-            var allTools = systemTools != null ? tools.Concat(systemTools) : tools;
+            if (_skillContentCollection.Count > 0)
+            {
+                if (!_skillFileGenerator.Generate(_skillContentCollection.Values, skillsPath))
+                    success = false;
+            }
 
-            var skillsPath = ResolveSkillsPath(path);
-            return _skillFileGenerator.Generate(allTools, skillsPath, _connectionConfig.Host);
+            return success;
         }
 
         public bool DeleteSkillFiles(string? path = null)
         {
+            var skillsPath = ResolveSkillsPath(path);
+            var success = true;
+
             var tools = McpManager.ToolManager?.GetAllTools();
             if (tools == null)
-                return false;
+            {
+                success = false;
+            }
+            else
+            {
+                var systemTools = McpManager.SystemToolManager?.GetAllTools();
+                var allTools = systemTools != null ? tools.Concat(systemTools) : tools;
+                if (!_skillFileGenerator.Delete(allTools, skillsPath))
+                    success = false;
+            }
 
-            var systemTools = McpManager.SystemToolManager?.GetAllTools();
-            var allTools = systemTools != null ? tools.Concat(systemTools) : tools;
+            if (_skillContentCollection.Count > 0)
+            {
+                if (!_skillFileGenerator.Delete(_skillContentCollection.Values, skillsPath))
+                    success = false;
+            }
 
-            var skillsPath = ResolveSkillsPath(path);
-            return _skillFileGenerator.Delete(allTools, skillsPath);
+            return success;
         }
 
         private string ResolveSkillsPath(string? basePath)

@@ -54,6 +54,14 @@ namespace com.IvanMurzak.McpPlugin
         IMcpPluginBuilder WithResourcesFromAssembly(IEnumerable<Assembly> assemblies);
         IMcpPluginBuilder WithResourcesFromAssembly(Assembly? assembly = null);
 
+        // Skill methods
+        IMcpPluginBuilder WithSkills<T>();
+        IMcpPluginBuilder WithSkills(params Type[] targetTypes);
+        IMcpPluginBuilder WithSkills(IEnumerable<Type> targetTypes);
+        IMcpPluginBuilder WithSkills(Type classType);
+        IMcpPluginBuilder WithSkillsFromAssembly(IEnumerable<Assembly> assemblies);
+        IMcpPluginBuilder WithSkillsFromAssembly(Assembly? assembly = null);
+
         // Configuration methods
         IMcpPluginBuilder AddLogging(Action<ILoggingBuilder> loggingBuilder);
         IMcpPluginBuilder SetConfig(ConnectionConfig config);
