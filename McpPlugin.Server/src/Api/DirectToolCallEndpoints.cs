@@ -186,10 +186,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
             if (webhookOptions?.IsToolEnabled == true)
             {
                 stopwatch = Stopwatch.StartNew();
-                requestSize = arguments.Count > 0
-                    ? System.Text.Encoding.UTF8.GetByteCount(
-                        JsonSerializer.Serialize(arguments))
-                    : 0;
+                if (arguments.Count > 0)
+                {
+                    try
+                    {
+                        requestSize = JsonSerializer.SerializeToUtf8Bytes(arguments).Length;
+                    }
+                    catch (Exception) { /* measurement failure is non-fatal */ }
+                }
             }
 
             var requestData = new RequestCallTool(name, arguments);
@@ -217,7 +221,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
                             responseSize = System.Text.Encoding.UTF8.GetByteCount(
                                 JsonSerializer.Serialize(response.Value));
                         }
-                        catch { /* measurement failure is non-fatal */ }
+                        catch (Exception) { /* measurement failure is non-fatal */ }
                     }
 
                     collector.OnToolCall(

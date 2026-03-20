@@ -458,6 +458,50 @@ namespace McpPlugin.Server.Tests.Webhooks
         }
 
         [Fact]
+        public void OnToolCall_DefaultChannel_IsMcp()
+        {
+            var options = CreateOptions();
+            var dispatcher = new Mock<IWebhookDispatcher>();
+            WebhookMessage? captured = null;
+            dispatcher.Setup(d => d.TryEnqueue(It.IsAny<WebhookMessage>()))
+                .Callback<WebhookMessage>(m => captured = m)
+                .Returns(true);
+
+            var collector = new WebhookEventCollector(
+                Mock.Of<ILogger<WebhookEventCollector>>(),
+                dispatcher.Object,
+                options);
+
+            collector.OnToolCall("add", 10, 20, "success", 5, null);
+
+            captured.ShouldNotBeNull();
+            var data = JsonDocument.Parse(captured!.JsonPayload).RootElement.GetProperty("data");
+            data.GetProperty("channel").GetString().ShouldBe("mcp");
+        }
+
+        [Fact]
+        public void OnToolCall_NonDefaultChannel_IsEmittedCorrectly()
+        {
+            var options = CreateOptions();
+            var dispatcher = new Mock<IWebhookDispatcher>();
+            WebhookMessage? captured = null;
+            dispatcher.Setup(d => d.TryEnqueue(It.IsAny<WebhookMessage>()))
+                .Callback<WebhookMessage>(m => captured = m)
+                .Returns(true);
+
+            var collector = new WebhookEventCollector(
+                Mock.Of<ILogger<WebhookEventCollector>>(),
+                dispatcher.Object,
+                options);
+
+            collector.OnToolCall("add", 10, 20, "success", 5, null, "http");
+
+            captured.ShouldNotBeNull();
+            var data = JsonDocument.Parse(captured!.JsonPayload).RootElement.GetProperty("data");
+            data.GetProperty("channel").GetString().ShouldBe("http");
+        }
+
+        [Fact]
         public void OnResourceAccessed_IncludesBearerToken_WhenSessionTokenSet()
         {
             var options = CreateOptions();
