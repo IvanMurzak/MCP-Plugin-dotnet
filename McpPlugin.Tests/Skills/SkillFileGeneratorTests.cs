@@ -328,7 +328,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             var generator = new SkillFileGenerator();
 
             bool result = false;
-            Action act = () => { result = generator.Delete(null!, _tempDir); };
+            Action act = () => { result = generator.Delete((IEnumerable<IRunTool>)null!, _tempDir); };
 
             Should.NotThrow(act);
             result.ShouldBeFalse();

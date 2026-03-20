@@ -18,6 +18,7 @@ namespace com.IvanMurzak.McpPlugin
     public partial class McpPluginBuilder
     {
         private const BindingFlags MethodBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
+        private const BindingFlags FieldBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
 
         private void ProcessAllAssemblies()
         {
@@ -29,11 +30,14 @@ namespace com.IvanMurzak.McpPlugin
                 allAssemblies.Add(assembly);
             foreach (var assembly in _resourceAssemblies)
                 allAssemblies.Add(assembly);
+            foreach (var assembly in _skillAssemblies)
+                allAssemblies.Add(assembly);
 
             // Track which assemblies are registered for which purpose
             var toolAssemblySet = new HashSet<Assembly>(_toolAssemblies);
             var promptAssemblySet = new HashSet<Assembly>(_promptAssemblies);
             var resourceAssemblySet = new HashSet<Assembly>(_resourceAssemblies);
+            var skillAssemblySet = new HashSet<Assembly>(_skillAssemblies);
 
             // Process explicitly registered types (combined scan)
             ProcessExplicitTypes();
@@ -47,6 +51,7 @@ namespace com.IvanMurzak.McpPlugin
                 var isToolAssembly = toolAssemblySet.Contains(assembly);
                 var isPromptAssembly = promptAssemblySet.Contains(assembly);
                 var isResourceAssembly = resourceAssemblySet.Contains(assembly);
+                var isSkillAssembly = skillAssemblySet.Contains(assembly);
 
                 foreach (var type in AssemblyUtils.GetAssemblyTypes(assembly))
                 {
@@ -57,12 +62,16 @@ namespace com.IvanMurzak.McpPlugin
                     var hasToolTypeAttr = isToolAssembly && Attribute.IsDefined(type, typeof(McpPluginToolTypeAttribute));
                     var hasPromptTypeAttr = isPromptAssembly && Attribute.IsDefined(type, typeof(McpPluginPromptTypeAttribute));
                     var hasResourceTypeAttr = isResourceAssembly && Attribute.IsDefined(type, typeof(McpPluginResourceTypeAttribute));
+                    var hasSkillTypeAttr = isSkillAssembly && Attribute.IsDefined(type, typeof(McpPluginSkillTypeAttribute));
 
-                    if (!hasToolTypeAttr && !hasPromptTypeAttr && !hasResourceTypeAttr)
+                    if (!hasToolTypeAttr && !hasPromptTypeAttr && !hasResourceTypeAttr && !hasSkillTypeAttr)
                         continue;
 
                     // Scan methods once, extract all attributes
                     ProcessTypeMethods(type, hasToolTypeAttr, hasPromptTypeAttr, hasResourceTypeAttr);
+
+                    if (hasSkillTypeAttr)
+                        ProcessTypeFields(type);
                 }
             }
         }
@@ -72,7 +81,9 @@ namespace com.IvanMurzak.McpPlugin
             // Convert to HashSet for O(1) lookup
             var promptTypeSet = new HashSet<Type>(_promptTypes);
             var resourceTypeSet = new HashSet<Type>(_resourceTypes);
+            var skillTypeSet = new HashSet<Type>(_skillTypes);
             var processedTypes = new HashSet<Type>();
+            var processedSkillTypes = new HashSet<Type>();
 
             foreach (var type in _toolTypes)
             {
@@ -84,6 +95,9 @@ namespace com.IvanMurzak.McpPlugin
                 var inResourceTypes = resourceTypeSet.Contains(type);
 
                 ProcessTypeMethods(type, processTool: true, processPrompt: inPromptTypes, processResource: inResourceTypes);
+
+                if (skillTypeSet.Contains(type) && processedSkillTypes.Add(type))
+                    ProcessTypeFields(type);
             }
 
             foreach (var type in _promptTypes)
@@ -95,6 +109,9 @@ namespace com.IvanMurzak.McpPlugin
                 var inResourceTypes = resourceTypeSet.Contains(type);
 
                 ProcessTypeMethods(type, processTool: false, processPrompt: true, processResource: inResourceTypes);
+
+                if (skillTypeSet.Contains(type) && processedSkillTypes.Add(type))
+                    ProcessTypeFields(type);
             }
 
             foreach (var type in _resourceTypes)
@@ -102,7 +119,19 @@ namespace com.IvanMurzak.McpPlugin
                 if (_ignoreConfig.IsIgnored(type) || processedTypes.Contains(type))
                     continue;
 
+                processedTypes.Add(type);
                 ProcessTypeMethods(type, processTool: false, processPrompt: false, processResource: true);
+
+                if (skillTypeSet.Contains(type) && processedSkillTypes.Add(type))
+                    ProcessTypeFields(type);
+            }
+
+            foreach (var type in _skillTypes)
+            {
+                if (_ignoreConfig.IsIgnored(type) || processedSkillTypes.Contains(type))
+                    continue;
+
+                ProcessTypeFields(type);
             }
         }
 
@@ -133,6 +162,34 @@ namespace com.IvanMurzak.McpPlugin
                         WithResource(classType: type, getContentMethod: method);
                     }
                 }
+            }
+        }
+
+        private void ProcessTypeFields(Type type)
+        {
+            foreach (var field in type.GetFields(FieldBindingFlags))
+            {
+                var skillAttr = field.GetCustomAttribute<McpPluginSkillAttribute>();
+                if (skillAttr == null)
+                    continue;
+
+                if (!field.IsLiteral || field.FieldType != typeof(string))
+                    throw new ArgumentException(
+                        $"Field '{field.Name}' in type '{type.Name}' has [McpPluginSkill] but is not a const string. " +
+                        "Only const string fields are supported.");
+
+                if (string.IsNullOrEmpty(skillAttr.Name))
+                    throw new ArgumentException(
+                        $"Skill name cannot be null or empty. Type: {type.Name}, Field: {field.Name}");
+
+                var content = (string)field.GetRawConstantValue()!;
+
+                _skillFields.Add(new SkillFieldData(
+                    classType: type,
+                    fieldInfo: field,
+                    attribute: skillAttr,
+                    content: content
+                ));
             }
         }
     }

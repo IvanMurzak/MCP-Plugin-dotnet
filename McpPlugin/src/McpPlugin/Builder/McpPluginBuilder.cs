@@ -38,6 +38,8 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly List<ResourceMethodData> _resourceMethods = new();
         protected readonly Dictionary<string, IRunResource> _resourceRunners = new();
 
+        protected readonly List<SkillFieldData> _skillFields = new();
+
         // Ignore configuration for filtering assemblies, namespaces, and types
         protected readonly McpPluginBuilderIgnoreConfig _ignoreConfig = new();
 
@@ -48,11 +50,13 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly List<Assembly> _toolAssemblies = new();
         protected readonly List<Assembly> _promptAssemblies = new();
         protected readonly List<Assembly> _resourceAssemblies = new();
+        protected readonly List<Assembly> _skillAssemblies = new();
 
         // Lazy type scanning - store types to scan later
         protected readonly List<Type> _toolTypes = new();
         protected readonly List<Type> _promptTypes = new();
         protected readonly List<Type> _resourceTypes = new();
+        protected readonly List<Type> _skillTypes = new();
 
         protected bool isBuilt = false;
         protected bool _skillFileGeneratorSet = false;
@@ -329,6 +333,9 @@ namespace com.IvanMurzak.McpPlugin
             _services.AddSingleton(new ResourceRunnerCollection(reflector, _loggerProvider?.CreateLogger(nameof(ResourceRunnerCollection)))
                 .Add(_resourceMethods)
                 .Add(_resourceRunners));
+
+            _services.AddSingleton(new SkillContentCollection(_loggerProvider?.CreateLogger(nameof(SkillContentCollection)))
+                .Add(_skillFields));
 
             if (_externalConfig != null)
                 _services.AddSingleton<IOptions<ConnectionConfig>>(new OptionsWrapper<ConnectionConfig>(_externalConfig));

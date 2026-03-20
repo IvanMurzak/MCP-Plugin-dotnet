@@ -33,5 +33,18 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// tools are removed; all other content inside <paramref name="skillsPath"/> is left intact.
         /// </summary>
         bool Delete(IEnumerable<IRunTool> tools, string skillsPath);
+
+        /// <summary>
+        /// Generates skill markdown files for all provided custom skill content entries
+        /// under <paramref name="skillsPath"/>. Each skill gets YAML frontmatter (name, description)
+        /// plus its verbatim content body.
+        /// </summary>
+        bool Generate(IEnumerable<ISkillContent> skills, string skillsPath);
+
+        /// <summary>
+        /// Deletes the skill subdirectory for each custom skill in <paramref name="skills"/>
+        /// from <paramref name="skillsPath"/>.
+        /// </summary>
+        bool Delete(IEnumerable<ISkillContent> skills, string skillsPath);
     }
 }
