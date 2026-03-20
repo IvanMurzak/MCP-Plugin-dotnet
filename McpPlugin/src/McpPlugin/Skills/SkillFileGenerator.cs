@@ -490,6 +490,13 @@ namespace com.IvanMurzak.McpPlugin.Skills
             if (inputExample == "{}")
                 return;
             sb.AppendLine("> For complex input (multi-line strings, code), save the JSON to a file and use `-d @args.json`.");
+            sb.AppendLine(">");
+            sb.AppendLine("> Or pipe via stdin:");
+            sb.AppendLine("> ```bash");
+            sb.AppendLine($"> curl -X POST ${{HOST}}{GetApiRoutePrefix(tool)}/{tool.Name} -H \"Content-Type: application/json\" -d @- <<'EOF'");
+            sb.AppendLine("> {\"param\": \"value\"}");
+            sb.AppendLine("> EOF");
+            sb.AppendLine("> ```");
             sb.AppendLine();
         }
 
