@@ -24,7 +24,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
     /// Skill files follow the AI Skills template format and describe how to call each tool
     /// via the direct HTTP API or MCP protocol, including JSON schemas for input and output.
     /// <para>
-    /// Override virtual members to customise any aspect of file generation without replacing
+    /// Override virtual members to customize any aspect of file generation without replacing
     /// the entire class. Register a custom subclass via
     /// <c>McpPluginBuilder.WithSkillFileGenerator&lt;T&gt;()</c>.
     /// </para>
@@ -44,7 +44,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             _logger = logger;
         }
 
-        // ── Customisation properties ─────────────────────────────────────────
+        // ── Customization properties ─────────────────────────────────────────
 
         /// <summary>
         /// When <see langword="true"/> (default), a "With Authorization" curl block is included
@@ -276,7 +276,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// Builds the full markdown content for a single tool's SKILL.md.
         /// Override to replace or extend the entire document structure.
         /// For targeted changes, prefer overriding individual section helpers or the
-        /// customisation properties/methods instead.
+        /// customization properties/methods instead.
         /// </summary>
         protected virtual string BuildMarkdown(IRunTool tool, string skillName, string host)
         {
@@ -483,7 +483,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// <summary>
         /// Appends a short hint about using <c>--input-file</c> (or <c>-d @file</c>) for complex input.
         /// Only emitted when the input example is non-trivial (not empty <c>{}</c>).
-        /// Override to suppress or customise the hint.
+        /// Override to suppress or customize the hint.
         /// </summary>
         protected virtual void AppendInputFileHint(StringBuilder sb, IRunTool tool, string host, string inputExample)
         {
@@ -834,7 +834,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
         /// <summary>
         /// Pretty-prints a <see cref="JsonNode"/> to an indented JSON string.
-        /// Override to change serialisation options or handle errors differently.
+        /// Override to change serialization options or handle errors differently.
         /// </summary>
         protected virtual string PrettyPrintJson(JsonNode? node)
         {
