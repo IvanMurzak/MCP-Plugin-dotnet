@@ -137,6 +137,22 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
         }
 
         [Fact]
+        public void Generate_WithSingleTool_WritesUtf8WithoutBom()
+        {
+            var generator = new SkillFileGenerator();
+            var tool = new MockRunTool { Name = "my-tool" };
+
+            var result = generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            result.ShouldBeTrue();
+            var expectedFile = Path.Combine(_tempDir, "my-tool", "SKILL.md");
+            var bytes = File.ReadAllBytes(expectedFile);
+
+            bytes.Length.ShouldBeGreaterThan(3);
+            (bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF).ShouldBeFalse();
+        }
+
+        [Fact]
         public void Generate_WithMultipleTools_CreatesFileForEach()
         {
             var generator = new SkillFileGenerator();
