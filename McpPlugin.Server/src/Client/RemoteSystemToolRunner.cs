@@ -25,25 +25,27 @@ using R3;
 namespace com.IvanMurzak.McpPlugin.Server
 {
     /// <summary>
-    /// Server-side runner for system tools. Unlike regular tools (which use the request
-    /// tracking service for deferred completion via <c>NotifyToolRequestCompleted</c>),
-    /// system tools return their response directly via SignalR <c>InvokeAsync</c>.
+    /// Server-side runner for system tools. Uses the request tracking service to support
+    /// both synchronous responses and deferred completion via <c>NotifyToolRequestCompleted</c>
+    /// (e.g. when a system tool triggers Unity compilation and must wait for it to finish).
     /// </summary>
     public class RemoteSystemToolRunner : IClientSystemToolHub, IDisposable
     {
         readonly ILogger _logger;
         readonly IDataArguments _dataArguments;
         readonly IHubContext<McpServerHub> _remoteAppContext;
+        readonly IRequestTrackingService _requestTrackingService;
         readonly IMcpConnectionStrategy _strategy;
         readonly CompositeDisposable _disposables = new();
         readonly CancellationTokenSource _cancellationTokenSource;
 
-        public RemoteSystemToolRunner(ILogger<RemoteSystemToolRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IMcpConnectionStrategy strategy)
+        public RemoteSystemToolRunner(ILogger<RemoteSystemToolRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IRequestTrackingService requestTrackingService, IMcpConnectionStrategy strategy)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("Ctor.");
             _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
             _remoteAppContext = remoteAppContext ?? throw new ArgumentNullException(nameof(remoteAppContext));
+            _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
             _strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
             _cancellationTokenSource = _disposables.ToCancellationTokenSource();
         }
@@ -53,20 +55,26 @@ namespace com.IvanMurzak.McpPlugin.Server
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
             cancellationToken = linkedCts.Token;
 
-            var response = await ClientUtils.InvokeAsync<RequestCallTool, ResponseCallTool, McpServerHub>(
-                logger: _logger,
-                hubContext: _remoteAppContext,
-                methodName: nameof(IClientSystemToolHub.RunSystemTool),
-                request: request,
-                dataArguments: _dataArguments,
-                strategy: _strategy,
-                token: McpSessionTokenContext.CurrentToken,
-                cancellationToken: cancellationToken);
+            var response = await _requestTrackingService.TrackRequestAsync(
+                request.RequestID,
+                async () =>
+                {
+                    var responseData = await ClientUtils.InvokeAsync<RequestCallTool, ResponseCallTool, McpServerHub>(
+                        logger: _logger,
+                        hubContext: _remoteAppContext,
+                        methodName: nameof(IClientSystemToolHub.RunSystemTool),
+                        request: request,
+                        dataArguments: _dataArguments,
+                        strategy: _strategy,
+                        token: McpSessionTokenContext.CurrentToken,
+                        cancellationToken: cancellationToken);
 
-            if (response.Status == ResponseStatus.Error)
-                return ResponseData<ResponseCallTool>.Error(request.RequestID, response.Message ?? "System tool execution failed.");
+                    return responseData.Value ?? ResponseCallTool.Error("Response data is null");
+                },
+                TimeSpan.FromMinutes(5),
+                cancellationToken);
 
-            return response;
+            return response.Pack(request.RequestID);
         }
 
         public void Dispose()

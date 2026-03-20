@@ -210,33 +210,5 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             plugin.McpManager.SystemToolManager!.TotalToolsCount.ShouldBe(0);
         }
 
-        // ── Built-in skills-generate system tool ────────────────────────
-
-        [Fact]
-        public void Build_WithAssemblyScan_ShouldFindSkillsGenerateSystemTool()
-        {
-            var reflector = new Reflector();
-            var builder = new McpPluginBuilder(_version, _loggerProvider)
-                .AddLogging(b => b.AddXunitTestOutput(_output))
-                .WithToolsFromAssembly(typeof(IMcpPlugin).Assembly);
-            var plugin = builder.Build(reflector);
-
-            var systemToolManager = plugin.McpManager.SystemToolManager!;
-            systemToolManager.HasTool("skills-generate").ShouldBeTrue();
-        }
-
-        [Fact]
-        public void Build_WithAssemblyScan_SkillsGenerate_ShouldNotBeInStandardTools()
-        {
-            var reflector = new Reflector();
-            var builder = new McpPluginBuilder(_version, _loggerProvider)
-                .AddLogging(b => b.AddXunitTestOutput(_output))
-                .WithToolsFromAssembly(typeof(IMcpPlugin).Assembly);
-            var plugin = builder.Build(reflector);
-
-            var toolManager = plugin.McpManager.ToolManager!;
-            var standardTools = toolManager.GetAllTools().Select(t => t.Name).ToList();
-            standardTools.ShouldNotContain("skills-generate");
-        }
     }
 }

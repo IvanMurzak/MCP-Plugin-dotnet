@@ -477,6 +477,20 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine($"  -d '{inputExample}'");
             sb.AppendLine("```");
             sb.AppendLine();
+            AppendInputFileHint(sb, tool, inputExample);
+        }
+
+        /// <summary>
+        /// Appends a short hint about using <c>--input-file</c> (or <c>-d @file</c>) for complex input.
+        /// Only emitted when the input example is non-trivial (not empty <c>{}</c>).
+        /// Override to suppress or customise the hint.
+        /// </summary>
+        protected virtual void AppendInputFileHint(StringBuilder sb, IRunTool tool, string inputExample)
+        {
+            if (inputExample == "{}")
+                return;
+            sb.AppendLine("> For complex input (multi-line strings, code), save the JSON to a file and use `-d @args.json`.");
+            sb.AppendLine();
         }
 
         /// <summary>
