@@ -10,6 +10,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
@@ -17,6 +18,7 @@ using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Webhooks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -177,8 +179,61 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
                 return;
             }
 
+            // ── Webhook instrumentation ─────────────────────────────────
+            var webhookOptions = context.RequestServices.GetService<WebhookOptions>();
+            Stopwatch? stopwatch = null;
+            long requestSize = 0;
+            if (webhookOptions?.IsToolEnabled == true)
+            {
+                stopwatch = Stopwatch.StartNew();
+                if (arguments.Count > 0)
+                {
+                    try
+                    {
+                        requestSize = JsonSerializer.SerializeToUtf8Bytes(arguments).Length;
+                    }
+                    catch (Exception) { /* measurement failure is non-fatal */ }
+                }
+            }
+
             var requestData = new RequestCallTool(name, arguments);
             var response = await toolHub.RunCallTool(requestData);
+
+            // ── Fire webhook ────────────────────────────────────────────
+            if (webhookOptions?.IsToolEnabled == true)
+            {
+                stopwatch!.Stop();
+                var collector = context.RequestServices.GetService<IWebhookEventCollector>();
+                if (collector != null)
+                {
+                    var isError = response == null || response.Status == ResponseStatus.Error;
+                    long responseSize = 0;
+                    string? errorDetails = null;
+
+                    if (isError)
+                    {
+                        errorDetails = response?.Message;
+                    }
+                    else if (response?.Value != null)
+                    {
+                        try
+                        {
+                            responseSize = System.Text.Encoding.UTF8.GetByteCount(
+                                JsonSerializer.Serialize(response.Value));
+                        }
+                        catch (Exception) { /* measurement failure is non-fatal */ }
+                    }
+
+                    collector.OnToolCall(
+                        name,
+                        requestSize,
+                        responseSize,
+                        isError ? "failure" : "success",
+                        stopwatch.ElapsedMilliseconds,
+                        errorDetails,
+                        channel: "http");
+                }
+            }
 
             if (response == null)
             {

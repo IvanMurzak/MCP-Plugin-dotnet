@@ -34,5 +34,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
 
         [JsonPropertyName("bearerToken")]
         public string? BearerToken { get; set; }
+
+        [JsonPropertyName("channel")]
+        public string Channel { get; set; } = "mcp";
     }
 }
