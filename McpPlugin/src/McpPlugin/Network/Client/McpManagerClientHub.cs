@@ -176,6 +176,25 @@ namespace com.IvanMurzak.McpPlugin
                     })
                     .AddTo(_serverEventsDisposables);
             }
+
+            // System tool events ------------------------------------------------------
+
+            if (_mcpManager.SystemToolHub != null)
+            {
+                hubConnection.On<RequestCallTool, ResponseData<ResponseCallTool>>(nameof(IClientSystemToolHub.RunSystemTool), data =>
+                    {
+                        _logger.LogDebug("{class}.{method}", nameof(IClientSystemToolHub), nameof(IClientSystemToolHub.RunSystemTool));
+                        return _mcpManager.SystemToolHub.RunSystemTool(data);
+                    })
+                    .AddTo(_serverEventsDisposables);
+
+                hubConnection.On<RequestListTool, ResponseData<ResponseListTool[]>>(nameof(IClientSystemToolHub.RunListSystemTool), data =>
+                    {
+                        _logger.LogDebug("{class}.{method}", nameof(IClientSystemToolHub), nameof(IClientSystemToolHub.RunListSystemTool));
+                        return _mcpManager.SystemToolHub.RunListSystemTool(data);
+                    })
+                    .AddTo(_serverEventsDisposables);
+            }
         }
 
         #endregion

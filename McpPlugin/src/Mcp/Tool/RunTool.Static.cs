@@ -38,10 +38,12 @@ namespace com.IvanMurzak.McpPlugin
             bool? destructiveHint = null,
             bool? idempotentHint = null,
             bool? openWorldHint = null,
-            bool? enabled = null)
+            bool? enabled = null,
+            McpToolType toolType = McpToolType.Standard)
             => new RunTool(reflector, logger, name, methodInfo)
             {
                 Title = title,
+                ToolType = toolType,
                 ReadOnlyHint = readOnlyHint,
                 DestructiveHint = destructiveHint,
                 IdempotentHint = idempotentHint,
@@ -65,10 +67,12 @@ namespace com.IvanMurzak.McpPlugin
             bool? destructiveHint = null,
             bool? idempotentHint = null,
             bool? openWorldHint = null,
-            bool? enabled = null)
+            bool? enabled = null,
+            McpToolType toolType = McpToolType.Standard)
             => new RunTool(reflector, logger, name, targetInstance, methodInfo)
             {
                 Title = title,
+                ToolType = toolType,
                 ReadOnlyHint = readOnlyHint,
                 DestructiveHint = destructiveHint,
                 IdempotentHint = idempotentHint,
@@ -95,10 +99,12 @@ namespace com.IvanMurzak.McpPlugin
             bool? destructiveHint = null,
             bool? idempotentHint = null,
             bool? openWorldHint = null,
-            bool? enabled = null)
+            bool? enabled = null,
+            McpToolType toolType = McpToolType.Standard)
             => new RunTool(reflector, logger, name, classType, methodInfo)
             {
                 Title = title,
+                ToolType = toolType,
                 ReadOnlyHint = readOnlyHint,
                 DestructiveHint = destructiveHint,
                 IdempotentHint = idempotentHint,

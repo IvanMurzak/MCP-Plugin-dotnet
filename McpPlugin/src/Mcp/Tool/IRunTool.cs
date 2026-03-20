@@ -26,6 +26,13 @@ namespace com.IvanMurzak.McpPlugin
         JsonNode? OutputSchema { get; }
 
         /// <summary>
+        /// The type of tool. Standard tools are exposed to MCP clients;
+        /// System tools are only available via the HTTP API.
+        /// Defaults to <see cref="McpToolType.Standard"/>.
+        /// </summary>
+        McpToolType ToolType => McpToolType.Standard;
+
+        /// <summary>
         /// If true, the tool only reads or queries data and does not modify system state.
         /// </summary>
         bool? ReadOnlyHint { get; }

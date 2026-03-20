@@ -35,15 +35,18 @@ namespace com.IvanMurzak.McpPlugin
         readonly IToolManager? _tools;
         readonly IPromptManager? _prompts;
         readonly IResourceManager? _resources;
+        readonly ISystemToolManager? _systemTools;
 
         public Reflector Reflector => _reflector;
         public IToolManager? ToolManager => _tools;
         public IPromptManager? PromptManager => _prompts;
         public IResourceManager? ResourceManager => _resources;
+        public ISystemToolManager? SystemToolManager => _systemTools;
 
         public IClientToolHub? ToolHub => _tools;
         public IClientPromptHub? PromptHub => _prompts;
         public IClientResourceHub? ResourceHub => _resources;
+        public IClientSystemToolHub? SystemToolHub => _systemTools;
 
         public IReadOnlyList<McpClientData> ActiveClients => _activeClients;
         public Observable<Unit> OnForceDisconnect => _onForceDisconnect.AsObservable();
@@ -56,7 +59,8 @@ namespace com.IvanMurzak.McpPlugin
             Reflector reflector,
             IToolManager? tools = null,
             IPromptManager? prompts = null,
-            IResourceManager? resources = null)
+            IResourceManager? resources = null,
+            ISystemToolManager? systemTools = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("Ctor");
@@ -66,6 +70,7 @@ namespace com.IvanMurzak.McpPlugin
             _tools = tools;
             _prompts = prompts;
             _resources = resources;
+            _systemTools = systemTools;
         }
 
         public Task OnMcpClientConnected(McpClientData connectedClient, McpClientData[] allActiveClients)

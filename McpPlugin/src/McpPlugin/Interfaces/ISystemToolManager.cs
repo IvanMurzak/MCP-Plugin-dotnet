@@ -8,25 +8,16 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Threading.Tasks;
+using System.Collections.Generic;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 
-namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
+namespace com.IvanMurzak.McpPlugin
 {
-    public interface IClientMcpManager : IClientDisconnectable
+    public interface ISystemToolManager : IClientSystemToolHub
     {
-        IClientToolHub? ToolHub { get; }
-        IClientPromptHub? PromptHub { get; }
-        IClientResourceHub? ResourceHub { get; }
-        IClientSystemToolHub? SystemToolHub { get; }
-
-        Task OnMcpClientConnected(McpClientData connectedClient, McpClientData[] allActiveClients);
-        Task OnMcpClientDisconnected(McpClientData disconnectedClient, McpClientData[] remainingClients);
-
-        /// <summary>
-        /// Called once on initial connection to populate ActiveClients with the server's current
-        /// snapshot, covering the edge case where clients were already connected before the plugin joined.
-        /// </summary>
-        Task OnInitialClientData(McpClientData[] allActiveClients);
+        int TotalToolsCount { get; }
+        IEnumerable<IRunTool> GetAllTools();
+        bool HasTool(string name);
     }
 }

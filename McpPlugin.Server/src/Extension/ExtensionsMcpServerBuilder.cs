@@ -105,6 +105,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             mcpServerBuilder.Services.AddSingleton<RemoteToolRunner>();
             mcpServerBuilder.Services.AddSingleton<IClientToolHub>(sp => sp.GetRequiredService<RemoteToolRunner>());
 
+            mcpServerBuilder.Services.AddSingleton<RemoteSystemToolRunner>();
+            mcpServerBuilder.Services.AddSingleton<IClientSystemToolHub>(sp => sp.GetRequiredService<RemoteSystemToolRunner>());
+
             mcpServerBuilder.Services.AddSingleton<RemotePromptRunner>();
             mcpServerBuilder.Services.AddSingleton<IClientPromptHub>(sp => sp.GetRequiredService<RemotePromptRunner>());
 

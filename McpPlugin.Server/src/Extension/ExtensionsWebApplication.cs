@@ -52,6 +52,8 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             // Setup direct tool call API (POST /api/tools/{name}, GET /api/tools)
             app.MapDirectToolCallApi(dataArguments);
+            // Setup system tool API (POST /api/system-tools/{name}) — internal tools not exposed to MCP
+            app.MapSystemToolApi(dataArguments);
 
             return app;
         }
