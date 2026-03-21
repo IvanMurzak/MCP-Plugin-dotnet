@@ -15,7 +15,7 @@
     <!-- NuGet Package Information -->
     <IsPackable>true</IsPackable>
     <PackageId>com.IvanMurzak.McpPlugin</PackageId>
-    <Version>5.5.1</Version>
+    <Version>5.5.2</Version>
     <Authors>Ivan Murzak</Authors>
     <Company>Ivan Murzak</Company>
     <Copyright>Copyright © Ivan Murzak 2025</Copyright>
