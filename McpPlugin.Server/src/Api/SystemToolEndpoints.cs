@@ -210,14 +210,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
 
                     if (isError)
                     {
-                        errorDetails = response?.Message;
+                        errorDetails = response?.Message ?? "System tool hub returned a null response.";
                     }
                     else if (response?.Value != null)
                     {
                         try
                         {
-                            responseSize = System.Text.Encoding.UTF8.GetByteCount(
-                                JsonSerializer.Serialize(response.Value));
+                            var responseBytes = JsonSerializer.SerializeToUtf8Bytes(response.Value);
+                            responseSize = responseBytes.LongLength;
                         }
                         catch (Exception) { /* measurement failure is non-fatal */ }
                     }
