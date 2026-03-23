@@ -268,18 +268,31 @@ namespace com.IvanMurzak.McpPlugin
 
         private async Task ExecuteHubMethodAsync(string methodName, Func<HubConnection, Task> hubMethod)
         {
-            if (_hubConnection.CurrentValue == null)
+            var connection = _hubConnection.CurrentValue;
+            if (connection == null)
             {
                 _logger.LogError("{class}[{guid}] {method} HubConnection is null. Cannot invoke method '{methodName}' on endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint);
                 return;
             }
 
+            if (connection.State != HubConnectionState.Connected)
+            {
+                _logger.LogWarning("{class}[{guid}] {method} HubConnection is not active (State: {state}). Skipping method '{methodName}' on endpoint: {endpoint}",
+                    nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), connection.State, methodName, Endpoint);
+                return;
+            }
+
             try
             {
-                await hubMethod(_hubConnection.CurrentValue);
+                await hubMethod(connection);
                 _logger.LogDebug("{class}[{guid}] {method} Successfully invoked method '{methodName}' on endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not active"))
+            {
+                _logger.LogWarning("{class}[{guid}] {method} Connection became inactive while invoking '{methodName}' on endpoint: {endpoint}. Error: {message}",
+                    nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint, ex.Message);
             }
             catch (Exception ex)
             {
@@ -291,19 +304,33 @@ namespace com.IvanMurzak.McpPlugin
 
         private async Task<TResult> ExecuteHubMethodAsync<TResult>(string methodName, Func<HubConnection, Task<TResult>> hubMethod)
         {
-            if (_hubConnection.CurrentValue == null)
+            var connection = _hubConnection.CurrentValue;
+            if (connection == null)
             {
                 _logger.LogError("{class}[{guid}] {method} HubConnection is null. Cannot invoke method '{methodName}' on endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint);
                 return default!;
             }
 
+            if (connection.State != HubConnectionState.Connected)
+            {
+                _logger.LogWarning("{class}[{guid}] {method} HubConnection is not active (State: {state}). Skipping method '{methodName}' on endpoint: {endpoint}",
+                    nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), connection.State, methodName, Endpoint);
+                return default!;
+            }
+
             try
             {
-                var result = await hubMethod(_hubConnection.CurrentValue);
+                var result = await hubMethod(connection);
                 _logger.LogDebug("{class}[{guid}] {method} Successfully invoked method '{methodName}' on endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint);
                 return result;
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not active"))
+            {
+                _logger.LogWarning("{class}[{guid}] {method} Connection became inactive while invoking '{methodName}' on endpoint: {endpoint}. Error: {message}",
+                    nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint, ex.Message);
+                return default!;
             }
             catch (Exception ex)
             {
