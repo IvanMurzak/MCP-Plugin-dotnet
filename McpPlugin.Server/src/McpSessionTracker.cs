@@ -40,6 +40,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             _version = version ?? throw new ArgumentNullException(nameof(version));
         }
 
+        public int ActiveSessionCount => _sessions.Count;
+
         public McpClientData GetClientData()
         {
             var entry = _sessions.Values.FirstOrDefault(x => x.ClientData.IsConnected);

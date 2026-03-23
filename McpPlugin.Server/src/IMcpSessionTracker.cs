@@ -64,5 +64,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// <c>false</c> if other connections with the same physical ID are still active.
         /// </summary>
         bool Remove(string physicalId);
+
+        /// <summary>Returns the number of currently tracked physical sessions.</summary>
+        int ActiveSessionCount { get; }
     }
 }

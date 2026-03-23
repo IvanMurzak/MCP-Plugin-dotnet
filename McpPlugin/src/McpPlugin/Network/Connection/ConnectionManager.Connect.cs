@@ -251,7 +251,7 @@ namespace com.IvanMurzak.McpPlugin
 
             if (_hubConnection.CurrentValue?.State is not HubConnectionState.Connected)
             {
-                _logger.LogError("{class}[{guid}] {method} Failed to establish connection to remote endpoint: {endpoint}",
+                _logger.LogWarning("{class}[{guid}] {method} Failed to establish connection to remote endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(EnsureConnection), Endpoint);
                 return false;
             }
@@ -334,17 +334,76 @@ namespace com.IvanMurzak.McpPlugin
         }
 
         /// <summary>
+        /// Maximum number of consecutive immediate disconnects (server closes connection right after
+        /// handshake) before the connection loop gives up. This pattern typically indicates that the
+        /// server is rejecting the client (e.g. invalid or revoked authorization token).
+        /// </summary>
+        private const int MaxConsecutiveRejections = 3;
+
+        /// <summary>
+        /// If the server closes the connection within this duration after a successful handshake,
+        /// it is counted as an immediate rejection (e.g. authorization failure).
+        /// Protected to allow test subclasses to reduce the delay.
+        /// </summary>
+        protected virtual TimeSpan RejectionThreshold { get; } = TimeSpan.FromSeconds(3);
+
+        /// <summary>
         /// Starts the connection retry loop. Must be called from within a _gate-protected section.
+        /// Detects server-side rejection patterns (immediate disconnect after handshake) and stops
+        /// retrying after <see cref="MaxConsecutiveRejections"/> consecutive rejections.
         /// </summary>
         private async Task<bool> StartConnectionLoop(CancellationToken cancellationToken)
         {
             _logger.LogDebug("{class}[{guid}] {method} Starting connection loop for endpoint: {endpoint}",
                 nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint);
 
+            var consecutiveRejections = 0;
+
             while (!cancellationToken.IsCancellationRequested && _continueToReconnect.CurrentValue)
             {
                 if (await AttemptConnection(cancellationToken))
-                    return true;
+                {
+                    // Connection established — verify the server doesn't immediately close it.
+                    // A server-side authorization rejection typically closes the WebSocket within
+                    // milliseconds of the handshake completing.
+                    try
+                    {
+                        await Task.Delay(RejectionThreshold, cancellationToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+
+                    if (_connectionState.CurrentValue is HubConnectionState.Connected)
+                    {
+                        // Connection survived the stability check — it's genuinely established.
+                        consecutiveRejections = 0;
+                        return true;
+                    }
+
+                    // Server closed the connection immediately after handshake.
+                    consecutiveRejections++;
+                    _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} was closed by the server immediately after handshake ({count}/{max}). " +
+                        "This typically indicates authorization failure (invalid or revoked token).",
+                        nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveRejections, MaxConsecutiveRejections);
+
+                    if (consecutiveRejections >= MaxConsecutiveRejections)
+                    {
+                        _logger.LogError("{class}[{guid}] {method} Connection to {endpoint} rejected {count} times consecutively. " +
+                            "Stopping reconnection attempts. The server is likely rejecting this client due to an authorization issue. " +
+                            "Please check your authorization token and try reconnecting.",
+                            nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveRejections);
+                        _continueToReconnect.Value = false;
+                        _authorizationRejected.OnNext(Unit.Default);
+                        return false;
+                    }
+                }
+                else
+                {
+                    // Connection attempt itself failed (server unreachable, timeout, etc.)
+                    consecutiveRejections = 0;
+                }
 
                 if (cancellationToken.IsCancellationRequested || !_continueToReconnect.CurrentValue)
                     break;
@@ -359,8 +418,9 @@ namespace com.IvanMurzak.McpPlugin
 
         /// <summary>
         /// Attempts to start the connection. Must be called from within a _gate-protected section.
+        /// Protected virtual to allow test subclasses to simulate server behavior.
         /// </summary>
-        private async Task<bool> AttemptConnection(CancellationToken cancellationToken)
+        protected virtual async Task<bool> AttemptConnection(CancellationToken cancellationToken)
         {
             var connection = _hubConnection.CurrentValue;
             if (connection == null)
@@ -420,7 +480,7 @@ namespace com.IvanMurzak.McpPlugin
             return false;
         }
 
-        private async Task WaitBeforeRetry(CancellationToken cancellationToken)
+        protected virtual async Task WaitBeforeRetry(CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
                 return;

@@ -29,6 +29,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly ReactiveProperty<bool> _continueToReconnect = new(false);
         protected readonly ReactiveProperty<HubConnection?> _hubConnection = new();
         protected readonly ReactiveProperty<HubConnectionState> _connectionState = new(HubConnectionState.Disconnected);
+        private readonly Subject<Unit> _authorizationRejected = new();
         protected readonly CompositeDisposable _disposables = new();
         protected readonly CancellationTokenSource _cancellationTokenSource;
 
@@ -47,6 +48,7 @@ namespace com.IvanMurzak.McpPlugin
         public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _connectionStateReadOnly;
         public ReadOnlyReactiveProperty<HubConnection?> HubConnection => _hubConnectionReadOnly;
         public ReadOnlyReactiveProperty<bool> KeepConnected => _keepConnectedReadOnly;
+        public Observable<Unit> OnAuthorizationRejected => _authorizationRejected;
         public string Endpoint => _endpoint;
         public CancellationToken ConnectionCancellationToken => internalCts?.Token ?? CancellationToken.None;
 
@@ -294,6 +296,11 @@ namespace com.IvanMurzak.McpPlugin
                 _logger.LogWarning("{class}[{guid}] {method} Connection became inactive while invoking '{methodName}' on endpoint: {endpoint}. Error: {message}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint, ex.Message);
             }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("{class}[{guid}] {method} Invocation of '{methodName}' was canceled on endpoint: {endpoint}",
+                    nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "{class}[{guid}] {method} Failed to invoke method '{methodName}' on endpoint: {endpoint}. Error: {message}",
@@ -330,6 +337,12 @@ namespace com.IvanMurzak.McpPlugin
             {
                 _logger.LogWarning("{class}[{guid}] {method} Connection became inactive while invoking '{methodName}' on endpoint: {endpoint}. Error: {message}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint, ex.Message);
+                return default!;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("{class}[{guid}] {method} Invocation of '{methodName}' was canceled on endpoint: {endpoint}",
+                    nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint);
                 return default!;
             }
             catch (Exception ex)

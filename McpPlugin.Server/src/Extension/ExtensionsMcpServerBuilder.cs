@@ -99,6 +99,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             mcpServerBuilder.Services.AddSingleton<HubEventResourcesChange>();
             mcpServerBuilder.Services.AddSingleton<IRequestTrackingService, RequestTrackingService>();
             mcpServerBuilder.Services.AddSingleton<IMcpSessionTracker, McpSessionTracker>();
+            mcpServerBuilder.Services.AddSingleton<McpGracefulShutdownService>();
+            mcpServerBuilder.Services.AddHostedService(sp => sp.GetRequiredService<McpGracefulShutdownService>());
 
             mcpServerBuilder.Services.AddWebhooks(dataArguments);
 

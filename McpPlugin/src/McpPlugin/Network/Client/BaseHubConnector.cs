@@ -43,6 +43,7 @@ namespace com.IvanMurzak.McpPlugin
 
         public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _connectionManager.ConnectionState;
         public ReadOnlyReactiveProperty<bool> KeepConnected => _connectionManager.KeepConnected;
+        public Observable<Unit> OnAuthorizationRejected => _connectionManager.OnAuthorizationRejected;
         public VersionHandshakeResponse? VersionHandshakeStatus => lastHandshakeResponse;
 
         /// <summary>

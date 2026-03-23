@@ -20,6 +20,14 @@ namespace com.IvanMurzak.McpPlugin
     {
         ReadOnlyReactiveProperty<bool> KeepConnected { get; }
         ReadOnlyReactiveProperty<HubConnectionState> ConnectionState { get; }
+
+        /// <summary>
+        /// Fires when the server repeatedly rejects the connection immediately after handshake,
+        /// typically due to an invalid or revoked authorization token.
+        /// Subscribers should clear cached credentials and prompt the user to re-authorize.
+        /// </summary>
+        Observable<Unit> OnAuthorizationRejected { get; }
+
         Task<bool> Connect(CancellationToken cancellationToken = default);
         Task Disconnect(CancellationToken cancellationToken = default);
         /// <summary>
