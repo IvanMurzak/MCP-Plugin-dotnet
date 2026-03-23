@@ -15,6 +15,7 @@ using Shouldly;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using Moq;
+using R3;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -98,20 +99,23 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             // because rejection requires AttemptConnection to return true (handshake success)
             // followed by an immediate disconnect.
             await using var cm = new NeverConnectsManager(
-                _logger, _testVersion, _testEndpoint, _mockProvider.Object,
-                maxAttempts: 3
+                _logger, _testVersion, _testEndpoint, _mockProvider.Object
             );
 
-            // Act
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var rejectionFired = false;
+            cm.OnAuthorizationRejected.Subscribe(_ => rejectionFired = true);
+
+            // Act: use a short CTS timeout to stop the loop naturally instead of mutating
+            // _continueToReconnect from within the test manager.
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             var result = await cm.Connect(cts.Token);
 
-            // Assert: Connect fails but KeepConnected is not disabled by auth rejection detection.
-            // (It is set to false by NeverConnectsManager to stop the loop, but that's test infra,
-            // not the rejection detection path.)
+            // Assert: Connect fails but OnAuthorizationRejected was never emitted, because
+            // rejection detection only fires when AttemptConnection returns true (handshake
+            // success) followed by an immediate disconnect — neither of which happened here.
             result.ShouldBeFalse("Connection should fail (server unreachable)");
-            cm.AttemptCount.ShouldBeGreaterThanOrEqualTo(3,
-                "Should have attempted at least maxAttempts times");
+            rejectionFired.ShouldBeFalse("OnAuthorizationRejected must not fire when AttemptConnection always returns false");
+            cm.AttemptCount.ShouldBeGreaterThan(0, "Should have attempted at least once");
         }
 
         private static HubConnection CreateDummyHubConnection()
@@ -202,27 +206,23 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
 
         /// <summary>
         /// Simulates a server that can't be reached: AttemptConnection always returns false.
-        /// Stops after maxAttempts to avoid infinite loop.
+        /// The loop is stopped externally via the CancellationToken passed to Connect().
         /// </summary>
         private class NeverConnectsManager : FastConnectionManager
         {
-            private readonly int _maxAttempts;
             private int _attemptCount;
             public int AttemptCount => _attemptCount;
 
             public NeverConnectsManager(
                 ILogger logger, Common.Version version, string endpoint,
-                IHubConnectionProvider provider, int maxAttempts)
+                IHubConnectionProvider provider)
                 : base(logger, version, endpoint, provider)
             {
-                _maxAttempts = maxAttempts;
             }
 
             protected override Task<bool> AttemptConnection(CancellationToken cancellationToken)
             {
-                var count = Interlocked.Increment(ref _attemptCount);
-                if (count >= _maxAttempts)
-                    _continueToReconnect.Value = false;
+                Interlocked.Increment(ref _attemptCount);
                 return Task.FromResult(false);
             }
         }

@@ -53,11 +53,15 @@ namespace com.IvanMurzak.McpPlugin
 
         public void SetConnected()
         {
+            if (_isDisposed.Value)
+                return;
             _connectionState.Value = HubConnectionState.Connected;
         }
 
         public void NotifyAuthorizationRejected()
         {
+            if (_isDisposed.Value)
+                return;
             _authorizationRejected.OnNext(Unit.Default);
         }
         public CancellationToken ConnectionCancellationToken => internalCts?.Token ?? CancellationToken.None;
@@ -90,9 +94,11 @@ namespace com.IvanMurzak.McpPlugin
                     // preventing accumulation of stale subscriptions across reconnection cycles.
                     // Note: Connected state is excluded from auto-sync — it is only set
                     // after the application-level handshake succeeds (via SetConnected).
-                    _hubStateSubscription.Disposable = hubConnection.ToObservable().State
+                    var hubConnectionObservable = hubConnection.ToObservable();
+                    var stateSubscription = hubConnectionObservable.State
                         .Where(state => state != HubConnectionState.Connected)
                         .Subscribe(state => _connectionState.Value = state);
+                    _hubStateSubscription.Disposable = new CompositeDisposable(hubConnectionObservable, stateSubscription);
                 })
                 .AddTo(_disposables);
 

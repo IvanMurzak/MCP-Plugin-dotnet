@@ -73,20 +73,34 @@ namespace com.IvanMurzak.McpPlugin
             // We watch the HubConnection's own state (not _connectionState) because
             // _connectionState is only set to Connected after the handshake succeeds.
             var handshakeSubscription = new SerialDisposable();
+            var handshakeConnectionObservableDisposable = new SerialDisposable();
             _connectionManager.HubConnection
                 .Subscribe(hc =>
                 {
                     if (hc == null)
                     {
                         handshakeSubscription.Disposable = null;
+                        handshakeConnectionObservableDisposable.Disposable = null;
                         return;
                     }
-                    handshakeSubscription.Disposable = hc.ToObservable().State
+                    // Track the HubConnectionObservable so it is disposed when the
+                    // HubConnection changes, preventing event-handler leaks across reconnections.
+                    var hubObservable = hc.ToObservable();
+                    handshakeConnectionObservableDisposable.Disposable = hubObservable;
+
+                    // State only emits Connected on Reconnected events, not on the initial StartAsync.
+                    handshakeSubscription.Disposable = hubObservable.State
                         .Where(state => state == HubConnectionState.Connected)
                         .Subscribe(_ => OnConnectionEstablished());
+
+                    // Handle initial connection — State observable only fires on Reconnected,
+                    // so check current state for the first-connect case.
+                    if (hc.State == HubConnectionState.Connected)
+                        OnConnectionEstablished();
                 })
                 .AddTo(subscriptions);
             subscriptions.Add(handshakeSubscription);
+            subscriptions.Add(handshakeConnectionObservableDisposable);
 
             _hubConnectionDisposable = subscriptions;
         }
