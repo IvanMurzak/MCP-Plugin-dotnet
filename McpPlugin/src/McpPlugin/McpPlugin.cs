@@ -45,6 +45,8 @@ namespace com.IvanMurzak.McpPlugin
             ?? new ReactiveProperty<HubConnectionState>(HubConnectionState.Disconnected);
         public ReadOnlyReactiveProperty<bool> KeepConnected => _mcpManagerHub?.KeepConnected
             ?? new ReactiveProperty<bool>(false);
+        public Observable<Unit> OnAuthorizationRejected => _mcpManagerHub?.OnAuthorizationRejected
+            ?? Observable.Empty<Unit>();
 
         public McpPlugin(
             ILogger<McpPlugin> logger,

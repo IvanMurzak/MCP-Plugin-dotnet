@@ -20,6 +20,7 @@ namespace com.IvanMurzak.McpPlugin
     {
         ReadOnlyReactiveProperty<bool> KeepConnected { get; }
         ReadOnlyReactiveProperty<HubConnectionState> ConnectionState { get; }
+        Observable<Unit> OnAuthorizationRejected { get; }
         Task<bool> Connect(CancellationToken cancellationToken = default);
         Task Disconnect(CancellationToken cancellationToken = default);
         /// <summary>
