@@ -30,6 +30,7 @@ namespace com.IvanMurzak.McpPlugin
 
         private const int MaxHandshakeFailures = 3;
         private readonly ThreadSafeBool _isDisposed = new(false);
+        private readonly ThreadSafeBool _handshakeInFlight = new(false);
         private volatile VersionHandshakeResponse? lastHandshakeResponse = null;
         private int _consecutiveHandshakeFailures;
 
@@ -69,38 +70,12 @@ namespace com.IvanMurzak.McpPlugin
                 .Subscribe(OnHubConnectionChanged)
                 .AddTo(subscriptions);
 
-            // Perform version handshake only after the SignalR connection is fully established.
-            // We watch the HubConnection's own state (not _connectionState) because
-            // _connectionState is only set to Connected after the handshake succeeds.
-            var handshakeSubscription = new SerialDisposable();
-            var handshakeConnectionObservableDisposable = new SerialDisposable();
-            _connectionManager.HubConnection
-                .Subscribe(hc =>
-                {
-                    if (hc == null)
-                    {
-                        handshakeSubscription.Disposable = null;
-                        handshakeConnectionObservableDisposable.Disposable = null;
-                        return;
-                    }
-                    // Track the HubConnectionObservable so it is disposed when the
-                    // HubConnection changes, preventing event-handler leaks across reconnections.
-                    var hubObservable = hc.ToObservable();
-                    handshakeConnectionObservableDisposable.Disposable = hubObservable;
-
-                    // State only emits Connected on Reconnected events, not on the initial StartAsync.
-                    handshakeSubscription.Disposable = hubObservable.State
-                        .Where(state => state == HubConnectionState.Connected)
-                        .Subscribe(_ => OnConnectionEstablished());
-
-                    // Handle initial connection — State observable only fires on Reconnected,
-                    // so check current state for the first-connect case.
-                    if (hc.State == HubConnectionState.Connected)
-                        OnConnectionEstablished();
-                })
+            // Perform version handshake when the SignalR transport connects.
+            // OnTransportConnected fires from AttemptConnection after StartAsync succeeds,
+            // covering both initial connect and reconnect cases.
+            _connectionManager.OnTransportConnected
+                .Subscribe(_ => OnConnectionEstablished())
                 .AddTo(subscriptions);
-            subscriptions.Add(handshakeSubscription);
-            subscriptions.Add(handshakeConnectionObservableDisposable);
 
             _hubConnectionDisposable = subscriptions;
         }
@@ -251,6 +226,28 @@ namespace com.IvanMurzak.McpPlugin
                 return;
             }
 
+            if (!_handshakeInFlight.TrySetTrue())
+            {
+                _logger.LogDebug("{method} Handshake already in flight. Skipping.", nameof(OnConnectionEstablished));
+                return;
+            }
+
+            try
+            {
+                await OnConnectionEstablishedCore();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "{method} Unhandled exception during connection establishment.", nameof(OnConnectionEstablished));
+            }
+            finally
+            {
+                _handshakeInFlight.TrySetFalse();
+            }
+        }
+
+        private async Task OnConnectionEstablishedCore()
+        {
             var serverEventsCts = _serverEventsDisposables.ToCancellationTokenSource();
             var cancellationToken = serverEventsCts.Token;
 

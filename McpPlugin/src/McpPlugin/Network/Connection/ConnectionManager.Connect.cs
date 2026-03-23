@@ -456,6 +456,7 @@ namespace com.IvanMurzak.McpPlugin
                 {
                     _logger.LogInformation("{class}[{guid}] {method} Connection established successfully to: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint);
+                    _transportConnected.OnNext(Unit.Default);
                     return true;
                 }
                 else

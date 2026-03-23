@@ -33,6 +33,12 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         void NotifyAuthorizationRejected();
 
+        /// <summary>
+        /// Fires when the SignalR transport connection is established (StartAsync succeeded).
+        /// This is distinct from application-level Connected state (which requires a successful handshake).
+        /// </summary>
+        Observable<Unit> OnTransportConnected { get; }
+
         Task InvokeAsync<TInput>(string methodName, TInput input, CancellationToken cancellationToken = default);
         Task<TResult> InvokeAsync<TInput, TResult>(string methodName, TInput input, CancellationToken cancellationToken = default);
         Task<TResult> InvokeAsync<TResult>(string methodName, CancellationToken cancellationToken = default);

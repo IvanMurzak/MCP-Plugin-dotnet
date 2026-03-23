@@ -74,9 +74,11 @@ namespace com.IvanMurzak.McpPlugin.Server
                 {
                     await Clients.Caller.ForceDisconnect("Authorization failed. Token may be missing, invalid, or revoked.");
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Best-effort — the connection may already be closing.
+                    _logger.LogDebug(ex,
+                        "{guid} Failed to send ForceDisconnect notification for rejected connection. ConnectionId: {connectionId}.",
+                        _guid, Context.ConnectionId);
                 }
 
                 // Context.Abort() signals SignalR to tear down the connection.

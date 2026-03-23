@@ -30,6 +30,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly ReactiveProperty<HubConnection?> _hubConnection = new();
         protected readonly ReactiveProperty<HubConnectionState> _connectionState = new(HubConnectionState.Disconnected);
         private readonly Subject<Unit> _authorizationRejected = new();
+        private readonly Subject<Unit> _transportConnected = new();
         protected readonly CompositeDisposable _disposables = new();
         protected readonly CancellationTokenSource _cancellationTokenSource;
 
@@ -49,6 +50,7 @@ namespace com.IvanMurzak.McpPlugin
         public ReadOnlyReactiveProperty<HubConnection?> HubConnection => _hubConnectionReadOnly;
         public ReadOnlyReactiveProperty<bool> KeepConnected => _keepConnectedReadOnly;
         public Observable<Unit> OnAuthorizationRejected => _authorizationRejected;
+        public Observable<Unit> OnTransportConnected => _transportConnected;
         public string Endpoint => _endpoint;
 
         public void SetConnected()
