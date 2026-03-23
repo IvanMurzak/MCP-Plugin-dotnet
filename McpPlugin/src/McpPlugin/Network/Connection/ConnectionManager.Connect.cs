@@ -383,6 +383,7 @@ namespace com.IvanMurzak.McpPlugin
                     }
 
                     // Server closed the connection immediately after handshake.
+                    _connectionState.Value = HubConnectionState.Disconnected;
                     consecutiveRejections++;
                     _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} was closed by the server immediately after handshake ({count}/{max}). " +
                         "This typically indicates authorization failure (invalid or revoked token).",
@@ -395,6 +396,7 @@ namespace com.IvanMurzak.McpPlugin
                             "Please check your authorization token and try reconnecting.",
                             nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveRejections);
                         _continueToReconnect.Value = false;
+                        _connectionState.Value = HubConnectionState.Disconnected;
                         _authorizationRejected.OnNext(Unit.Default);
                         return false;
                     }

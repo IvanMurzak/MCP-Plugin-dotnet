@@ -280,6 +280,7 @@ namespace com.IvanMurzak.McpPlugin
 
             if (connection.State != HubConnectionState.Connected)
             {
+                _connectionState.Value = connection.State;
                 _logger.LogWarning("{class}[{guid}] {method} HubConnection is not active (State: {state}). Skipping method '{methodName}' on endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), connection.State, methodName, Endpoint);
                 return;
@@ -293,6 +294,7 @@ namespace com.IvanMurzak.McpPlugin
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("not active"))
             {
+                _connectionState.Value = connection.State;
                 _logger.LogWarning("{class}[{guid}] {method} Connection became inactive while invoking '{methodName}' on endpoint: {endpoint}. Error: {message}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint, ex.Message);
             }
@@ -335,6 +337,7 @@ namespace com.IvanMurzak.McpPlugin
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("not active"))
             {
+                _connectionState.Value = connection.State;
                 _logger.LogWarning("{class}[{guid}] {method} Connection became inactive while invoking '{methodName}' on endpoint: {endpoint}. Error: {message}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint, ex.Message);
                 return default!;

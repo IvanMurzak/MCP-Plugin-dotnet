@@ -58,8 +58,22 @@ namespace com.IvanMurzak.McpPlugin
             _apiVersion = apiVersion ?? throw new ArgumentNullException(nameof(apiVersion));
             _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
 
-            _hubConnectionDisposable = _connectionManager.HubConnection
-                .Subscribe(OnHubConnectionChanged);
+            var subscriptions = new CompositeDisposable();
+
+            // Register/clear server event handlers when HubConnection is created/destroyed.
+            // Handlers must be on the HubConnection BEFORE StartAsync so the server's
+            // immediate post-connect messages have registered targets.
+            _connectionManager.HubConnection
+                .Subscribe(OnHubConnectionChanged)
+                .AddTo(subscriptions);
+
+            // Perform version handshake only after the connection is fully established.
+            _connectionManager.ConnectionState
+                .Where(state => state == HubConnectionState.Connected)
+                .Subscribe(_ => OnConnectionEstablished())
+                .AddTo(subscriptions);
+
+            _hubConnectionDisposable = subscriptions;
         }
 
         /// <summary>
@@ -172,7 +186,7 @@ namespace com.IvanMurzak.McpPlugin
             }
         }
 
-        private async void OnHubConnectionChanged(HubConnection? hubConnection)
+        private void OnHubConnectionChanged(HubConnection? hubConnection)
         {
             if (_isDisposed.Value)
             {
@@ -186,26 +200,28 @@ namespace com.IvanMurzak.McpPlugin
             _serverEventsDisposables.Clear();
 
             if (hubConnection == null)
-                return; // not connected
-
-            var serverEventsCts = _serverEventsDisposables.ToCancellationTokenSource();
-            var cancellationToken = serverEventsCts.Token;
-
-            // Reset any per-connection state before handlers are registered so that
-            // subclasses can detect notifications arriving during the handshake (see
-            // OnBeforeSubscribeToServerEvents / McpManagerClientHub._liveNotificationEpoch).
-            _logger.LogTrace("{method} Invoking pre-subscribe hook.",
-                nameof(OnHubConnectionChanged));
+                return;
 
             OnBeforeSubscribeToServerEvents();
 
-            // Subscribe to server events BEFORE handshake to avoid race condition.
-            // The server may send RunListTool/RunListPrompts immediately after handshake,
-            // so handlers must be registered before we respond to the handshake.
-            _logger.LogTrace("{method} Subscribing to server events (before handshake).",
+            // Register handlers BEFORE StartAsync so the server's immediate
+            // post-connect messages have registered targets.
+            _logger.LogTrace("{method} Subscribing to server events.",
                 nameof(OnHubConnectionChanged));
 
             SubscribeOnServerEvents(hubConnection, _serverEventsDisposables);
+        }
+
+        private async void OnConnectionEstablished()
+        {
+            if (_isDisposed.Value)
+            {
+                _logger.LogWarning("{method} called on disposed object. Ignoring.", nameof(OnConnectionEstablished));
+                return;
+            }
+
+            var serverEventsCts = _serverEventsDisposables.ToCancellationTokenSource();
+            var cancellationToken = serverEventsCts.Token;
 
             // Perform version handshake after handlers are registered
             var handshakeResponse = await PerformVersionHandshake(
