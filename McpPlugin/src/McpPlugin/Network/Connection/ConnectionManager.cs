@@ -50,6 +50,16 @@ namespace com.IvanMurzak.McpPlugin
         public ReadOnlyReactiveProperty<bool> KeepConnected => _keepConnectedReadOnly;
         public Observable<Unit> OnAuthorizationRejected => _authorizationRejected;
         public string Endpoint => _endpoint;
+
+        public void SetConnected()
+        {
+            _connectionState.Value = HubConnectionState.Connected;
+        }
+
+        public void NotifyAuthorizationRejected()
+        {
+            _authorizationRejected.OnNext(Unit.Default);
+        }
         public CancellationToken ConnectionCancellationToken => internalCts?.Token ?? CancellationToken.None;
 
         public ConnectionManager(ILogger logger, Version apiVersion, string endpoint, IHubConnectionProvider hubConnectionBuilder)
@@ -78,7 +88,10 @@ namespace com.IvanMurzak.McpPlugin
 
                     // SerialDisposable auto-disposes the previous subscription when reassigned,
                     // preventing accumulation of stale subscriptions across reconnection cycles.
+                    // Note: Connected state is excluded from auto-sync — it is only set
+                    // after the application-level handshake succeeds (via SetConnected).
                     _hubStateSubscription.Disposable = hubConnection.ToObservable().State
+                        .Where(state => state != HubConnectionState.Connected)
                         .Subscribe(state => _connectionState.Value = state);
                 })
                 .AddTo(_disposables);

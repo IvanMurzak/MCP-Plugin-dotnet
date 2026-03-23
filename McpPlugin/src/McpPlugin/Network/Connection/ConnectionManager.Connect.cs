@@ -375,9 +375,11 @@ namespace com.IvanMurzak.McpPlugin
                         break;
                     }
 
-                    if (_connectionState.CurrentValue is HubConnectionState.Connected)
+                    if (_hubConnection.CurrentValue?.State is HubConnectionState.Connected)
                     {
-                        // Connection survived the stability check — it's genuinely established.
+                        // SignalR connection survived the stability check — it's genuinely established.
+                        // Note: _connectionState is NOT set to Connected here. That happens only
+                        // after the application-level handshake succeeds (via SetConnected).
                         consecutiveRejections = 0;
                         return true;
                     }
@@ -454,7 +456,6 @@ namespace com.IvanMurzak.McpPlugin
                 {
                     _logger.LogInformation("{class}[{guid}] {method} Connection established successfully to: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint);
-                    _connectionState.Value = HubConnectionState.Connected;
                     return true;
                 }
                 else

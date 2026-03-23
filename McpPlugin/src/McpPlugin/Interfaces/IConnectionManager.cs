@@ -21,6 +21,18 @@ namespace com.IvanMurzak.McpPlugin
         string Endpoint { get; }
         ReadOnlyReactiveProperty<HubConnection?> HubConnection { get; }
         CancellationToken ConnectionCancellationToken { get; }
+        /// <summary>
+        /// Sets the public connection state to Connected.
+        /// Called by the application layer after a successful handshake.
+        /// </summary>
+        void SetConnected();
+
+        /// <summary>
+        /// Fires the <see cref="IConnection.OnAuthorizationRejected"/> event.
+        /// Called when the server explicitly rejects the connection due to authorization failure.
+        /// </summary>
+        void NotifyAuthorizationRejected();
+
         Task InvokeAsync<TInput>(string methodName, TInput input, CancellationToken cancellationToken = default);
         Task<TResult> InvokeAsync<TInput, TResult>(string methodName, TInput input, CancellationToken cancellationToken = default);
         Task<TResult> InvokeAsync<TResult>(string methodName, CancellationToken cancellationToken = default);

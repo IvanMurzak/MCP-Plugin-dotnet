@@ -28,8 +28,10 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly IConnectionManager _connectionManager;
         protected readonly CancellationTokenSource _cancellationTokenSource = new();
 
+        private const int MaxHandshakeFailures = 3;
         private readonly ThreadSafeBool _isDisposed = new(false);
         private volatile VersionHandshakeResponse? lastHandshakeResponse = null;
+        private int _consecutiveHandshakeFailures;
 
         /// <summary>
         /// Disposable for subscription on the HubConnection changes.
@@ -67,11 +69,24 @@ namespace com.IvanMurzak.McpPlugin
                 .Subscribe(OnHubConnectionChanged)
                 .AddTo(subscriptions);
 
-            // Perform version handshake only after the connection is fully established.
-            _connectionManager.ConnectionState
-                .Where(state => state == HubConnectionState.Connected)
-                .Subscribe(_ => OnConnectionEstablished())
+            // Perform version handshake only after the SignalR connection is fully established.
+            // We watch the HubConnection's own state (not _connectionState) because
+            // _connectionState is only set to Connected after the handshake succeeds.
+            var handshakeSubscription = new SerialDisposable();
+            _connectionManager.HubConnection
+                .Subscribe(hc =>
+                {
+                    if (hc == null)
+                    {
+                        handshakeSubscription.Disposable = null;
+                        return;
+                    }
+                    handshakeSubscription.Disposable = hc.ToObservable().State
+                        .Where(state => state == HubConnectionState.Connected)
+                        .Subscribe(_ => OnConnectionEstablished());
+                })
                 .AddTo(subscriptions);
+            subscriptions.Add(handshakeSubscription);
 
             _hubConnectionDisposable = subscriptions;
         }
@@ -202,6 +217,8 @@ namespace com.IvanMurzak.McpPlugin
             if (hubConnection == null)
                 return;
 
+            _consecutiveHandshakeFailures = 0;
+
             OnBeforeSubscribeToServerEvents();
 
             // Register handlers BEFORE StartAsync so the server's immediate
@@ -239,12 +256,33 @@ namespace com.IvanMurzak.McpPlugin
 
             lastHandshakeResponse = handshakeResponse;
 
-            if (handshakeResponse != null && !handshakeResponse.Compatible && !handshakeResponse.IsConnectionError)
+            if (handshakeResponse == null || handshakeResponse.IsConnectionError)
             {
-                LogVersionMismatchError(handshakeResponse);
-                // Still proceed with tool notification for now, but user will see the error
+                _consecutiveHandshakeFailures++;
+                var reason = handshakeResponse?.Message ?? "No response from server";
+                _logger.LogWarning("{class} Version handshake failed ({count}/{max}). Reason: {reason}",
+                    GetType().Name, _consecutiveHandshakeFailures, MaxHandshakeFailures, reason);
+
+                if (_consecutiveHandshakeFailures >= MaxHandshakeFailures)
+                {
+                    _logger.LogError("{class} Version handshake failed {count} times consecutively — disconnecting. Reason: {reason}",
+                        GetType().Name, _consecutiveHandshakeFailures, reason);
+                    _connectionManager.DisconnectImmediate();
+                }
+                return;
             }
 
+            if (!handshakeResponse.Compatible)
+            {
+                LogVersionMismatchError(handshakeResponse);
+                _logger.LogError("{class} Version mismatch — disconnecting. Server: {serverVersion}, API: {apiVersion}, Message: {message}",
+                    GetType().Name, handshakeResponse.ServerVersion, handshakeResponse.ApiVersion, handshakeResponse.Message);
+                _connectionManager.DisconnectImmediate();
+                return;
+            }
+
+            _consecutiveHandshakeFailures = 0;
+            _connectionManager.SetConnected();
             await OnConnectedAsync(cancellationToken);
         }
 

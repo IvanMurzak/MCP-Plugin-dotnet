@@ -108,8 +108,19 @@ namespace com.IvanMurzak.McpPlugin
                     _logger.LogError("Server forcefully disconnected this plugin. Reason: {Reason}", reason);
                 else
                     _logger.LogError("Server forcefully disconnected this plugin.");
+
+                var isAuthFailure = reason != null &&
+                    (reason.Contains("Authorization", StringComparison.OrdinalIgnoreCase) ||
+                     reason.Contains("Token", StringComparison.OrdinalIgnoreCase));
+
                 await _mcpManager.ForceDisconnect();
                 await _connectionManager.Disconnect();
+
+                if (isAuthFailure)
+                {
+                    _logger.LogWarning("Server rejected authorization. Firing OnAuthorizationRejected event.");
+                    _connectionManager.NotifyAuthorizationRejected();
+                }
             })
             .AddTo(_serverEventsDisposables);
 
