@@ -43,8 +43,13 @@ namespace com.IvanMurzak.McpPlugin
                 var hubConnectionBuilder = new HubConnectionBuilder()
                     .WithUrl(connectionConfig.Host + endpoint, options =>
                     {
-                        if (!string.IsNullOrEmpty(connectionConfig.Token))
-                            options.AccessTokenProvider = () => Task.FromResult<string?>(connectionConfig.Token);
+                        options.AccessTokenProvider = () =>
+                        {
+                            var token = connectionConfig.Token;
+                            if (string.IsNullOrWhiteSpace(token))
+                                return Task.FromResult<string?>(null);
+                            return Task.FromResult<string?>(token);
+                        };
                     })
                     .WithAutomaticReconnect(new FixedRetryPolicy(TimeSpan.FromSeconds(10)))
                     .WithKeepAliveInterval(TimeSpan.FromSeconds(30))

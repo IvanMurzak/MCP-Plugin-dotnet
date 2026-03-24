@@ -375,14 +375,17 @@ namespace com.IvanMurzak.McpPlugin
                         break;
                     }
 
-                    if (_connectionState.CurrentValue is HubConnectionState.Connected)
+                    if (_hubConnection.CurrentValue?.State is HubConnectionState.Connected)
                     {
-                        // Connection survived the stability check — it's genuinely established.
+                        // SignalR connection survived the stability check — it's genuinely established.
+                        // Note: _connectionState is NOT set to Connected here. That happens only
+                        // after the application-level handshake succeeds (via SetConnected).
                         consecutiveRejections = 0;
                         return true;
                     }
 
                     // Server closed the connection immediately after handshake.
+                    _connectionState.Value = HubConnectionState.Disconnected;
                     consecutiveRejections++;
                     _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} was closed by the server immediately after handshake ({count}/{max}). " +
                         "This typically indicates authorization failure (invalid or revoked token).",
@@ -395,6 +398,7 @@ namespace com.IvanMurzak.McpPlugin
                             "Please check your authorization token and try reconnecting.",
                             nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveRejections);
                         _continueToReconnect.Value = false;
+                        _connectionState.Value = HubConnectionState.Disconnected;
                         _authorizationRejected.OnNext(Unit.Default);
                         return false;
                     }
@@ -452,7 +456,7 @@ namespace com.IvanMurzak.McpPlugin
                 {
                     _logger.LogInformation("{class}[{guid}] {method} Connection established successfully to: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint);
-                    _connectionState.Value = HubConnectionState.Connected;
+                    _transportConnected.OnNext(Unit.Default);
                     return true;
                 }
                 else

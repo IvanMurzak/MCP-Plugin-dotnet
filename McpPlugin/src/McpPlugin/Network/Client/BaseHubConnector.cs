@@ -28,8 +28,11 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly IConnectionManager _connectionManager;
         protected readonly CancellationTokenSource _cancellationTokenSource = new();
 
+        private const int MaxHandshakeFailures = 3;
         private readonly ThreadSafeBool _isDisposed = new(false);
+        private readonly ThreadSafeBool _handshakeInFlight = new(false);
         private volatile VersionHandshakeResponse? lastHandshakeResponse = null;
+        private int _consecutiveHandshakeFailures;
 
         /// <summary>
         /// Disposable for subscription on the HubConnection changes.
@@ -58,8 +61,23 @@ namespace com.IvanMurzak.McpPlugin
             _apiVersion = apiVersion ?? throw new ArgumentNullException(nameof(apiVersion));
             _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
 
-            _hubConnectionDisposable = _connectionManager.HubConnection
-                .Subscribe(OnHubConnectionChanged);
+            var subscriptions = new CompositeDisposable();
+
+            // Register/clear server event handlers when HubConnection is created/destroyed.
+            // Handlers must be on the HubConnection BEFORE StartAsync so the server's
+            // immediate post-connect messages have registered targets.
+            _connectionManager.HubConnection
+                .Subscribe(OnHubConnectionChanged)
+                .AddTo(subscriptions);
+
+            // Perform version handshake when the SignalR transport connects.
+            // OnTransportConnected fires from AttemptConnection after StartAsync succeeds,
+            // covering both initial connect and reconnect cases.
+            _connectionManager.OnTransportConnected
+                .Subscribe(_ => OnConnectionEstablished())
+                .AddTo(subscriptions);
+
+            _hubConnectionDisposable = subscriptions;
         }
 
         /// <summary>
@@ -172,7 +190,7 @@ namespace com.IvanMurzak.McpPlugin
             }
         }
 
-        private async void OnHubConnectionChanged(HubConnection? hubConnection)
+        private void OnHubConnectionChanged(HubConnection? hubConnection)
         {
             if (_isDisposed.Value)
             {
@@ -186,26 +204,52 @@ namespace com.IvanMurzak.McpPlugin
             _serverEventsDisposables.Clear();
 
             if (hubConnection == null)
-                return; // not connected
+                return;
 
-            var serverEventsCts = _serverEventsDisposables.ToCancellationTokenSource();
-            var cancellationToken = serverEventsCts.Token;
-
-            // Reset any per-connection state before handlers are registered so that
-            // subclasses can detect notifications arriving during the handshake (see
-            // OnBeforeSubscribeToServerEvents / McpManagerClientHub._liveNotificationEpoch).
-            _logger.LogTrace("{method} Invoking pre-subscribe hook.",
-                nameof(OnHubConnectionChanged));
+            _consecutiveHandshakeFailures = 0;
 
             OnBeforeSubscribeToServerEvents();
 
-            // Subscribe to server events BEFORE handshake to avoid race condition.
-            // The server may send RunListTool/RunListPrompts immediately after handshake,
-            // so handlers must be registered before we respond to the handshake.
-            _logger.LogTrace("{method} Subscribing to server events (before handshake).",
+            // Register handlers BEFORE StartAsync so the server's immediate
+            // post-connect messages have registered targets.
+            _logger.LogTrace("{method} Subscribing to server events.",
                 nameof(OnHubConnectionChanged));
 
             SubscribeOnServerEvents(hubConnection, _serverEventsDisposables);
+        }
+
+        private async void OnConnectionEstablished()
+        {
+            if (_isDisposed.Value)
+            {
+                _logger.LogWarning("{method} called on disposed object. Ignoring.", nameof(OnConnectionEstablished));
+                return;
+            }
+
+            if (!_handshakeInFlight.TrySetTrue())
+            {
+                _logger.LogDebug("{method} Handshake already in flight. Skipping.", nameof(OnConnectionEstablished));
+                return;
+            }
+
+            try
+            {
+                await OnConnectionEstablishedCore();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "{method} Unhandled exception during connection establishment.", nameof(OnConnectionEstablished));
+            }
+            finally
+            {
+                _handshakeInFlight.TrySetFalse();
+            }
+        }
+
+        private async Task OnConnectionEstablishedCore()
+        {
+            var serverEventsCts = _serverEventsDisposables.ToCancellationTokenSource();
+            var cancellationToken = serverEventsCts.Token;
 
             // Perform version handshake after handlers are registered
             var handshakeResponse = await PerformVersionHandshake(
@@ -223,12 +267,33 @@ namespace com.IvanMurzak.McpPlugin
 
             lastHandshakeResponse = handshakeResponse;
 
-            if (handshakeResponse != null && !handshakeResponse.Compatible && !handshakeResponse.IsConnectionError)
+            if (handshakeResponse == null || handshakeResponse.IsConnectionError)
             {
-                LogVersionMismatchError(handshakeResponse);
-                // Still proceed with tool notification for now, but user will see the error
+                _consecutiveHandshakeFailures++;
+                var reason = handshakeResponse?.Message ?? "No response from server";
+                _logger.LogWarning("{class} Version handshake failed ({count}/{max}). Reason: {reason}",
+                    GetType().Name, _consecutiveHandshakeFailures, MaxHandshakeFailures, reason);
+
+                if (_consecutiveHandshakeFailures >= MaxHandshakeFailures)
+                {
+                    _logger.LogError("{class} Version handshake failed {count} times consecutively — disconnecting. Reason: {reason}",
+                        GetType().Name, _consecutiveHandshakeFailures, reason);
+                    _connectionManager.DisconnectImmediate();
+                }
+                return;
             }
 
+            if (!handshakeResponse.Compatible)
+            {
+                LogVersionMismatchError(handshakeResponse);
+                _logger.LogError("{class} Version mismatch — disconnecting. Server: {serverVersion}, API: {apiVersion}, Message: {message}",
+                    GetType().Name, handshakeResponse.ServerVersion, handshakeResponse.ApiVersion, handshakeResponse.Message);
+                _connectionManager.DisconnectImmediate();
+                return;
+            }
+
+            _consecutiveHandshakeFailures = 0;
+            _connectionManager.SetConnected();
             await OnConnectedAsync(cancellationToken);
         }
 

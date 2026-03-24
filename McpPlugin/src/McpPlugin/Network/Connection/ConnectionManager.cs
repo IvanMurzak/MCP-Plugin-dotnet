@@ -30,6 +30,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly ReactiveProperty<HubConnection?> _hubConnection = new();
         protected readonly ReactiveProperty<HubConnectionState> _connectionState = new(HubConnectionState.Disconnected);
         private readonly Subject<Unit> _authorizationRejected = new();
+        private readonly Subject<Unit> _transportConnected = new();
         protected readonly CompositeDisposable _disposables = new();
         protected readonly CancellationTokenSource _cancellationTokenSource;
 
@@ -49,7 +50,22 @@ namespace com.IvanMurzak.McpPlugin
         public ReadOnlyReactiveProperty<HubConnection?> HubConnection => _hubConnectionReadOnly;
         public ReadOnlyReactiveProperty<bool> KeepConnected => _keepConnectedReadOnly;
         public Observable<Unit> OnAuthorizationRejected => _authorizationRejected;
+        public Observable<Unit> OnTransportConnected => _transportConnected;
         public string Endpoint => _endpoint;
+
+        public void SetConnected()
+        {
+            if (_isDisposed.Value)
+                return;
+            _connectionState.Value = HubConnectionState.Connected;
+        }
+
+        public void NotifyAuthorizationRejected()
+        {
+            if (_isDisposed.Value)
+                return;
+            _authorizationRejected.OnNext(Unit.Default);
+        }
         public CancellationToken ConnectionCancellationToken => internalCts?.Token ?? CancellationToken.None;
 
         public ConnectionManager(ILogger logger, Version apiVersion, string endpoint, IHubConnectionProvider hubConnectionBuilder)
@@ -78,8 +94,13 @@ namespace com.IvanMurzak.McpPlugin
 
                     // SerialDisposable auto-disposes the previous subscription when reassigned,
                     // preventing accumulation of stale subscriptions across reconnection cycles.
-                    _hubStateSubscription.Disposable = hubConnection.ToObservable().State
+                    // Note: Connected state is excluded from auto-sync — it is only set
+                    // after the application-level handshake succeeds (via SetConnected).
+                    var hubConnectionObservable = hubConnection.ToObservable();
+                    var stateSubscription = hubConnectionObservable.State
+                        .Where(state => state != HubConnectionState.Connected)
                         .Subscribe(state => _connectionState.Value = state);
+                    _hubStateSubscription.Disposable = new CompositeDisposable(hubConnectionObservable, stateSubscription);
                 })
                 .AddTo(_disposables);
 
@@ -280,6 +301,7 @@ namespace com.IvanMurzak.McpPlugin
 
             if (connection.State != HubConnectionState.Connected)
             {
+                _connectionState.Value = connection.State;
                 _logger.LogWarning("{class}[{guid}] {method} HubConnection is not active (State: {state}). Skipping method '{methodName}' on endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), connection.State, methodName, Endpoint);
                 return;
@@ -293,6 +315,7 @@ namespace com.IvanMurzak.McpPlugin
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("not active"))
             {
+                _connectionState.Value = connection.State;
                 _logger.LogWarning("{class}[{guid}] {method} Connection became inactive while invoking '{methodName}' on endpoint: {endpoint}. Error: {message}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint, ex.Message);
             }
@@ -335,6 +358,7 @@ namespace com.IvanMurzak.McpPlugin
             }
             catch (InvalidOperationException ex) when (ex.Message.Contains("not active"))
             {
+                _connectionState.Value = connection.State;
                 _logger.LogWarning("{class}[{guid}] {method} Connection became inactive while invoking '{methodName}' on endpoint: {endpoint}. Error: {message}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint, ex.Message);
                 return default!;

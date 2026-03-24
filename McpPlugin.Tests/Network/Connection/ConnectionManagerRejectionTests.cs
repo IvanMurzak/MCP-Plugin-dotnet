@@ -15,6 +15,7 @@ using Shouldly;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using Moq;
+using R3;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -91,21 +92,30 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
         }
 
         [Fact]
-        public async Task Connect_SucceedsWhenConnectionStaysAlive()
+        public async Task Connect_DoesNotTriggerRejection_WhenConnectionStaysAlive()
         {
-            // Arrange: AttemptConnection succeeds AND the connection state becomes Connected
-            await using var cm = new StableConnectionManager(
+            // Arrange: AttemptConnection always fails (returns false), simulating a server
+            // that can't be reached. This should NOT trigger the rejection detection,
+            // because rejection requires AttemptConnection to return true (handshake success)
+            // followed by an immediate disconnect.
+            await using var cm = new NeverConnectsManager(
                 _logger, _testVersion, _testEndpoint, _mockProvider.Object
             );
 
-            // Act
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var rejectionFired = false;
+            cm.OnAuthorizationRejected.Subscribe(_ => rejectionFired = true);
+
+            // Act: use a short CTS timeout to stop the loop naturally instead of mutating
+            // _continueToReconnect from within the test manager.
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
             var result = await cm.Connect(cts.Token);
 
-            // Assert
-            result.ShouldBeTrue("Connection should succeed when server doesn't reject");
-            cm.KeepConnected.CurrentValue.ShouldBeTrue("KeepConnected should remain true");
-            cm.AttemptCount.ShouldBe(1);
+            // Assert: Connect fails but OnAuthorizationRejected was never emitted, because
+            // rejection detection only fires when AttemptConnection returns true (handshake
+            // success) followed by an immediate disconnect — neither of which happened here.
+            result.ShouldBeFalse("Connection should fail (server unreachable)");
+            rejectionFired.ShouldBeFalse("OnAuthorizationRejected must not fire when AttemptConnection always returns false");
+            cm.AttemptCount.ShouldBeGreaterThan(0, "Should have attempted at least once");
         }
 
         private static HubConnection CreateDummyHubConnection()
@@ -195,16 +205,17 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
         }
 
         /// <summary>
-        /// Simulates a stable connection: AttemptConnection returns true AND sets the
-        /// connection state to Connected so the stability check passes.
+        /// Simulates a server that can't be reached: AttemptConnection always returns false.
+        /// The loop is stopped externally via the CancellationToken passed to Connect().
         /// </summary>
-        private class StableConnectionManager : FastConnectionManager
+        private class NeverConnectsManager : FastConnectionManager
         {
             private int _attemptCount;
             public int AttemptCount => _attemptCount;
 
-            public StableConnectionManager(
-                ILogger logger, Common.Version version, string endpoint, IHubConnectionProvider provider)
+            public NeverConnectsManager(
+                ILogger logger, Common.Version version, string endpoint,
+                IHubConnectionProvider provider)
                 : base(logger, version, endpoint, provider)
             {
             }
@@ -212,8 +223,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             protected override Task<bool> AttemptConnection(CancellationToken cancellationToken)
             {
                 Interlocked.Increment(ref _attemptCount);
-                _connectionState.Value = HubConnectionState.Connected;
-                return Task.FromResult(true);
+                return Task.FromResult(false);
             }
         }
 

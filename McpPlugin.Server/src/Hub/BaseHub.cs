@@ -68,6 +68,19 @@ namespace com.IvanMurzak.McpPlugin.Server
                 _logger.LogDebug("{guid} MCP Plugin connection rejected by authorization webhook. ConnectionId: {connectionId}.",
                     _guid, Context.ConnectionId);
 
+                // Notify the client about the rejection reason before closing.
+                // This allows the client to take specific action (e.g. clear cached tokens).
+                try
+                {
+                    await Clients.Caller.ForceDisconnect("Authorization failed. Token may be missing, invalid, or revoked.");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex,
+                        "{guid} Failed to send ForceDisconnect notification for rejected connection. ConnectionId: {connectionId}.",
+                        _guid, Context.ConnectionId);
+                }
+
                 // Context.Abort() signals SignalR to tear down the connection.
                 // However, the rest of OnConnectedAsync (and overrides in derived classes)
                 // may still execute before SignalR processes the abort. The _connectionRejected
