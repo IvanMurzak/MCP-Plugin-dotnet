@@ -31,10 +31,13 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (dataArguments == null)
                 throw new ArgumentNullException(nameof(dataArguments));
 
-            app.UseForwardedHeaders(new ForwardedHeadersOptions
+            var forwardedHeadersOptions = new ForwardedHeadersOptions
             {
                 ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-            });
+            };
+            forwardedHeadersOptions.KnownNetworks.Clear();
+            forwardedHeadersOptions.KnownProxies.Clear();
+            app.UseForwardedHeaders(forwardedHeadersOptions);
 
             // Setup routing ----------------------------------------------------
             app.UseRouting();
