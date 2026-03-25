@@ -10,6 +10,8 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -89,8 +91,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 TokenToConnectionId[token] = connectionId;
                 ConnectionIdToToken[connectionId] = token;
-                var tokenPrefix = token.Length > 8 ? token[..8] : token;
-                logger?.LogInformation("Token mapping added: token[{0}...] -> connectionId '{1}'", tokenPrefix, connectionId);
+                var tokenHash = TokenHash(token);
+                logger?.LogInformation("Token mapping added: hash[{0}] -> connectionId '{1}'", tokenHash, connectionId);
             }
         }
         public static void RemoveClient<T>(string connectionId, ILogger? logger) => RemoveClient(typeof(T), connectionId, logger);
@@ -115,9 +117,16 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (ConnectionIdToToken.TryRemove(connectionId, out var removedToken))
             {
                 TokenToConnectionId.TryRemove(removedToken, out _);
-                var tokenPrefix = removedToken.Length > 8 ? removedToken[..8] : removedToken;
-                logger?.LogInformation("Token mapping removed: token[{0}...] for connectionId '{1}'", tokenPrefix, connectionId);
+                var tokenHash = TokenHash(removedToken);
+                logger?.LogInformation("Token mapping removed: hash[{0}] for connectionId '{1}'", tokenHash, connectionId);
             }
+        }
+
+        private static string TokenHash(string token)
+        {
+            using var sha = SHA256.Create();
+            var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(token));
+            return BitConverter.ToString(bytes, 0, 4).Replace("-", "").ToLowerInvariant();
         }
 
         public static string? GetConnectionIdByToken(string? token)
