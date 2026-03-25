@@ -57,7 +57,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             if (!string.IsNullOrEmpty(userAgent))
                 McpSessionTokenContext.CurrentUserAgent = userAgent;
 
-            await _next(context);
+            try
+            {
+                await _next(context);
+            }
+            finally
+            {
+                McpSessionTokenContext.CurrentToken = null;
+                McpSessionTokenContext.CurrentClientIp = null;
+                McpSessionTokenContext.CurrentUserAgent = null;
+            }
         }
     }
 }
