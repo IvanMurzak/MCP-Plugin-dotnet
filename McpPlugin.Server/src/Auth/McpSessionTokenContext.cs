@@ -19,11 +19,25 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
     public static class McpSessionTokenContext
     {
         static readonly AsyncLocal<string?> _currentToken = new();
+        static readonly AsyncLocal<string?> _currentClientIp = new();
+        static readonly AsyncLocal<string?> _currentUserAgent = new();
 
         public static string? CurrentToken
         {
             get => _currentToken.Value;
             set => _currentToken.Value = value;
+        }
+
+        public static string? CurrentClientIp
+        {
+            get => _currentClientIp.Value;
+            set => _currentClientIp.Value = value;
+        }
+
+        public static string? CurrentUserAgent
+        {
+            get => _currentUserAgent.Value;
+            set => _currentUserAgent.Value = value;
         }
     }
 }

@@ -49,6 +49,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                     McpSessionTokenContext.CurrentToken = authHeader.Substring("Bearer ".Length).Trim();
             }
 
+            var remoteIp = context.Connection.RemoteIpAddress?.ToString();
+            if (!string.IsNullOrEmpty(remoteIp))
+                McpSessionTokenContext.CurrentClientIp = remoteIp;
+
+            var userAgent = context.Request.Headers.UserAgent.ToString();
+            if (!string.IsNullOrEmpty(userAgent))
+                McpSessionTokenContext.CurrentUserAgent = userAgent;
+
             await _next(context);
         }
     }

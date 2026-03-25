@@ -55,6 +55,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
                 DurationMs = durationMs,
                 ErrorDetails = errorDetails,
                 BearerToken = McpSessionTokenContext.CurrentToken,
+                ClientIp = McpSessionTokenContext.CurrentClientIp,
+                UserAgent = McpSessionTokenContext.CurrentUserAgent,
                 Channel = channel
             };
 
@@ -70,7 +72,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             {
                 PromptName = promptName,
                 ResponseSizeBytes = responseSizeBytes,
-                BearerToken = McpSessionTokenContext.CurrentToken
+                BearerToken = McpSessionTokenContext.CurrentToken,
+                ClientIp = McpSessionTokenContext.CurrentClientIp,
+                UserAgent = McpSessionTokenContext.CurrentUserAgent
             };
 
             Enqueue(_options.PromptWebhookUrl!, "prompt.retrieved", evt);
@@ -85,7 +89,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             {
                 ResourceUri = resourceUri,
                 ResponseSizeBytes = responseSizeBytes,
-                BearerToken = McpSessionTokenContext.CurrentToken
+                BearerToken = McpSessionTokenContext.CurrentToken,
+                ClientIp = McpSessionTokenContext.CurrentClientIp,
+                UserAgent = McpSessionTokenContext.CurrentUserAgent
             };
 
             Enqueue(_options.ResourceWebhookUrl!, "resource.accessed", evt);

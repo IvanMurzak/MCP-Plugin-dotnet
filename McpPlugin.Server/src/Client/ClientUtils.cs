@@ -89,7 +89,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 TokenToConnectionId[token] = connectionId;
                 ConnectionIdToToken[connectionId] = token;
-                logger?.LogInformation("Token mapping added: token -> connectionId '{0}'", connectionId);
+                var tokenPrefix = token.Length > 8 ? token[..8] : token;
+                logger?.LogInformation("Token mapping added: token[{0}...] -> connectionId '{1}'", tokenPrefix, connectionId);
             }
         }
         public static void RemoveClient<T>(string connectionId, ILogger? logger) => RemoveClient(typeof(T), connectionId, logger);
@@ -114,7 +115,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (ConnectionIdToToken.TryRemove(connectionId, out var removedToken))
             {
                 TokenToConnectionId.TryRemove(removedToken, out _);
-                logger?.LogInformation("Token mapping removed for connectionId '{0}'", connectionId);
+                var tokenPrefix = removedToken.Length > 8 ? removedToken[..8] : removedToken;
+                logger?.LogInformation("Token mapping removed: token[{0}...] for connectionId '{1}'", tokenPrefix, connectionId);
             }
         }
 
