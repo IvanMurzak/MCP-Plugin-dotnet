@@ -22,5 +22,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
 
         [JsonPropertyName("bearerToken")]
         public string? BearerToken { get; set; }
+
+        [JsonPropertyName("clientIp")]
+        public string? ClientIp { get; set; }
+
+        [JsonPropertyName("userAgent")]
+        public string? UserAgent { get; set; }
     }
 }

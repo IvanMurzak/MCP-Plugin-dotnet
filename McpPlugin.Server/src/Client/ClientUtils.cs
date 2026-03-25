@@ -12,6 +12,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
@@ -89,7 +91,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 TokenToConnectionId[token] = connectionId;
                 ConnectionIdToToken[connectionId] = token;
-                logger?.LogInformation("Token mapping added: token -> connectionId '{0}'", connectionId);
+                var tokenHash = TokenHash(token);
+                logger?.LogInformation("Token mapping added: hash[{0}] -> connectionId '{1}'", tokenHash, connectionId);
             }
         }
         public static void RemoveClient<T>(string connectionId, ILogger? logger) => RemoveClient(typeof(T), connectionId, logger);
@@ -114,8 +117,16 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (ConnectionIdToToken.TryRemove(connectionId, out var removedToken))
             {
                 TokenToConnectionId.TryRemove(removedToken, out _);
-                logger?.LogInformation("Token mapping removed for connectionId '{0}'", connectionId);
+                var tokenHash = TokenHash(removedToken);
+                logger?.LogInformation("Token mapping removed: hash[{0}] for connectionId '{1}'", tokenHash, connectionId);
             }
+        }
+
+        private static string TokenHash(string token)
+        {
+            using var sha = SHA256.Create();
+            var bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(token));
+            return BitConverter.ToString(bytes, 0, 4).Replace("-", "").ToLowerInvariant();
         }
 
         public static string? GetConnectionIdByToken(string? token)

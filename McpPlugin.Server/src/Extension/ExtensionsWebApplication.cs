@@ -15,6 +15,7 @@ using com.IvanMurzak.McpPlugin.Server.Api;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Transport;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -29,6 +30,14 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             if (dataArguments == null)
                 throw new ArgumentNullException(nameof(dataArguments));
+
+            var forwardedHeadersOptions = new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            };
+            forwardedHeadersOptions.KnownNetworks.Clear();
+            forwardedHeadersOptions.KnownProxies.Clear();
+            app.UseForwardedHeaders(forwardedHeadersOptions);
 
             // Setup routing ----------------------------------------------------
             app.UseRouting();
