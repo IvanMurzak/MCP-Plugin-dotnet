@@ -38,6 +38,7 @@ namespace com.IvanMurzak.McpPlugin
         private readonly SemaphoreSlim _ongoingConnectionGate = new(1, 1);
         private readonly ThreadSafeBool _isDisposed = new(false);
         private readonly SerialDisposable _hubStateSubscription = new();
+        private readonly SerialDisposable _hubObservableReconnectSubscription = new();
         private readonly ReadOnlyReactiveProperty<HubConnectionState> _connectionStateReadOnly;
         private readonly ReadOnlyReactiveProperty<HubConnection?> _hubConnectionReadOnly;
         private readonly ReadOnlyReactiveProperty<bool> _keepConnectedReadOnly;
@@ -104,18 +105,8 @@ namespace com.IvanMurzak.McpPlugin
                 })
                 .AddTo(_disposables);
 
-            _connectionState
-                .Where(state => state == HubConnectionState.Reconnecting && _continueToReconnect.CurrentValue)
-                .Subscribe(state =>
-                {
-                    _logger.LogDebug("{class}[{guid}] Connection state changed to Reconnecting. Initiating reconnection to: {endpoint}",
-                        nameof(ConnectionManager), _guid, Endpoint);
-                    // Fire-and-forget: Connect() handles sequential execution via its internal gate.
-                    // Avoid SubscribeAwait/async void to prevent capturing any SynchronizationContext.
-                    var reconnectTask = Connect(_cancellationTokenSource.Token);
-                    _ = reconnectTask.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
-                })
-                .AddTo(_disposables);
+            // Reconnection is handled by SetupHubConnectionObservables (Closed + Reconnected events).
+            // We do NOT subscribe to Reconnecting here to avoid interfering with SignalR's auto-reconnect.
         }
 
         public async Task InvokeAsync<TInput>(string methodName, TInput input, CancellationToken cancellationToken = default)
@@ -282,6 +273,7 @@ namespace com.IvanMurzak.McpPlugin
             hubConnectionObservable = null;
 
             _hubStateSubscription.Dispose();
+            _hubObservableReconnectSubscription.Dispose();
             _connectionState.Dispose();
             _continueToReconnect.Dispose();
             _connectionStateReadOnly.Dispose();
