@@ -264,11 +264,25 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         private async Task<bool> CreateHubConnectionIfNeeded(CancellationToken cancellationToken)
         {
-            if (_hubConnection.Value != null)
+            var existing = _hubConnection.Value;
+            if (existing != null && existing.State != HubConnectionState.Disconnected)
                 return true;
 
             hubConnectionLogger?.Dispose();
             hubConnectionObservable?.Dispose();
+            hubConnectionLogger = null;
+            hubConnectionObservable = null;
+
+            // Dispose existing Disconnected HubConnection so a fresh one can be created.
+            // After SignalR auto-reconnect exhausts its retries, the HubConnection is left
+            // in Disconnected state. A new instance ensures a clean transport handshake.
+            if (existing != null)
+            {
+                _logger.LogDebug("{class}[{guid}] {method} Disposing existing Disconnected HubConnection for endpoint: {endpoint}",
+                    nameof(ConnectionManager), _guid, nameof(CreateHubConnectionIfNeeded), Endpoint);
+                try { await existing.DisposeAsync(); } catch { /* best effort */ }
+                _hubConnection.Value = null;
+            }
 
             _logger.LogDebug("{class}[{guid}] {method} Creating new HubConnection instance for endpoint: {endpoint}",
                 nameof(ConnectionManager), _guid, nameof(CreateHubConnectionIfNeeded), Endpoint);
@@ -302,7 +316,7 @@ namespace com.IvanMurzak.McpPlugin
             _hubConnection.Value = hubConnection;
 
             SetupHubConnectionLogging(hubConnection);
-            SetupHubConnectionObservables(hubConnection, cancellationToken);
+            SetupHubConnectionObservables(hubConnection);
 
             return true;
         }
@@ -312,25 +326,43 @@ namespace com.IvanMurzak.McpPlugin
             hubConnectionLogger = new(_logger, hubConnection, guid: _guid);
         }
 
-        private void SetupHubConnectionObservables(HubConnection hubConnection, CancellationToken cancellationToken)
+        private void SetupHubConnectionObservables(HubConnection hubConnection)
         {
             hubConnectionObservable = new(hubConnection);
-            // RegisterTo(cancellationToken) ties this subscription to the current connection
-            // cycle (internalCts lifetime). Each Connect() creates a new internalCts, which
-            // disposes this subscription when cancelled — preventing accumulation across cycles.
-            hubConnectionObservable.Closed
+
+            // Subscribe to Reconnected: when SignalR's built-in auto-reconnect succeeds,
+            // fire OnTransportConnected so BaseHubConnector performs the version handshake
+            // and calls SetConnected().
+            var reconnectedSub = hubConnectionObservable.Reconnected
+                .Subscribe(_ =>
+                {
+                    _logger.LogInformation("{class}[{guid}] {method} SignalR auto-reconnect succeeded for endpoint: {endpoint}",
+                        nameof(ConnectionManager), _guid, nameof(SetupHubConnectionObservables), Endpoint);
+                    _transportConnected.OnNext(Unit.Default);
+                });
+
+            // Subscribe to Closed: when SignalR's auto-reconnect exhausts all retries
+            // (or connection is closed without reconnection), create a fresh HubConnection
+            // and restart the connection loop.
+            // Uses _cancellationTokenSource.Token (object lifetime) instead of the
+            // connection-cycle internalCts token to avoid self-cancellation — Connect()
+            // cancels internalCts when creating a new one, which would cancel a token
+            // passed from the previous cycle.
+            var closedSub = hubConnectionObservable.Closed
                 .Where(_ => _continueToReconnect.CurrentValue)
-                .Where(_ => !cancellationToken.IsCancellationRequested)
+                .Where(_ => !_cancellationTokenSource.IsCancellationRequested)
                 .Subscribe(ex =>
                 {
-                    _logger.LogWarning("{class}[{guid}] {method} Connection closed unexpectedly. Attempting to reconnect to: {endpoint}",
+                    _logger.LogWarning(ex, "{class}[{guid}] {method} Connection closed (auto-reconnect exhausted). Attempting fresh reconnection to: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(SetupHubConnectionObservables), Endpoint);
                     // Fire-and-forget: Connect() handles sequential execution via its internal gate.
-                    // Avoid SubscribeAwait/async void to prevent capturing any SynchronizationContext.
-                    var reconnectTask = Connect(cancellationToken);
+                    var reconnectTask = Connect(_cancellationTokenSource.Token);
                     _ = reconnectTask.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
-                })
-                .RegisterTo(cancellationToken);
+                });
+
+            // SerialDisposable auto-disposes the previous subscription set when a new
+            // HubConnection is created, preventing accumulation across reconnection cycles.
+            _hubObservableReconnectSubscription.Disposable = new CompositeDisposable(reconnectedSub, closedSub);
         }
 
         /// <summary>
