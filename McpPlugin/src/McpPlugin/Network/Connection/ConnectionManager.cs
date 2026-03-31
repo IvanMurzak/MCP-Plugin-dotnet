@@ -105,10 +105,8 @@ namespace com.IvanMurzak.McpPlugin
                 })
                 .AddTo(_disposables);
 
-            // NOTE: Reconnection on connection drop is handled by SetupHubConnectionObservables,
-            // which subscribes to Closed (auto-reconnect gave up) and Reconnected (auto-reconnect
-            // succeeded) events. We intentionally do NOT subscribe to the Reconnecting state here
-            // to avoid interfering with SignalR's built-in automatic reconnect mechanism.
+            // Reconnection is handled by SetupHubConnectionObservables (Closed + Reconnected events).
+            // We do NOT subscribe to Reconnecting here to avoid interfering with SignalR's auto-reconnect.
         }
 
         public async Task InvokeAsync<TInput>(string methodName, TInput input, CancellationToken cancellationToken = default)

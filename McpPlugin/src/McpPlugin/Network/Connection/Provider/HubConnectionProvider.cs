@@ -51,7 +51,7 @@ namespace com.IvanMurzak.McpPlugin
                             return Task.FromResult<string?>(token);
                         };
                     })
-                    .WithAutomaticReconnect(new FixedRetryPolicy(TimeSpan.FromSeconds(10), maxRetries: 30))
+                    .WithAutomaticReconnect(new FixedRetryPolicy(TimeSpan.FromSeconds(10), maxRetries: 3))
                     .WithKeepAliveInterval(TimeSpan.FromSeconds(30))
                     .WithServerTimeout(TimeSpan.FromMinutes(5))
                     .AddJsonProtocol(options => SignalR_JsonConfiguration.ConfigureJsonSerializer(_reflector, options))
