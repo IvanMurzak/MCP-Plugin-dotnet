@@ -1,0 +1,27 @@
+McpPlugin.Server/McpPlugin.Server.csproj
+  8d4d689498114267 37
+McpPlugin.Common/McpPlugin.Common.csproj
+  8d4d689498114267 28
+McpPlugin/McpPlugin.csproj
+  8d4d689498114267 38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "54876379584e53867cbef54334cef329af87093b",
+  "prompts": {
+    "8d4d689498114267": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36761876-bbce-477d-9fbd-04b51c7ad534",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak",
+      "messages": [],
+      "total_additions": 158,
+      "total_deletions": 165,
+      "accepted_lines": 130,
+      "overriden_lines": 15
+    }
+  }
+}
