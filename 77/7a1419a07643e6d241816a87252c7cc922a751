@@ -1,0 +1,29 @@
+nuget.config
+  8d4d689498114267 1-7
+McpPlugin/McpPlugin.csproj
+  8d4d689498114267 18,38,43-52
+McpPlugin.Common/McpPlugin.Common.csproj
+  8d4d689498114267 14,28-29
+McpPlugin.Server/McpPlugin.Server.csproj
+  8d4d689498114267 14,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "777a1419a07643e6d241816a87252c7cc922a751",
+  "prompts": {
+    "8d4d689498114267": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "36761876-bbce-477d-9fbd-04b51c7ad534",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak",
+      "messages": [],
+      "total_additions": 326,
+      "total_deletions": 310,
+      "accepted_lines": 165,
+      "overriden_lines": 0
+    }
+  }
+}
