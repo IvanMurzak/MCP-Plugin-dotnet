@@ -8,7 +8,7 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Text;
+using System;
 using System.Text.Json;
 
 namespace com.IvanMurzak.McpPlugin
@@ -16,197 +16,132 @@ namespace com.IvanMurzak.McpPlugin
     public static class ExtensionsJsonElement
     {
         /// <summary>
-        /// Updates a JsonElement by setting or replacing a specific property with a new value.
+        /// Updates a JsonElement by setting or replacing a specific property with a new int value.
         /// </summary>
-        /// <param name="originalElement">The original JsonElement to update</param>
-        /// <param name="propertyName">The name of the property to set/replace</param>
-        /// <param name="newValue">The new value for the property</param>
-        /// <returns>A new JsonElement with the updated property</returns>
-        public static JsonElement SetProperty(
-            this ref JsonElement? originalElement,
-            string propertyName,
-            int newValue)
+        public static JsonElement SetProperty(this ref JsonElement? originalElement, string propertyName, int newValue)
         {
-            // Check if need to set value
-            if (originalElement != null && originalElement.Value.TryGetProperty(propertyName, out var propertyElement))
-            {
-                if (propertyElement.TryGetInt32(out var existedValue))
-                {
-                    if (existedValue == newValue)
-                        return originalElement.Value; // no need to set value
-                }
-            }
+            if (originalElement != null && originalElement.Value.TryGetProperty(propertyName, out var prop)
+                && prop.TryGetInt32(out var existing) && existing == newValue)
+                return originalElement.Value;
 
-            using var stream = new System.IO.MemoryStream();
-            using var writer = new Utf8JsonWriter(stream);
-
-            writer.WriteStartObject();
-
-            if (originalElement == null)
-            {
-                // If originalElement is null, we just write the new property
-                writer.WriteNumber(propertyName, newValue);
-            }
-            else
-            {
-                // Copy all existing properties except the one we're updating
-                foreach (var property in originalElement.Value.EnumerateObject())
-                {
-                    if (property.Name != propertyName)
-                    {
-                        property.WriteTo(writer);
-                    }
-                }
-                // Write the new property value
-                writer.WriteNumber(propertyName, newValue);
-            }
-
-            writer.WriteEndObject();
-            writer.Flush();
-
-            // Parse and return the new JsonElement
-            var correctedJson = Encoding.UTF8.GetString(stream.ToArray());
-            originalElement = JsonDocument.Parse(correctedJson).RootElement;
-            return originalElement.Value;
+            return SetPropertyCore(ref originalElement, propertyName,
+                (w, name) => w.WriteNumber(name, newValue));
         }
 
         /// <summary>
-        /// Updates a JsonElement by setting or replacing a specific property with a new string value.
+        /// Updates a JsonElement by setting or replacing a specific property with a new uint value.
         /// </summary>
-        /// <param name="originalElement">The original JsonElement to update</param>
-        /// <param name="propertyName">The name of the property to set/replace</param>
-        /// <param name="newValue">The new string value for the property</param>
-        /// <returns>A new JsonElement with the updated property</returns>
-        public static JsonElement SetProperty(
-            this ref JsonElement? originalElement,
-            string propertyName,
-            string newValue)
+        public static JsonElement SetProperty(this ref JsonElement? originalElement, string propertyName, uint newValue)
         {
-            // Check if need to set value
-            if (originalElement != null && originalElement.Value.TryGetProperty(propertyName, out var propertyElement))
-            {
-                if (propertyElement.ValueKind == JsonValueKind.String)
-                {
-                    var existedValue = propertyElement.GetString();
-                    if (existedValue == newValue)
-                        return originalElement.Value; // no need to set value
-                }
-            }
+            if (originalElement != null && originalElement.Value.TryGetProperty(propertyName, out var prop)
+                && prop.TryGetUInt32(out var existing) && existing == newValue)
+                return originalElement.Value;
 
-            using var stream = new System.IO.MemoryStream();
-            using var writer = new Utf8JsonWriter(stream);
-
-            writer.WriteStartObject();
-
-            if (originalElement == null)
-            {
-                // If originalElement is null, we just write the new property
-                writer.WriteString(propertyName, newValue);
-            }
-            else
-            {
-                // Copy all existing properties except the one we're updating
-                foreach (var property in originalElement.Value.EnumerateObject())
-                {
-                    if (property.Name != propertyName)
-                    {
-                        property.WriteTo(writer);
-                    }
-                }
-                // Write the new property value
-                writer.WriteString(propertyName, newValue);
-            }
-
-            writer.WriteEndObject();
-            writer.Flush();
-
-            // Parse and return the new JsonElement
-            var correctedJson = Encoding.UTF8.GetString(stream.ToArray());
-            originalElement = JsonDocument.Parse(correctedJson).RootElement;
-            return originalElement.Value;
+            return SetPropertyCore(ref originalElement, propertyName,
+                (w, name) => w.WriteNumber(name, newValue));
         }
 
         /// <summary>
-        /// Updates a JsonElement by setting or replacing a specific property with a new boolean value.
+        /// Updates a JsonElement by setting or replacing a specific property with a new long value.
         /// </summary>
-        /// <param name="originalElement">The original JsonElement to update</param>
-        /// <param name="propertyName">The name of the property to set/replace</param>
-        /// <param name="newValue">The new boolean value for the property</param>
-        /// <returns>A new JsonElement with the updated property</returns>
-        public static JsonElement SetProperty(
-            this ref JsonElement? originalElement,
-            string propertyName,
-            bool newValue)
+        public static JsonElement SetProperty(this ref JsonElement? originalElement, string propertyName, long newValue)
         {
-            // Check if need to set value
-            if (originalElement != null && originalElement.Value.TryGetProperty(propertyName, out var propertyElement))
-            {
-                if (propertyElement.ValueKind == JsonValueKind.True || propertyElement.ValueKind == JsonValueKind.False)
-                {
-                    var existedValue = propertyElement.GetBoolean();
-                    if (existedValue == newValue)
-                        return originalElement.Value; // no need to set value
-                }
-            }
+            if (originalElement != null && originalElement.Value.TryGetProperty(propertyName, out var prop)
+                && prop.TryGetInt64(out var existing) && existing == newValue)
+                return originalElement.Value;
 
-            using var stream = new System.IO.MemoryStream();
-            using var writer = new Utf8JsonWriter(stream);
+            return SetPropertyCore(ref originalElement, propertyName,
+                (w, name) => w.WriteNumber(name, newValue));
+        }
 
-            writer.WriteStartObject();
+        /// <summary>
+        /// Updates a JsonElement by setting or replacing a specific property with a new ulong value.
+        /// </summary>
+        public static JsonElement SetProperty(this ref JsonElement? originalElement, string propertyName, ulong newValue)
+        {
+            if (originalElement != null && originalElement.Value.TryGetProperty(propertyName, out var prop)
+                && prop.TryGetUInt64(out var existing) && existing == newValue)
+                return originalElement.Value;
 
-            if (originalElement == null)
-            {
-                // If originalElement is null, we just write the new property
-                writer.WriteBoolean(propertyName, newValue);
-            }
-            else
-            {
-                // Copy all existing properties except the one we're updating
-                foreach (var property in originalElement.Value.EnumerateObject())
-                {
-                    if (property.Name != propertyName)
-                    {
-                        property.WriteTo(writer);
-                    }
-                }
-                // Write the new property value
-                writer.WriteBoolean(propertyName, newValue);
-            }
-
-            writer.WriteEndObject();
-            writer.Flush();
-
-            // Parse and return the new JsonElement
-            var correctedJson = Encoding.UTF8.GetString(stream.ToArray());
-            originalElement = JsonDocument.Parse(correctedJson).RootElement;
-            return originalElement.Value;
+            return SetPropertyCore(ref originalElement, propertyName,
+                (w, name) => w.WriteNumber(name, newValue));
         }
 
         /// <summary>
         /// Updates a JsonElement by setting or replacing a specific property with a new float value.
         /// </summary>
-        /// <param name="originalElement">The original JsonElement to update</param>
-        /// <param name="propertyName">The name of the property to set/replace</param>
-        /// <param name="newValue">The new float value for the property</param>
-        /// <returns>A new JsonElement with the updated property</returns>
-        public static JsonElement SetProperty(
-            this ref JsonElement? originalElement,
-            string propertyName,
-            float newValue)
+        public static JsonElement SetProperty(this ref JsonElement? originalElement, string propertyName, float newValue)
         {
-            // Check if need to set value
-            if (originalElement != null && originalElement.Value.TryGetProperty(propertyName, out var propertyElement))
-            {
-                if (propertyElement.ValueKind == JsonValueKind.Number)
-                {
-                    if (propertyElement.TryGetSingle(out var existedValue))
-                    {
-                        if (System.Math.Abs(existedValue - newValue) < float.Epsilon)
-                            return originalElement.Value; // no need to set value
-                    }
-                }
-            }
+            if (originalElement != null && originalElement.Value.TryGetProperty(propertyName, out var prop)
+                && prop.TryGetSingle(out var existing) && existing == newValue)
+                return originalElement.Value;
 
+            return SetPropertyCore(ref originalElement, propertyName,
+                (w, name) => w.WriteNumber(name, newValue));
+        }
+
+        /// <summary>
+        /// Updates a JsonElement by setting or replacing a specific property with a new double value.
+        /// </summary>
+        public static JsonElement SetProperty(this ref JsonElement? originalElement, string propertyName, double newValue)
+        {
+            if (originalElement != null && originalElement.Value.TryGetProperty(propertyName, out var prop)
+                && prop.TryGetDouble(out var existing) && existing == newValue)
+                return originalElement.Value;
+
+            return SetPropertyCore(ref originalElement, propertyName,
+                (w, name) => w.WriteNumber(name, newValue));
+        }
+
+        /// <summary>
+        /// Updates a JsonElement by setting or replacing a specific property with a new decimal value.
+        /// </summary>
+        public static JsonElement SetProperty(this ref JsonElement? originalElement, string propertyName, decimal newValue)
+        {
+            if (originalElement != null && originalElement.Value.TryGetProperty(propertyName, out var prop)
+                && prop.TryGetDecimal(out var existing) && existing == newValue)
+                return originalElement.Value;
+
+            return SetPropertyCore(ref originalElement, propertyName,
+                (w, name) => w.WriteNumber(name, newValue));
+        }
+
+        /// <summary>
+        /// Updates a JsonElement by setting or replacing a specific property with a new string value.
+        /// </summary>
+        public static JsonElement SetProperty(this ref JsonElement? originalElement, string propertyName, string newValue)
+        {
+            if (originalElement != null && originalElement.Value.TryGetProperty(propertyName, out var prop)
+                && prop.ValueKind == JsonValueKind.String && prop.GetString() == newValue)
+                return originalElement.Value;
+
+            return SetPropertyCore(ref originalElement, propertyName,
+                (w, name) => w.WriteString(name, newValue));
+        }
+
+        /// <summary>
+        /// Updates a JsonElement by setting or replacing a specific property with a new boolean value.
+        /// </summary>
+        public static JsonElement SetProperty(this ref JsonElement? originalElement, string propertyName, bool newValue)
+        {
+            if (originalElement != null && originalElement.Value.TryGetProperty(propertyName, out var prop)
+                && (prop.ValueKind == JsonValueKind.True || prop.ValueKind == JsonValueKind.False)
+                && prop.GetBoolean() == newValue)
+                return originalElement.Value;
+
+            return SetPropertyCore(ref originalElement, propertyName,
+                (w, name) => w.WriteBoolean(name, newValue));
+        }
+
+        /// <summary>
+        /// Shared implementation that copies all existing properties (except the target),
+        /// writes the new property via <paramref name="writeValue"/>, and parses the result back.
+        /// </summary>
+        private static JsonElement SetPropertyCore(
+            ref JsonElement? originalElement,
+            string propertyName,
+            Action<Utf8JsonWriter, string> writeValue)
+        {
             using var stream = new System.IO.MemoryStream();
             using var writer = new Utf8JsonWriter(stream);
 
@@ -214,12 +149,10 @@ namespace com.IvanMurzak.McpPlugin
 
             if (originalElement == null)
             {
-                // If originalElement is null, we just write the new property
-                writer.WriteNumber(propertyName, newValue);
+                writeValue(writer, propertyName);
             }
             else
             {
-                // Copy all existing properties except the one we're updating
                 foreach (var property in originalElement.Value.EnumerateObject())
                 {
                     if (property.Name != propertyName)
@@ -227,16 +160,15 @@ namespace com.IvanMurzak.McpPlugin
                         property.WriteTo(writer);
                     }
                 }
-                // Write the new property value
-                writer.WriteNumber(propertyName, newValue);
+                writeValue(writer, propertyName);
             }
 
             writer.WriteEndObject();
             writer.Flush();
 
-            // Parse and return the new JsonElement
-            var correctedJson = Encoding.UTF8.GetString(stream.ToArray());
-            originalElement = JsonDocument.Parse(correctedJson).RootElement;
+            var jsonBytes = new ReadOnlyMemory<byte>(stream.GetBuffer(), 0, (int)stream.Length);
+            using var doc = JsonDocument.Parse(jsonBytes);
+            originalElement = doc.RootElement.Clone();
             return originalElement.Value;
         }
     }
