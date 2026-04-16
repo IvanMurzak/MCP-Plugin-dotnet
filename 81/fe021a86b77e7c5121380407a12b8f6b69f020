@@ -1,0 +1,12 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "81fe021a86b77e7c5121380407a12b8f6b69f020",
+  "prompts": {},
+  "humans": {
+    "h_9a61b2ff2f3edc": {
+      "author": "Ivan Murzak"
+    }
+  }
+}
