@@ -15,6 +15,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Skills
@@ -34,10 +35,13 @@ namespace com.IvanMurzak.McpPlugin.Skills
         readonly ILogger? _logger;
         static readonly UTF8Encoding _utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
 
+        // TypeInfoResolver is required on netstandard2.1/net8+: JsonNode.ToJsonString(options)
+        // calls options.MakeReadOnly(), which throws if no resolver is set.
         static readonly JsonSerializerOptions _prettyJsonOptions = new JsonSerializerOptions
         {
             WriteIndented = true,
-            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+            TypeInfoResolver = new DefaultJsonTypeInfoResolver()
         };
 
         public SkillFileGenerator(ILogger? logger = null)
