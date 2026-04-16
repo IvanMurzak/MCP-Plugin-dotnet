@@ -9,7 +9,6 @@
 */
 
 using System;
-using System.Text;
 using System.Text.Json;
 
 namespace com.IvanMurzak.McpPlugin
@@ -74,8 +73,7 @@ namespace com.IvanMurzak.McpPlugin
         public static JsonElement SetProperty(this ref JsonElement? originalElement, string propertyName, float newValue)
         {
             if (originalElement != null && originalElement.Value.TryGetProperty(propertyName, out var prop)
-                && prop.ValueKind == JsonValueKind.Number
-                && prop.TryGetSingle(out var existing) && Math.Abs(existing - newValue) < float.Epsilon)
+                && prop.TryGetSingle(out var existing) && existing == newValue)
                 return originalElement.Value;
 
             return SetPropertyCore(ref originalElement, propertyName,
@@ -88,8 +86,7 @@ namespace com.IvanMurzak.McpPlugin
         public static JsonElement SetProperty(this ref JsonElement? originalElement, string propertyName, double newValue)
         {
             if (originalElement != null && originalElement.Value.TryGetProperty(propertyName, out var prop)
-                && prop.ValueKind == JsonValueKind.Number
-                && prop.TryGetDouble(out var existing) && Math.Abs(existing - newValue) < double.Epsilon)
+                && prop.TryGetDouble(out var existing) && existing == newValue)
                 return originalElement.Value;
 
             return SetPropertyCore(ref originalElement, propertyName,
@@ -169,8 +166,9 @@ namespace com.IvanMurzak.McpPlugin
             writer.WriteEndObject();
             writer.Flush();
 
-            var correctedJson = Encoding.UTF8.GetString(stream.ToArray());
-            originalElement = JsonDocument.Parse(correctedJson).RootElement;
+            var jsonBytes = new ReadOnlyMemory<byte>(stream.GetBuffer(), 0, (int)stream.Length);
+            using var doc = JsonDocument.Parse(jsonBytes);
+            originalElement = doc.RootElement.Clone();
             return originalElement.Value;
         }
     }
