@@ -119,6 +119,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
+        public async Task EmptyBearerToken_OnHubPath_ReturnsNoResult()
+        {
+            // Same hub-path silencing rule as UnrecognizedToken_OnHubPath_ReturnsNoResult:
+            // an empty Bearer header on the hub path would otherwise trigger the
+            // "[7] McpPluginToken was not authenticated" info log on every probe.
+            var result = await AuthenticateAsync(
+                "Bearer ",
+                requireToken: true,
+                requestPath: Consts.Hub.RemoteApp);
+
+            result.None.ShouldBeTrue();
+        }
+
+        [Fact]
         public async Task ValidRegisteredToken_ReturnsSuccess()
         {
             var token = UniqueId();

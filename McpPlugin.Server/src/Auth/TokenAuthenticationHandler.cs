@@ -73,7 +73,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
 
             var token = authHeader.Substring("Bearer ".Length).Trim();
             if (string.IsNullOrEmpty(token))
-                return AuthenticateResult.Fail("Empty Bearer token.");
+                return IsHubPath() ? AuthenticateResult.NoResult() : AuthenticateResult.Fail("Empty Bearer token.");
 
             // Token resolution — three additive sources, checked in priority order:
             //
@@ -151,17 +151,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             // not authenticated" info log on every probe — a documented production-log noise
             // source (issue #99). Returning NoResult on the hub path lets the connection
             // through silently while preserving the Fail+401 challenge on every other path
-            // (which IS RequireAuthorization()-gated).
+            // (which IS RequireAuthorization()-gated). The same hub-path-silencing rule is
+            // also applied to the empty-Bearer case above (line 76).
             if (ticket == null)
-            {
-                var path = Request.Path.Value;
-                if (!string.IsNullOrEmpty(path)
-                    && path.StartsWith(Consts.Hub.RemoteApp, StringComparison.OrdinalIgnoreCase))
-                {
-                    return AuthenticateResult.NoResult();
-                }
-                return AuthenticateResult.Fail("Invalid or unrecognized token.");
-            }
+                return IsHubPath() ? AuthenticateResult.NoResult() : AuthenticateResult.Fail("Invalid or unrecognized token.");
 
             // Single authorization webhook check for whichever tier matched.
             // Note: AuthorizeAiAgentAsync returns false for both explicit denials
@@ -170,6 +163,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 return AuthenticateResult.Fail("Authorization webhook rejected the connection.");
 
             return AuthenticateResult.Success(ticket);
+        }
+
+        // True when the request targets the SignalR hub endpoint. Used to silence the
+        // "[7] McpPluginToken was not authenticated" info log noise on hub probes — see
+        // the comment on the no-tier-matched branch in HandleAuthenticateAsync.
+        bool IsHubPath()
+        {
+            var path = Request.Path.Value;
+            return !string.IsNullOrEmpty(path)
+                && path.StartsWith(Consts.Hub.RemoteApp, StringComparison.OrdinalIgnoreCase);
         }
 
         Task<bool> AuthorizeAiAgentAsync(string token)
