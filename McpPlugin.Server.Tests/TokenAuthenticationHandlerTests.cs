@@ -13,6 +13,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
 using Microsoft.AspNetCore.Authentication;
@@ -35,7 +36,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             bool requireToken = true,
             string? serverToken = null,
             string? registeredToken = null,
-            string? registeredConnectionId = null)
+            string? registeredConnectionId = null,
+            string? requestPath = null)
         {
             // Register token mapping if provided
             if (registeredToken != null && registeredConnectionId != null)
@@ -68,6 +70,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 var context = new DefaultHttpContext();
                 if (authorizationHeader != null)
                     context.Request.Headers["Authorization"] = authorizationHeader;
+                if (requestPath != null)
+                    context.Request.Path = new PathString(requestPath);
 
                 var scheme = new AuthenticationScheme(
                     TokenAuthenticationHandler.SchemeName,
@@ -115,6 +119,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
+        public async Task EmptyBearerToken_OnHubPath_ReturnsNoResult()
+        {
+            // Same hub-path silencing rule as UnrecognizedToken_OnHubPath_ReturnsNoResult:
+            // an empty Bearer header on the hub path would otherwise trigger the
+            // "[7] McpPluginToken was not authenticated" info log on every probe.
+            var result = await AuthenticateAsync(
+                "Bearer ",
+                requireToken: true,
+                requestPath: Consts.Hub.RemoteApp);
+
+            result.None.ShouldBeTrue();
+        }
+
+        [Fact]
         public async Task ValidRegisteredToken_ReturnsSuccess()
         {
             var token = UniqueId();
@@ -154,6 +172,68 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 $"Bearer {UniqueId()}",
                 requireToken: true,
                 serverToken: "different-token");
+
+            result.Succeeded.ShouldBeFalse();
+            result.Failure!.Message.ShouldBe("Invalid or unrecognized token.");
+        }
+
+        // --- Hub-path scoped no-tier-match handling (issue #99 commit 2) ---
+
+        [Fact]
+        public async Task UnrecognizedToken_OnHubPath_ReturnsNoResult()
+        {
+            // On the SignalR hub path the plugin's bearer token is registered AFTER
+            // OnConnectedAsync runs (chicken-and-egg). Returning Fail here causes the
+            // framework to log "[7] McpPluginToken was not authenticated" on every probe.
+            // Returning NoResult lets the connection through silently; the hub endpoint is
+            // not RequireAuthorization()-gated so this is safe.
+            var result = await AuthenticateAsync(
+                $"Bearer {UniqueId()}",
+                requireToken: true,
+                serverToken: "different-token",
+                requestPath: Consts.Hub.RemoteApp);
+
+            result.None.ShouldBeTrue();
+        }
+
+        [Fact]
+        public async Task UnrecognizedToken_OnHubSubPath_ReturnsNoResult()
+        {
+            // SignalR appends sub-segments to the hub endpoint (e.g.
+            // /hub/mcp-server/negotiate, /hub/mcp-server?id=...). StartsWith covers them.
+            var result = await AuthenticateAsync(
+                $"Bearer {UniqueId()}",
+                requireToken: true,
+                serverToken: "different-token",
+                requestPath: Consts.Hub.RemoteApp + "/negotiate");
+
+            result.None.ShouldBeTrue();
+        }
+
+        [Fact]
+        public async Task UnrecognizedToken_OnHubPath_CaseInsensitive_ReturnsNoResult()
+        {
+            // PathString comparisons in ASP.NET Core are case-insensitive by convention.
+            // The match here uses StringComparison.OrdinalIgnoreCase explicitly.
+            var result = await AuthenticateAsync(
+                $"Bearer {UniqueId()}",
+                requireToken: true,
+                serverToken: "different-token",
+                requestPath: Consts.Hub.RemoteApp.ToUpperInvariant());
+
+            result.None.ShouldBeTrue();
+        }
+
+        [Fact]
+        public async Task UnrecognizedToken_OnNonHubPath_StillReturnsFail()
+        {
+            // Regression guard: non-hub paths (e.g. /mcp, /token) MUST still get Fail so
+            // the framework's RequireAuthorization() pipeline issues the 401 challenge.
+            var result = await AuthenticateAsync(
+                $"Bearer {UniqueId()}",
+                requireToken: true,
+                serverToken: "different-token",
+                requestPath: "/mcp");
 
             result.Succeeded.ShouldBeFalse();
             result.Failure!.Message.ShouldBe("Invalid or unrecognized token.");

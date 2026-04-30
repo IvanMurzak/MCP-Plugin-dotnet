@@ -11,6 +11,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Server;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
@@ -243,6 +244,136 @@ namespace McpPlugin.Server.Tests
 
             hub.ConnectionRejectedFlag.ShouldBeFalse();
             mockContext.Verify(c => c.Abort(), Times.Never);
+        }
+
+        // --- auth=required + empty-token short-circuit tests (issue #99 commit 1) ---
+
+        /// <summary>
+        /// Helper: build a hub fully wired for the empty-token short-circuit / auth-mode tests —
+        /// configurable strategy.AuthOption and webhook stubbing, mock IHubCallerClients with a
+        /// settable Caller so tests can assert ForceDisconnect was invoked.
+        /// </summary>
+        static (TestHub Hub, Mock<IMcpConnectionStrategy> Strategy, Mock<IAuthorizationWebhookService> Webhook, Mock<IClientDisconnectable> Caller) CreateAuthModeTestHub(
+            Mock<HubCallerContext> mockContext,
+            Consts.MCP.Server.AuthOption authOption = Consts.MCP.Server.AuthOption.required,
+            bool stubWebhookSuccess = true)
+        {
+            var logger = new Mock<ILogger>().Object;
+
+            var strategy = new Mock<IMcpConnectionStrategy>();
+            strategy.SetupGet(s => s.AuthOption).Returns(authOption);
+
+            var webhook = new Mock<IAuthorizationWebhookService>();
+            if (stubWebhookSuccess)
+            {
+                webhook.Setup(x => x.AuthorizePluginAsync(
+                        It.IsAny<string>(), It.IsAny<string?>(),
+                        It.IsAny<string?>(), It.IsAny<string?>(),
+                        It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(true);
+            }
+
+            var caller = new Mock<IClientDisconnectable>();
+            var clients = new Mock<IHubCallerClients<IClientDisconnectable>>();
+            clients.SetupGet(c => c.Caller).Returns(caller.Object);
+
+            var hub = new TestHub(logger, strategy.Object, webhook.Object);
+            hub.Context = mockContext.Object;
+            hub.Clients = clients.Object;
+            return (hub, strategy, webhook, caller);
+        }
+
+        [Fact]
+        public async Task OnConnectedAsync_AuthRequired_EmptyToken_RejectsAndSkipsWebhook()
+        {
+            var mockContext = CreateMockHubCallerContext(bearerToken: null);
+            var (hub, _, webhook, caller) = CreateAuthModeTestHub(mockContext);
+
+            await hub.OnConnectedAsync();
+
+            // Connection rejected, Context.Abort() called.
+            hub.ConnectionRejectedFlag.ShouldBeTrue();
+            mockContext.Verify(c => c.Abort(), Times.Once);
+
+            // Webhook MUST NOT be invoked — that's the whole point of the short-circuit.
+            webhook.Verify(w => w.AuthorizePluginAsync(
+                    It.IsAny<string>(), It.IsAny<string?>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+
+            // Client was notified via ForceDisconnect with the auth=required reason.
+            caller.Verify(c => c.ForceDisconnect(
+                    "Authorization failed. A bearer token is required in auth=required mode."),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task OnConnectedAsync_AuthRequired_EmptyToken_DoesNotCallStrategyOnPluginConnected()
+        {
+            var mockContext = CreateMockHubCallerContext(bearerToken: null);
+            // Don't stub the webhook — short-circuit must fire before any webhook call would happen,
+            // so unstubbed webhook (which would return default(false)) proves the short-circuit ran.
+            var (hub, strategy, _, _) = CreateAuthModeTestHub(mockContext, stubWebhookSuccess: false);
+
+            await hub.OnConnectedAsync();
+
+            // Strategy.OnPluginConnected MUST NOT be invoked when the empty-token
+            // short-circuit fires — connection is rejected before strategy registration.
+            strategy.Verify(
+                s => s.OnPluginConnected(
+                    It.IsAny<Type>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string?>(),
+                    It.IsAny<ILogger>(),
+                    It.IsAny<Action<string, string?>>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task OnConnectedAsync_AuthRequired_NonEmptyToken_StillCallsWebhook()
+        {
+            // Regression guard: the short-circuit triggers ONLY on empty tokens. With a
+            // present token, the existing webhook flow must still run unchanged.
+            var token = UniqueId();
+            var mockContext = CreateMockHubCallerContext(bearerToken: token);
+            var (hub, _, webhook, _) = CreateAuthModeTestHub(mockContext);
+
+            await hub.OnConnectedAsync();
+
+            hub.ConnectionRejectedFlag.ShouldBeFalse();
+            mockContext.Verify(c => c.Abort(), Times.Never);
+
+            webhook.Verify(w => w.AuthorizePluginAsync(
+                    It.IsAny<string>(),
+                    token,
+                    It.IsAny<string?>(),
+                    It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task OnConnectedAsync_AuthNone_EmptyToken_DoesNotShortCircuit()
+        {
+            // Regression guard: the short-circuit must NOT fire in auth=none mode —
+            // empty-token connections are legitimate there.
+            var mockContext = CreateMockHubCallerContext(bearerToken: null);
+            var (hub, _, webhook, _) = CreateAuthModeTestHub(
+                mockContext,
+                authOption: Consts.MCP.Server.AuthOption.none);
+
+            await hub.OnConnectedAsync();
+
+            hub.ConnectionRejectedFlag.ShouldBeFalse();
+            mockContext.Verify(c => c.Abort(), Times.Never);
+
+            // Webhook IS invoked — auth=none keeps the existing behavior.
+            webhook.Verify(w => w.AuthorizePluginAsync(
+                    It.IsAny<string>(), It.IsAny<string?>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
         }
     }
 }
