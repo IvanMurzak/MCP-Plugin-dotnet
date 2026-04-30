@@ -11,6 +11,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
@@ -60,7 +61,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             // log line on the webhook side. Cuts a documented production-log noise source for
             // tokenless connection probes (issue #99). Behavior in auth=none mode is unchanged.
             if (string.IsNullOrEmpty(token)
-                && _strategy.AuthOption == Common.Consts.MCP.Server.AuthOption.required)
+                && _strategy.AuthOption == Consts.MCP.Server.AuthOption.required)
             {
                 _connectionRejected = true;
                 _logger.LogDebug(

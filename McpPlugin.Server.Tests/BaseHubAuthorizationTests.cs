@@ -249,24 +249,29 @@ namespace McpPlugin.Server.Tests
         // --- auth=required + empty-token short-circuit tests (issue #99 commit 1) ---
 
         /// <summary>
-        /// Helper: build hub fully wired for the empty-token short-circuit path —
-        /// strategy.AuthOption == required, mock IHubCallerClients with a settable Caller
-        /// so we can assert ForceDisconnect was invoked.
+        /// Helper: build a hub fully wired for the empty-token short-circuit / auth-mode tests —
+        /// configurable strategy.AuthOption and webhook stubbing, mock IHubCallerClients with a
+        /// settable Caller so tests can assert ForceDisconnect was invoked.
         /// </summary>
-        static (TestHub Hub, Mock<IAuthorizationWebhookService> Webhook, Mock<IClientDisconnectable> Caller) CreateRequiredAuthTestHub(
-            Mock<HubCallerContext> mockContext)
+        static (TestHub Hub, Mock<IMcpConnectionStrategy> Strategy, Mock<IAuthorizationWebhookService> Webhook, Mock<IClientDisconnectable> Caller) CreateAuthModeTestHub(
+            Mock<HubCallerContext> mockContext,
+            Consts.MCP.Server.AuthOption authOption = Consts.MCP.Server.AuthOption.required,
+            bool stubWebhookSuccess = true)
         {
             var logger = new Mock<ILogger>().Object;
 
             var strategy = new Mock<IMcpConnectionStrategy>();
-            strategy.SetupGet(s => s.AuthOption).Returns(Consts.MCP.Server.AuthOption.required);
+            strategy.SetupGet(s => s.AuthOption).Returns(authOption);
 
             var webhook = new Mock<IAuthorizationWebhookService>();
-            webhook.Setup(x => x.AuthorizePluginAsync(
-                    It.IsAny<string>(), It.IsAny<string?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
+            if (stubWebhookSuccess)
+            {
+                webhook.Setup(x => x.AuthorizePluginAsync(
+                        It.IsAny<string>(), It.IsAny<string?>(),
+                        It.IsAny<string?>(), It.IsAny<string?>(),
+                        It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(true);
+            }
 
             var caller = new Mock<IClientDisconnectable>();
             var clients = new Mock<IHubCallerClients<IClientDisconnectable>>();
@@ -275,14 +280,14 @@ namespace McpPlugin.Server.Tests
             var hub = new TestHub(logger, strategy.Object, webhook.Object);
             hub.Context = mockContext.Object;
             hub.Clients = clients.Object;
-            return (hub, webhook, caller);
+            return (hub, strategy, webhook, caller);
         }
 
         [Fact]
         public async Task OnConnectedAsync_AuthRequired_EmptyToken_RejectsAndSkipsWebhook()
         {
             var mockContext = CreateMockHubCallerContext(bearerToken: null);
-            var (hub, webhook, caller) = CreateRequiredAuthTestHub(mockContext);
+            var (hub, _, webhook, caller) = CreateAuthModeTestHub(mockContext);
 
             await hub.OnConnectedAsync();
 
@@ -307,20 +312,9 @@ namespace McpPlugin.Server.Tests
         public async Task OnConnectedAsync_AuthRequired_EmptyToken_DoesNotCallStrategyOnPluginConnected()
         {
             var mockContext = CreateMockHubCallerContext(bearerToken: null);
-            var logger = new Mock<ILogger>().Object;
-
-            var strategy = new Mock<IMcpConnectionStrategy>();
-            strategy.SetupGet(s => s.AuthOption).Returns(Consts.MCP.Server.AuthOption.required);
-
-            var webhook = new Mock<IAuthorizationWebhookService>();
-
-            var caller = new Mock<IClientDisconnectable>();
-            var clients = new Mock<IHubCallerClients<IClientDisconnectable>>();
-            clients.SetupGet(c => c.Caller).Returns(caller.Object);
-
-            var hub = new TestHub(logger, strategy.Object, webhook.Object);
-            hub.Context = mockContext.Object;
-            hub.Clients = clients.Object;
+            // Don't stub the webhook — short-circuit must fire before any webhook call would happen,
+            // so unstubbed webhook (which would return default(false)) proves the short-circuit ran.
+            var (hub, strategy, _, _) = CreateAuthModeTestHub(mockContext, stubWebhookSuccess: false);
 
             await hub.OnConnectedAsync();
 
@@ -343,7 +337,7 @@ namespace McpPlugin.Server.Tests
             // present token, the existing webhook flow must still run unchanged.
             var token = UniqueId();
             var mockContext = CreateMockHubCallerContext(bearerToken: token);
-            var (hub, webhook, _) = CreateRequiredAuthTestHub(mockContext);
+            var (hub, _, webhook, _) = CreateAuthModeTestHub(mockContext);
 
             await hub.OnConnectedAsync();
 
@@ -365,25 +359,9 @@ namespace McpPlugin.Server.Tests
             // Regression guard: the short-circuit must NOT fire in auth=none mode —
             // empty-token connections are legitimate there.
             var mockContext = CreateMockHubCallerContext(bearerToken: null);
-            var logger = new Mock<ILogger>().Object;
-
-            var strategy = new Mock<IMcpConnectionStrategy>();
-            strategy.SetupGet(s => s.AuthOption).Returns(Consts.MCP.Server.AuthOption.none);
-
-            var webhook = new Mock<IAuthorizationWebhookService>();
-            webhook.Setup(x => x.AuthorizePluginAsync(
-                    It.IsAny<string>(), It.IsAny<string?>(),
-                    It.IsAny<string?>(), It.IsAny<string?>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-
-            var caller = new Mock<IClientDisconnectable>();
-            var clients = new Mock<IHubCallerClients<IClientDisconnectable>>();
-            clients.SetupGet(c => c.Caller).Returns(caller.Object);
-
-            var hub = new TestHub(logger, strategy.Object, webhook.Object);
-            hub.Context = mockContext.Object;
-            hub.Clients = clients.Object;
+            var (hub, _, webhook, _) = CreateAuthModeTestHub(
+                mockContext,
+                authOption: Consts.MCP.Server.AuthOption.none);
 
             await hub.OnConnectedAsync();
 
