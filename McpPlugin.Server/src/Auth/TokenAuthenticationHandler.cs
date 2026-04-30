@@ -12,6 +12,7 @@ using System;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -139,9 +140,28 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 ticket = new AuthenticationTicket(principal, SchemeName);
             }
 
-            // No tier matched — unrecognized token
+            // No tier matched — unrecognized token.
+            //
+            // On the SignalR hub path (Consts.Hub.RemoteApp == "/hub/mcp-server") this happens
+            // for EVERY new plugin connection: the plugin's bearer token is registered with
+            // ClientUtils.AddClient only AFTER OnConnectedAsync runs, but middleware-level
+            // authentication runs BEFORE OnConnectedAsync — chicken-and-egg. The hub endpoint
+            // is not RequireAuthorization()-gated, so the connection still proceeds; but
+            // returning Fail here causes the framework to auto-emit a "[7] McpPluginToken was
+            // not authenticated" info log on every probe — a documented production-log noise
+            // source (issue #99). Returning NoResult on the hub path lets the connection
+            // through silently while preserving the Fail+401 challenge on every other path
+            // (which IS RequireAuthorization()-gated).
             if (ticket == null)
+            {
+                var path = Request.Path.Value;
+                if (!string.IsNullOrEmpty(path)
+                    && path.StartsWith(Consts.Hub.RemoteApp, StringComparison.OrdinalIgnoreCase))
+                {
+                    return AuthenticateResult.NoResult();
+                }
                 return AuthenticateResult.Fail("Invalid or unrecognized token.");
+            }
 
             // Single authorization webhook check for whichever tier matched.
             // Note: AuthorizeAiAgentAsync returns false for both explicit denials
