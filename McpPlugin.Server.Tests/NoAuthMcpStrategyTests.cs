@@ -185,5 +185,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             result.ShouldBeSameAs(expectedData);
             sessionTracker.Verify(s => s.GetServerData(), Times.Once);
         }
+
+        [Fact]
+        public void ResolveNotificationTarget_AlwaysBroadcasts()
+        {
+            // no-auth mode enforces a single plugin connection (OnPluginConnected disconnects
+            // any other), so Clients.All targets exactly one recipient — broadcast is correct.
+            // Routing token is ignored because there is no per-token mapping in this mode.
+            foreach (var probe in new[] { (string?)null, "", "any-token-value" })
+            {
+                _strategy.ResolveNotificationTarget(probe).Kind.ShouldBe(NotificationTarget.TargetKind.Broadcast);
+            }
+        }
     }
 }

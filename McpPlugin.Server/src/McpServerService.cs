@@ -125,11 +125,20 @@ namespace com.IvanMurzak.McpPlugin.Server
             // Filter to clients visible to this plugin's routing token group.
             // Null token (no-auth) → returns all sessions; specific token → returns only matching.
             var allActiveClients = _sessionTracker.GetAllClientData(_routingToken).ToArray();
-            var connectionId = ClientUtils.GetConnectionIdByToken(_routingToken);
-            if (connectionId != null)
-                await _hubContext.Clients.Client(connectionId).OnMcpClientConnected(connectedClient, allActiveClients);
-            else
-                await _hubContext.Clients.All.OnMcpClientConnected(connectedClient, allActiveClients);
+            var target = _strategy.ResolveNotificationTarget(_routingToken);
+            switch (target.Kind)
+            {
+                case NotificationTarget.TargetKind.Specific:
+                    await _hubContext.Clients.Client(target.ConnectionId!).OnMcpClientConnected(connectedClient, allActiveClients);
+                    break;
+                case NotificationTarget.TargetKind.Broadcast:
+                    await _hubContext.Clients.All.OnMcpClientConnected(connectedClient, allActiveClients);
+                    break;
+                case NotificationTarget.TargetKind.Drop:
+                    _logger.LogDebug("{type} {method}: dropping notification — no addressable recipient for routing token.",
+                        GetType().GetTypeShortName(), nameof(NotifyClientConnectedAsync));
+                    break;
+            }
         }
 
         public async Task NotifyClientDisconnectedAsync()
@@ -139,11 +148,20 @@ namespace com.IvanMurzak.McpPlugin.Server
             // so GetAllClientData() returns the remaining clients (this session excluded).
             var disconnectedClient = GetClientData();
             var remainingClients = _sessionTracker.GetAllClientData(_routingToken).ToArray();
-            var connectionId = ClientUtils.GetConnectionIdByToken(_routingToken);
-            if (connectionId != null)
-                await _hubContext.Clients.Client(connectionId).OnMcpClientDisconnected(disconnectedClient, remainingClients);
-            else
-                await _hubContext.Clients.All.OnMcpClientDisconnected(disconnectedClient, remainingClients);
+            var target = _strategy.ResolveNotificationTarget(_routingToken);
+            switch (target.Kind)
+            {
+                case NotificationTarget.TargetKind.Specific:
+                    await _hubContext.Clients.Client(target.ConnectionId!).OnMcpClientDisconnected(disconnectedClient, remainingClients);
+                    break;
+                case NotificationTarget.TargetKind.Broadcast:
+                    await _hubContext.Clients.All.OnMcpClientDisconnected(disconnectedClient, remainingClients);
+                    break;
+                case NotificationTarget.TargetKind.Drop:
+                    _logger.LogDebug("{type} {method}: dropping notification — no addressable recipient for routing token.",
+                        GetType().GetTypeShortName(), nameof(NotifyClientDisconnectedAsync));
+                    break;
+            }
         }
 
         public Task StartAsync(CancellationToken cancellationToken)

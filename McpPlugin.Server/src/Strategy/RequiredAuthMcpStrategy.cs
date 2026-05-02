@@ -101,6 +101,36 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             return string.Equals(pluginToken, sessionId, StringComparison.Ordinal);
         }
 
+        public NotificationTarget ResolveNotificationTarget(string? routingToken)
+        {
+            // auth-required mode: a client-lifecycle notification only has a legitimate
+            // recipient when the routing token maps to a registered plugin. Broadcasting
+            // when the mapping is missing leaks foreign Tier 2 (DCR) and Tier 3 (ServerToken)
+            // sessions into every connected plugin's active-client list (issue #102).
+            if (!string.IsNullOrEmpty(routingToken))
+            {
+                var directMatch = ClientUtils.GetConnectionIdByToken(routingToken);
+                if (directMatch != null)
+                    return NotificationTarget.Specific(directMatch);
+            }
+
+            // Stdio transport never modifies McpSessionTokenContext.CurrentToken, so the
+            // session-level routing token may be null. Mirror ResolveConnectionId by falling
+            // back to the server-configured token so the plugin paired with that token still
+            // receives notifications produced over stdio.
+            if (!string.IsNullOrEmpty(_serverToken))
+            {
+                var serverMatch = ClientUtils.GetConnectionIdByToken(_serverToken);
+                if (serverMatch != null)
+                    return NotificationTarget.Specific(serverMatch);
+            }
+
+            // No addressable recipient: the notification belongs to a Tier 2 / Tier 3 session
+            // (or a plugin that has not yet (re)connected). Dropping is correct — broadcasting
+            // would pollute unrelated tenants.
+            return NotificationTarget.Drop();
+        }
+
         public McpClientData GetClientData(string? connectionId, IMcpSessionTracker sessionTracker)
         {
             var token = ClientUtils.GetTokenByConnectionId(connectionId);

@@ -346,5 +346,100 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // Cleanup
             ClientUtils.RemoveClient(typeof(McpServerHub), connectionId, logger);
         }
+
+        [Fact]
+        public void ResolveNotificationTarget_WithMatchingPluginToken_TargetsThatPlugin()
+        {
+            // Arrange — register a plugin with token T; the routing token of an MCP session is T.
+            var logger = new Mock<ILogger>().Object;
+            var connectionId = "conn-required-notify-target";
+            var token = "notify-target-token";
+            ClientUtils.AddClient(typeof(McpServerHub), connectionId, logger, token);
+
+            try
+            {
+                // Act
+                var target = _strategy.ResolveNotificationTarget(token);
+
+                // Assert
+                target.Kind.ShouldBe(NotificationTarget.TargetKind.Specific);
+                target.ConnectionId.ShouldBe(connectionId);
+            }
+            finally
+            {
+                ClientUtils.RemoveClient(typeof(McpServerHub), connectionId, logger);
+            }
+        }
+
+        [Fact]
+        public void ResolveNotificationTarget_WithUnmappedToken_DropsNotification()
+        {
+            // Regression for issue #102: Tier 2 (DCR) and Tier 3 (ServerToken) sessions
+            // present a valid bearer token that is NOT in TokenToConnectionId. The notification
+            // must be dropped — broadcasting would leak foreign clients into every plugin.
+            var strategy = new RequiredAuthMcpStrategy();
+            // No ConfigureAuthentication call → _serverToken is null (dynamic-pairing mode).
+
+            var target = strategy.ResolveNotificationTarget("bearer-from-tier2-or-tier3-session");
+
+            target.Kind.ShouldBe(NotificationTarget.TargetKind.Drop);
+            target.ConnectionId.ShouldBeNull();
+        }
+
+        [Fact]
+        public void ResolveNotificationTarget_WithNullTokenAndNoServerToken_Drops()
+        {
+            // Dynamic mode (no _serverToken configured) and no per-session token: there is
+            // no addressable plugin. Broadcasting in this case is exactly the bug from #102.
+            var strategy = new RequiredAuthMcpStrategy();
+
+            var target = strategy.ResolveNotificationTarget(null);
+
+            target.Kind.ShouldBe(NotificationTarget.TargetKind.Drop);
+        }
+
+        [Fact]
+        public void ResolveNotificationTarget_WithNullTokenAndServerTokenConfigured_FallsBackToServerToken()
+        {
+            // Stdio transport never sets McpSessionTokenContext.CurrentToken, so the routing
+            // token reaching ResolveNotificationTarget can be null. When the server has a token
+            // configured (and a plugin has registered with it), notifications must still reach
+            // that plugin. Mirrors ResolveConnectionId's stdio fallback.
+            var strategy = new RequiredAuthMcpStrategy();
+            strategy.ConfigureAuthentication(new TokenAuthenticationOptions(), new DataArguments(new[] { "token=stdio-server-token" }));
+
+            var logger = new Mock<ILogger>().Object;
+            var connectionId = "conn-required-stdio-fallback";
+            ClientUtils.AddClient(typeof(McpServerHub), connectionId, logger, "stdio-server-token");
+
+            try
+            {
+                // Act
+                var target = strategy.ResolveNotificationTarget(null);
+
+                // Assert
+                target.Kind.ShouldBe(NotificationTarget.TargetKind.Specific);
+                target.ConnectionId.ShouldBe(connectionId);
+            }
+            finally
+            {
+                ClientUtils.RemoveClient(typeof(McpServerHub), connectionId, logger);
+            }
+        }
+
+        [Fact]
+        public void ResolveNotificationTarget_NeverBroadcasts()
+        {
+            // Invariant: auth-required must never resolve to a broadcast — that is the bug.
+            var strategy = new RequiredAuthMcpStrategy();
+            strategy.ConfigureAuthentication(new TokenAuthenticationOptions(), new DataArguments(new[] { "token=ignored-for-this-check" }));
+
+            foreach (var probe in new[] { (string?)null, "", "unknown", "another-unknown" })
+            {
+                var target = strategy.ResolveNotificationTarget(probe);
+                target.Kind.ShouldNotBe(NotificationTarget.TargetKind.Broadcast,
+                    customMessage: $"auth-required must never broadcast (probe='{probe ?? "<null>"}').");
+            }
+        }
     }
 }
