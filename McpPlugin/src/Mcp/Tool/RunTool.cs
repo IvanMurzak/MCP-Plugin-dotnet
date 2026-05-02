@@ -35,6 +35,23 @@ namespace com.IvanMurzak.McpPlugin
         public bool? DestructiveHint { get; protected set; }
         public bool? IdempotentHint { get; protected set; }
         public bool? OpenWorldHint { get; protected set; }
+
+        /// <summary>
+        /// Reads <see cref="McpPluginSkillDescriptionAttribute"/> from the underlying method, if present.
+        /// Used by <see cref="Skills.SkillFileGenerator"/> in place of <see cref="MethodWrapper.Description"/>
+        /// when building the SKILL.md YAML <c>description:</c> field.
+        /// </summary>
+        public string? SkillDescription
+            => Method?.GetCustomAttribute<McpPluginSkillDescriptionAttribute>()?.Description;
+
+        /// <summary>
+        /// Reads <see cref="McpPluginSkillBodyAttribute"/> from the underlying method, if present.
+        /// Used by <see cref="Skills.SkillFileGenerator"/> to inject long-form markdown into the SKILL.md body
+        /// between the description paragraph and the <c>## How to Call</c> section.
+        /// </summary>
+        public string? SkillBody
+            => Method?.GetCustomAttribute<McpPluginSkillBodyAttribute>()?.Body;
+
         public MethodInfo Method => _methodInfo;
 
         protected string? RequestID { get; set; }

@@ -319,6 +319,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             public string Name { get; }
             public string? Title => null;
             public string? Description => "Skill path test tool";
+            public string? SkillDescription => null;
+            public string? SkillBody => null;
             public JsonNode? InputSchema => null;
             public JsonNode? OutputSchema => null;
             public bool Enabled { get; set; } = true;
