@@ -68,6 +68,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             return true;
         }
 
+        public NotificationTarget ResolveNotificationTarget(string? routingToken)
+        {
+            // no-auth mode: OnPluginConnected enforces a single plugin connection, so a
+            // broadcast targets at most one recipient. Routing token is ignored (always null).
+            return NotificationTarget.Broadcast();
+        }
+
         public McpClientData GetClientData(string? connectionId, IMcpSessionTracker sessionTracker)
         {
             return sessionTracker.GetClientData();

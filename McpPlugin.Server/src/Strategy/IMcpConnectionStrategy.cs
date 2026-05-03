@@ -69,6 +69,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         bool ShouldNotifySession(string pluginConnectionId, string sessionId);
 
         /// <summary>
+        /// Resolves the destination of a client-lifecycle notification (connect/disconnect)
+        /// that originated from an MCP session carrying <paramref name="routingToken"/>.
+        /// For AuthOption.required: returns <see cref="NotificationTarget.Specific"/> when
+        /// the token maps to a registered plugin, otherwise <see cref="NotificationTarget.Drop"/>
+        /// — broadcasting would leak foreign clients into unrelated tenants' active-client lists.
+        /// For AuthOption.none: returns <see cref="NotificationTarget.Broadcast"/> because the
+        /// strategy enforces a single-plugin invariant, so the broadcast has at most one recipient.
+        /// </summary>
+        NotificationTarget ResolveNotificationTarget(string? routingToken);
+
+        /// <summary>
         /// Retrieves McpClientData scoped to the connection's token.
         /// For AuthOption.required: returns an empty <see cref="McpClientData"/> if the
         /// connection carries no token — unscoped access is denied.
