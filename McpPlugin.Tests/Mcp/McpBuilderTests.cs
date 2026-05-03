@@ -158,6 +158,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             public string Name => "MockTool";
             public string Title => "Mock Tool Title";
             public string Description => "Mock Tool";
+            public string? SkillDescription => null;
+            public string? SkillBody => null;
             public JsonNode InputSchema => JsonNode.Parse("{}")!;
             public JsonNode OutputSchema => JsonNode.Parse("{}")!;
             public bool Enabled { get; set; } = true;

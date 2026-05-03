@@ -850,6 +850,213 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             content.ShouldNotContain("### Output JSON Schema");
         }
 
+        // ── description cap & SkillBody ───────────────────────────────────────────
+
+        [Fact]
+        public void Generate_LongDescription_TruncatesYamlDescriptionToCap()
+        {
+            // Reproduces the Codex SKILL.md cap issue: a tool whose [Description] is far longer
+            // than 1024 chars must still produce a SKILL.md whose YAML description: fits the cap,
+            // even when no SkillDescription is provided.
+            var generator = new SkillFileGenerator();
+            var longDesc = new string('x', 6000);
+            var tool = new MockRunTool { Name = "huge", Description = longDesc };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "huge", "SKILL.md"));
+            var yamlDescriptionLine = ExtractYamlDescription(content);
+
+            yamlDescriptionLine.Length.ShouldBeLessThanOrEqualTo(1024);
+            yamlDescriptionLine.ShouldEndWith("…");
+        }
+
+        [Fact]
+        public void Generate_ShortDescription_DoesNotTruncate()
+        {
+            var generator = new SkillFileGenerator();
+            const string desc = "A short, well-formed description that fits comfortably under the cap.";
+            var tool = new MockRunTool { Name = "small", Description = desc };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "small", "SKILL.md"));
+            var yamlDescriptionLine = ExtractYamlDescription(content);
+            yamlDescriptionLine.ShouldBe(desc);
+            yamlDescriptionLine.ShouldNotEndWith("…");
+        }
+
+        [Fact]
+        public void Generate_SkillDescription_OverridesDescriptionInYaml()
+        {
+            var generator = new SkillFileGenerator();
+            var longDesc = new string('y', 6000);
+            const string concise = "Concise summary used in YAML only.";
+            var tool = new MockRunTool { Name = "with-summary", Description = longDesc, SkillDescription = concise };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "with-summary", "SKILL.md"));
+            ExtractYamlDescription(content).ShouldBe(concise);
+
+            // Full Description still drives the body paragraph (so MCP tools/list view is unchanged in spirit).
+            content.ShouldContain(longDesc);
+        }
+
+        [Fact]
+        public void Generate_SkillBody_InjectedBetweenDescriptionAndHowToCall()
+        {
+            var generator = new SkillFileGenerator();
+            const string body = "Long-form markdown\n```csharp\n// example\n```\nMore notes.";
+            var tool = new MockRunTool
+            {
+                Name = "with-body",
+                Description = "Short description.",
+                SkillBody = body
+            };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "with-body", "SKILL.md"));
+            content.ShouldContain(body);
+
+            var bodyIdx = content.IndexOf(body, StringComparison.Ordinal);
+            var howToCallIdx = content.IndexOf("## How to Call", StringComparison.Ordinal);
+            bodyIdx.ShouldBeGreaterThan(0);
+            howToCallIdx.ShouldBeGreaterThan(bodyIdx);
+        }
+
+        [Fact]
+        public void Generate_SkillBody_NotWrittenIntoYamlDescription()
+        {
+            var generator = new SkillFileGenerator();
+            const string body = "BODY_MARKER_THAT_MUST_NOT_LEAK_INTO_YAML";
+            var tool = new MockRunTool
+            {
+                Name = "yaml-clean",
+                Description = "Short description.",
+                SkillBody = body
+            };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "yaml-clean", "SKILL.md"));
+            ExtractYamlDescription(content).ShouldNotContain(body);
+        }
+
+        [Fact]
+        public void Generate_SkillContent_LongDescriptionTruncatedInYaml()
+        {
+            var generator = new SkillFileGenerator();
+            var skill = new SkillContent(
+                name: "long-skill",
+                description: new string('z', 5000),
+                content: "# Body\n\nSome content.");
+
+            generator.Generate(new[] { skill }, _tempDir);
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "long-skill", "SKILL.md"));
+            var yamlDescriptionLine = ExtractYamlDescription(content);
+            yamlDescriptionLine.Length.ShouldBeLessThanOrEqualTo(1024);
+        }
+
+        [Fact]
+        public void Generate_SkillContent_SkillDescriptionWinsInYaml()
+        {
+            var generator = new SkillFileGenerator();
+            const string concise = "Concise skill summary.";
+            var skill = new SkillContent(
+                name: "summary-skill",
+                description: new string('z', 5000),
+                content: "# Body",
+                skillDescription: concise);
+
+            generator.Generate(new[] { skill }, _tempDir);
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "summary-skill", "SKILL.md"));
+            ExtractYamlDescription(content).ShouldBe(concise);
+        }
+
+        [Fact]
+        public void Generate_LongDescription_WithUnclosedFence_TruncatesBeforeFence()
+        {
+            // Reproduces fence-safe truncation: when the cap would land inside an unclosed
+            // ``` fence, the cut must be pulled back to the fence so the YAML scalar does
+            // not carry a half-open code block.
+            var generator = new SkillFileGenerator();
+            // Long lead-in ensures the cap lands well past the fence opener,
+            // and the fenced region itself overflows the cap.
+            var prefix = new string('a', 900) + " ";
+            var fenceOpen = "```csharp\n";
+            var fenceBody = new string('b', 2000);
+            var longDesc = prefix + fenceOpen + fenceBody + "\n```";
+            var tool = new MockRunTool { Name = "fenced", Description = longDesc };
+
+            generator.Generate(new[] { tool }, _tempDir, "http://localhost:8080");
+
+            var content = File.ReadAllText(Path.Combine(_tempDir, "fenced", "SKILL.md"));
+            var yamlDescriptionLine = ExtractYamlDescription(content);
+
+            yamlDescriptionLine.Length.ShouldBeLessThanOrEqualTo(1024);
+
+            // Fence count in the truncated YAML scalar must be even (every opener closed).
+            var fenceMatches = System.Text.RegularExpressions.Regex.Matches(yamlDescriptionLine, "```");
+            (fenceMatches.Count % 2).ShouldBe(0);
+
+            // The fenced body that overflows the cap must not appear inside the YAML scalar.
+            yamlDescriptionLine.ShouldNotContain(fenceBody);
+            yamlDescriptionLine.ShouldEndWith("…");
+        }
+
+        /// <summary>
+        /// Returns the YAML <c>description:</c> scalar from a generated SKILL.md, joining multi-line
+        /// literal block scalars (<c>|-</c>) into a single string for length assertions.
+        /// </summary>
+        private static string ExtractYamlDescription(string content)
+        {
+            var lines = content.Replace("\r\n", "\n").Split('\n');
+            var sb = new StringBuilder();
+            bool capturing = false;
+            bool block = false;
+            for (int i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                if (!capturing)
+                {
+                    if (line.StartsWith("description:", StringComparison.Ordinal))
+                    {
+                        var value = line.Substring("description:".Length).TrimStart();
+                        if (value == "|-" || value == "|")
+                        {
+                            block = true;
+                        }
+                        else
+                        {
+                            // Strip surrounding quotes if present
+                            if (value.Length >= 2 && value[0] == '"' && value[value.Length - 1] == '"')
+                                value = value.Substring(1, value.Length - 2).Replace("\\\"", "\"");
+                            return value;
+                        }
+                        capturing = true;
+                        continue;
+                    }
+                }
+                else if (block)
+                {
+                    if (line.StartsWith("  ", StringComparison.Ordinal))
+                    {
+                        if (sb.Length > 0) sb.Append('\n');
+                        sb.Append(line.Substring(2));
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+            return sb.ToString();
+        }
+
         // ── helpers ───────────────────────────────────────────────────────────────
 
         private class MockRunTool : IRunTool
@@ -857,6 +1064,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             public string Name { get; init; } = "mock-tool";
             public string? Title { get; init; } = "Mock Tool";
             public string? Description { get; init; } = "A mock tool for testing.";
+            public string? SkillDescription { get; init; }
+            public string? SkillBody { get; init; }
             public JsonNode? InputSchema { get; init; }
             public JsonNode? OutputSchema { get; init; }
             public bool Enabled { get; set; } = true;

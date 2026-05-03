@@ -42,7 +42,8 @@ namespace com.IvanMurzak.McpPlugin
                     name: attr.Name,
                     description: attr.Description,
                     content: field.Content,
-                    enabled: enabled
+                    enabled: enabled,
+                    skillDescription: attr.SkillDescription
                 );
             }
 
