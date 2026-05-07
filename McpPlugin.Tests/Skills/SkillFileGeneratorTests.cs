@@ -1016,43 +1016,31 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
         {
             var lines = content.Replace("\r\n", "\n").Split('\n');
             var sb = new StringBuilder();
-            bool capturing = false;
-            bool block = false;
-            for (int i = 0; i < lines.Length; i++)
+            bool inBlockScalar = false;
+            foreach (var line in lines)
             {
-                var line = lines[i];
-                if (!capturing)
+                if (!inBlockScalar)
                 {
-                    if (line.StartsWith("description:", StringComparison.Ordinal))
+                    if (!line.StartsWith("description:", StringComparison.Ordinal))
+                        continue;
+
+                    var value = line.Substring("description:".Length).TrimStart();
+                    if (value == "|-" || value == "|")
                     {
-                        var value = line.Substring("description:".Length).TrimStart();
-                        if (value == "|-" || value == "|")
-                        {
-                            block = true;
-                        }
-                        else
-                        {
-                            // Strip surrounding quotes if present
-                            if (value.Length >= 2 && value[0] == '"' && value[value.Length - 1] == '"')
-                                value = value.Substring(1, value.Length - 2).Replace("\\\"", "\"");
-                            return value;
-                        }
-                        capturing = true;
+                        inBlockScalar = true;
                         continue;
                     }
+                    // Strip surrounding quotes if present
+                    if (value.Length >= 2 && value[0] == '"' && value[value.Length - 1] == '"')
+                        value = value.Substring(1, value.Length - 2).Replace("\\\"", "\"");
+                    return value;
                 }
-                else if (block)
-                {
-                    if (line.StartsWith("  ", StringComparison.Ordinal))
-                    {
-                        if (sb.Length > 0) sb.Append('\n');
-                        sb.Append(line.Substring(2));
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
+
+                if (!line.StartsWith("  ", StringComparison.Ordinal))
+                    break;
+
+                if (sb.Length > 0) sb.Append('\n');
+                sb.Append(line.Substring(2));
             }
             return sb.ToString();
         }
