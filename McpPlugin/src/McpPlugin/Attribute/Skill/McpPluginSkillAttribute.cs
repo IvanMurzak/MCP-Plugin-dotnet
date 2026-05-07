@@ -18,6 +18,13 @@ namespace com.IvanMurzak.McpPlugin
         public string Name { get; set; }
         public string? Description { get; set; }
 
+        /// <summary>
+        /// Optional concise description used for the SKILL.md YAML <c>description:</c> field when
+        /// <see cref="Description"/> would overflow the 1024-character cap. When <see langword="null"/>,
+        /// the generator falls back to <see cref="Description"/> (truncated to fit).
+        /// </summary>
+        public string? SkillDescription { get; set; }
+
         private bool _enabled = true;
         private bool _enabledSet;
 

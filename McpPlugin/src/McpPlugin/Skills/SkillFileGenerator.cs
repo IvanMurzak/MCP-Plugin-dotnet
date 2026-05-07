@@ -102,6 +102,14 @@ namespace com.IvanMurzak.McpPlugin.Skills
         public virtual SkillAdditionalContentPosition AdditionalContentPosition { get; } = SkillAdditionalContentPosition.End;
 
         /// <summary>
+        /// Maximum length, in characters, allowed for the SKILL.md YAML <c>description:</c> field.
+        /// The Skills file format used by Codex (and Anthropic Agent Skills) caps this field at 1024 characters,
+        /// so that is the default. Override in a subclass to align with a different host's limits.
+        /// Values &lt;= 0 disable truncation entirely.
+        /// </summary>
+        public virtual int MaxSkillDescriptionLength { get; } = 1024;
+
+        /// <summary>
         /// Returns additional markdown text to inject into the SKILL.md for <paramref name="tool"/>
         /// at the location specified by <see cref="AdditionalContentPosition"/>.
         /// The default implementation returns <see langword="null"/> (no injection).
@@ -329,11 +337,12 @@ namespace com.IvanMurzak.McpPlugin.Skills
         {
             var sb = new StringBuilder();
             var description = skill.Description ?? string.Empty;
+            var yamlDescription = ResolveYamlDescription(skill.SkillDescription, description, skill.Name);
 
             // YAML front-matter
             sb.AppendLine("---");
             sb.AppendLine($"name: {EscapeYaml(skillName)}");
-            sb.AppendLine($"description: {EscapeYaml(description)}");
+            sb.AppendLine($"description: {EscapeYaml(yamlDescription)}");
             sb.AppendLine("---");
 
             // Verbatim content body
@@ -462,12 +471,13 @@ namespace com.IvanMurzak.McpPlugin.Skills
             var sb = new StringBuilder();
             var title = tool.Title ?? tool.Name;
             var description = tool.Description ?? string.Empty;
+            var yamlDescription = ResolveYamlDescription(tool.SkillDescription, description, tool.Name);
             var additionalContent = GetAdditionalContent(tool);
 
             // YAML front-matter
             sb.AppendLine("---");
             sb.AppendLine($"name: {EscapeYaml(skillName)}");
-            sb.AppendLine($"description: {EscapeYaml(description)}");
+            sb.AppendLine($"description: {EscapeYaml(yamlDescription)}");
             sb.AppendLine("---");
             sb.AppendLine();
             BuildFrontMatterNotes(sb);
@@ -478,6 +488,11 @@ namespace com.IvanMurzak.McpPlugin.Skills
             if (IncludeDescriptionBody && !string.IsNullOrWhiteSpace(description))
             {
                 sb.AppendLine(description);
+                sb.AppendLine();
+            }
+            if (!string.IsNullOrWhiteSpace(tool.SkillBody))
+            {
+                sb.AppendLine(tool.SkillBody);
                 sb.AppendLine();
             }
             BuildDescriptionNotes(sb);
@@ -1124,6 +1139,99 @@ namespace com.IvanMurzak.McpPlugin.Skills
             if (value.Contains(':') || value.Contains('"'))
                 return $"\"{value.Replace("\"", "\\\"")}\"";
             return value;
+        }
+
+        // ── Description-cap helpers ──────────────────────────────────────────
+
+        /// <summary>
+        /// Picks the text that goes into the SKILL.md YAML <c>description:</c> field, applying
+        /// <see cref="MaxSkillDescriptionLength"/>.
+        /// <list type="bullet">
+        ///   <item>If <paramref name="skillDescription"/> is set, it wins (no fallback). Truncated and
+        ///         logged as a warning if it itself exceeds the cap.</item>
+        ///   <item>Otherwise <paramref name="fullDescription"/> is used, truncated at a word boundary with
+        ///         a trailing ellipsis when over the cap; a warning is logged the first time truncation occurs.</item>
+        /// </list>
+        /// Override to change the resolution rule entirely (for example, to refuse over-cap input).
+        /// </summary>
+        protected virtual string ResolveYamlDescription(string? skillDescription, string fullDescription, string toolOrSkillName)
+        {
+            var cap = MaxSkillDescriptionLength;
+
+            if (!string.IsNullOrEmpty(skillDescription))
+            {
+                if (cap > 0 && skillDescription!.Length > cap)
+                {
+                    _logger?.LogWarning(
+                        "{class}: SkillDescription for '{name}' is {len} chars, exceeding the YAML cap of {cap}. Truncating.",
+                        nameof(SkillFileGenerator), toolOrSkillName, skillDescription.Length, cap);
+                    return TruncateForYaml(skillDescription, cap);
+                }
+                return skillDescription!;
+            }
+
+            if (cap > 0 && fullDescription.Length > cap)
+            {
+                _logger?.LogWarning(
+                    "{class}: Description for '{name}' is {len} chars, exceeding the YAML cap of {cap}. " +
+                    "Truncating for SKILL.md; consider adding [McpPluginSkillDescription] for a concise summary " +
+                    "and [McpPluginSkillBody] for long-form content.",
+                    nameof(SkillFileGenerator), toolOrSkillName, fullDescription.Length, cap);
+                return TruncateForYaml(fullDescription, cap);
+            }
+
+            return fullDescription;
+        }
+
+        /// <summary>
+        /// Truncates <paramref name="value"/> to at most <paramref name="maxLength"/> characters,
+        /// appending a single trailing ellipsis (<c>…</c>). The cut is moved to the nearest preceding
+        /// whitespace within the last 32 characters of the budget, and the cut never lands inside a
+        /// fenced code block — if an odd number of <c>```</c> fences appear before the cut, the
+        /// truncation is pulled back to the last fence so the YAML scalar stays balanced.
+        /// </summary>
+        protected static string TruncateForYaml(string value, int maxLength)
+        {
+            if (maxLength <= 0 || value.Length <= maxLength)
+                return value;
+
+            const string ellipsis = "…";
+            var budget = maxLength - ellipsis.Length;
+            if (budget <= 0)
+                return value.Substring(0, maxLength);
+
+            var cut = budget;
+
+            // Pull the cut back to the previous whitespace within the last 32 chars to avoid mid-word breaks
+            var minBoundary = Math.Max(0, budget - 32);
+            for (var i = budget; i >= minBoundary; i--)
+            {
+                if (char.IsWhiteSpace(value[i]))
+                {
+                    cut = i;
+                    break;
+                }
+            }
+
+            // If we'd cut inside an unbalanced ``` fence block, move the cut back to the fence.
+            var fenceCount = 0;
+            var lastFenceStart = -1;
+            for (var i = 0; i + 2 < cut; i++)
+            {
+                if (value[i] == '`' && value[i + 1] == '`' && value[i + 2] == '`')
+                {
+                    fenceCount++;
+                    lastFenceStart = i;
+                    i += 2;
+                }
+            }
+            if ((fenceCount % 2) == 1 && lastFenceStart >= 0)
+                cut = lastFenceStart;
+
+            if (cut <= 0)
+                cut = budget;
+
+            return value.Substring(0, cut).TrimEnd() + ellipsis;
         }
 
         // ── Private helpers ──────────────────────────────────────────────────

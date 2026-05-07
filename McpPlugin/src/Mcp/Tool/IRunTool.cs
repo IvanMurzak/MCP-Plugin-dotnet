@@ -22,6 +22,23 @@ namespace com.IvanMurzak.McpPlugin
         string Name { get; }
         string? Title { get; }
         string? Description { get; }
+
+        /// <summary>
+        /// Optional concise description used for the SKILL.md YAML <c>description:</c> field.
+        /// When <see langword="null"/>, <see cref="Skills.SkillFileGenerator"/> falls back to <see cref="Description"/>
+        /// (truncated to fit the YAML cap).
+        /// Sourced from <see cref="McpPluginSkillDescriptionAttribute"/> on the underlying method by default.
+        /// </summary>
+        string? SkillDescription { get; }
+
+        /// <summary>
+        /// Optional long-form markdown injected into the SKILL.md body between the description paragraph
+        /// and the <c>## How to Call</c> section. Lets tools ship rich content (code samples, notes) that
+        /// would otherwise overflow the YAML <c>description:</c> cap.
+        /// Sourced from <see cref="McpPluginSkillBodyAttribute"/> on the underlying method by default.
+        /// </summary>
+        string? SkillBody { get; }
+
         JsonNode? InputSchema { get; }
         JsonNode? OutputSchema { get; }
 
