@@ -8,12 +8,10 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
-using com.IvanMurzak.McpPlugin.Server.Auth;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -43,15 +41,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (response.Value == null)
                 return new ListResourceTemplatesResult().SetError("[Error] Resource template value is null");
 
-            // Trusted internal clients receive the unfiltered catalog —
-            // see McpSessionTokenContext.IsTrustedInternalClient and ToolRouter.ListAll.
-            var includeDisabled = McpSessionTokenContext.IsTrustedInternalClient;
+            // Trusted internal clients receive the unfiltered catalog — see ToolRouter.ListAll.
             return new ListResourceTemplatesResult()
             {
-                ResourceTemplates = response.Value
-                    .Where(x => x != null && (includeDisabled || x.Enabled))
-                    .Select(x => x!.ToResourceTemplate())
-                    .ToList()
+                ResourceTemplates = response.Value.SelectVisible(x => x.Enabled, x => x.ToResourceTemplate())
             };
 
             // -------------------------------------------------------------------------------------
