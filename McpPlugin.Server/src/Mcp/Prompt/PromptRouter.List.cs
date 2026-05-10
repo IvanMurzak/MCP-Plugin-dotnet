@@ -15,6 +15,7 @@ using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Protocol;
@@ -50,10 +51,13 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (response.Value == null)
                 return new ListPromptsResult().SetError("[Error] Resource value is null");
 
+            // Trusted internal clients receive the unfiltered catalog —
+            // see McpSessionTokenContext.IsTrustedInternalClient and ToolRouter.ListAll.
+            var includeDisabled = McpSessionTokenContext.IsTrustedInternalClient;
             var result = new ListPromptsResult()
             {
                 Prompts = response.Value.Prompts
-                    .Where(x => x?.Enabled == true)
+                    .Where(x => x != null && (includeDisabled || x.Enabled))
                     .Select(x => x!.ToPrompt())
                     .ToList()
             };

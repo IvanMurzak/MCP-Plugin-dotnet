@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Protocol;
@@ -73,10 +74,15 @@ namespace com.IvanMurzak.McpPlugin.Server
                 return new ListToolsResult() { Tools = new List<Tool>() };
             }
 
+            // Trusted internal clients (cli/desktop) opt in via the
+            // `X-McpPlugin-Internal-Client` header to receive the FULL catalog,
+            // including `Enabled = false` tools tagged with `_meta.enabled = false`.
+            // Every other caller continues to get the pre-existing filtered view.
+            var includeDisabled = McpSessionTokenContext.IsTrustedInternalClient;
             var result = new ListToolsResult()
             {
                 Tools = response.Value
-                    .Where(x => x?.Enabled == true)
+                    .Where(x => x != null && (includeDisabled || x.Enabled))
                     .Select(x => x!.ToTool())
                     .ToList()
             };

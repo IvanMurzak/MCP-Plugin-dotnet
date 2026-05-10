@@ -50,7 +50,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             Name = response.Name,
             Title = response.Title,
             Description = response.Description,
-            Arguments = response.Arguments?.Select(x => x.ToPromptArgument()).ToList()
+            Arguments = response.Arguments?.Select(x => x.ToPromptArgument()).ToList(),
+            // See ExtensionsListMeta — disabled primitives surface `_meta.enabled = false`
+            // for trusted clients; null for enabled keeps the default wire shape unchanged.
+            Meta = ExtensionsListMeta.BuildEnabledMeta(response.Enabled)
         };
 
         public static PromptMessage ToPromptMessage(this Common.Model.ResponsePromptMessage promptMessage) => new PromptMessage()

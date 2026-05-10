@@ -123,6 +123,35 @@ namespace com.IvanMurzak.McpPlugin.Common
                     none,
                     required
                 }
+
+                /// <summary>
+                /// HTTP request headers recognised by the MCP plugin server beyond
+                /// the stock <c>Authorization</c> header.
+                /// </summary>
+                public static class Headers
+                {
+                    /// <summary>
+                    /// Marks the caller as a trusted in-process client (e.g. our own
+                    /// CLI / desktop app). When the request carries this header set
+                    /// to <c>"1"</c>, the MCP list endpoints (<c>tools/list</c>,
+                    /// <c>prompts/list</c>, <c>resources/list</c>,
+                    /// <c>resources/templates/list</c>) return the FULL catalog —
+                    /// including primitives whose <c>Enabled</c> flag is <c>false</c>
+                    /// — and disabled entries are tagged with
+                    /// <c>_meta.enabled = false</c> so the trusted client can tell
+                    /// them apart. Any client that does NOT send this header keeps
+                    /// the pre-existing behaviour: disabled entries are filtered
+                    /// out, and no <c>_meta</c> is emitted by this server.
+                    ///
+                    /// This is a UX gate, NOT a security boundary — the header is
+                    /// trivially spoofable. Pair it with bearer-token auth when
+                    /// "disabled-tool exposure" is sensitive.
+                    /// </summary>
+                    public const string TrustedInternalClient = "X-McpPlugin-Internal-Client";
+
+                    /// <summary>Value the trusted-client header must carry to opt in.</summary>
+                    public const string TrustedInternalClientOptInValue = "1";
+                }
             }
         }
     }

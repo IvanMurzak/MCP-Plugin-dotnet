@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using ModelContextProtocol.Protocol;
 
@@ -73,7 +74,12 @@ namespace com.IvanMurzak.McpPlugin.Server
                     DestructiveHint = response.DestructiveHint,
                     IdempotentHint = response.IdempotentHint,
                     OpenWorldHint = response.OpenWorldHint
-                }
+                },
+                // Annotate disabled primitives with `_meta.enabled = false` so trusted
+                // internal clients (which receive the unfiltered list) can tell which
+                // entries the user has turned off plugin-side. Untrusted clients never
+                // receive disabled tools so the field never reaches them.
+                Meta = ExtensionsListMeta.BuildEnabledMeta(response.Enabled)
             };
         }
 

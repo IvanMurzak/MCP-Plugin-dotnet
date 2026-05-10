@@ -21,6 +21,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         static readonly AsyncLocal<string?> _currentToken = new();
         static readonly AsyncLocal<string?> _currentClientIp = new();
         static readonly AsyncLocal<string?> _currentUserAgent = new();
+        static readonly AsyncLocal<bool> _isTrustedInternalClient = new();
 
         public static string? CurrentToken
         {
@@ -38,6 +39,22 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         {
             get => _currentUserAgent.Value;
             set => _currentUserAgent.Value = value;
+        }
+
+        /// <summary>
+        /// True when the in-flight request was issued by a trusted in-process
+        /// client (our own CLI / desktop app). Set by
+        /// <see cref="McpSessionTokenMiddleware"/> from the
+        /// <c>X-McpPlugin-Internal-Client</c> header (see
+        /// <c>Consts.MCP.Server.Headers.TrustedInternalClient</c>) and consumed
+        /// by the MCP <c>list</c> routers to decide whether to surface
+        /// <c>Enabled = false</c> primitives. Cleared in the middleware's
+        /// <c>finally</c>, so values never leak across requests.
+        /// </summary>
+        public static bool IsTrustedInternalClient
+        {
+            get => _isTrustedInternalClient.Value;
+            set => _isTrustedInternalClient.Value = value;
         }
     }
 }

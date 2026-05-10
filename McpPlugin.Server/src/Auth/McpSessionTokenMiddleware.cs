@@ -10,6 +10,7 @@
 
 using System;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using Microsoft.AspNetCore.Http;
 
 namespace com.IvanMurzak.McpPlugin.Server.Auth
@@ -57,6 +58,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             if (!string.IsNullOrEmpty(userAgent))
                 McpSessionTokenContext.CurrentUserAgent = userAgent;
 
+            if (context.Request.Headers.TryGetValue(Consts.MCP.Server.Headers.TrustedInternalClient, out var trustedHeader))
+            {
+                McpSessionTokenContext.IsTrustedInternalClient = string.Equals(
+                    trustedHeader.ToString(),
+                    Consts.MCP.Server.Headers.TrustedInternalClientOptInValue,
+                    StringComparison.Ordinal);
+            }
+
             try
             {
                 await _next(context);
@@ -66,6 +75,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 McpSessionTokenContext.CurrentToken = null;
                 McpSessionTokenContext.CurrentClientIp = null;
                 McpSessionTokenContext.CurrentUserAgent = null;
+                McpSessionTokenContext.IsTrustedInternalClient = false;
             }
         }
     }
