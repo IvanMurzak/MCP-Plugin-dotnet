@@ -8,8 +8,6 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
@@ -43,12 +41,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (response.Value == null)
                 return new ListResourcesResult().SetError("[Error] Resource value is null");
 
+            // Trusted internal clients receive the unfiltered catalog — see ToolRouter.ListAll.
             return new ListResourcesResult()
             {
-                Resources = response.Value
-                    .Where(x => x?.Enabled == true)
-                    .Select(x => x!.ToResource())
-                    .ToList() ?? new List<Resource>(),
+                Resources = response.Value.SelectVisible(x => x.Enabled, x => x.ToResource())
             };
         }
     }

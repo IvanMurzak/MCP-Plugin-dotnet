@@ -28,7 +28,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                 Uri = response.Uri,
                 Name = response.Name,
                 Description = response.Description,
-                MimeType = response.MimeType
+                MimeType = response.MimeType,
+                // See ExtensionsListMeta — disabled primitives surface `_meta.enabled = false`
+                // for trusted clients; null for enabled keeps the default wire shape unchanged.
+                Meta = ExtensionsListMeta.BuildEnabledMeta(response.Enabled)
             };
         }
     }

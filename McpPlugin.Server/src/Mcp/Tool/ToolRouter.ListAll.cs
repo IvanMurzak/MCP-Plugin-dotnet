@@ -10,7 +10,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
@@ -73,12 +72,14 @@ namespace com.IvanMurzak.McpPlugin.Server
                 return new ListToolsResult() { Tools = new List<Tool>() };
             }
 
+            // Trusted internal clients (cli/desktop) opt in via the
+            // `X-McpPlugin-Internal-Client` header to receive the FULL catalog,
+            // including `Enabled = false` tools tagged with `_meta.enabled = false`.
+            // Every other caller continues to get the pre-existing filtered view.
+            // See ExtensionsListMeta.SelectVisible for the predicate.
             var result = new ListToolsResult()
             {
-                Tools = response.Value
-                    .Where(x => x?.Enabled == true)
-                    .Select(x => x!.ToTool())
-                    .ToList()
+                Tools = response.Value.SelectVisible(x => x.Enabled, x => x.ToTool())
             };
 
             if (logger.IsTraceEnabled)

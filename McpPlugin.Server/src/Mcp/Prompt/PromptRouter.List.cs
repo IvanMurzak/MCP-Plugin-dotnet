@@ -8,7 +8,6 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
@@ -50,12 +49,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (response.Value == null)
                 return new ListPromptsResult().SetError("[Error] Resource value is null");
 
+            // Trusted internal clients receive the unfiltered catalog — see ToolRouter.ListAll.
             var result = new ListPromptsResult()
             {
-                Prompts = response.Value.Prompts
-                    .Where(x => x?.Enabled == true)
-                    .Select(x => x!.ToPrompt())
-                    .ToList()
+                Prompts = response.Value.Prompts.SelectVisible(x => x.Enabled, x => x.ToPrompt())
             };
 
             if (logger.IsTraceEnabled)
