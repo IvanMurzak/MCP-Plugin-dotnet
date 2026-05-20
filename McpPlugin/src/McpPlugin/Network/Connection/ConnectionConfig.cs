@@ -9,6 +9,7 @@
 */
 using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 
@@ -37,10 +38,28 @@ namespace com.IvanMurzak.McpPlugin
         public virtual bool GenerateSkillFiles { get; set; } = true;
 
         /// <summary>
-        /// Path for generated skill markdown files. Can be absolute or relative to the current working directory (<see cref="System.Environment.CurrentDirectory"/>).
+        /// Path for generated skill markdown files. Can be absolute or relative.
+        /// When relative, it is anchored against (in priority order): the <c>basePath</c> argument
+        /// passed to <see cref="IMcpPlugin.GenerateSkillFiles(string?)"/> /
+        /// <see cref="IMcpPlugin.DeleteSkillFiles(string?)"/>; otherwise <see cref="ProjectRootPath"/>;
+        /// otherwise the resolver throws. There is no silent fallback to the host process's
+        /// current working directory — see GitHub issue #107.
         /// Default is 'SKILLS'. Set via command line arg 'mcp-skills-folder' or environment variable 'MCP_SKILLS_FOLDER'.
         /// </summary>
         public virtual string SkillsPath { get; set; } = "SKILLS";
+
+        /// <summary>
+        /// Absolute filesystem path to the host project root — the folder that relative
+        /// <see cref="SkillsPath"/> values are anchored against. Runtime-only; MUST NOT be
+        /// serialized to disk (see <see cref="JsonIgnoreAttribute"/>) so that the on-disk
+        /// connection config remains portable across machines (Unity-MCP issue #761).
+        /// Hosts SHOULD set this once at plugin construction — e.g. Unity sets it to the
+        /// parent of <c>Application.dataPath</c>. When null, callers MUST pass an explicit
+        /// <c>basePath</c> to any API that resolves a relative <see cref="SkillsPath"/>;
+        /// otherwise that API throws an <see cref="InvalidOperationException"/>.
+        /// </summary>
+        [JsonIgnore]
+        public string? ProjectRootPath { get; set; }
 
         public ConnectionConfig() { }
 

@@ -105,7 +105,17 @@ namespace com.IvanMurzak.McpPlugin
                     if (_cancellationTokenSource.Token.IsCancellationRequested)
                         return;
 
-                    GenerateSkillFilesIfNeeded();
+                    try
+                    {
+                        GenerateSkillFilesIfNeeded();
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        _logger.LogError(ex,
+                            "{method}: skill auto-generation skipped — host did not provide a project root. " +
+                            "Set ConnectionConfig.ProjectRootPath or pass basePath to GenerateSkillFiles.",
+                            nameof(McpManager.ToolManager.OnToolsUpdated));
+                    }
 
                     if (_mcpManagerHub == null)
                     {
@@ -119,7 +129,17 @@ namespace com.IvanMurzak.McpPlugin
                 .AddTo(_disposables);
 
             // Generate skill files for the initial set of tools on build
-            GenerateSkillFilesIfNeeded();
+            try
+            {
+                GenerateSkillFilesIfNeeded();
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogError(ex,
+                    "{ctor}: initial skill generation skipped — host did not provide a project root. " +
+                    "Set ConnectionConfig.ProjectRootPath or pass basePath to GenerateSkillFiles.",
+                    nameof(McpPlugin));
+            }
 
             McpManager.PromptManager?.OnPromptsUpdated
                 .ThrottleFirst(TimeSpan.FromMilliseconds(100))
@@ -233,7 +253,18 @@ namespace com.IvanMurzak.McpPlugin
             if (Path.IsPathRooted(skillsPath))
                 return Path.GetFullPath(skillsPath);
 
-            var resolvedBase = basePath ?? Environment.CurrentDirectory;
+            var resolvedBase = basePath ?? _connectionConfig.ProjectRootPath;
+            if (string.IsNullOrEmpty(resolvedBase))
+            {
+                throw new InvalidOperationException(
+                    $"Cannot resolve relative SkillsPath '{skillsPath}': no basePath was supplied " +
+                    $"and {nameof(ConnectionConfig)}.{nameof(ConnectionConfig.ProjectRootPath)} is not set. " +
+                    $"Host applications must either pass an explicit basePath to GenerateSkillFiles / " +
+                    $"DeleteSkillFiles, or set ConnectionConfig.ProjectRootPath at construction time. " +
+                    $"Silent fallback to Environment.CurrentDirectory has been removed to prevent " +
+                    $"skill files landing outside the host project (see GitHub issue #107).");
+            }
+
             return Path.GetFullPath(Path.Combine(resolvedBase, skillsPath));
         }
 
