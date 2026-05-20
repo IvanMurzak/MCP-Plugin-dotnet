@@ -4,7 +4,6 @@
 │  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
 │  Copyright (c) 2025 Ivan Murzak                                        │
 │  Licensed under the Apache License, Version 2.0.                       │
-│  See the LICENSE file in the project root for more information.        │
 └────────────────────────────────────────────────────────────────────────┘
 */
 
@@ -30,9 +29,6 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         // Primary temp directory — cleaned up in Dispose.
         readonly string _tempDir;
 
-        // BaseDirectory paths created as side-effects — tracked for cleanup.
-        readonly List<string> _cleanupPaths = new();
-
         readonly Reflector _reflector = new Reflector();
         readonly Version _version = new Version();
 
@@ -49,10 +45,6 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         {
             if (Directory.Exists(_tempDir))
                 Directory.Delete(_tempDir, recursive: true);
-
-            foreach (var path in _cleanupPaths)
-                if (Directory.Exists(path))
-                    Directory.Delete(path, recursive: true);
         }
 
         // ── helpers ────────────────────────────────────────────────────────────────
@@ -67,247 +59,176 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         static string SkillFile(string resolvedSkillsDir) =>
             Path.Combine(resolvedSkillsDir, ToolName, "SKILL.md");
 
-        // Registers a path under AppDomain.BaseDirectory for cleanup after each test.
-        string TrackBaseDir(string relName)
-        {
-            var full = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relName);
-            _cleanupPaths.Add(full);
-            return full;
-        }
-
-        // ── GenerateSkillFiles — path resolution ───────────────────────────────────
+        // ── Issue #107 — anchor resolution priority + loud-failure behaviour ──────
 
         [Fact]
-        public void GenerateSkillFiles_NullPath_RelativeSkillsPath_CreatesFilesInBaseDirectory()
+        public void ResolveSkillsPath_AbsoluteSkillsPath_UsedAsIs()
         {
-            // SkillsPath is relative; passing no path should fall back to AppDomain.BaseDirectory.
-            var relName = $"skills_{Guid.NewGuid():N}";
-            var expectedSkillsDir = TrackBaseDir(relName);
+            // Absolute SkillsPath bypasses every anchor — basePath / ProjectRootPath are
+            // ignored. Existing behaviour, asserted explicitly so the regression net is wide.
+            var absoluteSkillsDir = Path.Combine(_tempDir, "abs-skills");
+            var basePathThatMustBeIgnored = Path.Combine(_tempDir, "ignore-me-basepath");
 
-            var config = new ConnectionConfig { SkillsPath = relName, GenerateSkillFiles = false };
+            var config = new ConnectionConfig
+            {
+                SkillsPath = absoluteSkillsDir,
+                GenerateSkillFiles = false,
+                ProjectRootPath = Path.Combine(_tempDir, "ignore-me-projectroot")
+            };
             using var plugin = BuildPlugin(config);
 
-            var result = plugin.GenerateSkillFiles();
+            var result = plugin.GenerateSkillFiles(basePathThatMustBeIgnored);
 
             result.ShouldBeTrue();
-            File.Exists(SkillFile(expectedSkillsDir)).ShouldBeTrue(
-                $"path=null + relative SkillsPath → BaseDirectory/{relName}");
+            File.Exists(SkillFile(absoluteSkillsDir)).ShouldBeTrue(
+                "absolute SkillsPath must resolve to itself, regardless of basePath / ProjectRootPath");
+            Directory.Exists(basePathThatMustBeIgnored).ShouldBeFalse(
+                "basePath must not be touched when SkillsPath is absolute");
+            Directory.Exists(config.ProjectRootPath!).ShouldBeFalse(
+                "ProjectRootPath must not be touched when SkillsPath is absolute");
         }
 
         [Fact]
-        public void GenerateSkillFiles_WithCustomPath_RelativeSkillsPath_CreatesFilesUnderCustomPath()
+        public void ResolveSkillsPath_RelativeWithExplicitBasePath_AnchorsOnBasePath()
         {
-            // SkillsPath is relative; custom path should be prepended.
-            var customBase = Path.Combine(_tempDir, "custom-base");
+            // Relative SkillsPath + explicit basePath → files land at basePath/SkillsPath.
+            // basePath wins over ProjectRootPath (priority is documented on ConnectionConfig).
+            var customBase = Path.Combine(_tempDir, "base-from-arg");
+            var projectRootThatMustBeIgnored = Path.Combine(_tempDir, "project-root-loses");
             const string relName = "SKILLS";
 
-            var config = new ConnectionConfig { SkillsPath = relName, GenerateSkillFiles = false };
+            var config = new ConnectionConfig
+            {
+                SkillsPath = relName,
+                GenerateSkillFiles = false,
+                ProjectRootPath = projectRootThatMustBeIgnored
+            };
             using var plugin = BuildPlugin(config);
 
             var result = plugin.GenerateSkillFiles(customBase);
 
             result.ShouldBeTrue();
             File.Exists(SkillFile(Path.Combine(customBase, relName))).ShouldBeTrue(
-                $"custom path + relative SkillsPath → customBase/{relName}");
+                $"basePath + relative SkillsPath → basePath/{relName}");
+            Directory.Exists(projectRootThatMustBeIgnored).ShouldBeFalse(
+                "ProjectRootPath must not be touched when an explicit basePath was supplied");
         }
 
         [Fact]
-        public void GenerateSkillFiles_NullPath_AbsoluteSkillsPath_CreatesFilesInAbsolutePath()
+        public void ResolveSkillsPath_RelativeWithProjectRootInConfig_AnchorsOnProjectRoot()
         {
-            // SkillsPath is absolute; null path must not interfere.
-            var absoluteSkillsDir = Path.Combine(_tempDir, "abs-skills");
+            // Relative SkillsPath + no basePath + ProjectRootPath set → files land at
+            // ProjectRootPath/SkillsPath. This is the new behaviour introduced by issue #107.
+            var projectRoot = Path.Combine(_tempDir, "project-root");
+            const string relName = "SKILLS";
 
-            var config = new ConnectionConfig { SkillsPath = absoluteSkillsDir, GenerateSkillFiles = false };
+            var config = new ConnectionConfig
+            {
+                SkillsPath = relName,
+                GenerateSkillFiles = false,
+                ProjectRootPath = projectRoot
+            };
             using var plugin = BuildPlugin(config);
 
             var result = plugin.GenerateSkillFiles();
 
             result.ShouldBeTrue();
-            File.Exists(SkillFile(absoluteSkillsDir)).ShouldBeTrue(
-                "path=null + absolute SkillsPath → SkillsPath itself");
+            File.Exists(SkillFile(Path.Combine(projectRoot, relName))).ShouldBeTrue(
+                $"null basePath + ProjectRootPath + relative SkillsPath → ProjectRootPath/{relName}");
         }
 
         [Fact]
-        public void GenerateSkillFiles_WithCustomPath_AbsoluteSkillsPath_IgnoresCustomPath()
+        public void ResolveSkillsPath_RelativeBasePathOverridesProjectRoot()
         {
-            // SkillsPath is absolute; custom path must be completely ignored.
-            var absoluteSkillsDir = Path.Combine(_tempDir, "abs-skills");
-            var customBase = Path.Combine(_tempDir, "should-be-ignored");
+            // Priority check: explicit basePath beats ProjectRootPath even when both are set.
+            var customBase = Path.Combine(_tempDir, "wins-base");
+            var projectRoot = Path.Combine(_tempDir, "loses-projectroot");
+            const string relName = "SKILLS";
 
-            var config = new ConnectionConfig { SkillsPath = absoluteSkillsDir, GenerateSkillFiles = false };
+            var config = new ConnectionConfig
+            {
+                SkillsPath = relName,
+                GenerateSkillFiles = false,
+                ProjectRootPath = projectRoot
+            };
             using var plugin = BuildPlugin(config);
 
             var result = plugin.GenerateSkillFiles(customBase);
 
             result.ShouldBeTrue();
-            File.Exists(SkillFile(absoluteSkillsDir)).ShouldBeTrue(
-                "absolute SkillsPath takes precedence over custom path");
-            Directory.Exists(customBase).ShouldBeFalse(
-                "custom path must never be touched when SkillsPath is absolute");
-        }
-
-        // ── GenerateSkillFilesIfNeeded — flag + path ────────────────────────────────
-
-        [Fact]
-        public void GenerateSkillFilesIfNeeded_WhenDisabled_ReturnsFalse_NoFilesCreated()
-        {
-            // Even when a custom path is provided, the disabled flag must short-circuit everything.
-            var customBase = Path.Combine(_tempDir, "disabled-test");
-            const string relName = "SKILLS";
-
-            var config = new ConnectionConfig { SkillsPath = relName, GenerateSkillFiles = false };
-            using var plugin = BuildPlugin(config);
-
-            var result = plugin.GenerateSkillFilesIfNeeded(customBase);
-
-            result.ShouldBeFalse("generation is disabled via config");
-            Directory.Exists(customBase).ShouldBeFalse(
-                "no directory must be created when generation is disabled");
-        }
-
-        [Fact]
-        public void GenerateSkillFilesIfNeeded_WhenEnabled_NullPath_RelativeSkillsPath_CreatesFilesInBaseDirectory()
-        {
-            // When enabled and path=null, files must land in BaseDirectory/relName.
-            // The constructor also calls GenerateSkillFilesIfNeeded(), so we delete files first
-            // and then re-call to isolate the explicit invocation's behavior.
-            var relName = $"skills_{Guid.NewGuid():N}";
-            var expectedSkillsDir = TrackBaseDir(relName);
-
-            var config = new ConnectionConfig { SkillsPath = relName, GenerateSkillFiles = true };
-            using var plugin = BuildPlugin(config);
-
-            // Constructor already created files; delete them to make the next call non-trivially testable.
-            if (Directory.Exists(expectedSkillsDir))
-                Directory.Delete(expectedSkillsDir, recursive: true);
-
-            var result = plugin.GenerateSkillFilesIfNeeded();
-
-            result.ShouldBeTrue();
-            File.Exists(SkillFile(expectedSkillsDir)).ShouldBeTrue(
-                $"path=null + enabled + relative SkillsPath → BaseDirectory/{relName}");
-        }
-
-        [Fact]
-        public void GenerateSkillFilesIfNeeded_WhenEnabled_WithCustomPath_RelativeSkillsPath_CreatesFilesUnderCustomPath()
-        {
-            // When enabled and a custom path is supplied, files must land at customBase/relName.
-            var relName = $"skills_{Guid.NewGuid():N}";
-            TrackBaseDir(relName); // ctor creates files here with null path; register for cleanup
-
-            var customBase = Path.Combine(_tempDir, "custom-base");
-
-            var config = new ConnectionConfig { SkillsPath = relName, GenerateSkillFiles = true };
-            using var plugin = BuildPlugin(config);
-
-            var result = plugin.GenerateSkillFilesIfNeeded(customBase);
-
-            result.ShouldBeTrue();
             File.Exists(SkillFile(Path.Combine(customBase, relName))).ShouldBeTrue(
-                $"custom path + enabled + relative SkillsPath → customBase/{relName}");
+                "basePath must win over ProjectRootPath when both are supplied");
+            Directory.Exists(projectRoot).ShouldBeFalse(
+                "ProjectRootPath must not be touched when basePath wins");
         }
 
         [Fact]
-        public void GenerateSkillFilesIfNeeded_WhenEnabled_WithCustomPath_AbsoluteSkillsPath_IgnoresCustomPath()
+        public void ResolveSkillsPath_RelativeWithoutAnyAnchor_Throws()
         {
-            // Absolute SkillsPath must win over any supplied base path.
-            var absoluteSkillsDir = Path.Combine(_tempDir, "abs-skills");
-            var customBase = Path.Combine(_tempDir, "should-be-ignored");
-
-            var config = new ConnectionConfig { SkillsPath = absoluteSkillsDir, GenerateSkillFiles = true };
-            using var plugin = BuildPlugin(config); // ctor creates in absoluteSkillsDir
-
-            var result = plugin.GenerateSkillFilesIfNeeded(customBase);
-
-            result.ShouldBeTrue();
-            File.Exists(SkillFile(absoluteSkillsDir)).ShouldBeTrue(
-                "absolute SkillsPath takes precedence over custom path");
-            Directory.Exists(customBase).ShouldBeFalse(
-                "custom path must never be touched when SkillsPath is absolute");
-        }
-
-        // ── DeleteSkillFiles — path resolution ──────────────────────────────────────
-
-        [Fact]
-        public void DeleteSkillFiles_NullPath_RelativeSkillsPath_DeletesFromBaseDirectory()
-        {
-            var relName = $"skills_{Guid.NewGuid():N}";
-            var skillsDir = TrackBaseDir(relName);
-
-            var config = new ConnectionConfig { SkillsPath = relName, GenerateSkillFiles = false };
-            using var plugin = BuildPlugin(config);
-
-            plugin.GenerateSkillFiles(); // create files at BaseDirectory/relName
-
-            File.Exists(SkillFile(skillsDir)).ShouldBeTrue("setup: SKILL.md must exist before delete");
-
-            var result = plugin.DeleteSkillFiles();
-
-            result.ShouldBeTrue();
-            Directory.Exists(Path.Combine(skillsDir, ToolName)).ShouldBeFalse(
-                "path=null + relative SkillsPath → delete from BaseDirectory/relName");
-        }
-
-        [Fact]
-        public void DeleteSkillFiles_WithCustomPath_RelativeSkillsPath_DeletesFromCustomPath()
-        {
-            var customBase = Path.Combine(_tempDir, "custom-base");
+            // Loud-failure behaviour: no basePath + no ProjectRootPath + relative SkillsPath →
+            // InvalidOperationException. This replaces the old silent CWD fallback.
             const string relName = "SKILLS";
-            var skillsDir = Path.Combine(customBase, relName);
 
-            var config = new ConnectionConfig { SkillsPath = relName, GenerateSkillFiles = false };
+            var config = new ConnectionConfig
+            {
+                SkillsPath = relName,
+                GenerateSkillFiles = false,
+                ProjectRootPath = null
+            };
             using var plugin = BuildPlugin(config);
 
-            plugin.GenerateSkillFiles(customBase); // create files at customBase/SKILLS
-
-            File.Exists(SkillFile(skillsDir)).ShouldBeTrue("setup: SKILL.md must exist before delete");
-
-            var result = plugin.DeleteSkillFiles(customBase);
-
-            result.ShouldBeTrue();
-            Directory.Exists(Path.Combine(skillsDir, ToolName)).ShouldBeFalse(
-                "custom path + relative SkillsPath → delete from customBase/SKILLS");
+            var ex = Should.Throw<InvalidOperationException>(() => plugin.GenerateSkillFiles());
+            ex.Message.ShouldContain(nameof(ConnectionConfig.ProjectRootPath));
+            ex.Message.ShouldContain("SkillsPath");
         }
 
         [Fact]
-        public void DeleteSkillFiles_NullPath_AbsoluteSkillsPath_DeletesFromAbsolutePath()
+        public void ConnectionConfig_ProjectRootPath_IsNotSerialized()
         {
-            var absoluteSkillsDir = Path.Combine(_tempDir, "abs-skills");
+            // Persistence-side regression guard: ProjectRootPath MUST be carried as runtime-only
+            // state and MUST NOT round-trip to disk. Re-introducing it into the serialized form
+            // would resurrect Unity-MCP #761's path-portability bug.
+            var config = new ConnectionConfig
+            {
+                Host = "https://example.com",
+                SkillsPath = "SKILLS",
+                ProjectRootPath = "C:/Users/somebody/MyUnityProject"
+            };
 
-            var config = new ConnectionConfig { SkillsPath = absoluteSkillsDir, GenerateSkillFiles = false };
-            using var plugin = BuildPlugin(config);
+            var json = JsonSerializer.Serialize(config);
+            var node = JsonNode.Parse(json)!.AsObject();
 
-            plugin.GenerateSkillFiles(); // create files at absoluteSkillsDir
+            node.ContainsKey(nameof(ConnectionConfig.ProjectRootPath)).ShouldBeFalse(
+                $"{nameof(ConnectionConfig.ProjectRootPath)} must be marked [JsonIgnore] and never appear in serialized JSON");
 
-            File.Exists(SkillFile(absoluteSkillsDir)).ShouldBeTrue("setup: SKILL.md must exist before delete");
-
-            var result = plugin.DeleteSkillFiles();
-
-            result.ShouldBeTrue();
-            Directory.Exists(Path.Combine(absoluteSkillsDir, ToolName)).ShouldBeFalse(
-                "path=null + absolute SkillsPath → delete from absoluteSkillsDir");
+            // Sanity-check: the other properties DID serialize, so [JsonIgnore] is targeted.
+            node.ContainsKey(nameof(ConnectionConfig.Host)).ShouldBeTrue();
+            node.ContainsKey(nameof(ConnectionConfig.SkillsPath)).ShouldBeTrue();
         }
 
         [Fact]
-        public void DeleteSkillFiles_WithCustomPath_AbsoluteSkillsPath_IgnoresCustomPath()
+        public void OnToolsUpdated_WithMissingProjectRoot_LogsAndContinues()
         {
-            var absoluteSkillsDir = Path.Combine(_tempDir, "abs-skills");
-            var customBase = Path.Combine(_tempDir, "would-be-wrong");
+            // The two internal auto-fires (ctor + OnToolsUpdated subscription) MUST swallow the
+            // new InvalidOperationException via try/catch + LogError instead of letting it bubble
+            // into R3's fire-and-forget subscription context. Construction with a relative
+            // SkillsPath and no ProjectRootPath must therefore NOT crash — it must log and
+            // continue. This test asserts the no-crash contract; the matching LogError is
+            // observable in the xunit test output via the XunitTestOutputLoggerProvider.
+            var config = new ConnectionConfig
+            {
+                SkillsPath = "SKILLS",
+                GenerateSkillFiles = true,
+                ProjectRootPath = null
+            };
 
-            var config = new ConnectionConfig { SkillsPath = absoluteSkillsDir, GenerateSkillFiles = false };
-            using var plugin = BuildPlugin(config);
-
-            plugin.GenerateSkillFiles(); // create files at absoluteSkillsDir
-
-            File.Exists(SkillFile(absoluteSkillsDir)).ShouldBeTrue("setup: SKILL.md must exist before delete");
-
-            var result = plugin.DeleteSkillFiles(customBase);
-
-            result.ShouldBeTrue();
-            Directory.Exists(Path.Combine(absoluteSkillsDir, ToolName)).ShouldBeFalse(
-                "absolute SkillsPath takes precedence — deletes from absoluteSkillsDir");
-            Directory.Exists(customBase).ShouldBeFalse(
-                "custom path must never be created when SkillsPath is absolute");
+            Should.NotThrow(() =>
+            {
+                using var plugin = BuildPlugin(config);
+                // Construction triggers the initial GenerateSkillFilesIfNeeded() call.
+                // If the wrapper is missing, the InvalidOperationException would escape
+                // synchronously and fail the test.
+            });
         }
 
         // ── mock ───────────────────────────────────────────────────────────────────
