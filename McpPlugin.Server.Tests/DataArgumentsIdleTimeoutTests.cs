@@ -39,7 +39,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var args = new DataArguments(Array.Empty<string>());
 
             args.IdleTimeoutSeconds.ShouldBe(Consts.MCP.Server.DefaultIdleTimeoutSeconds);
-            args.IdleTimeoutSeconds.ShouldBe(600);
         }
 
         [Fact]

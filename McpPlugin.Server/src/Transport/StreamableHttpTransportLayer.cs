@@ -37,15 +37,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
         {
             return mcpServerBuilder.WithHttpTransport(options =>
             {
-                var idleTimeoutSeconds = dataArguments.IdleTimeoutSeconds > 0
-                    ? dataArguments.IdleTimeoutSeconds
-                    : Consts.MCP.Server.DefaultIdleTimeoutSeconds;
-
-                logger?.Debug("Http transport configuration. IdleTimeout={idleTimeoutSeconds}s", idleTimeoutSeconds);
+                logger?.Debug("Http transport configuration. IdleTimeout={idleTimeoutSeconds}s", dataArguments.IdleTimeoutSeconds);
 
                 options.Stateless = false;
                 options.PerSessionExecutionContext = true;
-                options.IdleTimeout = TimeSpan.FromSeconds(idleTimeoutSeconds);
+                options.IdleTimeout = TimeSpan.FromSeconds(dataArguments.IdleTimeoutSeconds);
                 // ConfigureSessionOptions cannot replace RunSessionHandler here because we need
                 // full session lifecycle management (StartAsync/StopAsync for McpServerService).
                 // Suppressing MCPEXP002 as RunSessionHandler is the only mechanism that provides
