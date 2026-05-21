@@ -158,7 +158,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
 
             Result[JsonSchema.Properties]![name] = new JsonObject
             {
-                [JsonSchema.Ref] = JsonSchema.RefValue + typeId
+                [JsonSchema.Ref] = JsonSchema.RefValue + EncodeForJsonSchemaRef(typeId)
             };
 
             if (description != null)
@@ -204,11 +204,23 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
                 [JsonSchema.Type] = JsonSchema.Array,
                 [JsonSchema.Items] = new JsonObject
                 {
-                    [JsonSchema.Ref] = JsonSchema.RefValue + itemType
+                    [JsonSchema.Ref] = JsonSchema.RefValue + EncodeForJsonSchemaRef(itemType)
                 }
             };
 
             return AddDefinition(name, arrayDefinition);
+        }
+
+        // Mirrors ReflectorNet's $ref encoding (percent-encodes `[ ] < > +`). $defs keys stay raw;
+        // $ref values are URI references per RFC 6901 + RFC 3986. A consumer URI-decodes the
+        // fragment and looks up the raw $defs key directly.
+        static string EncodeForJsonSchemaRef(string typeId)
+        {
+            if (string.IsNullOrEmpty(typeId))
+                return typeId;
+            return typeId.Replace("[", "%5B").Replace("]", "%5D")
+                         .Replace("<", "%3C").Replace(">", "%3E")
+                         .Replace("+", "%2B");
         }
 
         public JsonObject? BuildJsonObject()
