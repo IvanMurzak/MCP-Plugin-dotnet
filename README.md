@@ -226,6 +226,7 @@ Command-line arguments take priority over environment variables.
 | `port` | `MCP_PLUGIN_PORT` | The port the SignalR hub listens on. | `8080` |
 | `client-transport` | `MCP_PLUGIN_CLIENT_TRANSPORT` | Transport method: `stdio` or `streamableHttp`. | `streamableHttp` |
 | `plugin-timeout` | `MCP_PLUGIN_CLIENT_TIMEOUT` | Timeout for plugin operations (ms). | `10000` |
+| `idle-timeout-seconds` | `MCP_PLUGIN_IDLE_TIMEOUT_SECONDS` | `streamableHttp` only: idle window before an MCP session is evicted from the in-memory tracker. Longer values reduce reconnect 404s / session-migration rehydrates at the cost of higher in-memory footprint (bounded by `MaxIdleSessionCount`). The SDK's own default is `7200` (2 h). | `600` |
 | `token` | `MCP_PLUGIN_TOKEN` | Bearer token required from connecting plugins. | *(none)* |
 | `authorization` | `MCP_AUTHORIZATION` | Authorization mode: `none` or `required`. | `none` |
 

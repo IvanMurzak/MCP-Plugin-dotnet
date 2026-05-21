@@ -55,6 +55,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string ClientTransportMethod = "client-transport";
                     public const string Token = "token";
                     public const string Authorization = "authorization";
+                    public const string IdleTimeoutSeconds = "idle-timeout-seconds";
                 }
 
                 public static partial class Env
@@ -64,7 +65,20 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string ClientTransportMethod = "MCP_PLUGIN_CLIENT_TRANSPORT";
                     public const string Token = "MCP_PLUGIN_TOKEN";
                     public const string Authorization = "MCP_AUTHORIZATION";
+                    public const string IdleTimeoutSeconds = "MCP_PLUGIN_IDLE_TIMEOUT_SECONDS";
                 }
+
+                /// <summary>
+                /// Default idle-timeout (seconds) for the streamableHttp transport's
+                /// <c>HttpServerTransportOptions.IdleTimeout</c>. An idle MCP session is evicted
+                /// from the server's in-memory session tracker after this much time without
+                /// activity. The SDK's own default is 2 hours; we use 10 minutes as a middle
+                /// ground that survives typical client reconnect latencies while keeping the
+                /// tracker footprint bounded by <c>MaxIdleSessionCount</c>. Override via the
+                /// <see cref="Args.IdleTimeoutSeconds"/> CLI argument or
+                /// <see cref="Env.IdleTimeoutSeconds"/> environment variable.
+                /// </summary>
+                public const int DefaultIdleTimeoutSeconds = 600;
 
                 public const string DefaultBodyPath = "mcpServers";
                 public const string DefaultServerName = "McpPlugin";
