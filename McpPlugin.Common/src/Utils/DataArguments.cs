@@ -17,6 +17,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
     {
         int Port { get; }
         int PluginTimeoutMs { get; }
+        int IdleTimeoutSeconds { get; }
         Consts.MCP.Server.TransportMethod ClientTransport { get; }
         Consts.MCP.Server.AuthOption Authorization { get; }
         string? Token { get; }
@@ -38,6 +39,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
     {
         public int Port { get; private set; } = 8080;
         public int PluginTimeoutMs { get; private set; }
+        public int IdleTimeoutSeconds { get; private set; } = Consts.MCP.Server.DefaultIdleTimeoutSeconds;
         public Consts.MCP.Server.TransportMethod ClientTransport { get; private set; }
         public Consts.MCP.Server.AuthOption Authorization { get; private set; } = Consts.MCP.Server.AuthOption.none;
         public string? Token { get; private set; }
@@ -82,6 +84,10 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var envPluginTimeout = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.PluginTimeout);
             if (envPluginTimeout != null && int.TryParse(envPluginTimeout, out var parsedEnvTimeoutMs))
                 PluginTimeoutMs = parsedEnvTimeoutMs;
+
+            var envIdleTimeoutSeconds = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.IdleTimeoutSeconds);
+            if (envIdleTimeoutSeconds != null && int.TryParse(envIdleTimeoutSeconds, out var parsedEnvIdleTimeoutSeconds) && parsedEnvIdleTimeoutSeconds > 0)
+                IdleTimeoutSeconds = parsedEnvIdleTimeoutSeconds;
 
             // --- Client variables ---
 
@@ -156,6 +162,10 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var argPluginTimeout = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.PluginTimeout.TrimStart('-'));
             if (argPluginTimeout != null && int.TryParse(argPluginTimeout, out var timeoutMs))
                 PluginTimeoutMs = timeoutMs;
+
+            var argIdleTimeoutSeconds = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.IdleTimeoutSeconds.TrimStart('-'));
+            if (argIdleTimeoutSeconds != null && int.TryParse(argIdleTimeoutSeconds, out var parsedArgIdleTimeoutSeconds) && parsedArgIdleTimeoutSeconds > 0)
+                IdleTimeoutSeconds = parsedArgIdleTimeoutSeconds;
 
             // --- Client variables ---
 

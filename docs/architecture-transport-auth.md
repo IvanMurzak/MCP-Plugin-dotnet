@@ -42,6 +42,25 @@ All 4 combinations (2 transports × 2 auth options) are supported without condit
 | CLI argument     | `--token=<value>`         | `--token=mySecret`          |
 | Environment var  | `MCP_PLUGIN_TOKEN=<value>`| `MCP_PLUGIN_TOKEN=mySecret` |
 
+### Idle Timeout — streamableHttp session eviction window
+
+Controls `HttpServerTransportOptions.IdleTimeout` for the streamableHttp transport. Idle MCP sessions are evicted from the server's in-memory session tracker after this many seconds without activity; once evicted, the next request from that client either returns 404 or takes the rehydrate path through a registered `ISessionMigrationHandler`.
+
+| Source           | Key                                          | Values            |
+|------------------|----------------------------------------------|-------------------|
+| CLI argument     | `idle-timeout-seconds=<int>`                 | Positive integer  |
+| Environment var  | `MCP_PLUGIN_IDLE_TIMEOUT_SECONDS=<int>`      | Positive integer  |
+
+**Default**: `600` (10 minutes). The MCP SDK's own default is `7200` (2 hours).
+
+Trade-off:
+
+- **Longer values** reduce 404s and migration-rehydrate cost for slow-reconnecting clients (consumer reconnect latencies routinely exceed 30 s).
+- **Shorter values** keep the in-memory session-tracker footprint bounded — though `HttpServerTransportOptions.MaxIdleSessionCount` already provides a hard upper bound.
+- Test scenarios that intentionally exercise eviction may want a small value (e.g. `5`). Non-positive values are rejected and the default is used.
+
+This setting is ignored when `client-transport=stdio` (the stdio transport has no idle-eviction concept).
+
 **Optional at server launch** when `authorization=required`. When absent, the server enters dynamic-pairing mode — any plugin token is accepted and plugins/clients are paired by token equality. When present, only that exact token is accepted from connecting plugins. Ignored (but accepted) when `authorization=none`. Note: connecting plugins must always provide a token in `auth=required` mode regardless.
 
 ---
