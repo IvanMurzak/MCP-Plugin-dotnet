@@ -10,6 +10,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using com.IvanMurzak.ReflectorNet.Utils;
 
@@ -59,10 +60,10 @@ namespace com.IvanMurzak.McpPlugin
                         continue;
 
                     // Use IsDefined for fast check before GetCustomAttribute
-                    var hasToolTypeAttr = isToolAssembly && Attribute.IsDefined(type, typeof(McpPluginToolTypeAttribute));
-                    var hasPromptTypeAttr = isPromptAssembly && Attribute.IsDefined(type, typeof(McpPluginPromptTypeAttribute));
-                    var hasResourceTypeAttr = isResourceAssembly && Attribute.IsDefined(type, typeof(McpPluginResourceTypeAttribute));
-                    var hasSkillTypeAttr = isSkillAssembly && Attribute.IsDefined(type, typeof(McpPluginSkillTypeAttribute));
+                    var hasToolTypeAttr = isToolAssembly && Attribute.IsDefined(type, typeof(AiToolTypeAttribute));
+                    var hasPromptTypeAttr = isPromptAssembly && Attribute.IsDefined(type, typeof(AiPromptTypeAttribute));
+                    var hasResourceTypeAttr = isResourceAssembly && Attribute.IsDefined(type, typeof(AiResourceTypeAttribute));
+                    var hasSkillTypeAttr = isSkillAssembly && Attribute.IsDefined(type, typeof(AiSkillTypeAttribute));
 
                     if (!hasToolTypeAttr && !hasPromptTypeAttr && !hasResourceTypeAttr && !hasSkillTypeAttr)
                         continue;
@@ -139,25 +140,46 @@ namespace com.IvanMurzak.McpPlugin
         {
             foreach (var method in type.GetMethods(MethodBindingFlags))
             {
-                // Batch: get all custom attributes once per method
-                var attributes = method.GetCustomAttributes(inherit: false);
-
-                // Single pass through attributes
-                foreach (var attr in attributes)
+                // Per-family lookup: fetch AT MOST ONE attribute per family per method, even if
+                // the method carries multiple instances (e.g. both [AiTool] and the legacy
+                // [McpPluginTool] subclass alias during a consumer migration). The non-generic
+                // GetCustomAttributes(Type, inherit) overload does NOT throw on multiple matches,
+                // unlike the singular generic GetCustomAttribute<T>() which would raise
+                // AmbiguousMatchException in that scenario. Picking FirstOrDefault deterministically
+                // registers the method exactly once per family — preventing duplicate-registration
+                // errors when consumers gradually swap [McpPlugin*] → [Ai*].
+                if (processTool)
                 {
-                    if (processTool && attr is McpPluginToolAttribute toolAttr)
+                    var toolAttr = method.GetCustomAttributes(typeof(AiToolAttribute), inherit: false)
+                        .Cast<AiToolAttribute>()
+                        .FirstOrDefault();
+                    if (toolAttr != null)
                     {
                         if (string.IsNullOrEmpty(toolAttr.Name))
                             throw new ArgumentException($"Tool name cannot be null or empty. Type: {type.Name}, Method: {method.Name}");
                         WithTool(toolAttr, classType: type, methodInfo: method);
                     }
-                    else if (processPrompt && attr is McpPluginPromptAttribute promptAttr)
+                }
+
+                if (processPrompt)
+                {
+                    var promptAttr = method.GetCustomAttributes(typeof(AiPromptAttribute), inherit: false)
+                        .Cast<AiPromptAttribute>()
+                        .FirstOrDefault();
+                    if (promptAttr != null)
                     {
                         if (string.IsNullOrEmpty(promptAttr.Name))
                             throw new ArgumentException($"Prompt name cannot be null or empty. Type: {type.Name}, Method: {method.Name}");
                         WithPrompt(name: promptAttr.Name, classType: type, methodInfo: method);
                     }
-                    else if (processResource && attr is McpPluginResourceAttribute)
+                }
+
+                if (processResource)
+                {
+                    var resourceAttr = method.GetCustomAttributes(typeof(AiResourceAttribute), inherit: false)
+                        .Cast<AiResourceAttribute>()
+                        .FirstOrDefault();
+                    if (resourceAttr != null)
                     {
                         WithResource(classType: type, getContentMethod: method);
                     }
@@ -170,13 +192,17 @@ namespace com.IvanMurzak.McpPlugin
             // Scan const string fields
             foreach (var field in type.GetFields(FieldBindingFlags))
             {
-                var skillAttr = field.GetCustomAttribute<McpPluginSkillAttribute>();
+                // Plural overload: tolerates members carrying BOTH [AiSkill] and the legacy
+                // [McpPluginSkill] subclass alias without raising AmbiguousMatchException.
+                var skillAttr = field.GetCustomAttributes(typeof(AiSkillAttribute), inherit: true)
+                    .Cast<AiSkillAttribute>()
+                    .FirstOrDefault();
                 if (skillAttr == null)
                     continue;
 
                 if (!field.IsLiteral || field.FieldType != typeof(string))
                     throw new ArgumentException(
-                        $"Field '{field.Name}' in type '{type.Name}' has [McpPluginSkill] but is not a const string. " +
+                        $"Field '{field.Name}' in type '{type.Name}' has [AiSkill] but is not a const string. " +
                         "Only const string fields and static string properties are supported.");
 
                 if (string.IsNullOrEmpty(skillAttr.Name))
@@ -201,19 +227,22 @@ namespace com.IvanMurzak.McpPlugin
             // Scan static string properties
             foreach (var property in type.GetProperties(FieldBindingFlags))
             {
-                var skillAttr = property.GetCustomAttribute<McpPluginSkillAttribute>();
+                // Plural overload: see field-scan comment above.
+                var skillAttr = property.GetCustomAttributes(typeof(AiSkillAttribute), inherit: true)
+                    .Cast<AiSkillAttribute>()
+                    .FirstOrDefault();
                 if (skillAttr == null)
                     continue;
 
                 if (property.PropertyType != typeof(string))
                     throw new ArgumentException(
-                        $"Property '{property.Name}' in type '{type.Name}' has [McpPluginSkill] but is not a string property. " +
+                        $"Property '{property.Name}' in type '{type.Name}' has [AiSkill] but is not a string property. " +
                         "Only const string fields and static string properties are supported.");
 
                 var getter = property.GetGetMethod(nonPublic: true);
                 if (getter == null || !getter.IsStatic)
                     throw new ArgumentException(
-                        $"Property '{property.Name}' in type '{type.Name}' has [McpPluginSkill] but is not a static property with a getter. " +
+                        $"Property '{property.Name}' in type '{type.Name}' has [AiSkill] but is not a static property with a getter. " +
                         "Only const string fields and static string properties are supported.");
 
                 if (string.IsNullOrEmpty(skillAttr.Name))

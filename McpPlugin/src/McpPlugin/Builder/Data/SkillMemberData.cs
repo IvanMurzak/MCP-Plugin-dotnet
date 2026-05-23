@@ -18,10 +18,10 @@ namespace com.IvanMurzak.McpPlugin
         public string Name => Attribute.Name;
         public Type ClassType { get; set; }
         public MemberInfo MemberInfo { get; set; }
-        public McpPluginSkillAttribute Attribute { get; set; }
+        public AiSkillAttribute Attribute { get; set; }
         public string Content { get; set; }
 
-        public SkillMemberData(Type classType, MemberInfo memberInfo, McpPluginSkillAttribute attribute, string content)
+        public SkillMemberData(Type classType, MemberInfo memberInfo, AiSkillAttribute attribute, string content)
         {
             ClassType = classType;
             MemberInfo = memberInfo;

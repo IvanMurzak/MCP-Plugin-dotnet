@@ -24,7 +24,7 @@ namespace com.IvanMurzak.McpPlugin
 
         // Tool methods
         IMcpPluginBuilder WithTool(Type classType, MethodInfo methodInfo);
-        IMcpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo methodInfo);
+        IMcpPluginBuilder WithTool(AiToolAttribute attribute, Type classType, MethodInfo methodInfo);
         IMcpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo methodInfo);
         IMcpPluginBuilder AddTool(string name, IRunTool runner);
         IMcpPluginBuilder WithTools<T>();

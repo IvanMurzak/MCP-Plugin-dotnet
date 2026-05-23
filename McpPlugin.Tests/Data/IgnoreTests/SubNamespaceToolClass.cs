@@ -10,17 +10,17 @@
 
 namespace com.IvanMurzak.McpPlugin.Tests.Data.Ignored.SubNamespace
 {
-    [McpPluginToolType]
+    [AiToolType]
     internal class SubNamespaceToolClass
     {
-        [McpPluginTool("sub-namespace-tool", "Tool in sub-namespace")]
+        [AiTool("sub-namespace-tool", "Tool in sub-namespace")]
         public static string TestTool() => "test";
     }
 
-    [McpPluginPromptType]
+    [AiPromptType]
     internal class SubNamespacePromptClass
     {
-        [McpPluginPrompt(Name = "sub-namespace-prompt")]
+        [AiPrompt(Name = "sub-namespace-prompt")]
         public static string TestPrompt() => "test prompt";
     }
 }

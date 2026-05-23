@@ -16,10 +16,12 @@ new McpPluginBuilder(version)
 
 ### Attribute-based component registration
 ```csharp
-[McpPluginToolType]
+[AiToolType]
 public static class MyTools
 {
-    [McpPluginTool("add", "Adds two numbers")]
+    [AiTool("add", "Adds two numbers")]
     public static int Add(int a, int b) => a + b;
 }
 ```
+
+The legacy `[McpPluginToolType]` / `[McpPluginTool]` / `[McpPluginPrompt]` / `[McpPluginResource]` / `[McpPluginSkill]` names remain available as `[Obsolete]` subclass aliases of the new `[Ai*]` types, so existing consumer code continues to compile (with a deprecation warning) until callers migrate to the new names.

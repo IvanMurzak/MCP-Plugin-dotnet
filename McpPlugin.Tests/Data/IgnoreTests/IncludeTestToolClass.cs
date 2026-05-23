@@ -10,17 +10,17 @@
 
 namespace com.IvanMurzak.McpPlugin.Tests.Data.Included
 {
-    [McpPluginToolType]
+    [AiToolType]
     internal class IncludeTestToolClass
     {
-        [McpPluginTool("include-test-tool", "Test tool that should be included")]
+        [AiTool("include-test-tool", "Test tool that should be included")]
         public static string TestTool() => "test";
     }
 
-    [McpPluginPromptType]
+    [AiPromptType]
     internal class IncludeTestPromptClass
     {
-        [McpPluginPrompt(Name = "include-test-prompt")]
+        [AiPrompt(Name = "include-test-prompt")]
         public static string TestPrompt() => "test prompt";
     }
 }

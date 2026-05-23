@@ -74,20 +74,27 @@ namespace com.IvanMurzak.McpPlugin
         public RunPrompt(Reflector reflector, string name, ILogger? logger, MethodInfo methodInfo) : base(reflector, logger, methodInfo)
         {
             Name = name;
-            Role = methodInfo.GetCustomAttribute<McpPluginPromptAttribute>()?.Role ?? Role.User;
+            Role = GetFirstAiPromptAttribute(methodInfo)?.Role ?? Role.User;
         }
 
         public RunPrompt(Reflector reflector, string name, ILogger? logger, object targetInstance, MethodInfo methodInfo) : base(reflector, logger, targetInstance, methodInfo)
         {
             Name = name;
-            Role = methodInfo.GetCustomAttribute<McpPluginPromptAttribute>()?.Role ?? Role.User;
+            Role = GetFirstAiPromptAttribute(methodInfo)?.Role ?? Role.User;
         }
 
         public RunPrompt(Reflector reflector, string name, ILogger? logger, Type classType, MethodInfo methodInfo) : base(reflector, logger, classType, methodInfo)
         {
             Name = name;
-            Role = methodInfo.GetCustomAttribute<McpPluginPromptAttribute>()?.Role ?? Role.User;
+            Role = GetFirstAiPromptAttribute(methodInfo)?.Role ?? Role.User;
         }
+
+        // Plural overload: tolerates methods carrying BOTH [AiPrompt] and the legacy [McpPluginPrompt]
+        // subclass alias without raising AmbiguousMatchException, returning the first instance found.
+        private static AiPromptAttribute? GetFirstAiPromptAttribute(MethodInfo methodInfo)
+            => methodInfo.GetCustomAttributes(typeof(AiPromptAttribute), inherit: false)
+                .Cast<AiPromptAttribute>()
+                .FirstOrDefault();
 
         protected override object? GetParameterValue(Reflector reflector, ParameterInfo paramInfo, object? value)
         {
@@ -213,7 +220,7 @@ namespace com.IvanMurzak.McpPlugin
 
                 return ResponseGetPrompt.Success(
                         result.ToString()!,
-                        role: Method.GetCustomAttribute<McpPluginPromptAttribute>()?.Role ?? Role.User,
+                        role: GetFirstAiPromptAttribute(Method)?.Role ?? Role.User,
                         description: description)
                     .SetRequestID(requestId);
             }

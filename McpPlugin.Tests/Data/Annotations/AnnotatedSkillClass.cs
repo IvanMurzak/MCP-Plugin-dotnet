@@ -10,10 +10,10 @@
 
 namespace com.IvanMurzak.McpPlugin.Tests.Data.Annotations
 {
-    [McpPluginSkillType]
+    [AiSkillType]
     public static class AnnotatedSkillClass
     {
-        [McpPluginSkill("deploy-guide", "Step-by-step deployment instructions")]
+        [AiSkill("deploy-guide", "Step-by-step deployment instructions")]
         public const string DeployGuide = @"
 # Deploy Guide
 
@@ -22,7 +22,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data.Annotations
 3. Deploy to staging
 ";
 
-        [McpPluginSkill("troubleshoot", "Troubleshooting common issues")]
+        [AiSkill("troubleshoot", "Troubleshooting common issues")]
         public const string Troubleshoot = @"
 # Troubleshooting
 
@@ -30,7 +30,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data.Annotations
 - Restart service
 ";
 
-        [McpPluginSkill("disabled-skill", "This skill is disabled", Enabled = false)]
+        [AiSkill("disabled-skill", "This skill is disabled", Enabled = false)]
         public const string DisabledSkill = @"
 # Disabled
 
@@ -38,14 +38,14 @@ This should not appear.
 ";
 
         // Static property — should be picked up
-        [McpPluginSkill("platform-info", "Platform-specific instructions")]
+        [AiSkill("platform-info", "Platform-specific instructions")]
         public static string PlatformInfo => System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
             System.Runtime.InteropServices.OSPlatform.Windows)
             ? "# Windows\nUse PowerShell."
             : "# Linux\nUse bash.";
 
         // Static property with disabled attribute — should NOT be picked up
-        [McpPluginSkill("disabled-prop", "Disabled property skill", Enabled = false)]
+        [AiSkill("disabled-prop", "Disabled property skill", Enabled = false)]
         public static string DisabledProp => "# Disabled prop";
 
         // Non-const field — should NOT be picked up

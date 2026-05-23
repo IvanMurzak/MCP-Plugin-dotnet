@@ -71,9 +71,10 @@ common packages.
 Tools, prompts, and resources MUST be registered declaratively via attributes, not via imperative
 registration calls.
 
-- Tools: `[McpPluginTool]` on methods inside `[McpPluginToolType]`-annotated classes.
-- Prompts: `[McpPluginPrompt]` on methods inside `[McpPluginPromptType]`-annotated classes.
-- Resources: `[McpPluginResource]` on methods inside `[McpPluginResourceType]`-annotated classes.
+- Tools: `[AiTool]` on methods inside `[AiToolType]`-annotated classes.
+- Prompts: `[AiPrompt]` on methods inside `[AiPromptType]`-annotated classes.
+- Resources: `[AiResource]` on methods inside `[AiResourceType]`-annotated classes.
+- The legacy `[McpPlugin*]` attribute names remain available as `[Obsolete]` subclass aliases of the new `[Ai*]` types so existing consumer code keeps compiling (with a deprecation warning) — new code MUST use the `[Ai*]` names.
 - Reflection MUST use `com.IvanMurzak.ReflectorNet`, not raw `System.Reflection`.
 - Assembly scanning MUST be available via `WithToolsFromAssembly()`, `WithPromptsFromAssembly()`,
   and `WithResourcesFromAssembly()` builder methods.

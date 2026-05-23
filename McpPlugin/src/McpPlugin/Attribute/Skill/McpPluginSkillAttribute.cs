@@ -12,39 +12,18 @@ using System;
 
 namespace com.IvanMurzak.McpPlugin
 {
+    /// <summary>
+    /// Deprecated alias for <see cref="AiSkillAttribute"/>. Kept as an
+    /// <see cref="ObsoleteAttribute"/>-marked subclass so existing decorations on consumer fields/properties
+    /// continue to be discovered by reflection lookups for <see cref="AiSkillAttribute"/>.
+    /// </summary>
+    [Obsolete("Use [AiSkill] instead. This alias will be removed in a future major release.")]
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
-    public sealed class McpPluginSkillAttribute : Attribute
+    public sealed class McpPluginSkillAttribute : AiSkillAttribute
     {
-        public string Name { get; set; }
-        public string? Description { get; set; }
-
-        /// <summary>
-        /// Optional concise description used for the SKILL.md YAML <c>description:</c> field when
-        /// <see cref="Description"/> would overflow the 1024-character cap. When <see langword="null"/>,
-        /// the generator falls back to <see cref="Description"/> (truncated to fit).
-        /// </summary>
-        public string? SkillDescription { get; set; }
-
-        private bool _enabled = true;
-        private bool _enabledSet;
-
-        /// <summary>
-        /// If set to false, the skill will be disabled by default when first discovered.
-        /// When not set, the skill defaults to enabled.
-        /// </summary>
-        public bool Enabled
-        {
-            get => _enabled;
-            set { _enabled = value; _enabledSet = true; }
-        }
-
-        /// <summary>Gets the Enabled value, or null if it was not explicitly set.</summary>
-        public bool? EnabledValue => _enabledSet ? _enabled : null;
-
         public McpPluginSkillAttribute(string name, string? description = null)
+            : base(name, description)
         {
-            Name = name;
-            Description = description;
         }
     }
 }

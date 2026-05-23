@@ -10,38 +10,38 @@
 
 namespace com.IvanMurzak.McpPlugin.Tests.Data.Annotations
 {
-    [McpPluginToolType]
+    [AiToolType]
     public static class AnnotatedToolClass
     {
-        [McpPluginTool("tool-no-hints", "Tool With No Hints")]
+        [AiTool("tool-no-hints", "Tool With No Hints")]
         public static void NoHints() { }
 
-        [McpPluginTool("tool-readonly", "Read-Only Tool", ReadOnlyHint = true)]
+        [AiTool("tool-readonly", "Read-Only Tool", ReadOnlyHint = true)]
         public static void ReadOnly() { }
 
-        [McpPluginTool("tool-destructive-false", "Non-Destructive Tool", DestructiveHint = false)]
+        [AiTool("tool-destructive-false", "Non-Destructive Tool", DestructiveHint = false)]
         public static void DestructiveFalse() { }
 
-        [McpPluginTool("tool-idempotent", "Idempotent Tool", IdempotentHint = true)]
+        [AiTool("tool-idempotent", "Idempotent Tool", IdempotentHint = true)]
         public static void Idempotent() { }
 
-        [McpPluginTool("tool-open-world", "Open World Tool", OpenWorldHint = true)]
+        [AiTool("tool-open-world", "Open World Tool", OpenWorldHint = true)]
         public static void OpenWorld() { }
 
-        [McpPluginTool("tool-all-hints", "All Hints Tool",
+        [AiTool("tool-all-hints", "All Hints Tool",
             ReadOnlyHint = true,
             DestructiveHint = false,
             IdempotentHint = true,
             OpenWorldHint = false)]
         public static void AllHints() { }
 
-        [McpPluginTool("tool-enabled-default", "Tool With Default Enabled")]
+        [AiTool("tool-enabled-default", "Tool With Default Enabled")]
         public static void EnabledDefault() { }
 
-        [McpPluginTool("tool-enabled-true", "Tool With Enabled True", Enabled = true)]
+        [AiTool("tool-enabled-true", "Tool With Enabled True", Enabled = true)]
         public static void EnabledTrue() { }
 
-        [McpPluginTool("tool-enabled-false", "Tool With Enabled False", Enabled = false)]
+        [AiTool("tool-enabled-false", "Tool With Enabled False", Enabled = false)]
         public static void EnabledFalse() { }
     }
 }

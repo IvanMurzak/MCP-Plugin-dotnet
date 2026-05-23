@@ -9,23 +9,32 @@
 */
 
 using System;
-using System.Reflection;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public class ResourceMethodData
+    [AttributeUsage(AttributeTargets.Method)]
+    public class AiResourceAttribute : Attribute
     {
-        public Type ClassType { get; set; }
-        public MethodInfo GetContentMethod { get; set; }
-        public MethodInfo ListResourcesMethod { get; set; }
-        public AiResourceAttribute Attribute { get; set; }
+        public string Route { get; set; } = string.Empty;
+        public string? Name { get; set; }
+        public string? Description { get; set; }
+        public string? MimeType { get; set; }
+        public string ListResources { get; set; } = string.Empty;
 
-        public ResourceMethodData(Type classType, MethodInfo getContentMethod, MethodInfo listResourcesMethod, AiResourceAttribute attribute)
+        private bool _enabled = true;
+        private bool _enabledSet;
+
+        /// <summary>
+        /// If set to false, the resource will be disabled by default when first discovered.
+        /// When not set, the resource defaults to enabled.
+        /// </summary>
+        public bool Enabled
         {
-            ClassType = classType;
-            GetContentMethod = getContentMethod;
-            ListResourcesMethod = listResourcesMethod;
-            Attribute = attribute;
+            get => _enabled;
+            set { _enabled = value; _enabledSet = true; }
         }
+
+        /// <summary>Gets the Enabled value, or null if it was not explicitly set.</summary>
+        public bool? EnabledValue => _enabledSet ? _enabled : null;
     }
 }

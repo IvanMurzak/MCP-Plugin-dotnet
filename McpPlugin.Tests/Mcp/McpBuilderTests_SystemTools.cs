@@ -50,14 +50,14 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         [Fact]
         public void ToolAttribute_DefaultToolType_ShouldBeStandard()
         {
-            var attr = new McpPluginToolAttribute("test");
+            var attr = new AiToolAttribute("test");
             attr.ToolType.ShouldBe(McpToolType.Standard);
         }
 
         [Fact]
         public void ToolAttribute_ToolTypeSystem_ShouldBeSystem()
         {
-            var attr = new McpPluginToolAttribute("test") { ToolType = McpToolType.System };
+            var attr = new AiToolAttribute("test") { ToolType = McpToolType.System };
             attr.ToolType.ShouldBe(McpToolType.System);
         }
 

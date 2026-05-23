@@ -12,8 +12,14 @@ using System;
 
 namespace com.IvanMurzak.McpPlugin
 {
+    /// <summary>
+    /// Deprecated alias for <see cref="AiSkillTypeAttribute"/>. Kept as an
+    /// <see cref="ObsoleteAttribute"/>-marked subclass so existing decorations on consumer classes
+    /// continue to be discovered by reflection lookups for <see cref="AiSkillTypeAttribute"/>.
+    /// </summary>
+    [Obsolete("Use [AiSkillType] instead. This alias will be removed in a future major release.")]
     [AttributeUsage(AttributeTargets.Class)]
-    public sealed class McpPluginSkillTypeAttribute : Attribute
+    public sealed class McpPluginSkillTypeAttribute : AiSkillTypeAttribute
     {
         public McpPluginSkillTypeAttribute() { }
     }

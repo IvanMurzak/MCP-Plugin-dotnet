@@ -12,11 +12,15 @@ using System;
 
 namespace com.IvanMurzak.McpPlugin
 {
+    /// <summary>
+    /// Deprecated alias for <see cref="AiToolTypeAttribute"/>. Kept as an
+    /// <see cref="ObsoleteAttribute"/>-marked subclass so existing decorations on consumer classes
+    /// continue to be discovered by reflection lookups for <see cref="AiToolTypeAttribute"/>.
+    /// </summary>
+    [Obsolete("Use [AiToolType] instead. This alias will be removed in a future major release.")]
     [AttributeUsage(AttributeTargets.Class)]
-    public sealed class McpPluginToolTypeAttribute : Attribute
+    public sealed class McpPluginToolTypeAttribute : AiToolTypeAttribute
     {
-        public string? Path { get; set; }
-
         public McpPluginToolTypeAttribute() { }
     }
 }

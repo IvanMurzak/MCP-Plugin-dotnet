@@ -104,23 +104,27 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
 
-            var attribute = methodInfo.GetCustomAttribute<McpPluginToolAttribute>();
+            // Plural overload: tolerates methods carrying BOTH [AiTool] and the legacy [McpPluginTool]
+            // subclass alias without raising AmbiguousMatchException.
+            var attribute = methodInfo.GetCustomAttributes(typeof(AiToolAttribute), inherit: false)
+                .Cast<AiToolAttribute>()
+                .FirstOrDefault();
             return WithTool(attribute!, classType, methodInfo);
         }
         public virtual IMcpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo methodInfo)
         {
             ThrowIfBuilt();
 
-            var attribute = new McpPluginToolAttribute(name, title);
+            var attribute = new AiToolAttribute(name, title);
             return WithTool(attribute, classType, methodInfo);
         }
-        public virtual IMcpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo methodInfo)
+        public virtual IMcpPluginBuilder WithTool(AiToolAttribute attribute, Type classType, MethodInfo methodInfo)
         {
             ThrowIfBuilt();
 
             if (attribute == null)
             {
-                _logger?.LogWarning($"Method {classType.FullName}{methodInfo.Name} does not have a '{nameof(McpPluginToolAttribute)}'.");
+                _logger?.LogWarning($"Method {classType.FullName}{methodInfo.Name} does not have a '{nameof(AiToolAttribute)}'.");
                 return this;
             }
 
@@ -152,10 +156,14 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
 
-            var attribute = methodInfo.GetCustomAttribute<McpPluginPromptAttribute>();
+            // Plural overload: tolerates methods carrying BOTH [AiPrompt] and the legacy [McpPluginPrompt]
+            // subclass alias without raising AmbiguousMatchException.
+            var attribute = methodInfo.GetCustomAttributes(typeof(AiPromptAttribute), inherit: false)
+                .Cast<AiPromptAttribute>()
+                .FirstOrDefault();
             if (attribute == null)
             {
-                _logger?.LogWarning($"Method {classType.FullName}{methodInfo.Name} does not have a '{nameof(McpPluginPromptAttribute)}'.");
+                _logger?.LogWarning($"Method {classType.FullName}{methodInfo.Name} does not have a '{nameof(AiPromptAttribute)}'.");
                 return this;
             }
 
@@ -187,10 +195,14 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
 
-            var attribute = getContentMethod.GetCustomAttribute<McpPluginResourceAttribute>();
+            // Plural overload: tolerates methods carrying BOTH [AiResource] and the legacy [McpPluginResource]
+            // subclass alias without raising AmbiguousMatchException.
+            var attribute = getContentMethod.GetCustomAttributes(typeof(AiResourceAttribute), inherit: false)
+                .Cast<AiResourceAttribute>()
+                .FirstOrDefault();
             if (attribute == null)
             {
-                _logger?.LogWarning($"Method {classType.FullName}{getContentMethod.Name} does not have a '{nameof(McpPluginResourceAttribute)}'.");
+                _logger?.LogWarning($"Method {classType.FullName}{getContentMethod.Name} does not have a '{nameof(AiResourceAttribute)}'.");
                 return this;
             }
 

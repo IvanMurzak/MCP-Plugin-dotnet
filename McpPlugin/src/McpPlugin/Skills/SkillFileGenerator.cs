@@ -1174,8 +1174,8 @@ namespace com.IvanMurzak.McpPlugin.Skills
             {
                 _logger?.LogWarning(
                     "{class}: Description for '{name}' is {len} chars, exceeding the YAML cap of {cap}. " +
-                    "Truncating for SKILL.md; consider adding [McpPluginSkillDescription] for a concise summary " +
-                    "and [McpPluginSkillBody] for long-form content.",
+                    "Truncating for SKILL.md; consider adding [AiSkillDescription] for a concise summary " +
+                    "and [AiSkillBody] for long-form content.",
                     nameof(SkillFileGenerator), toolOrSkillName, fullDescription.Length, cap);
                 return TruncateForYaml(fullDescription, cap);
             }
