@@ -12,105 +12,18 @@ using System;
 
 namespace com.IvanMurzak.McpPlugin
 {
+    /// <summary>
+    /// Deprecated alias for <see cref="AiToolAttribute"/>. Kept as an
+    /// <see cref="ObsoleteAttribute"/>-marked subclass so existing decorations on consumer methods
+    /// continue to be discovered by reflection lookups for <see cref="AiToolAttribute"/>.
+    /// </summary>
+    [Obsolete("Use [AiTool] instead. This alias will be removed in a future major release.")]
     [AttributeUsage(AttributeTargets.Method)]
-    public sealed class McpPluginToolAttribute : Attribute
+    public sealed class McpPluginToolAttribute : AiToolAttribute
     {
-        public string Name { get; set; }
-        public string? Title { get; set; }
-
-        /// <summary>
-        /// The type of tool. Standard tools are exposed to MCP clients;
-        /// System tools are only available via the HTTP API.
-        /// Defaults to <see cref="McpToolType.Standard"/>.
-        /// </summary>
-        public McpToolType ToolType { get; set; } = McpToolType.Standard;
-
-        private bool _readOnlyHint;
-        private bool _readOnlyHintSet;
-
-        private bool _destructiveHint;
-        private bool _destructiveHintSet;
-
-        private bool _idempotentHint;
-        private bool _idempotentHintSet;
-
-        private bool _openWorldHint;
-        private bool _openWorldHintSet;
-
-        private bool _enabled = true;
-        private bool _enabledSet;
-
-        /// <summary>
-        /// If set to false, the tool will be disabled by default when first discovered.
-        /// When not set, the tool defaults to enabled.
-        /// </summary>
-        public bool Enabled
-        {
-            get => _enabled;
-            set { _enabled = value; _enabledSet = true; }
-        }
-
-        /// <summary>Gets the Enabled value, or null if it was not explicitly set.</summary>
-        public bool? EnabledValue => _enabledSet ? _enabled : null;
-
-        /// <summary>
-        /// If true, the tool only reads or queries data and does not modify system state.
-        /// When not set, null is passed to the MCP SDK, which will apply its own default.
-        /// </summary>
-        public bool ReadOnlyHint
-        {
-            get => _readOnlyHint;
-            set { _readOnlyHint = value; _readOnlyHintSet = true; }
-        }
-
-        /// <summary>
-        /// If true, the tool may perform destructive updates (e.g., deleting data, overwriting files).
-        /// When not set, null is passed to the MCP SDK, which will apply its own default.
-        /// </summary>
-        public bool DestructiveHint
-        {
-            get => _destructiveHint;
-            set { _destructiveHint = value; _destructiveHintSet = true; }
-        }
-
-        /// <summary>
-        /// If true, calling the tool multiple times with the same arguments will have no additional effect
-        /// on its environment beyond the first call.
-        /// When not set, null is passed to the MCP SDK, which will apply its own default.
-        /// </summary>
-        public bool IdempotentHint
-        {
-            get => _idempotentHint;
-            set { _idempotentHint = value; _idempotentHintSet = true; }
-        }
-
-        /// <summary>
-        /// If true, the tool may interact with an "open world" of external entities
-        /// (e.g., the web, external APIs, or real-world systems).
-        /// When not set, null is passed to the MCP SDK, which will apply its own default.
-        /// </summary>
-        public bool OpenWorldHint
-        {
-            get => _openWorldHint;
-            set { _openWorldHint = value; _openWorldHintSet = true; }
-        }
-
-        /// <summary>Gets the ReadOnlyHint value, or null if it was not explicitly set.</summary>
-        public bool? ReadOnlyHintValue => _readOnlyHintSet ? _readOnlyHint : null;
-
-        /// <summary>Gets the DestructiveHint value, or null if it was not explicitly set.</summary>
-        public bool? DestructiveHintValue => _destructiveHintSet ? _destructiveHint : null;
-
-        /// <summary>Gets the IdempotentHint value, or null if it was not explicitly set.</summary>
-        public bool? IdempotentHintValue => _idempotentHintSet ? _idempotentHint : null;
-
-        /// <summary>Gets the OpenWorldHint value, or null if it was not explicitly set.</summary>
-        public bool? OpenWorldHintValue => _openWorldHintSet ? _openWorldHint : null;
-
         public McpPluginToolAttribute(string name, string? title = null)
+            : base(name, title)
         {
-            Name = name;
-            Title = title;
         }
     }
 }

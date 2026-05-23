@@ -13,17 +13,23 @@ using System;
 namespace com.IvanMurzak.McpPlugin
 {
     /// <summary>
-    /// Deprecated alias for <see cref="AiSkillDescriptionAttribute"/>. Kept as an
-    /// <see cref="ObsoleteAttribute"/>-marked subclass so existing decorations continue to be
-    /// discovered by reflection lookups for <see cref="AiSkillDescriptionAttribute"/>.
+    /// Provides a concise text written into the SKILL.md YAML <c>description:</c> field.
+    /// The Skills file format used by Codex (and Anthropic Agent Skills) caps that field at 1024 characters,
+    /// so when a tool's <see cref="System.ComponentModel.DescriptionAttribute"/> is too long for the YAML
+    /// front-matter, decorate the same tool method with this attribute to provide a short summary.
+    /// <para>
+    /// The original <see cref="System.ComponentModel.DescriptionAttribute"/> remains the source of truth
+    /// for the MCP <c>tools/list</c> payload that AI agents see; this attribute only controls the YAML field.
+    /// </para>
     /// </summary>
-    [Obsolete("Use [AiSkillDescription] instead. This alias will be removed in a future major release.")]
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
-    public sealed class McpPluginSkillDescriptionAttribute : AiSkillDescriptionAttribute
+    public class AiSkillDescriptionAttribute : Attribute
     {
-        public McpPluginSkillDescriptionAttribute(string description)
-            : base(description)
+        public string Description { get; }
+
+        public AiSkillDescriptionAttribute(string description)
         {
+            Description = description ?? string.Empty;
         }
     }
 }

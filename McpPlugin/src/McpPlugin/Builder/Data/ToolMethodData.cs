@@ -18,9 +18,9 @@ namespace com.IvanMurzak.McpPlugin
         public string Name => Attribute.Name;
         public Type ClassType { get; set; }
         public MethodInfo MethodInfo { get; set; }
-        public McpPluginToolAttribute Attribute { get; set; }
+        public AiToolAttribute Attribute { get; set; }
 
-        public ToolMethodData(Type classType, MethodInfo methodInfo, McpPluginToolAttribute attribute)
+        public ToolMethodData(Type classType, MethodInfo methodInfo, AiToolAttribute attribute)
         {
             ClassType = classType;
             MethodInfo = methodInfo;

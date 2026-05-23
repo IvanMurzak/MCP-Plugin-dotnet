@@ -9,23 +9,35 @@
 */
 
 using System;
-using System.Reflection;
+using com.IvanMurzak.McpPlugin.Common.Model;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public class ResourceMethodData
+    [AttributeUsage(AttributeTargets.Method)]
+    public class AiPromptAttribute : Attribute
     {
-        public Type ClassType { get; set; }
-        public MethodInfo GetContentMethod { get; set; }
-        public MethodInfo ListResourcesMethod { get; set; }
-        public AiResourceAttribute Attribute { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public Role Role { get; set; } = Role.User;
 
-        public ResourceMethodData(Type classType, MethodInfo getContentMethod, MethodInfo listResourcesMethod, AiResourceAttribute attribute)
+        // Not used for now
+        // public string? Title { get; set; }
+
+        private bool _enabled = true;
+        private bool _enabledSet;
+
+        /// <summary>
+        /// If set to false, the prompt will be disabled by default when first discovered.
+        /// When not set, the prompt defaults to enabled.
+        /// </summary>
+        public bool Enabled
         {
-            ClassType = classType;
-            GetContentMethod = getContentMethod;
-            ListResourcesMethod = listResourcesMethod;
-            Attribute = attribute;
+            get => _enabled;
+            set { _enabled = value; _enabledSet = true; }
         }
+
+        /// <summary>Gets the Enabled value, or null if it was not explicitly set.</summary>
+        public bool? EnabledValue => _enabledSet ? _enabled : null;
+
+        public AiPromptAttribute() { }
     }
 }

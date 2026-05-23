@@ -22,7 +22,7 @@ cd DemoWebApp && dotnet run port=11111 client-transport=stdio
 ## Find detail in
 
 - `docs/claude/architecture.md` — Bridge architecture, packages, SignalR hub endpoint
-- `docs/claude/patterns.md` — `[McpPluginToolType]` / `[McpPluginTool]` examples, builder & server registration
+- `docs/claude/patterns.md` — `[AiToolType]` / `[AiTool]` examples (and the `[McpPlugin*]` obsolete-alias compatibility note), builder & server registration
 - `docs/claude/style.md` — Code style mandates (LangVersion, R3, NLog, DI, disposal)
 - `docs/claude/testing.md` — xUnit + Shouldly + Moq conventions, filtered test commands
 - `docs/claude/release.md` — Versioning, bump-version, ReflectorNet updates, CI release flow

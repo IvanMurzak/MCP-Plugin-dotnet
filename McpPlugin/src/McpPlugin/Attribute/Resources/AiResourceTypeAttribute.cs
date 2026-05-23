@@ -8,18 +8,15 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-namespace com.IvanMurzak.McpPlugin.Tests.Data.Annotations
+using System;
+
+namespace com.IvanMurzak.McpPlugin
 {
-    [AiPromptType]
-    public static class AnnotatedPromptClass
+    [AttributeUsage(AttributeTargets.Class)]
+    public class AiResourceTypeAttribute : Attribute
     {
-        [AiPrompt(Name = "prompt-enabled-default")]
-        public static string EnabledDefault() => "default";
+        public string? Path { get; set; }
 
-        [AiPrompt(Name = "prompt-enabled-true", Enabled = true)]
-        public static string EnabledTrue() => "enabled";
-
-        [AiPrompt(Name = "prompt-enabled-false", Enabled = false)]
-        public static string EnabledFalse() => "disabled";
+        public AiResourceTypeAttribute() { }
     }
 }

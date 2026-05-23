@@ -104,23 +104,23 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
 
-            var attribute = methodInfo.GetCustomAttribute<McpPluginToolAttribute>();
+            var attribute = methodInfo.GetCustomAttribute<AiToolAttribute>();
             return WithTool(attribute!, classType, methodInfo);
         }
         public virtual IMcpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo methodInfo)
         {
             ThrowIfBuilt();
 
-            var attribute = new McpPluginToolAttribute(name, title);
+            var attribute = new AiToolAttribute(name, title);
             return WithTool(attribute, classType, methodInfo);
         }
-        public virtual IMcpPluginBuilder WithTool(McpPluginToolAttribute attribute, Type classType, MethodInfo methodInfo)
+        public virtual IMcpPluginBuilder WithTool(AiToolAttribute attribute, Type classType, MethodInfo methodInfo)
         {
             ThrowIfBuilt();
 
             if (attribute == null)
             {
-                _logger?.LogWarning($"Method {classType.FullName}{methodInfo.Name} does not have a '{nameof(McpPluginToolAttribute)}'.");
+                _logger?.LogWarning($"Method {classType.FullName}{methodInfo.Name} does not have a '{nameof(AiToolAttribute)}'.");
                 return this;
             }
 
@@ -152,10 +152,10 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
 
-            var attribute = methodInfo.GetCustomAttribute<McpPluginPromptAttribute>();
+            var attribute = methodInfo.GetCustomAttribute<AiPromptAttribute>();
             if (attribute == null)
             {
-                _logger?.LogWarning($"Method {classType.FullName}{methodInfo.Name} does not have a '{nameof(McpPluginPromptAttribute)}'.");
+                _logger?.LogWarning($"Method {classType.FullName}{methodInfo.Name} does not have a '{nameof(AiPromptAttribute)}'.");
                 return this;
             }
 
@@ -187,10 +187,10 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
 
-            var attribute = getContentMethod.GetCustomAttribute<McpPluginResourceAttribute>();
+            var attribute = getContentMethod.GetCustomAttribute<AiResourceAttribute>();
             if (attribute == null)
             {
-                _logger?.LogWarning($"Method {classType.FullName}{getContentMethod.Name} does not have a '{nameof(McpPluginResourceAttribute)}'.");
+                _logger?.LogWarning($"Method {classType.FullName}{getContentMethod.Name} does not have a '{nameof(AiResourceAttribute)}'.");
                 return this;
             }
 

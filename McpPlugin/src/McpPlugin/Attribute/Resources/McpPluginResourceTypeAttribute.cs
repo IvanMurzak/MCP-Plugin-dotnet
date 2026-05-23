@@ -12,11 +12,15 @@ using System;
 
 namespace com.IvanMurzak.McpPlugin
 {
+    /// <summary>
+    /// Deprecated alias for <see cref="AiResourceTypeAttribute"/>. Kept as an
+    /// <see cref="ObsoleteAttribute"/>-marked subclass so existing decorations on consumer classes
+    /// continue to be discovered by reflection lookups for <see cref="AiResourceTypeAttribute"/>.
+    /// </summary>
+    [Obsolete("Use [AiResourceType] instead. This alias will be removed in a future major release.")]
     [AttributeUsage(AttributeTargets.Class)]
-    public sealed class McpPluginResourceTypeAttribute : Attribute
+    public sealed class McpPluginResourceTypeAttribute : AiResourceTypeAttribute
     {
-        public string? Path { get; set; }
-
         public McpPluginResourceTypeAttribute() { }
     }
 }

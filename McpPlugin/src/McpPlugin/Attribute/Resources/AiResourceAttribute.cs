@@ -12,15 +12,31 @@ using System;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    /// <summary>
-    /// Deprecated alias for <see cref="AiResourceAttribute"/>. Kept as an
-    /// <see cref="ObsoleteAttribute"/>-marked subclass so existing decorations on consumer methods
-    /// continue to be discovered by reflection lookups for <see cref="AiResourceAttribute"/>.
-    /// </summary>
-    [Obsolete("Use [AiResource] instead. This alias will be removed in a future major release.")]
     [AttributeUsage(AttributeTargets.Method)]
-    public sealed class McpPluginResourceAttribute : AiResourceAttribute
+    public class AiResourceAttribute : Attribute
     {
-        public McpPluginResourceAttribute() { }
+        public string Route { get; set; } = string.Empty;
+        public string? Name { get; set; }
+        public string? Description { get; set; }
+        public string? MimeType { get; set; }
+        public string ListResources { get; set; } = string.Empty;
+
+        private bool _enabled = true;
+        private bool _enabledSet;
+
+        /// <summary>
+        /// If set to false, the resource will be disabled by default when first discovered.
+        /// When not set, the resource defaults to enabled.
+        /// </summary>
+        public bool Enabled
+        {
+            get => _enabled;
+            set { _enabled = value; _enabledSet = true; }
+        }
+
+        /// <summary>Gets the Enabled value, or null if it was not explicitly set.</summary>
+        public bool? EnabledValue => _enabledSet ? _enabled : null;
+
+        public AiResourceAttribute() { }
     }
 }

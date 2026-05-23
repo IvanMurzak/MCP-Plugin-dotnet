@@ -28,8 +28,8 @@ namespace com.IvanMurzak.McpPlugin
 {
     /// <summary>
     /// Manages system tools — internal tools available via HTTP API but NOT exposed to MCP clients.
-    /// System tools are discovered via <see cref="McpPluginToolAttribute"/> with
-    /// <see cref="McpPluginToolAttribute.ToolType"/> set to <see cref="McpToolType.System"/>.
+    /// System tools are discovered via <see cref="AiToolAttribute"/> with
+    /// <see cref="AiToolAttribute.ToolType"/> set to <see cref="McpToolType.System"/>.
     /// </summary>
     public class McpSystemToolManager : ISystemToolManager
     {

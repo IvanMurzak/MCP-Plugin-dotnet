@@ -10,17 +10,17 @@
 
 namespace com.IvanMurzak.McpPlugin.Tests.Data.Ignored
 {
-    [McpPluginToolType]
+    [AiToolType]
     internal class IgnoreTestToolClass
     {
-        [McpPluginTool("ignore-test-tool", "Test tool for ignore tests")]
+        [AiTool("ignore-test-tool", "Test tool for ignore tests")]
         public static string TestTool() => "test";
     }
 
-    [McpPluginPromptType]
+    [AiPromptType]
     internal class IgnoreTestPromptClass
     {
-        [McpPluginPrompt(Name = "ignore-test-prompt")]
+        [AiPrompt(Name = "ignore-test-prompt")]
         public static string TestPrompt() => "test prompt";
     }
 }

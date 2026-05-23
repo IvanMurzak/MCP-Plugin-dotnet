@@ -176,49 +176,49 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         [Fact]
         public void ToolAttribute_EnabledNotSet_EnabledValueShouldBeNull()
         {
-            var attr = new McpPluginToolAttribute("test");
+            var attr = new AiToolAttribute("test");
             attr.EnabledValue.ShouldBeNull();
         }
 
         [Fact]
         public void ToolAttribute_EnabledSetTrue_EnabledValueShouldBeTrue()
         {
-            var attr = new McpPluginToolAttribute("test") { Enabled = true };
+            var attr = new AiToolAttribute("test") { Enabled = true };
             attr.EnabledValue.ShouldBe(true);
         }
 
         [Fact]
         public void ToolAttribute_EnabledSetFalse_EnabledValueShouldBeFalse()
         {
-            var attr = new McpPluginToolAttribute("test") { Enabled = false };
+            var attr = new AiToolAttribute("test") { Enabled = false };
             attr.EnabledValue.ShouldBe(false);
         }
 
         [Fact]
         public void PromptAttribute_EnabledNotSet_EnabledValueShouldBeNull()
         {
-            var attr = new McpPluginPromptAttribute();
+            var attr = new AiPromptAttribute();
             attr.EnabledValue.ShouldBeNull();
         }
 
         [Fact]
         public void PromptAttribute_EnabledSetFalse_EnabledValueShouldBeFalse()
         {
-            var attr = new McpPluginPromptAttribute { Enabled = false };
+            var attr = new AiPromptAttribute { Enabled = false };
             attr.EnabledValue.ShouldBe(false);
         }
 
         [Fact]
         public void ResourceAttribute_EnabledNotSet_EnabledValueShouldBeNull()
         {
-            var attr = new McpPluginResourceAttribute();
+            var attr = new AiResourceAttribute();
             attr.EnabledValue.ShouldBeNull();
         }
 
         [Fact]
         public void ResourceAttribute_EnabledSetFalse_EnabledValueShouldBeFalse()
         {
-            var attr = new McpPluginResourceAttribute { Enabled = false };
+            var attr = new AiResourceAttribute { Enabled = false };
             attr.EnabledValue.ShouldBe(false);
         }
 

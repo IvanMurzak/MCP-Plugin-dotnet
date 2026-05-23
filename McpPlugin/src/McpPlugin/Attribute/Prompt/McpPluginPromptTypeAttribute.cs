@@ -12,11 +12,15 @@ using System;
 
 namespace com.IvanMurzak.McpPlugin
 {
+    /// <summary>
+    /// Deprecated alias for <see cref="AiPromptTypeAttribute"/>. Kept as an
+    /// <see cref="ObsoleteAttribute"/>-marked subclass so existing decorations on consumer classes
+    /// continue to be discovered by reflection lookups for <see cref="AiPromptTypeAttribute"/>.
+    /// </summary>
+    [Obsolete("Use [AiPromptType] instead. This alias will be removed in a future major release.")]
     [AttributeUsage(AttributeTargets.Class)]
-    public sealed class McpPluginPromptTypeAttribute : Attribute
+    public sealed class McpPluginPromptTypeAttribute : AiPromptTypeAttribute
     {
-        public string? Path { get; set; }
-
         public McpPluginPromptTypeAttribute() { }
     }
 }

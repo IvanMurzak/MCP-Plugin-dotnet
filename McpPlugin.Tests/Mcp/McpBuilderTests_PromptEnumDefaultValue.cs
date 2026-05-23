@@ -30,7 +30,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
     public class PromptMethod_EnumDefaultValue
     {
-        [McpPluginPrompt(Name = "test_prompt")]
+        [AiPrompt(Name = "test_prompt")]
         public string GetPrompt(PromptTestEnum? options = PromptTestEnum.OptionB)
         {
             return options?.ToString() ?? "null";

@@ -18,7 +18,7 @@ namespace com.IvanMurzak.McpPlugin
 {
     /// <summary>
     /// Collection of system tool runners — built from methods with
-    /// <see cref="McpPluginToolAttribute.ToolType"/> set to <see cref="McpToolType.System"/>.
+    /// <see cref="AiToolAttribute.ToolType"/> set to <see cref="McpToolType.System"/>.
     /// </summary>
     public class SystemToolRunnerCollection : Dictionary<string, IRunTool>
     {

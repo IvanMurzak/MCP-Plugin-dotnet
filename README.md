@@ -58,7 +58,7 @@ graph LR
 
 ## Features
 
-- **Attribute-Based Registration**: Easily expose tools, prompts, and resources using `[McpPluginTool]`, `[McpPluginPrompt]`, and `[McpPluginResource]` attributes.
+- **Attribute-Based Registration**: Easily expose tools, prompts, and resources using `[AiTool]`, `[AiPrompt]`, and `[AiResource]` attributes. (The legacy `[McpPluginTool]`, `[McpPluginPrompt]`, `[McpPluginResource]` names remain available as `[Obsolete]` aliases for backward compatibility.)
 - **Powered by ReflectorNet**:
   - **Complex Type Support**: Seamlessly handle nested objects, collections, and custom types in tool parameters.
   - **Fuzzy Matching**: AI can find and call methods even with partial names or slightly mismatched signatures.
@@ -136,21 +136,23 @@ Add the `com.IvanMurzak.McpPlugin` package to your .NET application.
 using com.IvanMurzak.McpPlugin;
 using System.ComponentModel;
 
-[McpPluginToolType]
+[AiToolType]
 public static class MyMcpComponents
 {
     // --- Tools ---
-    [McpPluginTool("calculate-sum", "Adds two numbers")]
+    [AiTool("calculate-sum", "Adds two numbers")]
     [Description("Adds two numbers")]
     public static int Add(int a, int b) => a + b;
 
     // --- Prompts ---
-    [McpPluginPrompt("explain-code", "Explains a piece of code")]
+    [AiPrompt(Name = "explain-code")]
     public static string ExplainCode(string code) => $"The following code: {code} does X, Y, and Z.";
 
     // --- Resources ---
-    [McpPluginResource("system-logs", "Returns the latest system logs", "logs://system")]
+    [AiResource(Route = "logs://system", Name = "system-logs", Description = "Returns the latest system logs", ListResources = nameof(ListLogs))]
     public static string GetLogs() => "Log entry 1: System started...";
+
+    public static string[] ListLogs() => new[] { "logs://system" };
 }
 ```
 
@@ -173,7 +175,7 @@ var plugin = new McpPluginBuilder(version)
     .WithConfig(config => {
         config.Host = "http://localhost:11111"; // Match your server port
     })
-    // Option A: Scan assemblies for [McpPluginTool], [McpPluginPrompt], [McpPluginResource]
+    // Option A: Scan assemblies for [AiTool], [AiPrompt], [AiResource]
     .WithToolsFromAssembly(typeof(MyMcpComponents).Assembly)
     .WithPromptsFromAssembly(typeof(MyMcpComponents).Assembly)
     .WithResourcesFromAssembly(typeof(MyMcpComponents).Assembly)
@@ -195,7 +197,7 @@ public class UserProfile {
     public List<string> Roles { get; set; }
 }
 
-[McpPluginTool("update-user")]
+[AiTool("update-user")]
 public static void UpdateUser(UserProfile profile) {
     // ReflectorNet automatically deserializes the JSON from the AI into this object
 }

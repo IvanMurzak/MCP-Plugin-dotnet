@@ -9,23 +9,27 @@
 */
 
 using System;
-using System.Reflection;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public class ResourceMethodData
+    /// <summary>
+    /// Provides long-form markdown that is injected into the SKILL.md body, between the description
+    /// paragraph and the <c>## How to Call</c> section. Use this to carry rich content (code samples,
+    /// usage notes, suggestions) that would otherwise blow past the 1024-character cap on the YAML
+    /// <c>description:</c> field.
+    /// <para>
+    /// This text is <b>not</b> written into the YAML front-matter and does <b>not</b> affect the MCP
+    /// <c>tools/list</c> payload — it only enriches the generated SKILL.md.
+    /// </para>
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
+    public class AiSkillBodyAttribute : Attribute
     {
-        public Type ClassType { get; set; }
-        public MethodInfo GetContentMethod { get; set; }
-        public MethodInfo ListResourcesMethod { get; set; }
-        public AiResourceAttribute Attribute { get; set; }
+        public string Body { get; }
 
-        public ResourceMethodData(Type classType, MethodInfo getContentMethod, MethodInfo listResourcesMethod, AiResourceAttribute attribute)
+        public AiSkillBodyAttribute(string body)
         {
-            ClassType = classType;
-            GetContentMethod = getContentMethod;
-            ListResourcesMethod = listResourcesMethod;
-            Attribute = attribute;
+            Body = body ?? string.Empty;
         }
     }
 }

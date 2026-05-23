@@ -140,7 +140,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             collection.ContainsKey("disabled-prop").ShouldBeFalse();
         }
 
-        // ── WithSkillsFromAssembly discovers [McpPluginSkillType] classes ───
+        // ── WithSkillsFromAssembly discovers [AiSkillType] classes ───
 
         [Fact]
         public void WithSkillsFromAssembly_DiscoversAnnotatedSkillClasses()
