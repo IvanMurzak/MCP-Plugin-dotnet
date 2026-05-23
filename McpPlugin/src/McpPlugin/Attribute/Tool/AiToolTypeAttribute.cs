@@ -16,7 +16,5 @@ namespace com.IvanMurzak.McpPlugin
     public class AiToolTypeAttribute : Attribute
     {
         public string? Path { get; set; }
-
-        public AiToolTypeAttribute() { }
     }
 }

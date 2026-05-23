@@ -16,7 +16,5 @@ namespace com.IvanMurzak.McpPlugin
     public class AiPromptTypeAttribute : Attribute
     {
         public string? Path { get; set; }
-
-        public AiPromptTypeAttribute() { }
     }
 }

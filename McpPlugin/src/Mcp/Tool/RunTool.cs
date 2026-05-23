@@ -10,6 +10,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using System.Threading;
@@ -41,16 +42,31 @@ namespace com.IvanMurzak.McpPlugin
         /// Used by <see cref="Skills.SkillFileGenerator"/> in place of <see cref="MethodWrapper.Description"/>
         /// when building the SKILL.md YAML <c>description:</c> field.
         /// </summary>
+        /// <remarks>
+        /// Uses the plural <c>GetCustomAttributes</c> overload so that a method carrying BOTH
+        /// <see cref="AiSkillDescriptionAttribute"/> and the legacy
+        /// <see cref="McpPluginSkillDescriptionAttribute"/> subclass alias does not throw
+        /// <see cref="System.Reflection.AmbiguousMatchException"/>.
+        /// </remarks>
         public string? SkillDescription
-            => Method?.GetCustomAttribute<AiSkillDescriptionAttribute>()?.Description;
+            => Method?.GetCustomAttributes(typeof(AiSkillDescriptionAttribute), inherit: true)
+                .Cast<AiSkillDescriptionAttribute>()
+                .FirstOrDefault()?.Description;
 
         /// <summary>
         /// Reads <see cref="AiSkillBodyAttribute"/> from the underlying method, if present.
         /// Used by <see cref="Skills.SkillFileGenerator"/> to inject long-form markdown into the SKILL.md body
         /// between the description paragraph and the <c>## How to Call</c> section.
         /// </summary>
+        /// <remarks>
+        /// Uses the plural <c>GetCustomAttributes</c> overload so that a method carrying BOTH
+        /// <see cref="AiSkillBodyAttribute"/> and the legacy <see cref="McpPluginSkillBodyAttribute"/>
+        /// subclass alias does not throw <see cref="System.Reflection.AmbiguousMatchException"/>.
+        /// </remarks>
         public string? SkillBody
-            => Method?.GetCustomAttribute<AiSkillBodyAttribute>()?.Body;
+            => Method?.GetCustomAttributes(typeof(AiSkillBodyAttribute), inherit: true)
+                .Cast<AiSkillBodyAttribute>()
+                .FirstOrDefault()?.Body;
 
         public MethodInfo Method => _methodInfo;
 

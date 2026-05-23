@@ -15,6 +15,5 @@ namespace com.IvanMurzak.McpPlugin
     [AttributeUsage(AttributeTargets.Class)]
     public class AiSkillTypeAttribute : Attribute
     {
-        public AiSkillTypeAttribute() { }
     }
 }

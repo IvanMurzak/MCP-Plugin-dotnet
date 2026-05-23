@@ -104,7 +104,11 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
 
-            var attribute = methodInfo.GetCustomAttribute<AiToolAttribute>();
+            // Plural overload: tolerates methods carrying BOTH [AiTool] and the legacy [McpPluginTool]
+            // subclass alias without raising AmbiguousMatchException.
+            var attribute = methodInfo.GetCustomAttributes(typeof(AiToolAttribute), inherit: false)
+                .Cast<AiToolAttribute>()
+                .FirstOrDefault();
             return WithTool(attribute!, classType, methodInfo);
         }
         public virtual IMcpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo methodInfo)
@@ -152,7 +156,11 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
 
-            var attribute = methodInfo.GetCustomAttribute<AiPromptAttribute>();
+            // Plural overload: tolerates methods carrying BOTH [AiPrompt] and the legacy [McpPluginPrompt]
+            // subclass alias without raising AmbiguousMatchException.
+            var attribute = methodInfo.GetCustomAttributes(typeof(AiPromptAttribute), inherit: false)
+                .Cast<AiPromptAttribute>()
+                .FirstOrDefault();
             if (attribute == null)
             {
                 _logger?.LogWarning($"Method {classType.FullName}{methodInfo.Name} does not have a '{nameof(AiPromptAttribute)}'.");
@@ -187,7 +195,11 @@ namespace com.IvanMurzak.McpPlugin
         {
             ThrowIfBuilt();
 
-            var attribute = getContentMethod.GetCustomAttribute<AiResourceAttribute>();
+            // Plural overload: tolerates methods carrying BOTH [AiResource] and the legacy [McpPluginResource]
+            // subclass alias without raising AmbiguousMatchException.
+            var attribute = getContentMethod.GetCustomAttributes(typeof(AiResourceAttribute), inherit: false)
+                .Cast<AiResourceAttribute>()
+                .FirstOrDefault();
             if (attribute == null)
             {
                 _logger?.LogWarning($"Method {classType.FullName}{getContentMethod.Name} does not have a '{nameof(AiResourceAttribute)}'.");

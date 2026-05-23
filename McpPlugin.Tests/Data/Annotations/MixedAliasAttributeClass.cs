@@ -71,6 +71,50 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data.Annotations
         [McpPluginSkill("alias-skill-old", "Decorated with legacy [McpPluginSkill] obsolete alias")]
         public const string OldStyle = "# Old\n\nDecorated with the deprecated alias.";
     }
+
+    // ── Same-member dual-decoration fixtures.
+    //
+    // These exist to lock in the regression that during a consumer's gradual migration from
+    // [McpPlugin*] → [Ai*], a member temporarily carrying BOTH attributes must (a) not raise
+    // AmbiguousMatchException from any reflection lookup performed by the builder/runner code,
+    // and (b) be registered exactly ONCE (not duplicated, not skipped). Putting both attributes
+    // on the same member is the case the prior single-pass scanner mishandled.
+
+    [AiToolType]
+    public static class DualDecoratedToolClass
+    {
+        [AiTool("dual-decorated-tool", "Carries both [AiTool] and [McpPluginTool] on the same method")]
+        [McpPluginTool("dual-decorated-tool-legacy")]
+        public static string DualStyle() => "dual";
+    }
+
+    [AiPromptType]
+    public static class DualDecoratedPromptClass
+    {
+        [AiPrompt(Name = "dual-decorated-prompt")]
+        [McpPluginPrompt(Name = "dual-decorated-prompt-legacy")]
+        public static string DualStyle() => "dual";
+    }
+
+    [AiResourceType]
+    public static class DualDecoratedResourceClass
+    {
+        [AiResource(Route = "test://dual-decorated-resource/{id}", Name = "dual-decorated-resource", ListResources = nameof(ListDual))]
+        [McpPluginResource(Route = "test://dual-decorated-resource-legacy/{id}", Name = "dual-decorated-resource-legacy", ListResources = nameof(ListDual))]
+        public static ResponseResourceContent[] GetDual(string id)
+            => new[] { ResponseResourceContent.CreateText($"test://dual-decorated-resource/{id}", "dual") };
+
+        public static ResponseListResource[] ListDual()
+            => new[] { new ResponseListResource("test://dual-decorated-resource/1", "dual-decorated-resource") };
+    }
+
+    [AiSkillType]
+    public static class DualDecoratedSkillClass
+    {
+        [AiSkill("dual-decorated-skill", "Carries both [AiSkill] and [McpPluginSkill] on the same field")]
+        [McpPluginSkill("dual-decorated-skill-legacy")]
+        public const string DualStyle = "# Dual\n\nDecorated with both canonical and legacy attributes.";
+    }
 }
 
 #pragma warning restore CS0618

@@ -187,5 +187,95 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             collection.ContainsKey("alias-skill-new").ShouldBeTrue();
             collection.ContainsKey("alias-skill-old").ShouldBeTrue();
         }
+
+        // ── Same-member dual-decoration regression tests.
+        //
+        // During a consumer's gradual migration from the legacy [McpPlugin*] aliases to the new
+        // canonical [Ai*] attributes, a member may temporarily carry BOTH attributes side by side.
+        // These tests lock in two properties of that scenario:
+        //
+        //   (a) Reflection lookups in the builder / scanner code path MUST NOT raise
+        //       AmbiguousMatchException — previously a real risk because the legacy [McpPlugin*]
+        //       subclasses both satisfy IsAssignableFrom(typeof(Ai*Attribute)), which trips the
+        //       SINGULAR generic GetCustomAttribute<T>() overload.
+        //
+        //   (b) The scanner MUST register the dual-decorated member EXACTLY ONCE per family, not
+        //       twice — otherwise the consumer would silently get duplicate runners for the same
+        //       method (whose Name property values may not even match each other, leading to two
+        //       distinct registrations with confusing names).
+        //
+        // We assert "registered count == 1" and "one of the declared names is present" rather
+        // than pinning to a specific name, since the implementation-defined order of
+        // GetCustomAttributes is not contractually guaranteed across .NET versions.
+
+        [Fact]
+        public void BuilderScanner_DualDecoratedTool_DoesNotThrowAndRegistersOnce()
+        {
+            var plugin = new McpPluginBuilder(_version, _loggerProvider)
+                .AddLogging(b => b.AddXunitTestOutput(_output))
+                .WithTools(typeof(DualDecoratedToolClass))
+                .Build(new Reflector());
+
+            var tools = plugin.McpManager.ToolManager!.GetAllTools().Select(t => t.Name).ToList();
+
+            // Exactly one registration for the dual-decorated method (NOT two).
+            var dualRegistrations = tools
+                .Where(n => n == "dual-decorated-tool" || n == "dual-decorated-tool-legacy")
+                .ToList();
+            dualRegistrations.Count.ShouldBe(1);
+        }
+
+        [Fact]
+        public void BuilderScanner_DualDecoratedPrompt_DoesNotThrowAndRegistersOnce()
+        {
+            var plugin = new McpPluginBuilder(_version, _loggerProvider)
+                .AddLogging(b => b.AddXunitTestOutput(_output))
+                .WithPrompts(typeof(DualDecoratedPromptClass))
+                .Build(new Reflector());
+
+            var prompts = plugin.McpManager.PromptManager!.GetAllPrompts().Select(p => p.Name).ToList();
+
+            var dualRegistrations = prompts
+                .Where(n => n == "dual-decorated-prompt" || n == "dual-decorated-prompt-legacy")
+                .ToList();
+            dualRegistrations.Count.ShouldBe(1);
+        }
+
+        [Fact]
+        public void BuilderScanner_DualDecoratedResource_DoesNotThrowAndRegistersOnce()
+        {
+            var plugin = new McpPluginBuilder(_version, _loggerProvider)
+                .AddLogging(b => b.AddXunitTestOutput(_output))
+                .WithResources(typeof(DualDecoratedResourceClass))
+                .Build(new Reflector());
+
+            var routes = plugin.McpManager.ResourceManager!.GetAllResources().Select(r => r.Route).ToList();
+
+            var dualRegistrations = routes
+                .Where(r => r == "test://dual-decorated-resource/{id}" || r == "test://dual-decorated-resource-legacy/{id}")
+                .ToList();
+            dualRegistrations.Count.ShouldBe(1);
+        }
+
+        [Fact]
+        public void BuilderScanner_DualDecoratedSkill_DoesNotThrowAndRegistersOnce()
+        {
+            var builder = new McpPluginBuilder(_version, _loggerProvider);
+            builder
+                .AddLogging(b => b.AddXunitTestOutput(_output))
+                .WithSkills(typeof(DualDecoratedSkillClass));
+            builder.Build(new Reflector());
+
+            var collection = builder.ServiceProvider!.GetRequiredService<SkillContentCollection>();
+
+            // The scanner reads the field exactly once and registers it under ONE name (whichever
+            // attribute instance the runtime returns first). The duplicate registration of the same
+            // const-string value under both names would throw a duplicate-key ArgumentException,
+            // so reaching this assertion at all proves single-registration semantics.
+            var hasNew = collection.ContainsKey("dual-decorated-skill");
+            var hasOld = collection.ContainsKey("dual-decorated-skill-legacy");
+            (hasNew ^ hasOld).ShouldBeTrue(
+                customMessage: "Dual-decorated skill field must be registered exactly once, not twice or zero times.");
+        }
     }
 }

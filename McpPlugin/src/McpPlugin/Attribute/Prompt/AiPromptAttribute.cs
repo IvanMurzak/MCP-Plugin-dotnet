@@ -37,7 +37,5 @@ namespace com.IvanMurzak.McpPlugin
 
         /// <summary>Gets the Enabled value, or null if it was not explicitly set.</summary>
         public bool? EnabledValue => _enabledSet ? _enabled : null;
-
-        public AiPromptAttribute() { }
     }
 }

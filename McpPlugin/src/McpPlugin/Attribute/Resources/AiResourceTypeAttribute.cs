@@ -16,7 +16,5 @@ namespace com.IvanMurzak.McpPlugin
     public class AiResourceTypeAttribute : Attribute
     {
         public string? Path { get; set; }
-
-        public AiResourceTypeAttribute() { }
     }
 }

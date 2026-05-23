@@ -134,6 +134,7 @@ Add the `com.IvanMurzak.McpPlugin` package to your .NET application.
 
 ```csharp
 using com.IvanMurzak.McpPlugin;
+using com.IvanMurzak.McpPlugin.Common.Model;
 using System.ComponentModel;
 
 [AiToolType]
@@ -150,9 +151,11 @@ public static class MyMcpComponents
 
     // --- Resources ---
     [AiResource(Route = "logs://system", Name = "system-logs", Description = "Returns the latest system logs", ListResources = nameof(ListLogs))]
-    public static string GetLogs() => "Log entry 1: System started...";
+    public static ResponseResourceContent[] GetLogs()
+        => new[] { ResponseResourceContent.CreateText("logs://system", "Log entry 1: System started...") };
 
-    public static string[] ListLogs() => new[] { "logs://system" };
+    public static ResponseListResource[] ListLogs()
+        => new[] { new ResponseListResource("logs://system", "system-logs") };
 }
 ```
 
