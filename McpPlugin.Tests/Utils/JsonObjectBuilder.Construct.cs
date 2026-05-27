@@ -33,7 +33,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
 
                 // List<Person> array definition
                 .AddArrayDefinitionRef(
-                    name: "System.Collections.Generic.List<com.IvanMurzak.McpPlugin.Tests.Data.Other.Person>",
+                    name: "System.Collections.Generic.List(com.IvanMurzak.McpPlugin.Tests.Data.Other.Person)",
                     itemType: "com.IvanMurzak.McpPlugin.Tests.Data.Other.Person")
 
                 // Person definition
@@ -54,12 +54,12 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
 
                 // List<string> definition
                 .AddArrayDefinition(
-                    name: "System.Collections.Generic.List<System.String>",
+                    name: "System.Collections.Generic.List(System.String)",
                     itemType: JsonSchema.String)
 
                 // Dictionary<string, int> definition
                 .AddDefinition(
-                    name: "System.Collections.Generic.Dictionary<System.String,System.Int32>",
+                    name: "System.Collections.Generic.Dictionary(System.String,System.Int32)",
                     definition: new JsonObject
                     {
                         [JsonSchema.Type] = JsonSchema.Object,
@@ -71,22 +71,22 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
 
                 // int[] array definition
                 .AddArrayDefinition(
-                    name: "System.Int32[]",
+                    name: "System.Int32-1",
                     itemType: JsonSchema.Integer)
 
                 // string[][] jagged array definition
                 .AddArrayDefinitionRef(
-                    name: "System.String[][]",
-                    itemType: "System.String[]")
+                    name: "System.String-1-1",
+                    itemType: "System.String-1")
 
                 // string[] array definition
                 .AddArrayDefinition(
-                    name: "System.String[]",
+                    name: "System.String-1",
                     itemType: JsonSchema.String)
 
                 // int[,] array definition
                 .AddDefinition(
-                    name: "System.Int32[,]",
+                    name: "System.Int32-2",
                     definition: new JsonObject
                     {
                         [JsonSchema.Type] = JsonSchema.Array,
@@ -102,7 +102,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
 
                 // Dictionary<string, List<Person>> definition
                 .AddDefinition(
-                    name: "System.Collections.Generic.Dictionary<System.String,System.Collections.Generic.List<com.IvanMurzak.McpPlugin.Tests.Data.Other.Person>>",
+                    name: "System.Collections.Generic.Dictionary(System.String,System.Collections.Generic.List(com.IvanMurzak.McpPlugin.Tests.Data.Other.Person))",
                     definition: new JsonObject
                     {
                         [JsonSchema.Type] = JsonSchema.Object,
@@ -118,7 +118,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
 
                 // Dictionary<string, Dictionary<string, Person>> definition
                 .AddDefinition(
-                    name: "System.Collections.Generic.Dictionary<System.String,System.Collections.Generic.Dictionary<System.String,com.IvanMurzak.McpPlugin.Tests.Data.Other.Person>>",
+                    name: "System.Collections.Generic.Dictionary(System.String,System.Collections.Generic.Dictionary(System.String,com.IvanMurzak.McpPlugin.Tests.Data.Other.Person))",
                     definition: new JsonObject
                     {
                         [JsonSchema.Type] = JsonSchema.Object,
@@ -142,7 +142,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
 
                 // Dictionary<string, Person> definition
                 .AddDefinition(
-                    name: "System.Collections.Generic.Dictionary<System.String,com.IvanMurzak.McpPlugin.Tests.Data.Other.Person>",
+                    name: "System.Collections.Generic.Dictionary(System.String,com.IvanMurzak.McpPlugin.Tests.Data.Other.Person)",
                     definition: new JsonObject
                     {
                         [JsonSchema.Type] = JsonSchema.Object,

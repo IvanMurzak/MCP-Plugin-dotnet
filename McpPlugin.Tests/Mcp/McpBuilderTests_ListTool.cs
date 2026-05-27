@@ -351,8 +351,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     .BuildJsonElement(),
                 expectedOutputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
-                    .AddRefProperty(JsonSchema.Result, "System.Collections.Generic.List<System.Int32>", required: true)
-                    .AddArrayDefinition("System.Collections.Generic.List<System.Int32>", JsonSchema.Integer)
+                    .AddRefProperty(JsonSchema.Result, "System.Collections.Generic.List(System.Int32)", required: true)
+                    .AddArrayDefinition("System.Collections.Generic.List(System.Int32)", JsonSchema.Integer)
                     .BuildJsonElement());
         }
 
@@ -371,8 +371,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                     .BuildJsonElement(),
                 expectedOutputSchema: new JsonObjectBuilder()
                     .SetTypeObject()
-                    .AddRefProperty(JsonSchema.Result, "System.Collections.Generic.List<System.String>", required: true)
-                    .AddArrayDefinition("System.Collections.Generic.List<System.String>", JsonSchema.String)
+                    .AddRefProperty(JsonSchema.Result, "System.Collections.Generic.List(System.String)", required: true)
+                    .AddArrayDefinition("System.Collections.Generic.List(System.String)", JsonSchema.String)
                     .BuildJsonElement());
         }
     }

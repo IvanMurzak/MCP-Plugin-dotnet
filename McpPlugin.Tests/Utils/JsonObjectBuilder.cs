@@ -211,16 +211,15 @@ namespace com.IvanMurzak.McpPlugin.Common.Tests.Utils
             return AddDefinition(name, arrayDefinition);
         }
 
-        // Mirrors ReflectorNet's $ref encoding (percent-encodes `[ ] < > +`). $defs keys stay raw;
-        // $ref values are URI references per RFC 6901 + RFC 3986. A consumer URI-decodes the
-        // fragment and looks up the raw $defs key directly.
+        // Mirrors ReflectorNet 5.2.0's $ref encoding. As of 5.2.0, TypeUtils.GetSchemaTypeId
+        // emits readable, URL-safe delimiters directly into the type-id (generic `<>` -> `( )`,
+        // nested `+` -> `-`, single-dim array `[]` -> `-1`, multi-dim `[,]` -> `-N`, jagged
+        // `[][]` -> `-1-1`; `.` and `,` are kept). The $ref value is now the type-id verbatim
+        // and equals the raw $defs key exactly, so no percent-encoding (the pre-5.2.0 scheme)
+        // is applied. This is the identity transform.
         static string EncodeForJsonSchemaRef(string typeId)
         {
-            if (string.IsNullOrEmpty(typeId))
-                return typeId;
-            return typeId.Replace("[", "%5B").Replace("]", "%5D")
-                         .Replace("<", "%3C").Replace(">", "%3E")
-                         .Replace("+", "%2B");
+            return typeId;
         }
 
         public JsonObject? BuildJsonObject()
