@@ -51,8 +51,12 @@ namespace com.IvanMurzak.McpPlugin.Server
             app.MapHub<McpServerHub>(Consts.Hub.RemoteApp, options =>
             {
                 options.Transports = HttpTransports.All;
-                options.ApplicationMaxBufferSize = 1024 * 1024 * 4; // 4 MB
-                options.TransportMaxBufferSize = 1024 * 1024 * 4; // 4 MB
+                // 16 MB pipe buffers — large enough to carry a screenshot tool result
+                // (image base64 inside a JSON envelope) without dropping it in transit, while
+                // staying well below the previous 256 MB ceiling. Plugin-side capture tools cap
+                // their own resolution so payloads stay within this bound.
+                options.ApplicationMaxBufferSize = 1024 * 1024 * 16; // 16 MB
+                options.TransportMaxBufferSize = 1024 * 1024 * 16; // 16 MB
             });
 
             // Delegate MCP endpoint mapping to transport layer

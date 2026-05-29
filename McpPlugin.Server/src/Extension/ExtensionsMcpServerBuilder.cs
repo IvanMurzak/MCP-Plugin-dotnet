@@ -49,7 +49,12 @@ namespace com.IvanMurzak.McpPlugin.Server
             signalRConfigure ??= configure =>
             {
                 configure.EnableDetailedErrors = false;
-                configure.MaximumReceiveMessageSize = 1024 * 1024 * 4; // 4 MB
+                // 128 MB per-message cap. This is an upper bound, not a pre-allocation, so it is
+                // cheap to keep generous; it must comfortably exceed a screenshot tool result
+                // (image base64 inside a JSON envelope), which a 4 MB cap silently dropped for
+                // high-resolution Game View captures. Plugin-side capture tools clamp their own
+                // resolution to keep real payloads far below this ceiling.
+                configure.MaximumReceiveMessageSize = 1024 * 1024 * 128; // 128 MB
                 configure.ClientTimeoutInterval = TimeSpan.FromMinutes(5);
                 configure.KeepAliveInterval = TimeSpan.FromSeconds(30);
                 configure.HandshakeTimeout = TimeSpan.FromMinutes(2);
