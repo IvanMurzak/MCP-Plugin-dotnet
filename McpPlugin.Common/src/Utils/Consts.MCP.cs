@@ -72,13 +72,15 @@ namespace com.IvanMurzak.McpPlugin.Common
                 /// Default idle-timeout (seconds) for the streamableHttp transport's
                 /// <c>HttpServerTransportOptions.IdleTimeout</c>. An idle MCP session is evicted
                 /// from the server's in-memory session tracker after this much time without
-                /// activity. The SDK's own default is 2 hours; we use 10 minutes as a middle
-                /// ground that survives typical client reconnect latencies while keeping the
-                /// tracker footprint bounded by <c>MaxIdleSessionCount</c>. Override via the
-                /// <see cref="Args.IdleTimeoutSeconds"/> CLI argument or
+                /// activity; the next request on an evicted session fails with
+                /// <c>HTTP 404</c> / JSON-RPC <c>-32001 "Session not found"</c>. We set 6 hours
+                /// (21600 seconds) — well above the SDK's own 2-hour default — so the long idle
+                /// gaps between an AI agent's tool calls don't evict an otherwise-live session.
+                /// The tracker footprint stays bounded by <c>MaxIdleSessionCount</c>. Override via
+                /// the <see cref="Args.IdleTimeoutSeconds"/> CLI argument or
                 /// <see cref="Env.IdleTimeoutSeconds"/> environment variable.
                 /// </summary>
-                public const int DefaultIdleTimeoutSeconds = 600;
+                public const int DefaultIdleTimeoutSeconds = 21600;
 
                 public const string DefaultBodyPath = "mcpServers";
                 public const string DefaultServerName = "McpPlugin";
