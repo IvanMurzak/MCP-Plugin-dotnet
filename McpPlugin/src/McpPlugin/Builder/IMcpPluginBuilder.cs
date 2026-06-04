@@ -69,6 +69,10 @@ namespace com.IvanMurzak.McpPlugin
         IMcpPluginBuilder WithConfigFromArgsOrEnv(string[]? args = null);
         IMcpPluginBuilder WithSkillFileGenerator<T>() where T : class, ISkillFileGenerator;
         IMcpPluginBuilder WithSkillFileGenerator(ISkillFileGenerator instance);
+
+        // Reflector module discovery
+        IMcpPluginBuilder WithReflectorModulesFromAssembly(IEnumerable<Assembly> assemblies);
+
         IMcpPlugin Build(Reflector reflector);
 
         // Ignore Assembly methods
