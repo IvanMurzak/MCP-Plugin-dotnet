@@ -35,12 +35,13 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         // it wants by ignoring the rest (phase-α discovery honors the core namespace prune).
         private const string NsFullContribution = "com.IvanMurzak.McpPlugin.Tests.Data.ReflectorModules.FullContribution";
         private const string NsThrowing = "com.IvanMurzak.McpPlugin.Tests.Data.ReflectorModules.Throwing";
+        private const string NsCtorFailure = "com.IvanMurzak.McpPlugin.Tests.Data.ReflectorModules.CtorFailure";
         private const string NsOrdering = "com.IvanMurzak.McpPlugin.Tests.Data.ReflectorModules.Ordering";
         private const string NsSafetyRail = "com.IvanMurzak.McpPlugin.Tests.Data.ReflectorModules.SafetyRail";
 
         private static readonly string[] AllModuleNamespaces =
         {
-            NsFullContribution, NsThrowing, NsOrdering, NsSafetyRail
+            NsFullContribution, NsThrowing, NsCtorFailure, NsOrdering, NsSafetyRail
         };
 
         public ReflectorModuleDiscoveryTests(ITestOutputHelper output)
@@ -108,6 +109,40 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
                 // Assert — the healthy sibling module still ran...
                 OrderSink.Snapshot().ShouldContain(Data.ReflectorModules.Throwing.SurvivingModule.Id);
+
+                // ...and tool registration (which runs after the module phase) is unaffected.
+                var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
+                response.Value.ShouldNotBeNull();
+                response.Value!.ShouldContain(t => t.Name == "include-test-tool");
+            }
+        }
+
+        // ── Failure isolation: a module whose ctor throws is skipped; others + tools survive ──
+
+        [Fact]
+        public async Task FailureIsolation_ThrowingCtorModuleSkipped_OthersAndToolsSurvive()
+        {
+            // Arrange — keep only the CtorFailure namespace (ThrowingCtorModule whose constructor throws +
+            // CtorSurvivingModule), plus tools. ThrowingCtorModule must be skipped during phase-α
+            // instantiation (Activator.CreateInstance throws) without aborting discovery.
+            var reflector = new Reflector();
+            var builder = new McpPluginBuilder(_version, _loggerProvider)
+                .WithToolsFromAssembly(TestAssembly)
+                .WithReflectorModulesFromAssembly(new[] { TestAssembly })
+                .IgnoreNamespaces(NamespacesToIgnoreExcept(NsCtorFailure));
+
+            using (OrderSink.Begin())
+            {
+                // Act — build must NOT throw despite ThrowingCtorModule's throwing constructor.
+                var plugin = builder.Build(reflector);
+
+                var snapshot = OrderSink.Snapshot();
+
+                // Assert — the healthy sibling module still ran...
+                snapshot.ShouldContain(Data.ReflectorModules.CtorFailure.CtorSurvivingModule.Id);
+
+                // ...the throwing-ctor module never reached Configure (it was skipped at instantiation)...
+                snapshot.ShouldNotContain(nameof(Data.ReflectorModules.CtorFailure.ThrowingCtorModule));
 
                 // ...and tool registration (which runs after the module phase) is unaffected.
                 var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());

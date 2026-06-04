@@ -120,11 +120,14 @@ namespace com.IvanMurzak.McpPlugin
             protectedAssemblies.UnionWith(_skillAssemblies);
 
             // ── Phase β: ordered, failure-isolated contribution ────────────────────────
-            // Sort by Order, then by owning-assembly full name for a deterministic tie-break.
+            // Sort by Order, then by owning-assembly full name, then by module type full name for a
+            // fully-deterministic tie-break (so two modules in the SAME assembly with equal Order do
+            // not fall back to unstable reflection GetTypes() order across recompiles/runtimes).
             var ordered = modules
                 .Select(m => new { Module = m, Assembly = m.GetType().Assembly })
                 .OrderBy(x => x.Module.Order)
                 .ThenBy(x => x.Assembly.FullName, StringComparer.Ordinal)
+                .ThenBy(x => x.Module.GetType().FullName, StringComparer.Ordinal)
                 .ToList();
 
             foreach (var entry in ordered)

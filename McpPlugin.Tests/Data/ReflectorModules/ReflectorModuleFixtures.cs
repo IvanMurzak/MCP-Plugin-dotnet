@@ -190,6 +190,38 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data.ReflectorModules.Throwing
     }
 }
 
+namespace com.IvanMurzak.McpPlugin.Tests.Data.ReflectorModules.CtorFailure
+{
+    using com.IvanMurzak.McpPlugin.Tests.Data.ReflectorModules.Shared;
+
+    /// <summary>
+    /// A module whose constructor throws — used to assert instantiation-failure isolation (the phase-α
+    /// catch around Activator.CreateInstance). Discovery must skip+log it while the surviving sibling and
+    /// tool registration are unaffected. Lives in its OWN namespace so a test can isolate it from the
+    /// Configure-throwing fixtures.
+    /// </summary>
+    public sealed class ThrowingCtorModule : IReflectorModule
+    {
+        public ThrowingCtorModule()
+            => throw new InvalidOperationException("Intentional failure from ThrowingCtorModule constructor.");
+
+        public int Order => 0;
+
+        public void Configure(IReflectorModuleContext ctx)
+            => OrderSink.Record(nameof(ThrowingCtorModule));
+    }
+
+    /// <summary>A healthy module sitting alongside the throwing-ctor one — must still run.</summary>
+    public sealed class CtorSurvivingModule : IReflectorModule
+    {
+        public const string Id = nameof(CtorSurvivingModule);
+        public int Order => 1;
+
+        public void Configure(IReflectorModuleContext ctx)
+            => OrderSink.Record(Id);
+    }
+}
+
 namespace com.IvanMurzak.McpPlugin.Tests.Data.ReflectorModules.Ordering
 {
     using com.IvanMurzak.McpPlugin.Tests.Data.ReflectorModules.Shared;
