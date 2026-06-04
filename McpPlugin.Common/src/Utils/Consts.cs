@@ -12,7 +12,7 @@ namespace com.IvanMurzak.McpPlugin.Common
     public static partial class Consts
     {
         public const string ApiVersion = "2.0.0";
-        public const string PluginVersion = "6.5.5";
+        public const string PluginVersion = "6.6.0";
 
         public static class Guid
         {
