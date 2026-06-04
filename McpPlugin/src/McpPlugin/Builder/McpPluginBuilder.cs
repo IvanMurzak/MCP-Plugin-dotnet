@@ -319,6 +319,11 @@ namespace com.IvanMurzak.McpPlugin
             if (reflector == null)
                 throw new ArgumentNullException(nameof(reflector));
 
+            // Reflector-module bootstrap (phases α→β): discover IReflectorModule implementors and let
+            // them contribute converters + prune rules. MUST run strictly BEFORE ProcessAllAssemblies()
+            // so any contributed scan-ignore entries take effect for the heavy attribute scan (phase γ).
+            BootstrapReflectorModules(reflector);
+
             // Process all assemblies with caching optimization
             ProcessAllAssemblies();
 
