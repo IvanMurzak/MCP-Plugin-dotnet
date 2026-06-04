@@ -1,0 +1,27 @@
+McpPlugin/src/McpPlugin/Builder/McpPluginBuilder.ReflectorModules.cs
+  s_87ed6d00ba8d34::t_3038279515c17e 123-125,130
+McpPlugin.Tests/Data/ReflectorModules/ReflectorModuleFixtures.cs
+  s_87ed6d00ba8d34::t_dc7dd2c3c91c07 194-195
+  s_87ed6d00ba8d34::t_18c10e78efa566 196-222
+  s_87ed6d00ba8d34::t_484cf93cce3480 193
+McpPlugin.Tests/Mcp/ReflectorModuleDiscoveryTests.cs
+  s_87ed6d00ba8d34::t_fb5aa7d6bab2be 44
+  s_87ed6d00ba8d34::t_b73f8276f6abcc 38
+  s_87ed6d00ba8d34::t_0cce88bf2059be 120-153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3c6d6a1b523b1d609e2b4dbd7435c8204e3d96c7",
+  "prompts": {},
+  "sessions": {
+    "s_87ed6d00ba8d34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6504330-5f4a-425f-aa7a-0d2df0ef195d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
