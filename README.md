@@ -231,7 +231,8 @@ Command-line arguments take priority over environment variables.
 | `port` | `MCP_PLUGIN_PORT` | The port the SignalR hub listens on. | `8080` |
 | `client-transport` | `MCP_PLUGIN_CLIENT_TRANSPORT` | Transport method: `stdio` or `streamableHttp`. | `streamableHttp` |
 | `plugin-timeout` | `MCP_PLUGIN_CLIENT_TIMEOUT` | Timeout for plugin operations (ms). | `10000` |
-| `idle-timeout-seconds` | `MCP_PLUGIN_IDLE_TIMEOUT_SECONDS` | `streamableHttp` only: idle window before an MCP session is evicted from the in-memory tracker. Longer values reduce reconnect 404s / session-migration rehydrates at the cost of higher in-memory footprint (bounded by `MaxIdleSessionCount`). The SDK's own default is `7200` (2 h). | `600` |
+| `idle-timeout-seconds` | `MCP_PLUGIN_IDLE_TIMEOUT_SECONDS` | `streamableHttp` only: idle window before an MCP session is evicted from the in-memory tracker. Longer values reduce reconnect 404s / session-migration rehydrates at the cost of higher in-memory footprint (bounded by `max-idle-session-count`). Only sessions with no in-flight request and no open SSE stream are evicted, so this never interrupts a long-running call. The SDK's own default is `7200` (2 h). | `600` |
+| `max-idle-session-count` | `MCP_PLUGIN_MAX_IDLE_SESSION_COUNT` | `streamableHttp` only: hard ceiling on retained **idle** MCP sessions. When exceeded, the least-recently-active idle sessions are pruned (disposed, buffers returned to the pool) before the idle timeout elapses. Bounds worst-case per-session buffer memory under connection churn. Active sessions are never counted/pruned. The SDK's own default is `10000`. | `1000` |
 | `token` | `MCP_PLUGIN_TOKEN` | Bearer token required from connecting plugins. | *(none)* |
 | `authorization` | `MCP_AUTHORIZATION` | Authorization mode: `none` or `required`. | `none` |
 

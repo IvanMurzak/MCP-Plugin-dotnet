@@ -18,6 +18,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         int Port { get; }
         int PluginTimeoutMs { get; }
         int IdleTimeoutSeconds { get; }
+        int MaxIdleSessionCount { get; }
         Consts.MCP.Server.TransportMethod ClientTransport { get; }
         Consts.MCP.Server.AuthOption Authorization { get; }
         string? Token { get; }
@@ -40,6 +41,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         public int Port { get; private set; } = 8080;
         public int PluginTimeoutMs { get; private set; }
         public int IdleTimeoutSeconds { get; private set; } = Consts.MCP.Server.DefaultIdleTimeoutSeconds;
+        public int MaxIdleSessionCount { get; private set; } = Consts.MCP.Server.DefaultMaxIdleSessionCount;
         public Consts.MCP.Server.TransportMethod ClientTransport { get; private set; }
         public Consts.MCP.Server.AuthOption Authorization { get; private set; } = Consts.MCP.Server.AuthOption.none;
         public string? Token { get; private set; }
@@ -88,6 +90,10 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var envIdleTimeoutSeconds = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.IdleTimeoutSeconds);
             if (envIdleTimeoutSeconds != null && int.TryParse(envIdleTimeoutSeconds, out var parsedEnvIdleTimeoutSeconds) && parsedEnvIdleTimeoutSeconds > 0)
                 IdleTimeoutSeconds = parsedEnvIdleTimeoutSeconds;
+
+            var envMaxIdleSessionCount = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.MaxIdleSessionCount);
+            if (envMaxIdleSessionCount != null && int.TryParse(envMaxIdleSessionCount, out var parsedEnvMaxIdleSessionCount) && parsedEnvMaxIdleSessionCount > 0)
+                MaxIdleSessionCount = parsedEnvMaxIdleSessionCount;
 
             // --- Client variables ---
 
@@ -166,6 +172,10 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var argIdleTimeoutSeconds = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.IdleTimeoutSeconds.TrimStart('-'));
             if (argIdleTimeoutSeconds != null && int.TryParse(argIdleTimeoutSeconds, out var parsedArgIdleTimeoutSeconds) && parsedArgIdleTimeoutSeconds > 0)
                 IdleTimeoutSeconds = parsedArgIdleTimeoutSeconds;
+
+            var argMaxIdleSessionCount = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.MaxIdleSessionCount.TrimStart('-'));
+            if (argMaxIdleSessionCount != null && int.TryParse(argMaxIdleSessionCount, out var parsedArgMaxIdleSessionCount) && parsedArgMaxIdleSessionCount > 0)
+                MaxIdleSessionCount = parsedArgMaxIdleSessionCount;
 
             // --- Client variables ---
 
