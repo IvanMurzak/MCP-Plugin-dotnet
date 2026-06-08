@@ -56,6 +56,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string Token = "token";
                     public const string Authorization = "authorization";
                     public const string IdleTimeoutSeconds = "idle-timeout-seconds";
+                    public const string MaxIdleSessionCount = "max-idle-session-count";
                 }
 
                 public static partial class Env
@@ -66,6 +67,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string Token = "MCP_PLUGIN_TOKEN";
                     public const string Authorization = "MCP_AUTHORIZATION";
                     public const string IdleTimeoutSeconds = "MCP_PLUGIN_IDLE_TIMEOUT_SECONDS";
+                    public const string MaxIdleSessionCount = "MCP_PLUGIN_MAX_IDLE_SESSION_COUNT";
                 }
 
                 /// <summary>
@@ -73,14 +75,41 @@ namespace com.IvanMurzak.McpPlugin.Common
                 /// <c>HttpServerTransportOptions.IdleTimeout</c>. An idle MCP session is evicted
                 /// from the server's in-memory session tracker after this much time without
                 /// activity; the next request on an evicted session fails with
-                /// <c>HTTP 404</c> / JSON-RPC <c>-32001 "Session not found"</c>. We set 6 hours
-                /// (21600 seconds) — well above the SDK's own 2-hour default — so the long idle
-                /// gaps between an AI agent's tool calls don't evict an otherwise-live session.
-                /// The tracker footprint stays bounded by <c>MaxIdleSessionCount</c>. Override via
-                /// the <see cref="Args.IdleTimeoutSeconds"/> CLI argument or
+                /// <c>HTTP 404</c> / JSON-RPC <c>-32001 "Session not found"</c> and the client
+                /// re-initializes (the 404 → reinit reconnect contract).
+                /// <para>
+                /// The idle timeout only reaps sessions that have <b>no</b> in-flight request and
+                /// <b>no</b> open server→client SSE stream: the SDK protects any session whose
+                /// <c>IsActive</c> flag is set (a long-running tool call such as a 10-minute
+                /// <c>script-execute</c>, or a connected client holding its SSE GET open) from
+                /// eviction regardless of this value. A short window is therefore safe for
+                /// otherwise-live sessions and reaps only genuinely-disconnected (zombie)
+                /// sessions, each of which would otherwise pin its grown <c>SseEventWriter</c>
+                /// buffer (up to tens of MiB after a large screenshot / response) until disposed.
+                /// We default to 10 minutes (600 seconds) to keep the in-memory footprint bounded;
+                /// <see cref="DefaultMaxIdleSessionCount"/> provides the complementary hard ceiling.
+                /// Override via the <see cref="Args.IdleTimeoutSeconds"/> CLI argument or
                 /// <see cref="Env.IdleTimeoutSeconds"/> environment variable.
+                /// </para>
                 /// </summary>
-                public const int DefaultIdleTimeoutSeconds = 21600;
+                public const int DefaultIdleTimeoutSeconds = 600;
+
+                /// <summary>
+                /// Default hard ceiling for the streamableHttp transport's
+                /// <c>HttpServerTransportOptions.MaxIdleSessionCount</c>. When the number of idle
+                /// (non-<c>IsActive</c>) MCP sessions exceeds this value, the SDK prunes the
+                /// least-recently-active idle sessions first — disposing them and returning their
+                /// per-session <c>SseEventWriter</c> buffers to the array pool — even before
+                /// <see cref="DefaultIdleTimeoutSeconds"/> elapses. This bounds worst-case
+                /// retained per-session buffer memory under connection churn. The SDK's own
+                /// default is 10,000; we lower it to give generous headroom over real concurrency
+                /// while capping the footprint an order of magnitude below the SDK default.
+                /// Active sessions (in-flight request or open SSE stream) are never pruned by this
+                /// ceiling, so it cannot interrupt a long-running call. Override via the
+                /// <see cref="Args.MaxIdleSessionCount"/> CLI argument or
+                /// <see cref="Env.MaxIdleSessionCount"/> environment variable.
+                /// </summary>
+                public const int DefaultMaxIdleSessionCount = 1000;
 
                 public const string DefaultBodyPath = "mcpServers";
                 public const string DefaultServerName = "McpPlugin";

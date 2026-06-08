@@ -37,11 +37,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
         {
             return mcpServerBuilder.WithHttpTransport(options =>
             {
-                logger?.Debug("Http transport configuration. IdleTimeout={idleTimeoutSeconds}s", dataArguments.IdleTimeoutSeconds);
+                logger?.Debug("Http transport configuration. IdleTimeout={idleTimeoutSeconds}s, MaxIdleSessionCount={maxIdleSessionCount}",
+                    dataArguments.IdleTimeoutSeconds, dataArguments.MaxIdleSessionCount);
 
                 options.Stateless = false;
                 options.PerSessionExecutionContext = true;
                 options.IdleTimeout = TimeSpan.FromSeconds(dataArguments.IdleTimeoutSeconds);
+                // Hard ceiling on retained idle sessions. Without this the SDK default (10,000)
+                // lets disconnected (zombie) sessions accumulate, each pinning its grown
+                // SseEventWriter buffer (up to tens of MiB), which leaked multi-GB in production.
+                // Active sessions (in-flight request / open SSE stream) are never pruned by this.
+                options.MaxIdleSessionCount = dataArguments.MaxIdleSessionCount;
                 // ConfigureSessionOptions cannot replace RunSessionHandler here because we need
                 // full session lifecycle management (StartAsync/StopAsync for McpServerService).
                 // Suppressing MCPEXP002 as RunSessionHandler is the only mechanism that provides

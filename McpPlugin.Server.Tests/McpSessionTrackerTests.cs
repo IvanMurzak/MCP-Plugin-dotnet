@@ -110,6 +110,40 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             _tracker.GetServerData("phys-1").IsAiAgentConnected.ShouldBeFalse();
         }
 
+        // Regression guard for the production memory leak (issue #119): once a session's last
+        // reference is removed, the per-session entry must leave the dictionary so its retained
+        // state can be collected. Asserts the tracked count returns to baseline after disconnect.
+        [Fact]
+        public void ActiveSessionCount_AfterUpdateThenRemove_ReturnsToBaseline()
+        {
+            _tracker.ActiveSessionCount.ShouldBe(0);
+
+            _tracker.Update("phys-1", null, new McpClientData { IsConnected = true, ClientName = "Leaky" }, new McpServerData());
+            _tracker.AddRef("phys-1");
+            _tracker.ActiveSessionCount.ShouldBe(1);
+
+            var isLast = _tracker.Remove("phys-1");
+
+            isLast.ShouldBeTrue();
+            _tracker.ActiveSessionCount.ShouldBe(0);
+        }
+
+        [Fact]
+        public void ActiveSessionCount_ManySessions_AllRemoved_ReturnsToBaseline()
+        {
+            for (var i = 0; i < 50; i++)
+            {
+                _tracker.Update($"phys-{i}", null, new McpClientData { IsConnected = true }, new McpServerData());
+                _tracker.AddRef($"phys-{i}");
+            }
+            _tracker.ActiveSessionCount.ShouldBe(50);
+
+            for (var i = 0; i < 50; i++)
+                _tracker.Remove($"phys-{i}");
+
+            _tracker.ActiveSessionCount.ShouldBe(0);
+        }
+
         [Fact]
         public void Remove_NonexistentSession_ReturnsTrueAndDoesNotThrow()
         {

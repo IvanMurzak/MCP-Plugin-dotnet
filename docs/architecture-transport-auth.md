@@ -53,13 +53,28 @@ Controls `HttpServerTransportOptions.IdleTimeout` for the streamableHttp transpo
 
 **Default**: `600` (10 minutes). The MCP SDK's own default is `7200` (2 hours).
 
+**Eviction only targets genuinely-idle sessions.** The SDK protects any session whose `IsActive` flag is set — a session with an in-flight request (e.g. a 10-minute `script-execute`) or with an open server→client SSE stream is **never** evicted by the idle timeout, regardless of how short it is. The idle timeout therefore reaps only disconnected (zombie) sessions, each of which would otherwise pin its grown `SseEventWriter` buffer until disposed. A short window is safe for live clients and keeps the in-memory footprint bounded.
+
 Trade-off:
 
 - **Longer values** reduce 404s and migration-rehydrate cost for slow-reconnecting clients (consumer reconnect latencies routinely exceed 30 s).
-- **Shorter values** keep the in-memory session-tracker footprint bounded — though `HttpServerTransportOptions.MaxIdleSessionCount` already provides a hard upper bound.
+- **Shorter values** keep the in-memory session-tracker footprint bounded.
 - Test scenarios that intentionally exercise eviction may want a small value (e.g. `5`). Non-positive values are rejected and the default is used.
 
 This setting is ignored when `client-transport=stdio` (the stdio transport has no idle-eviction concept).
+
+### Max Idle Session Count — streamableHttp hard ceiling on retained idle sessions
+
+Controls `HttpServerTransportOptions.MaxIdleSessionCount`. When the number of idle (non-`IsActive`) MCP sessions exceeds this value, the SDK prunes the least-recently-active idle sessions first — disposing them and returning their per-session `SseEventWriter` buffers to the array pool — even before `idle-timeout-seconds` elapses. This is the hard upper bound that keeps worst-case per-session buffer memory bounded under connection churn. Active sessions (in-flight request or open SSE stream) are never counted toward this ceiling and are never pruned by it.
+
+| Source           | Key                                          | Values            |
+|------------------|----------------------------------------------|-------------------|
+| CLI argument     | `max-idle-session-count=<int>`               | Positive integer  |
+| Environment var  | `MCP_PLUGIN_MAX_IDLE_SESSION_COUNT=<int>`    | Positive integer  |
+
+**Default**: `1000`. The MCP SDK's own default is `10000`. Non-positive values are rejected and the default is used. This setting is ignored when `client-transport=stdio`.
+
+> **Why both knobs matter (issue #119).** Production accumulated thousands of zombie `StreamableHttpSession` entries — each pinning a `PooledByteBufferWriter` grown to the largest SSE event it ever served (up to tens of MiB) — leaking multiple GB. The fix is purely lifecycle/eviction tuning: a documented 10-minute idle window reaps disconnected sessions promptly, and an explicit `MaxIdleSessionCount` caps the retained idle set an order of magnitude below the SDK default. Neither change touches the wire protocol, image/screenshot transfer, or auth semantics.
 
 **Optional at server launch** when `authorization=required`. When absent, the server enters dynamic-pairing mode — any plugin token is accepted and plugins/clients are paired by token equality. When present, only that exact token is accepted from connecting plugins. Ignored (but accepted) when `authorization=none`. Note: connecting plugins must always provide a token in `auth=required` mode regardless.
 
