@@ -9,8 +9,6 @@
 */
 
 using System;
-using System.Text.Json.Nodes;
-using com.IvanMurzak.ReflectorNet.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin
@@ -48,38 +46,14 @@ namespace com.IvanMurzak.McpPlugin
         /// Calculates the semantic token count for this tool.
         /// The calculation is based on the JSON Schema including name, title, description, input schema, and output schema.
         /// Uses a simple approximation: characters / 4 for semantic tokens (common for many LLM tokenizers).
+        /// Delegates to the shared <see cref="ToolTokenCount.Calculate"/> helper so that the formula is
+        /// identical to <see cref="ProxyTool"/>.
         /// </summary>
         private int CalculateTokenCount()
         {
             try
             {
-                // Build a JSON representation of the tool's schema using JsonObject
-                var jsonObject = new JsonObject();
-
-                // Add basic tool information
-                if (!string.IsNullOrEmpty(Name))
-                    jsonObject["name"] = Name;
-
-                if (!string.IsNullOrEmpty(Title))
-                    jsonObject["title"] = Title;
-
-                if (!string.IsNullOrEmpty(Description))
-                    jsonObject["description"] = Description;
-
-                // Add schemas directly as JSON nodes
-                if (InputSchema != null)
-                    jsonObject["inputSchema"] = InputSchema;
-
-                if (OutputSchema != null)
-                    jsonObject["outputSchema"] = OutputSchema;
-
-                // Serialize to JSON string (ensures proper escaping)
-                var jsonString = jsonObject.ToJsonString();
-
-                // Calculate tokens: using a common approximation of 1 token per 4 characters
-                // This is a reasonable estimate for English text and JSON structures
-                var tokenCount = (int)Math.Ceiling(jsonString.Length / 4.0);
-                return tokenCount;
+                return ToolTokenCount.Calculate(Name, Title, Description, InputSchema, OutputSchema);
             }
             catch (Exception ex)
             {

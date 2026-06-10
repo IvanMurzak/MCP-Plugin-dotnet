@@ -70,6 +70,9 @@ namespace com.IvanMurzak.McpPlugin
         IMcpPluginBuilder WithSkillFileGenerator<T>() where T : class, ISkillFileGenerator;
         IMcpPluginBuilder WithSkillFileGenerator(ISkillFileGenerator instance);
 
+        // Dynamic / proxy tool factory
+        IMcpPluginBuilder WithDynamicToolFactory();
+
         // Reflector module discovery
         IMcpPluginBuilder WithReflectorModulesFromAssembly(IEnumerable<Assembly> assemblies);
 
