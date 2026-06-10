@@ -23,13 +23,21 @@ namespace com.IvanMurzak.McpPlugin
     /// async delegate, rather than a reflected method. This is the building block for hosts that define their
     /// tool set dynamically (e.g. a sidecar that mirrors an external editor's tool manifest): the
     /// <see cref="InputSchema"/>/<see cref="OutputSchema"/> arrive as plain <see cref="JsonNode"/>s and the
-    /// <see cref="Run"/> implementation forwards the raw arguments to the supplied <paramref name="handler"/>.
+    /// <see cref="Run"/> implementation forwards the raw arguments to the supplied <c>handler</c>.
     ///
     /// <para>
     /// Register a proxy tool against a built plugin via
     /// <c>plugin.McpManager.ToolManager.AddTool(name, proxyTool)</c> (which fires the tools-updated /
-    /// list-changed notification), and remove it via <c>RemoveTool(name)</c>. Toggle visibility with the
-    /// settable <see cref="Enabled"/> property (default <see langword="true"/>).
+    /// list-changed notification), and remove it via <c>RemoveTool(name)</c>. To toggle visibility after
+    /// registration, call <c>IToolManager.SetToolEnabled(name, enabled)</c> (which fires the list-changed
+    /// notification) rather than setting <see cref="Enabled"/> directly — a direct set updates the tool but
+    /// leaves connected clients with a stale listing.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Thread-safety:</b> the tool manager's backing store is not synchronized, so a host must serialize
+    /// runtime tool-set mutations (<c>AddTool</c>/<c>RemoveTool</c>) with respect to listing and dispatch;
+    /// mutating the tool set concurrently with enumeration is not supported.
     /// </para>
     /// </summary>
     public sealed class ProxyTool : IRunTool
@@ -52,6 +60,11 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// Whether this tool is exposed to MCP clients. Settable so a host can toggle a runtime tool on/off;
         /// disabled tools are filtered out of the enabled-tools view by the tool manager. Defaults to <see langword="true"/>.
+        /// <para>
+        /// For post-registration toggling prefer <c>IToolManager.SetToolEnabled(name, enabled)</c>: it both
+        /// flips this flag and fires the list-changed notification, whereas setting this property directly
+        /// leaves connected clients with a stale listing.
+        /// </para>
         /// </summary>
         public bool Enabled { get; set; } = true;
 
@@ -66,7 +79,17 @@ namespace com.IvanMurzak.McpPlugin
                 if (_cachedTokenCount.HasValue)
                     return _cachedTokenCount.Value;
 
-                _cachedTokenCount = ToolTokenCount.Calculate(Name, Title, Description, InputSchema, OutputSchema);
+                try
+                {
+                    _cachedTokenCount = ToolTokenCount.Calculate(Name, Title, Description, InputSchema, OutputSchema);
+                }
+                catch
+                {
+                    // Mirror RunTool.CalculateTokenCount's resilience: a tool whose externally supplied schema
+                    // fails to serialize must not poison IToolManager.EnabledToolsTokenCount, which sums
+                    // TokenCount over every enabled tool. ProxyTool has no logger, so the fallback is silent.
+                    _cachedTokenCount = 0;
+                }
                 return _cachedTokenCount.Value;
             }
         }
@@ -106,8 +129,13 @@ namespace com.IvanMurzak.McpPlugin
             Description = description;
             SkillDescription = skillDescription;
             SkillBody = skillBody;
-            InputSchema = inputSchema;
-            OutputSchema = outputSchema;
+            // Detach the externally supplied schemas via a round-trip clone so the proxy owns immutable,
+            // self-consistent copies: post-registration mutation of the caller's live node cannot desync the
+            // listed schema (re-read per listing) from the cached TokenCount (computed once), and the same node
+            // can safely back more than one tool. Round-trip (rather than JsonNode.DeepClone) keeps this working
+            // on the netstandard2.1 leg whose System.Text.Json predates DeepClone (STJ 8).
+            InputSchema = inputSchema is null ? null : JsonNode.Parse(inputSchema.ToJsonString());
+            OutputSchema = outputSchema is null ? null : JsonNode.Parse(outputSchema.ToJsonString());
             ReadOnlyHint = readOnlyHint;
             DestructiveHint = destructiveHint;
             IdempotentHint = idempotentHint;

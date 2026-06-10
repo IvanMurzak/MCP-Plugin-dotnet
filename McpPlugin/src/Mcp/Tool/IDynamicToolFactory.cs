@@ -23,6 +23,11 @@ namespace com.IvanMurzak.McpPlugin
     /// async delegate. Registered as a DI singleton via
     /// <see cref="McpPluginBuilder.WithDynamicToolFactory"/>, so a host can resolve it and create
     /// <see cref="IRunTool"/> instances to register against the tool manager at runtime.
+    /// <para>
+    /// <b>Thread-safety:</b> the tool manager's backing store is not synchronized, so a host must serialize
+    /// the runtime <c>AddTool</c>/<c>RemoveTool</c> calls that register the produced tools with respect to
+    /// listing and dispatch; mutating the tool set concurrently with enumeration is not supported.
+    /// </para>
     /// </summary>
     public interface IDynamicToolFactory
     {
