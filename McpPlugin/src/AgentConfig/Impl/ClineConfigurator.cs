@@ -36,8 +36,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
             switch (s.OperatingSystem)
             {
                 case OperatingSystemKind.Windows:
-                    return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                        "Code", "User", relSettings, "saoudrizwan.claude-dev", "settings", "cline_mcp_settings.json");
+                    // Build %APPDATA% deterministically from UserProfile so the path is driven solely by the
+                    // injected OperatingSystemKind, not the host OS. SpecialFolder.ApplicationData maps to
+                    // ~/.config on Linux, which would collide with the Linux branch when run on a Linux host.
+                    return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                        "AppData", "Roaming", "Code", "User", relSettings, "saoudrizwan.claude-dev", "settings", "cline_mcp_settings.json");
                 case OperatingSystemKind.MacOS:
                     return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                         "Library", "Application Support", "Code", "User", relSettings, "saoudrizwan.claude-dev", "settings", "cline_mcp_settings.json");
