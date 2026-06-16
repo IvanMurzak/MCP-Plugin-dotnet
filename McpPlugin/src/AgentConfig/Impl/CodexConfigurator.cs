@@ -90,9 +90,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
                 {
                     new ConfigurationSection("Manual Configuration Steps - Option 1", true, new[]
                     {
-                        ConfigurationItem.Description("1. Open a terminal and run the following command to be in the folder of the Unity project"),
+                        ConfigurationItem.Description("1. Open a terminal and run the following command to be in the project folder"),
                         ConfigurationItem.ReadOnlyField($"cd \"{settings.ProjectRootPath}\""),
-                        ConfigurationItem.Description("2. Run the following command in the folder of the Unity project to configure Codex"),
+                        ConfigurationItem.Description("2. Run the following command in the project folder to configure Codex"),
                         ConfigurationItem.ReadOnlyField(addStdio),
                         ConfigurationItem.Description("3. Start Codex"),
                         ConfigurationItem.ReadOnlyField("codex")
@@ -114,9 +114,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
                     ? ConfigurationItem.ReadOnlyField($"setx {EnvVarNameAuthToken} \"{settings.Token}\"")
                     : ConfigurationItem.ReadOnlyField($"export {EnvVarNameAuthToken}=\"{settings.Token}\""));
             }
-            items.Add(ConfigurationItem.Description("1. Open a terminal and run the following command to be in the folder of the Unity project"));
+            items.Add(ConfigurationItem.Description("1. Open a terminal and run the following command to be in the project folder"));
             items.Add(ConfigurationItem.ReadOnlyField($"cd \"{settings.ProjectRootPath}\""));
-            items.Add(ConfigurationItem.Description("2. Run the following command in the folder of the Unity project to configure Codex"));
+            items.Add(ConfigurationItem.Description("2. Run the following command in the project folder to configure Codex"));
             items.Add(ConfigurationItem.ReadOnlyField(addHttp));
             items.Add(ConfigurationItem.Description("3. Start Codex"));
             items.Add(ConfigurationItem.ReadOnlyField("codex"));

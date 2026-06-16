@@ -62,7 +62,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
                     }),
                     new ConfigurationSection("Manual Configuration Steps", false, new[]
                     {
-                        ConfigurationItem.Description("Run the following command in the folder of the Unity project to configure Claude Code"),
+                        ConfigurationItem.Description("Run the following command in the project folder to configure Claude Code"),
                         ConfigurationItem.ReadOnlyField(addCommand),
                         ConfigurationItem.Description("Restart or start Claude Code to apply the configuration"),
                         ConfigurationItem.ReadOnlyField("claude")
@@ -83,7 +83,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
                 }),
                 new ConfigurationSection("Manual Configuration Steps", false, new[]
                 {
-                    ConfigurationItem.Description("Run the following command in the folder of the Unity project to configure Claude Code"),
+                    ConfigurationItem.Description("Run the following command in the project folder to configure Claude Code"),
                     ConfigurationItem.ReadOnlyField(addCommandHttp),
                     ConfigurationItem.Description("Restart or start Claude Code to apply the configuration"),
                     ConfigurationItem.ReadOnlyField("claude")
