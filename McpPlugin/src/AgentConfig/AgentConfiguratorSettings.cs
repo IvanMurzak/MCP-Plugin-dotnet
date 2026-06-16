@@ -9,6 +9,7 @@
 */
 
 #nullable enable
+using System.Runtime.InteropServices;
 using com.IvanMurzak.McpPlugin.Common;
 
 namespace com.IvanMurzak.McpPlugin.AgentConfig
@@ -24,6 +25,31 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         Windows,
         MacOS,
         Linux
+    }
+
+    /// <summary>
+    /// Runtime host-OS detection. The engine-agnostic replacement for Unity's compile-time
+    /// <c>#if UNITY_EDITOR_WIN</c> / <c>#if UNITY_EDITOR_OSX</c> / <c>#if UNITY_EDITOR_LINUX</c>
+    /// selection. Consumers that do not know (or do not want to hard-code) the host OS get the
+    /// correct value automatically; tests and engine consumers can still force a specific value
+    /// via the explicit <see cref="AgentConfiguratorSettings"/> constructor.
+    /// </summary>
+    public static class HostOperatingSystem
+    {
+        /// <summary>
+        /// Detects the operating system the current process is running on using
+        /// <see cref="RuntimeInformation.IsOSPlatform"/>. Windows / OSX (→ <see cref="OperatingSystemKind.MacOS"/>)
+        /// / Linux are recognised; anything else falls back to <see cref="OperatingSystemKind.Linux"/>
+        /// (Unix-like path conventions).
+        /// </summary>
+        public static OperatingSystemKind Detect()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return OperatingSystemKind.Windows;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                return OperatingSystemKind.MacOS;
+            return OperatingSystemKind.Linux;
+        }
     }
 
     /// <summary>
@@ -93,6 +119,35 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Token = token;
             ConnectionMode = connectionMode;
             AuthOption = authOption;
+        }
+
+        /// <summary>
+        /// Creates settings that auto-detect the host OS at runtime (<see cref="HostOperatingSystem.Detect"/>).
+        /// This is the recommended path for consumers that simply want correct per-OS config-file
+        /// locations on the machine the process runs on — without hand-detecting and injecting the OS.
+        /// Use the OS-explicit constructor only when a specific <see cref="OperatingSystemKind"/> must be forced
+        /// (e.g. tests, or generating config for a different OS than the host).
+        /// </summary>
+        public static AgentConfiguratorSettings CreateForHost(
+            string projectRootPath,
+            string executableFullPath,
+            int port,
+            int timeoutMs,
+            string host,
+            string? token = null,
+            ConnectionMode connectionMode = ConnectionMode.Local,
+            Consts.MCP.Server.AuthOption authOption = Consts.MCP.Server.AuthOption.none)
+        {
+            return new AgentConfiguratorSettings(
+                operatingSystem: HostOperatingSystem.Detect(),
+                projectRootPath: projectRootPath,
+                executableFullPath: executableFullPath,
+                port: port,
+                timeoutMs: timeoutMs,
+                host: host,
+                token: token,
+                connectionMode: connectionMode,
+                authOption: authOption);
         }
 
         /// <summary>True when HTTP authorization should be injected (cloud always requires it).</summary>

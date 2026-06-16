@@ -51,6 +51,52 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
 
         protected override IReadOnlyList<ConfigurationSection> BuildSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
-            => DefaultConfigurationSections(settings, transport, logger);
+        {
+            // HTTP transport: Rider/Junie connects via stdio only (HTTP is unreliable here), so
+            // surface the warning and fall back to exposing the expected config content.
+            if (transport != TransportMethod.stdio)
+            {
+                return new[]
+                {
+                    new ConfigurationSection("Configuration", true, new[]
+                    {
+                        ConfigurationItem.Warning("Rider (Junie) connects via stdio. Switch the transport method to 'stdio' to configure this agent."),
+                        ConfigurationItem.ReadOnlyField(GetHttpConfig(settings, logger).ExpectedFileContent)
+                    })
+                };
+            }
+
+            // STDIO transport: restore Unity's per-OS manual-setup convenience command
+            // (Win PowerShell New-Item/Set-Content vs Mac/Linux mkdir -p/printf), driven by
+            // settings.OperatingSystem. Wording is engine-neutral ("the project folder").
+            var relativePath = Path.Combine(".junie", "mcp", "mcp.json");
+            var expectedContent = GetStdioConfig(settings, logger).ExpectedFileContent;
+
+            string terminalDescription;
+            string terminalCommand;
+            if (settings.IsWindows)
+            {
+                terminalDescription = "Option 1: Run this command in PowerShell from the project folder";
+                terminalCommand = $"New-Item -ItemType Directory -Force -Path .junie\\mcp | Out-Null; Set-Content -Path {relativePath.Replace('/', '\\')} -Value '{expectedContent.Replace("'", "''")}'";
+            }
+            else
+            {
+                terminalDescription = "Option 1: Run this command in a terminal from the project folder";
+                terminalCommand = $"mkdir -p .junie/mcp && printf '{expectedContent.Replace("'", "'\\''")}' > {relativePath.Replace('\\', '/')}";
+            }
+
+            return new[]
+            {
+                new ConfigurationSection("Manual Configuration Steps", true, new[]
+                {
+                    ConfigurationItem.Warning("After configuring, open Rider Settings / Tools / Junie / MCP Settings and enable the server to connect the AI agent."),
+                    ConfigurationItem.Description(terminalDescription),
+                    ConfigurationItem.ReadOnlyField(terminalCommand),
+                    ConfigurationItem.Description($"Option 2: Create or open the file '{relativePath.Replace('\\', '/')}' and paste the JSON below."),
+                    ConfigurationItem.ReadOnlyField(expectedContent),
+                    ConfigurationItem.Description("Option 3: Open Rider Settings / Tools / Junie / MCP Settings and add a new server manually.")
+                })
+            };
+        }
     }
 }
