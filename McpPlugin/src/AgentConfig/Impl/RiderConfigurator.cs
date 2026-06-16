@@ -82,7 +82,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
             else
             {
                 terminalDescription = "Option 1: Run this command in a terminal from the project folder";
-                terminalCommand = $"mkdir -p .junie/mcp && printf '{expectedContent.Replace("'", "'\\''")}' > {relativePath.Replace('\\', '/')}";
+                terminalCommand = $"mkdir -p .junie/mcp && printf '%s\\n' '{expectedContent.Replace("'", "'\\''")}' > {relativePath.Replace('\\', '/')}";
             }
 
             return new[]
