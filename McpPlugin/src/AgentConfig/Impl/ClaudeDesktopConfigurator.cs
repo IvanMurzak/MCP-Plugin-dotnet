@@ -25,8 +25,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         public override string DownloadUrl => "https://code.claude.com/docs/en/desktop";
         public override string? IconName => "claude-64.png";
 
+        // Windows %APPDATA% is built deterministically from UserProfile so the path is driven solely by the
+        // injected OperatingSystemKind, not the host OS. SpecialFolder.ApplicationData maps to ~/.config on
+        // Linux, which would make the "Windows" path host-dependent and indistinguishable from a Linux base.
         private static string ConfigPath(AgentConfiguratorSettings s) => s.IsWindows
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Claude", "claude_desktop_config.json")
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "AppData", "Roaming", "Claude", "claude_desktop_config.json")
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support", "Claude", "claude_desktop_config.json");
 
         protected override AiAgentConfig CreateStdioConfig(AgentConfiguratorSettings settings, ILogger? logger)
