@@ -1,0 +1,109 @@
+/*
+┌────────────────────────────────────────────────────────────────────────┐
+│  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
+│  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
+│  Copyright (c) 2025 Ivan Murzak                                        │
+│  Licensed under the Apache License, Version 2.0.                       │
+│  See the LICENSE file in the project root for more information.        │
+└────────────────────────────────────────────────────────────────────────┘
+*/
+
+#nullable enable
+using com.IvanMurzak.McpPlugin.Common;
+
+namespace com.IvanMurzak.McpPlugin.AgentConfig
+{
+    /// <summary>
+    /// The operating-system family a configurator builds a config for. Engine-agnostic
+    /// replacement for the <c>#if UNITY_EDITOR_WIN</c> / <c>#if UNITY_EDITOR_OSX</c>
+    /// compile-time branches in the original Unity implementation. The consuming engine
+    /// detects the host OS and passes the matching value.
+    /// </summary>
+    public enum OperatingSystemKind
+    {
+        Windows,
+        MacOS,
+        Linux
+    }
+
+    /// <summary>
+    /// Where the plugin connects: a locally launched server or the ai-game.dev cloud.
+    /// Engine-agnostic replacement for the Unity editor's <c>ConnectionMode</c>. In Cloud
+    /// mode authorization is always required (the cloud server enforces it).
+    /// </summary>
+    public enum ConnectionMode
+    {
+        Local,
+        Cloud
+    }
+
+    /// <summary>
+    /// All the engine-supplied values a configurator needs to build an MCP config entry.
+    /// Replaces the Unity statics (<c>UnityMcpPluginEditor.Port</c>, <c>.Host</c>,
+    /// <c>.Token</c>, …, and <c>McpServerManager.ExecutableFullPath</c>) the original
+    /// implementation read from. The consuming engine constructs this and hands it to the
+    /// registry / configurators; nothing here touches an editor UI or engine runtime type.
+    /// </summary>
+    public sealed class AgentConfiguratorSettings
+    {
+        /// <summary>Host OS the config is being generated for (drives per-OS config-file locations).</summary>
+        public OperatingSystemKind OperatingSystem { get; }
+
+        /// <summary>Absolute path to the consuming project's root (where project-local config files live).</summary>
+        public string ProjectRootPath { get; }
+
+        /// <summary>Absolute path to the MCP server executable (stdio transport <c>command</c>).</summary>
+        public string ExecutableFullPath { get; }
+
+        /// <summary>The MCP server port (stdio transport arg).</summary>
+        public int Port { get; }
+
+        /// <summary>Plugin timeout in milliseconds (stdio transport arg).</summary>
+        public int TimeoutMs { get; }
+
+        /// <summary>The streamableHttp server URL (http transport <c>url</c>).</summary>
+        public string Host { get; }
+
+        /// <summary>Bearer token, or empty/null when auth is not configured.</summary>
+        public string? Token { get; }
+
+        /// <summary>Whether the plugin connects to a local server or the cloud.</summary>
+        public ConnectionMode ConnectionMode { get; }
+
+        /// <summary>Whether bearer-token auth is required (independent of cloud enforcement).</summary>
+        public Consts.MCP.Server.AuthOption AuthOption { get; }
+
+        public AgentConfiguratorSettings(
+            OperatingSystemKind operatingSystem,
+            string projectRootPath,
+            string executableFullPath,
+            int port,
+            int timeoutMs,
+            string host,
+            string? token = null,
+            ConnectionMode connectionMode = ConnectionMode.Local,
+            Consts.MCP.Server.AuthOption authOption = Consts.MCP.Server.AuthOption.none)
+        {
+            OperatingSystem = operatingSystem;
+            ProjectRootPath = projectRootPath;
+            ExecutableFullPath = executableFullPath;
+            Port = port;
+            TimeoutMs = timeoutMs;
+            Host = host;
+            Token = token;
+            ConnectionMode = connectionMode;
+            AuthOption = authOption;
+        }
+
+        /// <summary>True when HTTP authorization should be injected (cloud always requires it).</summary>
+        public bool IsHttpAuthRequired =>
+            ConnectionMode == ConnectionMode.Cloud || AuthOption == Consts.MCP.Server.AuthOption.required;
+
+        /// <summary>True when STDIO authorization (token arg) should be injected.</summary>
+        public bool IsStdioAuthRequired =>
+            AuthOption == Consts.MCP.Server.AuthOption.required;
+
+        /// <summary>Convenience: <see cref="OperatingSystem"/> is <see cref="OperatingSystemKind.Windows"/>.</summary>
+        public bool IsWindows => OperatingSystem == OperatingSystemKind.Windows;
+    }
+}
