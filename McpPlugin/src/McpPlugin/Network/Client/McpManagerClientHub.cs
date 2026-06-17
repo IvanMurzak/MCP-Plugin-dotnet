@@ -18,6 +18,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using R3;
 using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
@@ -38,12 +39,16 @@ namespace com.IvanMurzak.McpPlugin
             ILogger<McpManagerClientHub> logger,
             Version apiVersion,
             IHubConnectionProvider hubConnectionProvider,
-            IClientMcpManager mcpManager)
+            IClientMcpManager mcpManager,
+            IOptions<ConnectionConfig> connectionConfig)
             : base(
                 logger: logger,
                 apiVersion: apiVersion,
                 endpoint: Consts.Hub.RemoteApp,
-                hubConnectionProvider: hubConnectionProvider)
+                hubConnectionProvider: hubConnectionProvider,
+                // Opt-in bounded reconnect (0 = unlimited/historical). The Godot addon sets this > 0 to settle an
+                // unreachable server so a C# hot-reload is clean (godot#78513); Unity/Unreal leave it 0.
+                maxConsecutiveConnectionFailures: connectionConfig?.Value?.MaxConsecutiveConnectionFailures ?? 0)
         {
             _mcpManager = mcpManager ?? throw new ArgumentNullException(nameof(mcpManager));
         }

@@ -83,12 +83,13 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// Convenience constructor that creates a <see cref="ConnectionManager"/> internally.
         /// </summary>
-        public BaseHubConnector(ILogger logger, Version apiVersion, string endpoint, IHubConnectionProvider hubConnectionProvider)
+        public BaseHubConnector(ILogger logger, Version apiVersion, string endpoint, IHubConnectionProvider hubConnectionProvider, int maxConsecutiveConnectionFailures = 0)
             : this(logger, apiVersion, new ConnectionManager(
                 logger ?? throw new ArgumentNullException(nameof(logger)),
                 apiVersion ?? throw new ArgumentNullException(nameof(apiVersion)),
                 endpoint ?? throw new ArgumentNullException(nameof(endpoint)),
-                hubConnectionProvider ?? throw new ArgumentNullException(nameof(hubConnectionProvider))))
+                hubConnectionProvider ?? throw new ArgumentNullException(nameof(hubConnectionProvider)),
+                maxConsecutiveConnectionFailures))
         {
         }
 

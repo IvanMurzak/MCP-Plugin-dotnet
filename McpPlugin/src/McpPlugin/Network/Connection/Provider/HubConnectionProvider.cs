@@ -55,20 +55,24 @@ namespace com.IvanMurzak.McpPlugin
                         };
 
 #if NET5_0_OR_GREATER
-                        // Bound the transport CONNECT so an unreachable / black-holed endpoint fails in a few
-                        // seconds instead of hanging ~30s on the OS TCP connect. With the bounded reconnect in
-                        // StartConnectionLoop (MaxConsecutiveConnectionFailures), this lets an unreachable server
-                        // settle quickly into idle-Disconnected instead of keeping a long negotiate in-flight — a
-                        // recurring godotengine/godot#78513 hot-reload pin for a collectible-ALC consumer. Reachable
-                        // servers connect well under the timeout, so they are unaffected. SocketsHttpHandler is a
-                        // .NET Core type (absent on the netstandard2.1 / Unity target, which is not a collectible-ALC
-                        // host with this issue), so the connect-timeout is .NET-Core-only.
-                        options.HttpMessageHandlerFactory = inner =>
+                        // OPT-IN transport CONNECT timeout (ConnectionConfig.ConnectTimeoutSeconds > 0): make an
+                        // unreachable / black-holed endpoint fail in a few seconds instead of hanging ~30s on the OS
+                        // TCP connect. With the opt-in bounded reconnect (MaxConsecutiveConnectionFailures), this lets
+                        // an unreachable server settle quickly into idle-Disconnected instead of keeping a long
+                        // negotiate in-flight — a recurring godotengine/godot#78513 hot-reload pin for a collectible-
+                        // ALC consumer (the Godot addon opts in). Default (0) leaves the framework default, so
+                        // Unity/Unreal are unchanged. SocketsHttpHandler is a .NET Core type (absent on the
+                        // netstandard2.1 / Unity target), so this is .NET-Core-only.
+                        var connectTimeoutSeconds = connectionConfig.ConnectTimeoutSeconds;
+                        if (connectTimeoutSeconds > 0)
                         {
-                            if (inner is SocketsHttpHandler sockets)
-                                sockets.ConnectTimeout = TimeSpan.FromSeconds(5);
-                            return inner;
-                        };
+                            options.HttpMessageHandlerFactory = inner =>
+                            {
+                                if (inner is SocketsHttpHandler sockets)
+                                    sockets.ConnectTimeout = TimeSpan.FromSeconds(connectTimeoutSeconds);
+                                return inner;
+                            };
+                        }
 #endif
                     })
                     .WithAutomaticReconnect(new FixedRetryPolicy(TimeSpan.FromSeconds(10), maxRetries: 3))
