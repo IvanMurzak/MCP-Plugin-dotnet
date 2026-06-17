@@ -132,6 +132,18 @@ namespace com.IvanMurzak.McpPlugin
             _connectionManager.DisconnectImmediate();
         }
 
+        public bool WaitForImmediateTeardown(TimeSpan timeout)
+        {
+            if (_isDisposed.Value)
+            {
+                _logger.LogWarning("{method} called on disposed object. Ignoring.",
+                    nameof(WaitForImmediateTeardown));
+                return true;
+            }
+
+            return _connectionManager.WaitForImmediateTeardown(timeout);
+        }
+
         public Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request) => PerformVersionHandshake(request, _cancellationTokenSource.Token);
         public async Task<VersionHandshakeResponse> PerformVersionHandshake(RequestVersionHandshake request, CancellationToken cancellationToken = default)
         {

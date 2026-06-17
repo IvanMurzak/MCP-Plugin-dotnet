@@ -35,5 +35,14 @@ namespace com.IvanMurzak.McpPlugin
         /// Use this during Unity assembly reload or other critical shutdown scenarios.
         /// </summary>
         void DisconnectImmediate();
+
+        /// <summary>
+        /// Bounded-block until the most recent <see cref="DisconnectImmediate"/>'s background transport
+        /// disposal completes, so a caller on a reload/AssemblyLoadContext-unload thread can ensure the
+        /// transport's threads/handles (HttpClient pool timer, WebSocket receive loop) are released before
+        /// the unload — addressing godotengine/godot#78513. Returns true if the disposal completed within
+        /// <paramref name="timeout"/> (or nothing was pending); false on timeout/error.
+        /// </summary>
+        bool WaitForImmediateTeardown(TimeSpan timeout);
     }
 }

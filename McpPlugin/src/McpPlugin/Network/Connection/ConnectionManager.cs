@@ -47,6 +47,14 @@ namespace com.IvanMurzak.McpPlugin
         private CancellationTokenSource? internalCts;
         private volatile Task<bool>? _ongoingConnectionTask;
 
+        /// <summary>
+        /// Tracks the background HubConnection disposal dispatched by <see cref="DisconnectImmediateCore"/>.
+        /// Bounded-joinable via <see cref="WaitForImmediateTeardown"/> so a caller on a reload/
+        /// AssemblyLoadContext-unload thread can wait for the transport's threads/handles to be released
+        /// before the unload (addressing godotengine/godot#78513).
+        /// </summary>
+        private Task? _pendingImmediateTeardown;
+
         public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _connectionStateReadOnly;
         public ReadOnlyReactiveProperty<HubConnection?> HubConnection => _hubConnectionReadOnly;
         public ReadOnlyReactiveProperty<bool> KeepConnected => _keepConnectedReadOnly;
