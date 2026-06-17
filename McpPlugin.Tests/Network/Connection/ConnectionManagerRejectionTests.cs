@@ -118,6 +118,32 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             cm.AttemptCount.ShouldBeGreaterThan(0, "Should have attempted at least once");
         }
 
+        [Fact]
+        public async Task Connect_StopsAfterConsecutiveConnectionFailures_OnItsOwn()
+        {
+            // godotengine/godot#78513 regression: an UNREACHABLE endpoint (AttemptConnection always false) must
+            // NOT be retried forever. A perpetual reconnect keeps a fresh negotiate/connect in-flight every retry
+            // window; a consumer hosted in a COLLECTIBLE AssemblyLoadContext (the Godot editor addon) that performs
+            // a C# hot-reload landing on one of those in-flight negotiates cannot unload the context. The loop must
+            // GIVE UP on its own after MaxConsecutiveConnectionFailures so the connection settles into idle-
+            // Disconnected (no in-flight transport work), making reloads after it clean.
+            await using var cm = new NeverConnectsManager(
+                _logger, _testVersion, _testEndpoint, _mockProvider.Object
+            );
+
+            // A generous CTS that must NEVER fire — the loop has to terminate via the failure cap, not the token.
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var result = await cm.Connect(cts.Token);
+
+            result.ShouldBeFalse("Connection should fail (server unreachable)");
+            cts.Token.IsCancellationRequested.ShouldBeFalse(
+                "The loop must give up ON ITS OWN via the failure cap, not be stopped by the CTS timeout");
+            cm.KeepConnected.CurrentValue.ShouldBeFalse(
+                "KeepConnected must be disabled once the consecutive-connection-failure cap is hit");
+            cm.AttemptCount.ShouldBe(4,
+                "Should stop after exactly MaxConsecutiveConnectionFailures (4) attempts");
+        }
+
         private static HubConnection CreateDummyHubConnection()
         {
             return new HubConnectionBuilder()

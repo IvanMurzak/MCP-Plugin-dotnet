@@ -365,6 +365,15 @@ namespace com.IvanMurzak.McpPlugin
         private const int MaxConsecutiveRejections = 3;
 
         /// <summary>
+        /// Maximum number of consecutive connection-ATTEMPT failures (endpoint unreachable / negotiate timeout)
+        /// before the connection loop gives up retrying. Bounds the perpetual reconnect so an unreachable server
+        /// does not keep a fresh negotiate in-flight indefinitely — which would otherwise be a recurring
+        /// godotengine/godot#78513 hot-reload pin for a collectible-ALC consumer. Reconnect can be re-initiated
+        /// once the server is reachable.
+        /// </summary>
+        private const int MaxConsecutiveConnectionFailures = 4;
+
+        /// <summary>
         /// If the server closes the connection within this duration after a successful handshake,
         /// it is counted as an immediate rejection (e.g. authorization failure).
         /// Protected to allow test subclasses to reduce the delay.
@@ -382,11 +391,14 @@ namespace com.IvanMurzak.McpPlugin
                 nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint);
 
             var consecutiveRejections = 0;
+            var consecutiveFailures = 0;
 
             while (!cancellationToken.IsCancellationRequested && _continueToReconnect.CurrentValue)
             {
                 if (await AttemptConnection(cancellationToken))
                 {
+                    consecutiveFailures = 0;
+
                     // Connection established — verify the server doesn't immediately close it.
                     // A server-side authorization rejection typically closes the WebSocket within
                     // milliseconds of the handshake completing.
@@ -431,6 +443,25 @@ namespace com.IvanMurzak.McpPlugin
                 {
                     // Connection attempt itself failed (server unreachable, timeout, etc.)
                     consecutiveRejections = 0;
+                    consecutiveFailures++;
+
+                    // Stop retrying an UNREACHABLE endpoint after a bounded number of consecutive failures.
+                    // Retrying forever keeps a fresh negotiate/connect in-flight every WaitBeforeRetry window; a
+                    // consumer hosted in a COLLECTIBLE AssemblyLoadContext (e.g. the Godot editor addon) that
+                    // performs a C# hot-reload landing on one of those in-flight negotiates cannot unload the
+                    // context ("Failed to unload assemblies", godotengine/godot#78513). Giving up settles the
+                    // connection into an idle Disconnected state (no in-flight transport work), so reloads after it
+                    // are clean. A user can re-initiate via Connect/EnsureConnection once the server is up. Mirrors
+                    // the existing MaxConsecutiveRejections auth-failure cap.
+                    if (consecutiveFailures >= MaxConsecutiveConnectionFailures)
+                    {
+                        _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} failed {count} times consecutively (endpoint unreachable). " +
+                            "Stopping reconnection attempts; reconnect once the server is reachable.",
+                            nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveFailures);
+                        _continueToReconnect.Value = false;
+                        _connectionState.Value = HubConnectionState.Disconnected;
+                        break;
+                    }
                 }
 
                 if (cancellationToken.IsCancellationRequested || !_continueToReconnect.CurrentValue)

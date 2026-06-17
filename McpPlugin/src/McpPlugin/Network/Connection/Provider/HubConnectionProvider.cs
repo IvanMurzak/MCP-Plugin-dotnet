@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Net.Http;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.ReflectorNet;
@@ -49,6 +50,19 @@ namespace com.IvanMurzak.McpPlugin
                             if (string.IsNullOrWhiteSpace(token))
                                 return Task.FromResult<string?>(null);
                             return Task.FromResult<string?>(token);
+                        };
+
+                        // Bound the transport CONNECT so an unreachable / black-holed endpoint fails in a few
+                        // seconds instead of hanging ~30s on the OS TCP connect. With the bounded reconnect in
+                        // StartConnectionLoop (MaxConsecutiveConnectionFailures), this lets an unreachable server
+                        // settle quickly into idle-Disconnected instead of keeping a long negotiate in-flight — a
+                        // recurring godotengine/godot#78513 hot-reload pin for a collectible-ALC consumer. Reachable
+                        // servers connect well under the timeout, so they are unaffected.
+                        options.HttpMessageHandlerFactory = inner =>
+                        {
+                            if (inner is SocketsHttpHandler sockets)
+                                sockets.ConnectTimeout = TimeSpan.FromSeconds(5);
+                            return inner;
                         };
                     })
                     .WithAutomaticReconnect(new FixedRetryPolicy(TimeSpan.FromSeconds(10), maxRetries: 3))
