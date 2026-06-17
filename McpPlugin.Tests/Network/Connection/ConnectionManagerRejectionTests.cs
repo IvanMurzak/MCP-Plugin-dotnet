@@ -118,6 +118,58 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             cm.AttemptCount.ShouldBeGreaterThan(0, "Should have attempted at least once");
         }
 
+        [Fact]
+        public async Task Connect_StopsAfterConsecutiveConnectionFailures_WhenOptedIn()
+        {
+            // godotengine/godot#78513 regression: when a consumer OPTS IN via
+            // ConnectionConfig.MaxConsecutiveConnectionFailures (> 0), an UNREACHABLE endpoint (AttemptConnection
+            // always false) must NOT be retried forever — a perpetual reconnect keeps a fresh negotiate in-flight,
+            // a hot-reload pin for a collectible-ALC host. The loop must GIVE UP on its own after the cap so the
+            // connection settles into idle-Disconnected (no in-flight transport work), making reloads after it clean.
+            await using var cm = new NeverConnectsManager(
+                _logger, _testVersion, _testEndpoint, _mockProvider.Object, maxConsecutiveConnectionFailures: 4
+            );
+
+            // A generous CTS that must NEVER fire — the loop has to terminate via the failure cap, not the token.
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var result = await cm.Connect(cts.Token);
+
+            result.ShouldBeFalse("Connection should fail (server unreachable)");
+            cts.Token.IsCancellationRequested.ShouldBeFalse(
+                "The loop must give up ON ITS OWN via the failure cap, not be stopped by the CTS timeout");
+            cm.KeepConnected.CurrentValue.ShouldBeFalse(
+                "KeepConnected must be disabled once the consecutive-connection-failure cap is hit");
+            cm.AttemptCount.ShouldBe(4,
+                "Should stop after exactly the opted-in cap (4) attempts");
+        }
+
+        [Fact]
+        public async Task Connect_RetriesUnlimited_ByDefault_WhenNotOptedIn()
+        {
+            // DEFAULT (cap == 0) must preserve the historical behaviour for Unity/Unreal: retry an unreachable
+            // endpoint FOREVER (until externally cancelled). Guards against the bounded reconnect leaking on by
+            // default and silently changing reconnection semantics for non-collectible-ALC hosts.
+            await using var cm = new NeverConnectsManager(
+                _logger, _testVersion, _testEndpoint, _mockProvider.Object   // no cap => 0 => unlimited
+            );
+
+            // The ONLY thing that can stop the loop here is the external CTS — there is no self-imposed cap.
+            // 3s (not 1s) for margin: the test base retries instantly, and under xUnit parallelism the tight spin
+            // can be briefly starved, so a too-short token could fire before the loop gets CPU.
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            var result = await cm.Connect(cts.Token);
+
+            result.ShouldBeFalse("Connection should fail (server unreachable)");
+            cts.Token.IsCancellationRequested.ShouldBeTrue(
+                "With the default (unlimited) cap the loop must run until the CTS cancels it, never giving up itself");
+            // Definitive "did not self-cap" signal: the opted-in cap path disables KeepConnected; the unlimited
+            // default must NOT — only external cancellation stopped it, so reconnection intent is preserved.
+            cm.KeepConnected.CurrentValue.ShouldBeTrue(
+                "Default (unlimited) retry must NOT disable KeepConnected on its own — only external cancellation stopped it");
+            cm.AttemptCount.ShouldBeGreaterThan(4,
+                "Unlimited retry must keep going PAST what the opted-in cap (4) would allow — proof of no self-cap");
+        }
+
         private static HubConnection CreateDummyHubConnection()
         {
             return new HubConnectionBuilder()
@@ -139,8 +191,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             protected override TimeSpan RejectionThreshold { get; } = TimeSpan.FromMilliseconds(50);
 
             protected FastConnectionManager(
-                ILogger logger, Common.Version version, string endpoint, IHubConnectionProvider provider)
-                : base(logger, version, endpoint, provider)
+                ILogger logger, Common.Version version, string endpoint, IHubConnectionProvider provider,
+                int maxConsecutiveConnectionFailures = 0)
+                : base(logger, version, endpoint, provider, maxConsecutiveConnectionFailures)
             {
             }
 
@@ -215,8 +268,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
 
             public NeverConnectsManager(
                 ILogger logger, Common.Version version, string endpoint,
-                IHubConnectionProvider provider)
-                : base(logger, version, endpoint, provider)
+                IHubConnectionProvider provider, int maxConsecutiveConnectionFailures = 0)
+                : base(logger, version, endpoint, provider, maxConsecutiveConnectionFailures)
             {
             }
 

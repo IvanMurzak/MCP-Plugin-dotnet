@@ -50,6 +50,62 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             _testEndpoint = "http://localhost:5000/hub";
         }
 
+        #region WaitForImmediateTeardown (godot#78513 background-joinable teardown)
+
+        [Fact]
+        public async Task WaitForImmediateTeardown_WithNothingPending_ReturnsTrue()
+        {
+            await using var connectionManager = new ConnectionManager(
+                _logger, _testVersion, _testEndpoint, _mockHubConnectionProvider.Object);
+
+            // No DisconnectImmediate has run, so there is no dispatched teardown task to join — the bounded
+            // wait must report "already settled" (true), never block for the timeout.
+            connectionManager.WaitForImmediateTeardown(TimeSpan.FromSeconds(1)).ShouldBeTrue();
+        }
+
+        [Fact]
+        public async Task DisconnectImmediate_ThenWaitForImmediateTeardown_BoundedJoinsWithoutDeadlock()
+        {
+            // godot#78513: DisconnectImmediate DISPATCHES the HubConnection disposal to a background thread
+            // (Task.Run, off any captured SynchronizationContext) instead of an unawaited fire-and-forget, and
+            // WaitForImmediateTeardown bounded-JOINS it — so a caller on the editor/ALC-unload thread can ensure
+            // the SignalR transport's threads/handles are released BEFORE the unload, and the join must NEVER
+            // deadlock (the disposal runs on the thread pool) and must stay within the timeout.
+            var mockConnection = CreateMockHubConnection();
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .ReturnsAsync(mockConnection);
+
+            await using var connectionManager = new ConnectionManager(
+                _logger, _testVersion, _testEndpoint, _mockHubConnectionProvider.Object);
+
+            using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2)))
+                await connectionManager.Connect(cts.Token);
+
+            connectionManager.DisconnectImmediate();
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var joined = connectionManager.WaitForImmediateTeardown(TimeSpan.FromSeconds(10));
+            sw.Stop();
+
+            joined.ShouldBeTrue(); // the dispatched disposal completed (a never-started HubConnection disposes fast)
+            sw.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(10)); // bounded — did not hit the cap / deadlock
+        }
+
+        [Fact]
+        public async Task WaitForImmediateTeardown_IsIdempotent_AndDoesNotThrow()
+        {
+            await using var connectionManager = new ConnectionManager(
+                _logger, _testVersion, _testEndpoint, _mockHubConnectionProvider.Object);
+
+            connectionManager.DisconnectImmediate();
+            // Safe to call repeatedly (teardown can reach it from more than one path).
+            connectionManager.WaitForImmediateTeardown(TimeSpan.FromSeconds(2)).ShouldBeTrue();
+            connectionManager.WaitForImmediateTeardown(TimeSpan.FromSeconds(2)).ShouldBeTrue();
+        }
+
+        #endregion
+
         #region Provider Interaction Tests
 
         [Fact]

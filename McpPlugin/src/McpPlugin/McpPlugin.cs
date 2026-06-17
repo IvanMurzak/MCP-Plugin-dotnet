@@ -308,6 +308,18 @@ namespace com.IvanMurzak.McpPlugin
             _mcpManagerHub?.DisconnectImmediate();
         }
 
+        public bool WaitForImmediateTeardown(TimeSpan timeout)
+        {
+            if (_isDisposed.Value)
+            {
+                _logger.LogWarning("{method} called but already disposed, ignored.",
+                    nameof(WaitForImmediateTeardown));
+                return true; // already disposed
+            }
+            _logger.LogDebug("{method} called.", nameof(WaitForImmediateTeardown));
+            return _mcpManagerHub?.WaitForImmediateTeardown(timeout) ?? true;
+        }
+
         public void Dispose()
         {
             if (!_isDisposed.TrySetTrue())

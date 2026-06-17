@@ -47,6 +47,14 @@ namespace com.IvanMurzak.McpPlugin
         private CancellationTokenSource? internalCts;
         private volatile Task<bool>? _ongoingConnectionTask;
 
+        /// <summary>
+        /// Tracks the background HubConnection disposal dispatched by <see cref="DisconnectImmediateCore"/>.
+        /// Bounded-joinable via <see cref="WaitForImmediateTeardown"/> so a caller on a reload/
+        /// AssemblyLoadContext-unload thread can wait for the transport's threads/handles to be released
+        /// before the unload (addressing godotengine/godot#78513).
+        /// </summary>
+        private Task? _pendingImmediateTeardown;
+
         public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _connectionStateReadOnly;
         public ReadOnlyReactiveProperty<HubConnection?> HubConnection => _hubConnectionReadOnly;
         public ReadOnlyReactiveProperty<bool> KeepConnected => _keepConnectedReadOnly;
@@ -69,11 +77,18 @@ namespace com.IvanMurzak.McpPlugin
         }
         public CancellationToken ConnectionCancellationToken => internalCts?.Token ?? CancellationToken.None;
 
-        public ConnectionManager(ILogger logger, Version apiVersion, string endpoint, IHubConnectionProvider hubConnectionBuilder)
+        /// <summary>
+        /// Opt-in cap on consecutive connection-attempt failures before the reconnect loop gives up. 0 = unlimited
+        /// (retry forever — the historical default). See <see cref="ConnectionConfig.MaxConsecutiveConnectionFailures"/>.
+        /// </summary>
+        private readonly int _maxConsecutiveConnectionFailures;
+
+        public ConnectionManager(ILogger logger, Version apiVersion, string endpoint, IHubConnectionProvider hubConnectionBuilder, int maxConsecutiveConnectionFailures = 0)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("{class}[{guid}] Ctor.", nameof(ConnectionManager), _guid);
 
+            _maxConsecutiveConnectionFailures = maxConsecutiveConnectionFailures;
             _apiVersion = apiVersion ?? throw new ArgumentNullException(nameof(apiVersion));
             _endpoint = endpoint ?? throw new ArgumentNullException(nameof(endpoint));
             _hubConnectionBuilder = hubConnectionBuilder ?? throw new ArgumentNullException(nameof(hubConnectionBuilder));

@@ -26,6 +26,25 @@ namespace com.IvanMurzak.McpPlugin
         public virtual bool KeepConnected { get; set; } = true;
 
         /// <summary>
+        /// Maximum number of CONSECUTIVE connection-attempt failures (endpoint unreachable / negotiate timeout)
+        /// before the reconnect loop GIVES UP (settles into idle-Disconnected; reconnect via Connect once the
+        /// server is reachable). <c>0</c> (the default) means UNLIMITED — retry forever, the historical behaviour
+        /// for Unity/Unreal hosts. Set a positive value to OPT IN to bounded reconnect: required by consumers
+        /// hosted in a COLLECTIBLE AssemblyLoadContext (the Godot editor addon), where a perpetual in-flight
+        /// negotiate is a hot-reload pin (godotengine/godot#78513). Mirrors the always-on auth-rejection cap.
+        /// </summary>
+        public virtual int MaxConsecutiveConnectionFailures { get; set; } = 0;
+
+        /// <summary>
+        /// Transport CONNECT timeout in seconds (SocketsHttpHandler.ConnectTimeout). <c>0</c> (the default) leaves
+        /// the framework default (~30s) — the historical behaviour. Set a positive value to make an unreachable
+        /// endpoint fail FAST instead of hanging on the OS TCP connect, so <see cref="MaxConsecutiveConnectionFailures"/>
+        /// is reached promptly. Reachable servers connect well under any sane value, so they are unaffected.
+        /// .NET-Core-only (the netstandard2.1 / Unity target has no SocketsHttpHandler and ignores this).
+        /// </summary>
+        public virtual int ConnectTimeoutSeconds { get; set; } = 0;
+
+        /// <summary>
         /// Token for authorization when connecting to the MCP server via SignalR.
         /// Set via command line arg 'mcp-plugin-token' or environment variable 'MCP_PLUGIN_TOKEN'.
         /// </summary>

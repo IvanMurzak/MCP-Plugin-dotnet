@@ -155,10 +155,37 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{class}[{guid}] {method} Performing immediate disconnect without waiting for cleanup.",
                 nameof(ConnectionManager), _guid, nameof(DisconnectImmediateCore));
 
-            // Fire-and-forget: let the OS/runtime clean up the socket. Exceptions are
-            // intentionally unobserved — this is an emergency path (domain reload) where
-            // spawning async work or blocking on results is unsafe.
-            _ = tempHubConnection.DisposeAsync();
+            // Background-dispatched disposal (no longer pure fire-and-forget). The disposal runs on the
+            // thread pool (Task.Run) with ConfigureAwait(false) so its continuations never capture the
+            // caller's SynchronizationContext — a later WaitForImmediateTeardown() can therefore
+            // bounded-block on _pendingImmediateTeardown from the editor/unload thread without deadlocking.
+            // This lets a reload/AssemblyLoadContext-unload path ensure the transport's threads/handles
+            // (HttpClient pool timer, WebSocket receive loop) are actually released before the unload
+            // (addressing godotengine/godot#78513). Exceptions are swallowed inside the task — this is an
+            // emergency path (domain reload) where unobserved failures are intentional.
+            var conn = tempHubConnection;
+            _pendingImmediateTeardown = Task.Run(async () =>
+            {
+                try { await conn.DisposeAsync().ConfigureAwait(false); }
+                catch { /* emergency reload path: swallow — unobserved exceptions are intentional here */ }
+            });
+        }
+
+        /// <summary>
+        /// Bounded-block until the most recent <see cref="DisconnectImmediate"/>'s background HubConnection
+        /// disposal completes, so a caller on a reload/AssemblyLoadContext-unload thread can ensure the
+        /// transport's threads/handles (HttpClient pool timer, WebSocket receive loop) are released before the
+        /// unload — addressing godotengine/godot#78513. The disposal runs on the thread pool (Task.Run), so
+        /// blocking here does NOT deadlock even when called from a thread with a captured SynchronizationContext
+        /// (e.g. the editor main thread). Returns true if the disposal completed within <paramref name="timeout"/>
+        /// (or nothing was pending); false on timeout/error.
+        /// </summary>
+        public bool WaitForImmediateTeardown(TimeSpan timeout)
+        {
+            var pending = _pendingImmediateTeardown;
+            if (pending == null) return true;
+            try { return pending.Wait(timeout); }
+            catch { return false; }
         }
 
         private async Task DisconnectInternal(CancellationToken cancellationToken)
