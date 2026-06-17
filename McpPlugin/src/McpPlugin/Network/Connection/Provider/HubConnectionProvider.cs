@@ -9,7 +9,9 @@
 */
 
 using System;
+#if NET5_0_OR_GREATER
 using System.Net.Http;
+#endif
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.ReflectorNet;
@@ -52,18 +54,22 @@ namespace com.IvanMurzak.McpPlugin
                             return Task.FromResult<string?>(token);
                         };
 
+#if NET5_0_OR_GREATER
                         // Bound the transport CONNECT so an unreachable / black-holed endpoint fails in a few
                         // seconds instead of hanging ~30s on the OS TCP connect. With the bounded reconnect in
                         // StartConnectionLoop (MaxConsecutiveConnectionFailures), this lets an unreachable server
                         // settle quickly into idle-Disconnected instead of keeping a long negotiate in-flight — a
                         // recurring godotengine/godot#78513 hot-reload pin for a collectible-ALC consumer. Reachable
-                        // servers connect well under the timeout, so they are unaffected.
+                        // servers connect well under the timeout, so they are unaffected. SocketsHttpHandler is a
+                        // .NET Core type (absent on the netstandard2.1 / Unity target, which is not a collectible-ALC
+                        // host with this issue), so the connect-timeout is .NET-Core-only.
                         options.HttpMessageHandlerFactory = inner =>
                         {
                             if (inner is SocketsHttpHandler sockets)
                                 sockets.ConnectTimeout = TimeSpan.FromSeconds(5);
                             return inner;
                         };
+#endif
                     })
                     .WithAutomaticReconnect(new FixedRetryPolicy(TimeSpan.FromSeconds(10), maxRetries: 3))
                     .WithKeepAliveInterval(TimeSpan.FromSeconds(30))
