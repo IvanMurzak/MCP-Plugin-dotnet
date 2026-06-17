@@ -45,6 +45,15 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         // The custom configurator cannot detect an MCP config on disk.
         public override bool IsConfigured(AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger = null) => false;
 
+        // No detectable config => always NotConfigured (never stale). Avoids the throwing
+        // CreateStdioConfig/CreateHttpConfig that the base GetStatus would otherwise invoke.
+        public override ConfiguratorStatus GetStatus(AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger = null)
+            => ConfiguratorStatus.NotConfigured;
+
+        // Mirrors Unity's CustomConfigurator.DisableLinksContainer() — the custom agent emits no
+        // download/tutorial links (its DownloadUrl "NA" is a placeholder, not a real link target).
+        public override IReadOnlyList<ConfigurationItem> BuildLinks() => System.Array.Empty<ConfigurationItem>();
+
         protected override IReadOnlyList<ConfigurationSection> BuildSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
         {

@@ -34,38 +34,50 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         /// <summary>
         /// Standard JSON stdio entry: <c>type=stdio</c>, <c>command</c> (path comparison),
-        /// <c>args</c>, removing <c>url</c>.
+        /// <c>args</c>, removing <c>url</c>. When <paramref name="disabled"/> is supplied an
+        /// extra required <c>disabled</c> flag is written (some agents — Kilo/Zoo — require it).
         /// </summary>
         public static JsonAiAgentConfig JsonStdio(
             string name,
             string configPath,
             AgentConfiguratorSettings settings,
             ILogger? logger,
-            string bodyPath = Consts.MCP.Server.DefaultBodyPath)
+            string bodyPath = Consts.MCP.Server.DefaultBodyPath,
+            bool? disabled = null)
         {
-            return new JsonAiAgentConfig(name, configPath, bodyPath, logger)
+            var config = new JsonAiAgentConfig(name, configPath, bodyPath, logger)
                 .SetProperty("type", JsonValue.Create("stdio")!, requiredForConfiguration: true)
                 .SetProperty("command", JsonValue.Create(settings.ExecutableFullPath.Replace('\\', '/'))!, requiredForConfiguration: true, comparison: ValueComparisonMode.Path)
                 .SetProperty("args", StdioArgs(settings), requiredForConfiguration: true)
                 .SetPropertyToRemove("url");
+            if (disabled.HasValue)
+                config.SetProperty("disabled", JsonValue.Create(disabled.Value)!, requiredForConfiguration: true);
+            return config;
         }
 
         /// <summary>
-        /// Standard JSON http entry: <c>type=http</c>, <c>url</c> (url comparison),
-        /// removing <c>command</c> + <c>args</c>.
+        /// Standard JSON http entry: <c>type</c> (default <c>http</c>; some agents require
+        /// <c>streamable-http</c>), <c>url</c> (url comparison), removing <c>command</c> +
+        /// <c>args</c>. When <paramref name="disabled"/> is supplied an extra required
+        /// <c>disabled</c> flag is written.
         /// </summary>
         public static JsonAiAgentConfig JsonHttp(
             string name,
             string configPath,
             AgentConfiguratorSettings settings,
             ILogger? logger,
-            string bodyPath = Consts.MCP.Server.DefaultBodyPath)
+            string bodyPath = Consts.MCP.Server.DefaultBodyPath,
+            string type = "http",
+            bool? disabled = null)
         {
-            return new JsonAiAgentConfig(name, configPath, bodyPath, logger)
-                .SetProperty("type", JsonValue.Create("http")!, requiredForConfiguration: true)
+            var config = new JsonAiAgentConfig(name, configPath, bodyPath, logger)
+                .SetProperty("type", JsonValue.Create(type)!, requiredForConfiguration: true)
                 .SetProperty("url", JsonValue.Create(settings.Host)!, requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
                 .SetPropertyToRemove("command")
                 .SetPropertyToRemove("args");
+            if (disabled.HasValue)
+                config.SetProperty("disabled", JsonValue.Create(disabled.Value)!, requiredForConfiguration: true);
+            return config;
         }
     }
 }
