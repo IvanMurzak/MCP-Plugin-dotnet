@@ -63,5 +63,13 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         protected override IReadOnlyList<ConfigurationSection> BuildSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
             => DefaultConfigurationSections(settings, transport, logger);
+
+        protected override IReadOnlyList<ConfigurationSection> BuildTroubleshootingSections(
+            AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
+            => TroubleshootingSection(
+                "- Ensure the configuration file has no JSON syntax errors.",
+                "- Open Cline settings in VS Code, go to 'MCP Servers' to check server status.",
+                "- The configuration is global and shared across all VS Code projects.",
+                "- Restart VS Code after configuration changes.");
     }
 }

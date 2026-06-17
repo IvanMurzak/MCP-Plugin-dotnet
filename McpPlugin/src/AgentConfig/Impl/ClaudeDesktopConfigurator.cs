@@ -41,5 +41,17 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         protected override IReadOnlyList<ConfigurationSection> BuildSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
             => DefaultConfigurationSections(settings, transport, logger);
+
+        // Claude Desktop only supports STDIO; Unity emits the Troubleshooting foldout for stdio
+        // only (the HTTP path shows a "no HTTP support" alert instead, no troubleshooting).
+        protected override IReadOnlyList<ConfigurationSection> BuildTroubleshootingSections(
+            AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
+            => transport == TransportMethod.stdio
+                ? TroubleshootingSection(
+                    "- Claude Desktop may launch two MCP server instances instead of one. If you must use Claude Desktop, manually terminate one of the instances. This behavior is unreliable — consider switching to Claude Code.",
+                    "- Claude Desktop may not detect runtime updates to MCP tools. Ensure Claude Desktop reads the MCP tools on startup.",
+                    "- Start the plugin first; the connection status should read 'Connecting...'",
+                    "- Restart Claude Desktop after configuration changes")
+                : System.Array.Empty<ConfigurationSection>();
     }
 }

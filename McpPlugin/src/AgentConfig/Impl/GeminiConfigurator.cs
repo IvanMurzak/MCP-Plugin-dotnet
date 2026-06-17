@@ -36,5 +36,20 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         protected override IReadOnlyList<ConfigurationSection> BuildSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
             => DefaultConfigurationSections(settings, transport, logger);
+
+        // STDIO carries the extra "--debug flag" hint (it helps the stdio transport work with
+        // Gemini); HTTP omits it. Mirrors Unity's per-transport Troubleshooting content.
+        protected override IReadOnlyList<ConfigurationSection> BuildTroubleshootingSections(
+            AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
+            => transport == TransportMethod.stdio
+                ? TroubleshootingSection(
+                    "- Ensure Gemini CLI is installed and accessible from terminal",
+                    "- Start Gemini with --debug flag, it helps MCP server to work properly with Gemini in stdio transport mode.",
+                    "- Ensure MCP configuration file doesn't have syntax errors",
+                    "- Restart Gemini after configuration changes")
+                : TroubleshootingSection(
+                    "- Ensure Gemini CLI is installed and accessible from terminal",
+                    "- Ensure MCP configuration file doesn't have syntax errors",
+                    "- Restart Gemini after configuration changes");
     }
 }

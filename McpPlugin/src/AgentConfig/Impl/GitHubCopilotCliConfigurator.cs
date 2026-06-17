@@ -43,5 +43,13 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         protected override IReadOnlyList<ConfigurationSection> BuildSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
             => DefaultConfigurationSections(settings, transport, logger);
+
+        protected override IReadOnlyList<ConfigurationSection> BuildTroubleshootingSections(
+            AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
+            => TroubleshootingSection(
+                "- Ensure Copilot CLI is launched from the project root (the folder containing '.mcp.json')",
+                "- Requires GitHub Copilot CLI v1.0.12+ which discovers '.mcp.json' at project level",
+                "- Ensure MCP configuration file doesn't have syntax errors",
+                "- Restart Copilot CLI after configuration changes");
     }
 }

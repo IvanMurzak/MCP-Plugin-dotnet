@@ -90,5 +90,14 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
                 })
             };
         }
+
+        protected override IReadOnlyList<ConfigurationSection> BuildTroubleshootingSections(
+            AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
+            => TroubleshootingSection(
+                "- Ensure Claude Code CLI is installed and accessible from terminal",
+                "- Ensure Claude Code CLI is started in the same folder where the project is located. This folder must contain the Assets folder inside",
+                "- Ensure Claude Code is configured with the same port as the plugin right now",
+                "- Check that the configuration file .mcp.json exists",
+                "- Restart Claude Code after configuration changes");
     }
 }

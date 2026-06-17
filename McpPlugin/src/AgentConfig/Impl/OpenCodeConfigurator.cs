@@ -71,5 +71,12 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         protected override IReadOnlyList<ConfigurationSection> BuildSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
             => DefaultConfigurationSections(settings, transport, logger);
+
+        protected override IReadOnlyList<ConfigurationSection> BuildTroubleshootingSections(
+            AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
+            => TroubleshootingSection(
+                "- Ensure Open Code CLI is installed and accessible from terminal",
+                "- Ensure Open Code CLI is launched from the project root folder (the folder must contain the Assets folder inside)",
+                "- Restart Open Code after configuration changes");
     }
 }
