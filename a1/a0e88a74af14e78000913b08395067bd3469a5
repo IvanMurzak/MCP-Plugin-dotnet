@@ -1,0 +1,31 @@
+McpPlugin.Tests/Network/Connection/ConnectionManagerTests.cs
+  s_88692866f8a457::t_e2354497d94e41 53-108
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionManager.cs
+  s_88692866f8a457::t_12ab7ae6bfbc72 50-57
+McpPlugin/src/McpPlugin/Interfaces/IConnectServerHub.cs
+  s_88692866f8a457::t_153d1eb91aaf9d 31-39
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionManager.Disconnect.cs
+  s_88692866f8a457::t_f66c98768de516 158-188
+McpPlugin/src/McpPlugin/Interfaces/IConnection.cs
+  s_88692866f8a457::t_2ec9074327b40d 38-46
+McpPlugin/src/McpPlugin/McpPlugin.cs
+  s_88692866f8a457::t_6c9d0edfbdfbfe 311-322
+McpPlugin/src/McpPlugin/Network/Client/BaseHubConnector.cs
+  s_88692866f8a457::t_76fb42b867e0dc 135-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "a1a0e88a74af14e78000913b08395067bd3469a5",
+  "prompts": {},
+  "sessions": {
+    "s_88692866f8a457": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2977a50-af66-49ec-9bc3-af770d89759d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
