@@ -441,5 +441,332 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
                 .SetProperty("command", "C:/Users/test/app.exe", requiredForConfiguration: true)
                 .IsConfigured().ShouldBeFalse();
         }
+
+        // ── Cases below ported verbatim from Unity-MCP's TomlAiAgentConfigTests to restore the
+        //    full matrix (NUnit Assert → Shouldly; UnityTest coroutine shape → plain [Fact];
+        //    test logic and data unchanged). ───────────────────────────────────────────────
+
+        [Fact]
+        public void IsConfigured_NonExistentFile_ReturnsFalse()
+        {
+            var nonExistentPath = Path.Combine(Path.GetTempPath(), "non_existent_config.toml");
+            CreateStdioConfig(nonExistentPath).IsConfigured().ShouldBeFalse();
+        }
+
+        [Fact]
+        public void ExpectedFileContent_ContainsCorrectSection()
+        {
+            var content = CreateStdioConfig(TempConfigPath).ExpectedFileContent;
+            content.ShouldContain($"[mcp_servers.{AiAgentConfig.DefaultMcpServerName}]");
+            content.ShouldContain("command = ");
+            content.ShouldContain("args = [");
+        }
+
+        [Fact]
+        public void ExpectedFileContent_HttpConfig_ContainsUrl()
+        {
+            var content = CreateHttpConfig(TempConfigPath).ExpectedFileContent;
+            content.ShouldContain($"[mcp_servers.{AiAgentConfig.DefaultMcpServerName}]");
+            content.ShouldContain($"url = \"{Host}\"");
+            content.ShouldNotContain("command = ");
+            content.ShouldNotContain("args = [");
+        }
+
+        [Fact]
+        public void IsConfigured_ExistingBoolArray_MatchesCorrectly()
+        {
+            var sectionName = $"mcp_servers.{AiAgentConfig.DefaultMcpServerName}";
+            File.WriteAllText(TempConfigPath, $"[{sectionName}]\nflags = [true, false, true]\n");
+            new TomlAiAgentConfig("Test", TempConfigPath, "mcp_servers")
+                .SetProperty("flags", new[] { true, false, true }, requiredForConfiguration: true)
+                .IsConfigured().ShouldBeTrue();
+        }
+
+        [Fact]
+        public void IsConfigured_ExistingStringArray_MatchesCorrectly()
+        {
+            var sectionName = $"mcp_servers.{AiAgentConfig.DefaultMcpServerName}";
+            File.WriteAllText(TempConfigPath, $"[{sectionName}]\nnames = [\"alpha\", \"beta\", \"gamma\"]\n");
+            new TomlAiAgentConfig("Test", TempConfigPath, "mcp_servers")
+                .SetProperty("names", new[] { "alpha", "beta", "gamma" }, requiredForConfiguration: true)
+                .IsConfigured().ShouldBeTrue();
+        }
+
+        [Fact]
+        public void IsConfigured_MismatchedBoolArray_ReturnsFalse()
+        {
+            var sectionName = $"mcp_servers.{AiAgentConfig.DefaultMcpServerName}";
+            File.WriteAllText(TempConfigPath, $"[{sectionName}]\nflags = [false, false]\n");
+            new TomlAiAgentConfig("Test", TempConfigPath, "mcp_servers")
+                .SetProperty("flags", new[] { true, false, true }, requiredForConfiguration: true)
+                .IsConfigured().ShouldBeFalse();
+        }
+
+        [Fact]
+        public void Configure_ExistingFileWithIntArray_MergesCorrectly()
+        {
+            var sectionName = $"mcp_servers.{AiAgentConfig.DefaultMcpServerName}";
+            File.WriteAllText(TempConfigPath, $"[{sectionName}]\nports = [1, 2, 3]\ncustom_prop = \"keep\"\n");
+            new TomlAiAgentConfig("Test", TempConfigPath, "mcp_servers")
+                .SetProperty("ports", new[] { 8080, 8081 }, requiredForConfiguration: true)
+                .Configure();
+
+            var content = File.ReadAllText(TempConfigPath);
+            content.ShouldContain("ports = [8080,8081]");
+            content.ShouldContain("custom_prop = \"keep\"");
+        }
+
+        [Fact]
+        public void Configure_EmptyArray_HandledCorrectly()
+        {
+            var sectionName = $"mcp_servers.{AiAgentConfig.DefaultMcpServerName}";
+            File.WriteAllText(TempConfigPath, $"[{sectionName}]\nempty = []\n");
+            var config = new TomlAiAgentConfig("Test", TempConfigPath, "mcp_servers")
+                .SetProperty("value", 42, requiredForConfiguration: true);
+            config.Configure();
+            config.IsConfigured().ShouldBeTrue();
+        }
+
+        [Fact]
+        public void IsConfigured_ExistingNegativeIntArray_MatchesCorrectly()
+        {
+            var sectionName = $"mcp_servers.{AiAgentConfig.DefaultMcpServerName}";
+            File.WriteAllText(TempConfigPath, $"[{sectionName}]\noffsets = [-10, 0, 10]\n");
+            new TomlAiAgentConfig("Test", TempConfigPath, "mcp_servers")
+                .SetProperty("offsets", new[] { -10, 0, 10 }, requiredForConfiguration: true)
+                .IsConfigured().ShouldBeTrue();
+        }
+
+        [Fact]
+        public void Configure_NewFile_PropertiesInAlphabeticalOrder()
+        {
+            File.Delete(TempConfigPath);
+            new TomlAiAgentConfig("Test", TempConfigPath, "mcp_servers")
+                .SetProperty("zebra", "last")
+                .SetProperty("alpha", "first")
+                .SetProperty("middle", "mid")
+                .Configure();
+
+            var content = File.ReadAllText(TempConfigPath);
+            var alphaIdx = content.IndexOf("alpha = ", System.StringComparison.Ordinal);
+            var middleIdx = content.IndexOf("middle = ", System.StringComparison.Ordinal);
+            var zebraIdx = content.IndexOf("zebra = ", System.StringComparison.Ordinal);
+
+            alphaIdx.ShouldBeGreaterThanOrEqualTo(0);
+            middleIdx.ShouldBeGreaterThanOrEqualTo(0);
+            zebraIdx.ShouldBeGreaterThanOrEqualTo(0);
+            alphaIdx.ShouldBeLessThan(middleIdx);
+            middleIdx.ShouldBeLessThan(zebraIdx);
+        }
+
+        [Fact]
+        public void Configure_ExistingSection_MergedPropertiesInAlphabeticalOrder()
+        {
+            var sectionName = $"mcp_servers.{AiAgentConfig.DefaultMcpServerName}";
+            File.WriteAllText(TempConfigPath, $"[{sectionName}]\nexisting = \"value\"\n");
+            new TomlAiAgentConfig("Test", TempConfigPath, "mcp_servers")
+                .SetProperty("zebra", "last")
+                .SetProperty("alpha", "first")
+                .Configure();
+
+            var content = File.ReadAllText(TempConfigPath);
+            var alphaIdx = content.IndexOf("alpha = ", System.StringComparison.Ordinal);
+            var existingIdx = content.IndexOf("existing = ", System.StringComparison.Ordinal);
+            var zebraIdx = content.IndexOf("zebra = ", System.StringComparison.Ordinal);
+
+            alphaIdx.ShouldBeGreaterThanOrEqualTo(0);
+            existingIdx.ShouldBeGreaterThanOrEqualTo(0);
+            zebraIdx.ShouldBeGreaterThanOrEqualTo(0);
+            alphaIdx.ShouldBeLessThan(existingIdx);
+            existingIdx.ShouldBeLessThan(zebraIdx);
+        }
+
+        [Fact]
+        public void Configure_Http_RemovesDuplicateByUrl()
+        {
+            File.WriteAllText(TempConfigPath, $"[mcp_servers.my-custom-name]\nurl = \"{Host}\"\n");
+            CreateHttpConfig(TempConfigPath).Configure();
+
+            var content = File.ReadAllText(TempConfigPath);
+            content.ShouldNotContain("[mcp_servers.my-custom-name]");
+            content.ShouldContain($"[mcp_servers.{AiAgentConfig.DefaultMcpServerName}]");
+        }
+
+        [Fact]
+        public void Configure_Http_DefaultIdentityKeys_DoNotRemoveByServerUrl()
+        {
+            File.WriteAllText(TempConfigPath, $"[mcp_servers.my-custom-name]\nserverUrl = \"{Host}\"\n");
+            CreateHttpConfig(TempConfigPath).Configure();
+
+            var content = File.ReadAllText(TempConfigPath);
+            content.ShouldContain("[mcp_servers.my-custom-name]");
+            content.ShouldContain($"[mcp_servers.{AiAgentConfig.DefaultMcpServerName}]");
+        }
+
+        [Fact]
+        public void Configure_PreservesUnrelatedServers()
+        {
+            File.WriteAllText(TempConfigPath, "[mcp_servers.other-server]\ncommand = \"completely-different-command\"\nargs = [\"--some-arg\"]\n");
+            CreateStdioConfig(TempConfigPath).Configure();
+
+            var content = File.ReadAllText(TempConfigPath);
+            content.ShouldContain("[mcp_servers.other-server]");
+            content.ShouldContain($"[mcp_servers.{AiAgentConfig.DefaultMcpServerName}]");
+        }
+
+        [Fact]
+        public void IsDetected_DuplicateByCommand_ReturnsTrue()
+        {
+            var executable = ExecutableFullPath.Replace('\\', '/');
+            File.WriteAllText(TempConfigPath, $"[mcp_servers.my-custom-name]\ncommand = \"{executable}\"\nargs = [\"--old-arg\"]\n");
+            CreateStdioConfig(TempConfigPath).IsDetected().ShouldBeTrue();
+        }
+
+        [Fact]
+        public void IsDetected_DuplicateByUrl_ReturnsTrue()
+        {
+            File.WriteAllText(TempConfigPath, $"[mcp_servers.my-custom-name]\nurl = \"{Host}\"\n");
+            CreateHttpConfig(TempConfigPath).IsDetected().ShouldBeTrue();
+        }
+
+        [Fact]
+        public void Unconfigure_DeprecatedName_RemovesIt()
+        {
+            File.WriteAllText(TempConfigPath, "[mcp_servers.Unity-MCP]\ncommand = \"/some/path\"\n");
+            CreateStdioConfig(TempConfigPath).Unconfigure().ShouldBeTrue();
+            File.ReadAllText(TempConfigPath).ShouldNotContain("[mcp_servers.Unity-MCP]");
+        }
+
+        [Fact]
+        public void Unconfigure_DuplicateByCommand_RemovesIt()
+        {
+            var executable = ExecutableFullPath.Replace('\\', '/');
+            File.WriteAllText(TempConfigPath, $"[mcp_servers.my-custom-name]\ncommand = \"{executable}\"\nargs = [\"--old-arg\"]\n");
+            CreateStdioConfig(TempConfigPath).Unconfigure().ShouldBeTrue();
+            File.ReadAllText(TempConfigPath).ShouldNotContain("[mcp_servers.my-custom-name]");
+        }
+
+        [Fact]
+        public void Configure_ExistingSection_PreservesDateValue()
+        {
+            var sectionName = $"mcp_servers.{AiAgentConfig.DefaultMcpServerName}";
+            File.WriteAllText(TempConfigPath, $"[{sectionName}]\ncommand = \"old-command\"\ncreated = 2024-01-01\n");
+            CreateStdioConfig(TempConfigPath).Configure();
+
+            var content = File.ReadAllText(TempConfigPath);
+            content.ShouldContain("created = 2024-01-01");
+            content.ShouldNotContain("created = \"2024-01-01\"");
+        }
+
+        [Fact]
+        public void Configure_ExistingSection_InlineCommentOnBool()
+        {
+            var sectionName = $"mcp_servers.{AiAgentConfig.DefaultMcpServerName}";
+            File.WriteAllText(TempConfigPath, $"[{sectionName}]\ncommand = \"old-command\"\nenabled = true # some flag\n");
+            CreateStdioConfig(TempConfigPath).Configure();
+
+            var content = File.ReadAllText(TempConfigPath);
+            content.ShouldContain("enabled = true");
+            content.ShouldNotContain("# some flag");
+            content.ShouldNotContain("enabled = \"");
+        }
+
+        [Fact]
+        public void Configure_ExistingSection_InlineCommentOnQuotedString()
+        {
+            var sectionName = $"mcp_servers.{AiAgentConfig.DefaultMcpServerName}";
+            File.WriteAllText(TempConfigPath, $"[{sectionName}]\ncommand = \"old-command\"\nname = \"hello\" # some note\n");
+            CreateStdioConfig(TempConfigPath).Configure();
+
+            var content = File.ReadAllText(TempConfigPath);
+            content.ShouldContain("name = \"hello\"");
+            content.ShouldNotContain("# some note");
+        }
+
+        [Fact]
+        public void Configure_ExistingSection_InlineCommentOnStringArray()
+        {
+            var sectionName = $"mcp_servers.{AiAgentConfig.DefaultMcpServerName}";
+            File.WriteAllText(TempConfigPath, $"[{sectionName}]\ncommand = \"old-command\"\nnames = [\"alpha\", \"beta\"] # some list\n");
+            CreateStdioConfig(TempConfigPath).Configure();
+
+            var content = File.ReadAllText(TempConfigPath);
+            content.ShouldContain("names = [\"alpha\",\"beta\"]");
+            content.ShouldNotContain("# some list");
+        }
+
+        [Fact]
+        public void Configure_ExistingSection_InlineCommentOnIntArray()
+        {
+            var sectionName = $"mcp_servers.{AiAgentConfig.DefaultMcpServerName}";
+            File.WriteAllText(TempConfigPath, $"[{sectionName}]\ncommand = \"old-command\"\nports = [8080, 8081] # default ports\n");
+            CreateStdioConfig(TempConfigPath).Configure();
+
+            var content = File.ReadAllText(TempConfigPath);
+            content.ShouldContain("ports = [8080,8081]");
+            content.ShouldNotContain("# default ports");
+        }
+
+        [Fact]
+        public void Configure_ExistingSection_InlineCommentOnBoolArray()
+        {
+            var sectionName = $"mcp_servers.{AiAgentConfig.DefaultMcpServerName}";
+            File.WriteAllText(TempConfigPath, $"[{sectionName}]\ncommand = \"old-command\"\nflags = [true, false] # feature flags\n");
+            CreateStdioConfig(TempConfigPath).Configure();
+
+            var content = File.ReadAllText(TempConfigPath);
+            content.ShouldContain("flags = [true,false]");
+            content.ShouldNotContain("# feature flags");
+        }
+
+        [Fact]
+        public void IsConfigured_StringArrayWithInlineComment_MatchesCorrectly()
+        {
+            var sectionName = $"mcp_servers.{AiAgentConfig.DefaultMcpServerName}";
+            File.WriteAllText(TempConfigPath, $"[{sectionName}]\nnames = [\"alpha\", \"beta\"] # a comment\n");
+            new TomlAiAgentConfig("Test", TempConfigPath, "mcp_servers")
+                .SetProperty("names", new[] { "alpha", "beta" }, requiredForConfiguration: true)
+                .IsConfigured().ShouldBeTrue();
+        }
+
+        [Fact]
+        public void IsConfigured_WithInlineComments_ReturnsTrue()
+        {
+            var config = CreateStdioConfig(TempConfigPath);
+            config.Configure();
+
+            var lines = File.ReadAllLines(TempConfigPath);
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (lines[i].TrimStart().StartsWith("command =", System.StringComparison.Ordinal))
+                {
+                    lines[i] += " # path to executable";
+                    break;
+                }
+            }
+            File.WriteAllLines(TempConfigPath, lines);
+
+            config.IsConfigured().ShouldBeTrue();
+        }
+
+        [Fact]
+        public void IsConfigured_PathComparison_TrailingSlashIgnored()
+        {
+            var sectionName = $"mcp_servers.{AiAgentConfig.DefaultMcpServerName}";
+            File.WriteAllText(TempConfigPath, $"[{sectionName}]\ncommand = \"C:/Users/test/app/\"\n");
+            new TomlAiAgentConfig("Test", TempConfigPath, "mcp_servers")
+                .SetProperty("command", "C:/Users/test/app", requiredForConfiguration: true, comparison: ValueComparisonMode.Path)
+                .IsConfigured().ShouldBeTrue();
+        }
+
+        [Fact]
+        public void IsConfigured_UrlComparison_TrailingSlashIgnored()
+        {
+            var sectionName = $"mcp_servers.{AiAgentConfig.DefaultMcpServerName}";
+            File.WriteAllText(TempConfigPath, $"[{sectionName}]\nurl = \"http://localhost:5000/mcp/\"\n");
+            new TomlAiAgentConfig("Test", TempConfigPath, "mcp_servers")
+                .SetProperty("url", "http://localhost:5000/mcp", requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
+                .IsConfigured().ShouldBeTrue();
+        }
     }
 }
