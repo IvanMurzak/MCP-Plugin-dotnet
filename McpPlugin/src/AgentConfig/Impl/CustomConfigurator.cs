@@ -76,9 +76,22 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
             }
             else
             {
-                items.Add(ConfigurationItem.Description("Copy paste the json into your MCP Client to configure it."));
+                // HTTP: walk the user through running the shared MCP server in Docker, then
+                // configuring their client against it. Ported verbatim from Unity's
+                // CustomConfigurator HTTP path (McpServerManager.Docker*Command()).
+                items.Add(ConfigurationItem.Description("1. (First time or after port/version changes) Setup and start the MCP server using Docker."));
+                items.Add(ConfigurationItem.ReadOnlyField(DockerCommands.SetupRun(settings)));
+
+                items.Add(ConfigurationItem.Description("2. (Next time) Start the MCP server using Docker."));
+                items.Add(ConfigurationItem.ReadOnlyField(DockerCommands.Run(settings)));
+
+                items.Add(ConfigurationItem.Description("3. Copy paste the json into your MCP Client to configure it."));
                 items.Add(ConfigurationItem.ReadOnlyField(
                     $"{{\"mcpServers\":{{\"{AiAgentConfig.DefaultMcpServerName}\":{{\"type\":\"http\",\"url\":\"{settings.Host}\"}}}}}}"));
+
+                items.Add(ConfigurationItem.Description("4. (Optional) Stop and remove the MCP server using Docker when you are done."));
+                items.Add(ConfigurationItem.ReadOnlyField(DockerCommands.Stop(settings)));
+                items.Add(ConfigurationItem.ReadOnlyField(DockerCommands.Remove(settings)));
             }
 
             return new[] { new ConfigurationSection("Configuration", true, items) };

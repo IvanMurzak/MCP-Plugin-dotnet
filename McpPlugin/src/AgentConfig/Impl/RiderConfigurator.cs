@@ -98,5 +98,16 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
                 })
             };
         }
+
+        // STDIO only: HTTP is disabled for Rider/Junie (the BuildSections HTTP branch surfaces a
+        // warning instead), so Unity emits the Troubleshooting foldout for stdio only.
+        protected override IReadOnlyList<ConfigurationSection> BuildTroubleshootingSections(
+            AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
+            => transport == TransportMethod.stdio
+                ? TroubleshootingSection(
+                    "- Ensure MCP configuration file doesn't have syntax errors",
+                    "- Restart Rider after configuration changes",
+                    "- If using Terminal, ensure you are in your project root folder.")
+                : System.Array.Empty<ConfigurationSection>();
     }
 }

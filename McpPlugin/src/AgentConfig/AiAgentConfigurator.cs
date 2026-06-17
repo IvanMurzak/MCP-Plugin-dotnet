@@ -190,6 +190,17 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             var sections = BuildSections(settings, transport, logger);
             var status = GetStatus(settings, transport, logger);
 
+            // Append the per-agent Troubleshooting section(s) after the configuration sections,
+            // mirroring Unity's per-configurator "Troubleshooting" foldout (emitted last). Agents
+            // that declare none get an empty list and the sections are unchanged.
+            var troubleshooting = BuildTroubleshootingSections(settings, transport, logger);
+            if (troubleshooting.Count > 0)
+            {
+                var withTroubleshooting = new List<ConfigurationSection>(sections);
+                withTroubleshooting.AddRange(troubleshooting);
+                sections = withTroubleshooting;
+            }
+
             if (status == ConfiguratorStatus.ReconfigureNeeded)
             {
                 var withAlert = new List<ConfigurationSection>
@@ -221,6 +232,31 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             AgentConfiguratorSettings settings,
             Common.Consts.MCP.Server.TransportMethod transport,
             ILogger? logger);
+
+        /// <summary>
+        /// Builds the per-agent "Troubleshooting" section(s) appended after the configuration
+        /// sections by <see cref="Describe"/>. Engine-agnostic port of each Unity configurator's
+        /// "Troubleshooting" foldout content. The base returns an empty list (no troubleshooting);
+        /// each concrete agent overrides it with its ported guidance. The transport is supplied so
+        /// agents whose stdio/http troubleshooting differs can branch on it.
+        /// </summary>
+        protected virtual IReadOnlyList<ConfigurationSection> BuildTroubleshootingSections(
+            AgentConfiguratorSettings settings,
+            Common.Consts.MCP.Server.TransportMethod transport,
+            ILogger? logger)
+            => System.Array.Empty<ConfigurationSection>();
+
+        /// <summary>
+        /// Convenience: wraps a set of plain-text troubleshooting lines into a single collapsed
+        /// "Troubleshooting" section of <see cref="ConfigurationItem.Description"/> items.
+        /// </summary>
+        protected static IReadOnlyList<ConfigurationSection> TroubleshootingSection(params string[] lines)
+        {
+            var items = new ConfigurationItem[lines.Length];
+            for (var i = 0; i < lines.Length; i++)
+                items[i] = ConfigurationItem.Description(lines[i]);
+            return new[] { new ConfigurationSection("Troubleshooting", false, items) };
+        }
 
         /// <summary>
         /// Default single-section description used by agents that simply expose their

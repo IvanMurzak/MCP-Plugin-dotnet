@@ -99,6 +99,26 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// <summary>Whether bearer-token auth is required (independent of cloud enforcement).</summary>
         public Consts.MCP.Server.AuthOption AuthOption { get; }
 
+        /// <summary>
+        /// Base name of the shared MCP server executable / Docker container, used to build the
+        /// Docker container name (<c>{ServerExecutableName}-{Port}</c>). Defaults to Unity's
+        /// <c>gamedev-mcp-server</c>; engines that ship a differently-named server override it.
+        /// </summary>
+        public string ServerExecutableName { get; }
+
+        /// <summary>
+        /// The pinned shared MCP server version, used as the Docker image tag
+        /// (<c>{DockerImage}:{ServerVersion}</c>). Engines pin the server release they download;
+        /// defaults to Unity's currently-pinned <c>8.0.0</c>.
+        /// </summary>
+        public string ServerVersion { get; }
+
+        /// <summary>
+        /// The Docker image repository for the shared MCP server. Defaults to the published
+        /// <c>aigamedeveloper/mcp-server</c> image.
+        /// </summary>
+        public string DockerImage { get; }
+
         public AgentConfiguratorSettings(
             OperatingSystemKind operatingSystem,
             string projectRootPath,
@@ -108,7 +128,10 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             string host,
             string? token = null,
             ConnectionMode connectionMode = ConnectionMode.Local,
-            Consts.MCP.Server.AuthOption authOption = Consts.MCP.Server.AuthOption.none)
+            Consts.MCP.Server.AuthOption authOption = Consts.MCP.Server.AuthOption.none,
+            string serverExecutableName = "gamedev-mcp-server",
+            string serverVersion = "8.0.0",
+            string dockerImage = "aigamedeveloper/mcp-server")
         {
             OperatingSystem = operatingSystem;
             ProjectRootPath = projectRootPath;
@@ -119,6 +142,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Token = token;
             ConnectionMode = connectionMode;
             AuthOption = authOption;
+            ServerExecutableName = serverExecutableName;
+            ServerVersion = serverVersion;
+            DockerImage = dockerImage;
         }
 
         /// <summary>
@@ -136,7 +162,10 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             string host,
             string? token = null,
             ConnectionMode connectionMode = ConnectionMode.Local,
-            Consts.MCP.Server.AuthOption authOption = Consts.MCP.Server.AuthOption.none)
+            Consts.MCP.Server.AuthOption authOption = Consts.MCP.Server.AuthOption.none,
+            string serverExecutableName = "gamedev-mcp-server",
+            string serverVersion = "8.0.0",
+            string dockerImage = "aigamedeveloper/mcp-server")
         {
             return new AgentConfiguratorSettings(
                 operatingSystem: HostOperatingSystem.Detect(),
@@ -147,7 +176,10 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 host: host,
                 token: token,
                 connectionMode: connectionMode,
-                authOption: authOption);
+                authOption: authOption,
+                serverExecutableName: serverExecutableName,
+                serverVersion: serverVersion,
+                dockerImage: dockerImage);
         }
 
         /// <summary>True when HTTP authorization should be injected (cloud always requires it).</summary>

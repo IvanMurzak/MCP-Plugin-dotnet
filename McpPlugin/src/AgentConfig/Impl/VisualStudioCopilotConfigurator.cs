@@ -37,5 +37,12 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         protected override IReadOnlyList<ConfigurationSection> BuildSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
             => DefaultConfigurationSections(settings, transport, logger);
+
+        protected override IReadOnlyList<ConfigurationSection> BuildTroubleshootingSections(
+            AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
+            => TroubleshootingSection(
+                "- '.vs/mcp.json' file must have no json syntax errors.",
+                "- Unity may stay 'Connecting...' until the first prompt sent is processed.",
+                "- Restart Visual Studio after configuration changes");
     }
 }

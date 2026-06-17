@@ -132,5 +132,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
                 })
             };
         }
+
+        protected override IReadOnlyList<ConfigurationSection> BuildTroubleshootingSections(
+            AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
+            => TroubleshootingSection(
+                "- Ensure Codex CLI is installed and accessible from terminal",
+                "- Restart Codex after configuration changes");
     }
 }

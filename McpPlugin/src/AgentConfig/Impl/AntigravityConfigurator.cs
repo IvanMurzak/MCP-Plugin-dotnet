@@ -56,5 +56,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         protected override IReadOnlyList<ConfigurationSection> BuildSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
             => DefaultConfigurationSections(settings, transport, logger);
+
+        protected override IReadOnlyList<ConfigurationSection> BuildTroubleshootingSections(
+            AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
+            => TroubleshootingSection(
+                "- Ensure MCP configuration file doesn't have syntax errors",
+                "- Restart Antigravity after configuration changes");
     }
 }

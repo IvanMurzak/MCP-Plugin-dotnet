@@ -35,5 +35,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         protected override IReadOnlyList<ConfigurationSection> BuildSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
             => DefaultConfigurationSections(settings, transport, logger);
+
+        protected override IReadOnlyList<ConfigurationSection> BuildTroubleshootingSections(
+            AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
+            => TroubleshootingSection(
+                "- 'UserSettings/mcp.json' file must have no json syntax errors.",
+                "- Open Unity AI settings window\n- Go to Edit > Project Settings > AI > MCP Servers\n- Click 'Restart ai-game-developer' button or check the status of the server.");
     }
 }

@@ -36,5 +36,13 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         protected override IReadOnlyList<ConfigurationSection> BuildSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
             => DefaultConfigurationSections(settings, transport, logger);
+
+        protected override IReadOnlyList<ConfigurationSection> BuildTroubleshootingSections(
+            AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
+            => TroubleshootingSection(
+                "- Ensure the JSON file has no syntax errors.",
+                "- Verify Zoo Code has MCP support enabled.",
+                "- The configuration file should be in your project root, next to Assets folder.",
+                "- Restart Zoo Code after configuration changes.");
     }
 }

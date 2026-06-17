@@ -36,5 +36,22 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         protected override IReadOnlyList<ConfigurationSection> BuildSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
             => DefaultConfigurationSections(settings, transport, logger);
+
+        // STDIO carries the extra "executable path" line (relevant only when launching the
+        // server binary); HTTP omits it. Mirrors Unity's per-transport Troubleshooting content.
+        protected override IReadOnlyList<ConfigurationSection> BuildTroubleshootingSections(
+            AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
+            => transport == TransportMethod.stdio
+                ? TroubleshootingSection(
+                    "- Ensure the JSON file has no syntax errors.",
+                    "- Check that the executable path is correct.",
+                    "- Verify Kilo Code has MCP support enabled.",
+                    "- The configuration file should be in your project root, next to Assets folder.",
+                    "- Restart Kilo Code after configuration changes")
+                : TroubleshootingSection(
+                    "- Ensure the JSON file has no syntax errors.",
+                    "- Verify Kilo Code has MCP support enabled.",
+                    "- The configuration file should be in your project root, next to Assets folder.",
+                    "- Restart Kilo Code after configuration changes");
     }
 }
