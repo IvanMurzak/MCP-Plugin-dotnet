@@ -30,7 +30,13 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// <summary>A non-editable, copy-pasteable value (command line, JSON/TOML snippet, path).</summary>
         ReadOnlyField,
         /// <summary>An editable value the user can change (the Custom agent's editable config-path).</summary>
-        EditableField
+        EditableField,
+        /// <summary>
+        /// A clickable open-URL link (download / tutorial). The link target lives in
+        /// <see cref="ConfigurationItem.Url"/>; <see cref="ConfigurationItem.Text"/> is the
+        /// display label. Mirrors Unity's download/tutorial links.
+        /// </summary>
+        Link
     }
 
     /// <summary>
@@ -49,10 +55,17 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// </summary>
         public string Text { get; }
 
-        public ConfigurationItem(ConfigurationItemKind kind, string text)
+        /// <summary>
+        /// The open-URL target for a <see cref="ConfigurationItemKind.Link"/> item; null for
+        /// every other kind. <see cref="Text"/> carries the link's display label.
+        /// </summary>
+        public string? Url { get; }
+
+        public ConfigurationItem(ConfigurationItemKind kind, string text, string? url = null)
         {
             Kind = kind;
             Text = text;
+            Url = url;
         }
 
         public static ConfigurationItem Description(string text) => new(ConfigurationItemKind.Description, text);
@@ -60,6 +73,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public static ConfigurationItem Alert(string text) => new(ConfigurationItemKind.Alert, text);
         public static ConfigurationItem ReadOnlyField(string value) => new(ConfigurationItemKind.ReadOnlyField, value);
         public static ConfigurationItem EditableField(string value) => new(ConfigurationItemKind.EditableField, value);
+        public static ConfigurationItem Link(string label, string url) => new(ConfigurationItemKind.Link, label, url);
     }
 
     /// <summary>
@@ -87,6 +101,22 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
     }
 
     /// <summary>
+    /// The three configuration states a configurator distinguishes for the active transport,
+    /// mirroring Unity's absent / configured-current / configured-but-stale distinction
+    /// (<c>AiAgentConfigurator.IsReconfigureNeeded</c>). Consumers render a "Reconfigure
+    /// needed" alert for <see cref="ReconfigureNeeded"/>.
+    /// </summary>
+    public enum ConfiguratorStatus
+    {
+        /// <summary>No MCP config entry is present on disk for this transport.</summary>
+        NotConfigured,
+        /// <summary>A config entry is present and matches the current settings.</summary>
+        Configured,
+        /// <summary>A config entry is present but is outdated — it no longer matches the current settings.</summary>
+        ReconfigureNeeded
+    }
+
+    /// <summary>
     /// Engine-agnostic description of a configurator's UI for one transport, plus the
     /// agent identity and current status. A consuming engine reads this to render the
     /// agent panel without the shared library taking any UI dependency.
@@ -106,6 +136,20 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public bool IsConfigured { get; }
 
         /// <summary>
+        /// The three-state configuration status for the described transport (absent /
+        /// configured-current / configured-but-stale). <see cref="ConfiguratorStatus.ReconfigureNeeded"/>
+        /// means a config entry exists on disk but no longer matches the current settings.
+        /// </summary>
+        public ConfiguratorStatus Status { get; }
+
+        /// <summary>
+        /// Open-URL links the consuming engine should render (download / tutorial). Each item is
+        /// a <see cref="ConfigurationItemKind.Link"/> carrying a label (<see cref="ConfigurationItem.Text"/>)
+        /// and a target (<see cref="ConfigurationItem.Url"/>). Empty when the agent declares none.
+        /// </summary>
+        public IReadOnlyList<ConfigurationItem> Links { get; }
+
+        /// <summary>
         /// Whether the agent's tooling is considered installed/available. Engines that cannot
         /// detect installation leave this false; it is part of the closed status vocabulary so
         /// every engine reports the same shape.
@@ -121,7 +165,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             string? iconName,
             bool isConfigured,
             bool isInstalled,
-            IReadOnlyList<ConfigurationSection> sections)
+            IReadOnlyList<ConfigurationSection> sections,
+            ConfiguratorStatus status = ConfiguratorStatus.NotConfigured,
+            IReadOnlyList<ConfigurationItem>? links = null)
         {
             AgentName = agentName;
             AgentId = agentId;
@@ -129,6 +175,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             IsConfigured = isConfigured;
             IsInstalled = isInstalled;
             Sections = sections;
+            Status = status;
+            Links = links ?? System.Array.Empty<ConfigurationItem>();
         }
     }
 }

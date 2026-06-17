@@ -28,10 +28,10 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         private static string LocalConfigPath(AgentConfiguratorSettings s) => Path.Combine(s.ProjectRootPath, ".kilocode", "mcp.json");
 
         protected override AiAgentConfig CreateStdioConfig(AgentConfiguratorSettings settings, ILogger? logger)
-            => AgentConfigBuilders.JsonStdio(AgentName, LocalConfigPath(settings), settings, logger);
+            => AgentConfigBuilders.JsonStdio(AgentName, LocalConfigPath(settings), settings, logger, disabled: false);
 
         protected override AiAgentConfig CreateHttpConfig(AgentConfiguratorSettings settings, ILogger? logger)
-            => AgentConfigBuilders.JsonHttp(AgentName, LocalConfigPath(settings), settings, logger);
+            => AgentConfigBuilders.JsonHttp(AgentName, LocalConfigPath(settings), settings, logger, type: "streamable-http", disabled: false);
 
         protected override IReadOnlyList<ConfigurationSection> BuildSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
