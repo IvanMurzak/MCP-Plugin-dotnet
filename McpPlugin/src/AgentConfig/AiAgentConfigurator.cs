@@ -50,6 +50,12 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// <summary>The tutorial URL for configuring the AI agent, or empty if none.</summary>
         public virtual string TutorialUrl => string.Empty;
 
+        /// <summary>The display label for the tutorial link (Unity default "YouTube Tutorial").</summary>
+        public virtual string TutorialLinkLabel => "YouTube Tutorial";
+
+        /// <summary>The display label for the download link.</summary>
+        public virtual string DownloadLinkLabel => "Download";
+
         /// <summary>
         /// Icon file NAME for this agent (e.g. "claude-64.png"), or null when no icon.
         /// Engines resolve the name to bytes themselves — the shared library never carries bytes.
@@ -130,9 +136,51 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         }
 
         /// <summary>
+        /// Returns the three-state configuration status for the requested transport, mirroring
+        /// Unity's <c>IsReconfigureNeeded</c> logic: a config detected on disk that no longer
+        /// matches the current settings is <see cref="ConfiguratorStatus.ReconfigureNeeded"/>.
+        /// Only the config matching <paramref name="transport"/> is consulted — both transports
+        /// share the same server name, so a correctly-configured HTTP entry would otherwise make
+        /// the STDIO check false-positive (and vice versa).
+        /// </summary>
+        public virtual ConfiguratorStatus GetStatus(
+            AgentConfiguratorSettings settings,
+            Common.Consts.MCP.Server.TransportMethod transport,
+            ILogger? logger = null)
+        {
+            if (IsConfigured(settings, transport, logger))
+                return ConfiguratorStatus.Configured;
+
+            var config = transport == Common.Consts.MCP.Server.TransportMethod.stdio
+                ? GetStdioConfig(settings, logger)
+                : GetHttpConfig(settings, logger);
+
+            return config.IsDetected()
+                ? ConfiguratorStatus.ReconfigureNeeded
+                : ConfiguratorStatus.NotConfigured;
+        }
+
+        /// <summary>
+        /// Builds the open-URL links (download + tutorial) the consuming engine should render,
+        /// mirroring Unity's download/tutorial link emission. The tutorial link is omitted when
+        /// <see cref="TutorialUrl"/> is empty.
+        /// </summary>
+        public virtual IReadOnlyList<ConfigurationItem> BuildLinks()
+        {
+            var links = new List<ConfigurationItem>();
+            if (!string.IsNullOrEmpty(DownloadUrl))
+                links.Add(ConfigurationItem.Link(DownloadLinkLabel, DownloadUrl));
+            if (!string.IsNullOrEmpty(TutorialUrl))
+                links.Add(ConfigurationItem.Link(TutorialLinkLabel, TutorialUrl));
+            return links;
+        }
+
+        /// <summary>
         /// Builds the engine-agnostic UI description for the requested transport. Subclasses
         /// supply the per-transport sections via <see cref="BuildSections"/>; this method wraps
-        /// them with identity + status so every engine sees a uniform shape.
+        /// them with identity + status so every engine sees a uniform shape. When the config is
+        /// detected-but-stale (<see cref="ConfiguratorStatus.ReconfigureNeeded"/>) a
+        /// "Reconfiguration Required" alert section is prepended, mirroring Unity's reconfigure alert.
         /// </summary>
         public AgentConfiguratorDescription Describe(
             AgentConfiguratorSettings settings,
@@ -140,14 +188,30 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             ILogger? logger = null)
         {
             var sections = BuildSections(settings, transport, logger);
-            var isConfigured = IsConfigured(settings, transport, logger);
+            var status = GetStatus(settings, transport, logger);
+
+            if (status == ConfiguratorStatus.ReconfigureNeeded)
+            {
+                var withAlert = new List<ConfigurationSection>
+                {
+                    new ConfigurationSection("Reconfiguration Required", true, new[]
+                    {
+                        ConfigurationItem.Alert("Connection settings have changed. The existing MCP configuration is outdated and needs to be updated.")
+                    })
+                };
+                withAlert.AddRange(sections);
+                sections = withAlert;
+            }
+
             return new AgentConfiguratorDescription(
                 agentName: AgentName,
                 agentId: AgentId,
                 iconName: IconName,
-                isConfigured: isConfigured,
+                isConfigured: status == ConfiguratorStatus.Configured,
                 isInstalled: false,
-                sections: sections);
+                sections: sections,
+                status: status,
+                links: BuildLinks());
         }
 
         /// <summary>
