@@ -28,6 +28,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
             string? bearerToken,
             string? clientName,
             string? clientVersion,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default,
+            string? remoteIpAddress = null,
+            string? userAgent = null,
+            string? requestPath = null);
     }
 }

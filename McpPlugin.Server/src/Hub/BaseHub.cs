@@ -48,6 +48,9 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             var httpContext = Context.GetHttpContext();
             var token = httpContext?.Request.Query["access_token"].FirstOrDefault();
+            var remoteIpAddress = GetClientIpAddress(httpContext);
+            var userAgent = httpContext?.Request.Headers.UserAgent.ToString() is { Length: > 0 } ua ? ua : null;
+            var requestPath = httpContext?.Request.Path.Value;
             if (string.IsNullOrEmpty(token))
             {
                 var authHeader = httpContext?.Request.Headers["Authorization"].FirstOrDefault();
@@ -65,8 +68,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 _connectionRejected = true;
                 _logger.LogDebug(
-                    "{guid} MCP Plugin connection rejected (auth=required, empty token) — webhook skipped. ConnectionId: {connectionId}.",
-                    _guid, Context.ConnectionId);
+                    "{guid} MCP Plugin connection rejected (auth=required, empty token) — webhook skipped. ConnectionId: {connectionId}, RemoteIp: {remoteIpAddress}, UserAgent: {userAgent}, RequestPath: {requestPath}.",
+                    _guid, Context.ConnectionId, remoteIpAddress, userAgent, requestPath);
 
                 try
                 {
@@ -89,13 +92,16 @@ namespace com.IvanMurzak.McpPlugin.Server
                 bearerToken: token,
                 clientName: null,
                 clientVersion: null,
+                remoteIpAddress: remoteIpAddress,
+                userAgent: userAgent,
+                requestPath: requestPath,
                 cancellationToken: Context.ConnectionAborted);
 
             if (!allowed)
             {
                 _connectionRejected = true;
-                _logger.LogDebug("{guid} MCP Plugin connection rejected by authorization webhook. ConnectionId: {connectionId}.",
-                    _guid, Context.ConnectionId);
+                _logger.LogDebug("{guid} MCP Plugin connection rejected by authorization webhook. ConnectionId: {connectionId}, RemoteIp: {remoteIpAddress}, UserAgent: {userAgent}, RequestPath: {requestPath}.",
+                    _guid, Context.ConnectionId, remoteIpAddress, userAgent, requestPath);
 
                 // Notify the client about the rejection reason before closing.
                 // This allows the client to take specific action (e.g. clear cached tokens).
@@ -155,6 +161,22 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("Dispose. {0}", _guid);
             base.Dispose();
             _disposables.Dispose();
+        }
+
+        static string? GetClientIpAddress(Microsoft.AspNetCore.Http.HttpContext? httpContext)
+        {
+            if (httpContext == null)
+                return null;
+
+            var forwardedFor = httpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(forwardedFor))
+                return forwardedFor.Split(',')[0].Trim();
+
+            var realIp = httpContext.Request.Headers["X-Real-IP"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(realIp))
+                return realIp.Trim();
+
+            return httpContext.Connection.RemoteIpAddress?.ToString();
         }
     }
 }

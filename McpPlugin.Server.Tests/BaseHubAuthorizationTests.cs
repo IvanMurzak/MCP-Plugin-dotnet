@@ -95,7 +95,8 @@ namespace McpPlugin.Server.Tests
             webhook.Setup(x => x.AuthorizePluginAsync(
                     It.IsAny<string>(), It.IsAny<string?>(),
                     It.IsAny<string?>(), It.IsAny<string?>(),
-                    It.IsAny<CancellationToken>()))
+                    It.IsAny<CancellationToken>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
                 .ReturnsAsync(true);
 
             var mockContext = CreateMockHubCallerContext();
@@ -114,7 +115,8 @@ namespace McpPlugin.Server.Tests
             webhook.Setup(x => x.AuthorizePluginAsync(
                     It.IsAny<string>(), It.IsAny<string?>(),
                     It.IsAny<string?>(), It.IsAny<string?>(),
-                    It.IsAny<CancellationToken>()))
+                    It.IsAny<CancellationToken>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
                 .ReturnsAsync(false);
 
             var mockContext = CreateMockHubCallerContext();
@@ -133,7 +135,8 @@ namespace McpPlugin.Server.Tests
             webhook.Setup(x => x.AuthorizePluginAsync(
                     It.IsAny<string>(), It.IsAny<string?>(),
                     It.IsAny<string?>(), It.IsAny<string?>(),
-                    It.IsAny<CancellationToken>()))
+                    It.IsAny<CancellationToken>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
                 .ReturnsAsync(false);
 
             var strategy = new Mock<IMcpConnectionStrategy>();
@@ -159,7 +162,8 @@ namespace McpPlugin.Server.Tests
             webhook.Setup(x => x.AuthorizePluginAsync(
                     It.IsAny<string>(), It.IsAny<string?>(),
                     It.IsAny<string?>(), It.IsAny<string?>(),
-                    It.IsAny<CancellationToken>()))
+                    It.IsAny<CancellationToken>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
                 .ReturnsAsync(true);
 
             var strategy = new Mock<IMcpConnectionStrategy>();
@@ -186,7 +190,8 @@ namespace McpPlugin.Server.Tests
             webhook.Setup(x => x.AuthorizePluginAsync(
                     It.IsAny<string>(), It.IsAny<string?>(),
                     It.IsAny<string?>(), It.IsAny<string?>(),
-                    It.IsAny<CancellationToken>()))
+                    It.IsAny<CancellationToken>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
                 .ReturnsAsync(true);
 
             var mockContext = CreateMockHubCallerContext(bearerToken: token);
@@ -199,7 +204,8 @@ namespace McpPlugin.Server.Tests
                 token,
                 It.IsAny<string?>(),
                 It.IsAny<string?>(),
-                It.IsAny<CancellationToken>()),
+                It.IsAny<CancellationToken>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()),
                 Times.Once);
         }
 
@@ -210,7 +216,8 @@ namespace McpPlugin.Server.Tests
             webhook.Setup(x => x.AuthorizePluginAsync(
                     It.IsAny<string>(), It.IsAny<string?>(),
                     It.IsAny<string?>(), It.IsAny<string?>(),
-                    It.IsAny<CancellationToken>()))
+                    It.IsAny<CancellationToken>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
                 .ReturnsAsync(true);
 
             var mockContext = CreateMockHubCallerContext(bearerToken: null);
@@ -223,7 +230,8 @@ namespace McpPlugin.Server.Tests
                 null,
                 It.IsAny<string?>(),
                 It.IsAny<string?>(),
-                It.IsAny<CancellationToken>()),
+                It.IsAny<CancellationToken>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()),
                 Times.Once);
         }
 
@@ -269,7 +277,8 @@ namespace McpPlugin.Server.Tests
                 webhook.Setup(x => x.AuthorizePluginAsync(
                         It.IsAny<string>(), It.IsAny<string?>(),
                         It.IsAny<string?>(), It.IsAny<string?>(),
-                        It.IsAny<CancellationToken>()))
+                        It.IsAny<CancellationToken>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
                     .ReturnsAsync(true);
             }
 
@@ -299,7 +308,8 @@ namespace McpPlugin.Server.Tests
             webhook.Verify(w => w.AuthorizePluginAsync(
                     It.IsAny<string>(), It.IsAny<string?>(),
                     It.IsAny<string?>(), It.IsAny<string?>(),
-                    It.IsAny<CancellationToken>()),
+                    It.IsAny<CancellationToken>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()),
                 Times.Never);
 
             // Client was notified via ForceDisconnect with the auth=required reason.
@@ -349,7 +359,8 @@ namespace McpPlugin.Server.Tests
                     token,
                     It.IsAny<string?>(),
                     It.IsAny<string?>(),
-                    It.IsAny<CancellationToken>()),
+                    It.IsAny<CancellationToken>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()),
                 Times.Once);
         }
 
@@ -372,7 +383,8 @@ namespace McpPlugin.Server.Tests
             webhook.Verify(w => w.AuthorizePluginAsync(
                     It.IsAny<string>(), It.IsAny<string?>(),
                     It.IsAny<string?>(), It.IsAny<string?>(),
-                    It.IsAny<CancellationToken>()),
+                    It.IsAny<CancellationToken>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()),
                 Times.Once);
         }
     }

@@ -53,6 +53,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
                 ConnectionId = connectionId,
                 ClientType = "ai-agent",
                 BearerToken = bearerToken,
+                TokenFingerprint = FingerprintToken(bearerToken),
                 RemoteIpAddress = remoteIpAddress,
                 UserAgent = userAgent,
                 RequestPath = requestPath
@@ -66,7 +67,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
             string? bearerToken,
             string? clientName,
             string? clientVersion,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            string? remoteIpAddress = null,
+            string? userAgent = null,
+            string? requestPath = null)
         {
             var request = new AuthorizationRequest
             {
@@ -75,6 +79,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
                 ConnectionId = connectionId,
                 ClientType = "plugin",
                 BearerToken = bearerToken,
+                TokenFingerprint = FingerprintToken(bearerToken),
+                RemoteIpAddress = remoteIpAddress,
+                UserAgent = userAgent,
+                RequestPath = requestPath,
                 ClientName = clientName,
                 ClientVersion = clientVersion
             };
@@ -118,8 +126,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogWarning(
-                        "Authorization webhook returned non-2xx status {StatusCode} for {EventType}",
-                        response.StatusCode, request.EventType);
+                        "Authorization webhook returned non-2xx status {StatusCode} for {EventType}. ConnectionId: {ConnectionId}, ClientType: {ClientType}, RemoteIp: {RemoteIpAddress}, UserAgent: {UserAgent}, RequestPath: {RequestPath}, TokenFingerprint: {TokenFingerprint}",
+                        response.StatusCode, request.EventType, request.ConnectionId,
+                        request.ClientType, request.RemoteIpAddress, request.UserAgent,
+                        request.RequestPath, request.TokenFingerprint);
                     return _options.AuthorizationFailOpen;
                 }
 
@@ -137,8 +147,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
                 if (!authResponse.Allowed)
                 {
                     _logger.LogWarning(
-                        "Authorization webhook denied {EventType}: {Reason}",
-                        request.EventType, authResponse.Reason ?? "(no reason provided)");
+                        "Authorization webhook denied {EventType}: {Reason}. ConnectionId: {ConnectionId}, ClientType: {ClientType}, RemoteIp: {RemoteIpAddress}, UserAgent: {UserAgent}, RequestPath: {RequestPath}, TokenFingerprint: {TokenFingerprint}, ClientName: {ClientName}, ClientVersion: {ClientVersion}",
+                        request.EventType, authResponse.Reason ?? "(no reason provided)",
+                        request.ConnectionId, request.ClientType, request.RemoteIpAddress,
+                        request.UserAgent, request.RequestPath, request.TokenFingerprint,
+                        request.ClientName, request.ClientVersion);
                     return false;
                 }
 
@@ -148,16 +161,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
             {
                 // Timeout from linked CTS, not external cancellation
                 _logger.LogWarning(
-                    "Authorization webhook timeout for {EventType}",
-                    request.EventType);
+                    "Authorization webhook timeout for {EventType}. ConnectionId: {ConnectionId}, ClientType: {ClientType}, RemoteIp: {RemoteIpAddress}, UserAgent: {UserAgent}, RequestPath: {RequestPath}, TokenFingerprint: {TokenFingerprint}",
+                    request.EventType, request.ConnectionId, request.ClientType,
+                    request.RemoteIpAddress, request.UserAgent, request.RequestPath,
+                    request.TokenFingerprint);
                 return _options.AuthorizationFailOpen;
             }
             catch (Exception exception)
             {
                 _logger.LogWarning(
                     exception,
-                    "Authorization webhook error for {EventType}",
-                    request.EventType);
+                    "Authorization webhook error for {EventType}. ConnectionId: {ConnectionId}, ClientType: {ClientType}, RemoteIp: {RemoteIpAddress}, UserAgent: {UserAgent}, RequestPath: {RequestPath}, TokenFingerprint: {TokenFingerprint}",
+                    request.EventType, request.ConnectionId, request.ClientType,
+                    request.RemoteIpAddress, request.UserAgent, request.RequestPath,
+                    request.TokenFingerprint);
                 return _options.AuthorizationFailOpen;
             }
         }
@@ -170,6 +187,21 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
             using var hmac = new HMACSHA256(keyBytes);
             var hash = hmac.ComputeHash(payloadBytes);
             return "sha256=" + BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        }
+
+        static string? FingerprintToken(string? token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+                return null;
+
+            var value = token.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                ? token.Substring("Bearer ".Length).Trim()
+                : token.Trim();
+            if (string.IsNullOrEmpty(value))
+                return null;
+
+            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+            return Convert.ToHexString(bytes).Substring(0, 16).ToLowerInvariant();
         }
     }
 }
