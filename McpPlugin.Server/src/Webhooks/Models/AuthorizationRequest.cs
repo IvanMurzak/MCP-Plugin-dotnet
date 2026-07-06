@@ -32,6 +32,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Models
         [JsonPropertyName("bearerToken")]
         public string? BearerToken { get; init; }
 
+        [JsonPropertyName("tokenFingerprint")]
+        public string? TokenFingerprint { get; init; }
+
         [JsonPropertyName("remoteIpAddress")]
         public string? RemoteIpAddress { get; init; }
 

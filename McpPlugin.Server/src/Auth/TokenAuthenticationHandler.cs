@@ -9,7 +9,10 @@
 */
 
 using System;
+using System.Linq;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
@@ -73,7 +76,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
 
             var token = authHeader.Substring("Bearer ".Length).Trim();
             if (string.IsNullOrEmpty(token))
+            {
+                if (!IsHubPath())
+                {
+                    Logger.LogWarning(
+                        "MCP auth rejected: Empty Bearer token. ConnectionId: {ConnectionId}, RemoteIp: {RemoteIpAddress}, UserAgent: {UserAgent}, RequestPath: {RequestPath}",
+                        Context.TraceIdentifier, GetClientIpAddress(), Request.Headers.UserAgent.ToString(), Request.Path.Value);
+                }
                 return IsHubPath() ? AuthenticateResult.NoResult() : AuthenticateResult.Fail("Empty Bearer token.");
+            }
 
             // Token resolution — three additive sources, checked in priority order:
             //
@@ -154,7 +165,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             // (which IS RequireAuthorization()-gated). The same hub-path-silencing rule is
             // also applied to the empty-Bearer case above (line 76).
             if (ticket == null)
+            {
+                if (!IsHubPath())
+                {
+                    Logger.LogWarning(
+                        "MCP auth rejected: Invalid or unrecognized token. ConnectionId: {ConnectionId}, RemoteIp: {RemoteIpAddress}, UserAgent: {UserAgent}, RequestPath: {RequestPath}, TokenFingerprint: {TokenFingerprint}",
+                        Context.TraceIdentifier, GetClientIpAddress(), Request.Headers.UserAgent.ToString(),
+                        Request.Path.Value, FingerprintToken(token));
+                }
                 return IsHubPath() ? AuthenticateResult.NoResult() : AuthenticateResult.Fail("Invalid or unrecognized token.");
+            }
 
             // Single authorization webhook check for whichever tier matched.
             // Note: AuthorizeAiAgentAsync returns false for both explicit denials
@@ -180,10 +200,32 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             return _authorizationWebhookService.AuthorizeAiAgentAsync(
                 connectionId: Context.TraceIdentifier,
                 bearerToken: token,
-                remoteIpAddress: Request.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                remoteIpAddress: GetClientIpAddress(),
                 userAgent: Request.Headers.UserAgent.ToString() is { Length: > 0 } ua ? ua : null,
                 requestPath: Request.Path.Value,
                 cancellationToken: Context.RequestAborted);
+        }
+
+        string? GetClientIpAddress()
+        {
+            var forwardedFor = Request.Headers["X-Forwarded-For"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(forwardedFor))
+                return forwardedFor.Split(',')[0].Trim();
+
+            var realIp = Request.Headers["X-Real-IP"].FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(realIp))
+                return realIp.Trim();
+
+            return Request.HttpContext.Connection.RemoteIpAddress?.ToString();
+        }
+
+        static string? FingerprintToken(string? token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+                return null;
+
+            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token.Trim()));
+            return Convert.ToHexString(bytes).Substring(0, 16).ToLowerInvariant();
         }
     }
 

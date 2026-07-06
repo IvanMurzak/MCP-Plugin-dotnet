@@ -58,13 +58,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
             string? bearerToken,
             string? clientName,
             string? clientVersion,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            string? remoteIpAddress = null,
+            string? userAgent = null,
+            string? requestPath = null)
         {
             if (TryGetCached(bearerToken))
                 return true;
 
             var result = await _inner.AuthorizePluginAsync(
-                connectionId, bearerToken, clientName, clientVersion, cancellationToken);
+                connectionId, bearerToken, clientName, clientVersion,
+                cancellationToken, remoteIpAddress, userAgent, requestPath);
 
             if (result)
                 SetCached(bearerToken);
