@@ -1,0 +1,87 @@
+{
+  "description": "Cross-language golden vectors for ProjectIdentity (routing pin + deterministic local port). The C# reference implementation (McpPlugin/src/AgentConfig/ProjectIdentity.cs) is the origin; any TS/JS or other port MUST reproduce every `pin`/`port` in `vectors`. Byte-compatible with the shipped Unity `UnityMcpPlugin.GeneratePortFromDirectory()` for existing-project paths. Regenerate/verify via McpPlugin.Tests ProjectIdentityGoldenVectorTests.",
+  "algorithm": {
+    "steps": [
+      "1. Trim trailing directory separators ('/' and '\\') from the project root (so '/a/b' and '/a/b/' are the same project).",
+      "2. Lowercase the result. C#: string.ToLowerInvariant(). NOTE: this diverges from JS String.prototype.toLowerCase() for some Unicode chars — see `unicodeDivergence`.",
+      "3. UTF-8 encode, then SHA-256 hash.",
+      "4. pin  = the first 4 bytes of the hash as 8 lowercase hex characters.",
+      "5. port = 20000 + (littleEndianUInt32(first 4 bytes of the hash) % 10000).  Range: 20000-29999."
+    ],
+    "minPort": 20000,
+    "maxPort": 29999,
+    "pinLength": 8,
+    "separatorNormalization": "none — separators are NOT converted ('C:\\a' and 'C:/a' hash differently). Do not path.normalize()/path.resolve() before deriving.",
+    "whichStringIsHashed": "the normalized project root supplied by the caller, NOT Environment.CurrentDirectory / process.cwd()."
+  },
+  "vectors": [
+    {
+      "path": "/home/user/my-game",
+      "pin": "34ea75f2",
+      "port": 23940,
+      "note": "POSIX typical project path."
+    },
+    {
+      "path": "/home/user/my-game/",
+      "pin": "34ea75f2",
+      "port": 23940,
+      "note": "Trailing slash is trimmed -> identical to '/home/user/my-game'."
+    },
+    {
+      "path": "/home/USER/My-Game",
+      "pin": "34ea75f2",
+      "port": 23940,
+      "note": "Case-folded -> identical to '/home/user/my-game'."
+    },
+    {
+      "path": "C:\\Users\\user\\my-game",
+      "pin": "8ef72cf7",
+      "port": 29310,
+      "note": "Windows backslash form (matches Unity GeneratePortFromDirectory Environment.CurrentDirectory on Windows)."
+    },
+    {
+      "path": "C:\\Users\\user\\my-game\\",
+      "pin": "8ef72cf7",
+      "port": 29310,
+      "note": "Trailing backslash is trimmed -> identical to the backslash form."
+    },
+    {
+      "path": "C:/Users/user/my-game",
+      "pin": "5a87324e",
+      "port": 24298,
+      "note": "Forward-slash form DIFFERS from the backslash form: separators are NOT normalized."
+    },
+    {
+      "path": "/home/İstanbul/game",
+      "pin": "672d80a7",
+      "port": 25303,
+      "note": "Contains U+0130 (LATIN CAPITAL LETTER I WITH DOT ABOVE). Canonical C# value; see `unicodeDivergence` — a naive JS toLowerCase() port would compute a DIFFERENT value and must special-case this."
+    },
+    {
+      "path": "/srv/games/space sim",
+      "pin": "08c6cbb6",
+      "port": 27816,
+      "note": "Path containing a space."
+    }
+  ],
+  "unicodeDivergence": {
+    "note": "C# string.ToLowerInvariant() and JS String.prototype.toLowerCase() do NOT agree on every character. The value in `vectors` (produced by the C# origin) is canonical; a JS/TS port MUST reproduce it. This section records what a NAIVE toLowerCase() port produces so the divergence is explicit and testable in the consuming CLIs.",
+    "cases": [
+      {
+        "path": "/home/İstanbul/game",
+        "char": "U+0130 LATIN CAPITAL LETTER I WITH DOT ABOVE",
+        "canonical": {
+          "pin": "672d80a7",
+          "port": 25303,
+          "producedBy": "C# ToLowerInvariant leaves U+0130 unchanged (no case fold)."
+        },
+        "jsNaiveToLowerCase": {
+          "pin": "77300275",
+          "port": 27751,
+          "loweredCodepoints": "U+0069 U+0307 (i + COMBINING DOT ABOVE)",
+          "warning": "A naive JS/TS port would produce THIS incorrect value. It must special-case U+0130 (and any char where toLowerCase() disagrees with ToLowerInvariant) to match `canonical`."
+        }
+      }
+    ]
+  }
+}
