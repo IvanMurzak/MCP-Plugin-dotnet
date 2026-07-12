@@ -10,6 +10,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 
@@ -45,10 +46,29 @@ namespace com.IvanMurzak.McpPlugin
         public virtual int ConnectTimeoutSeconds { get; set; } = 0;
 
         /// <summary>
-        /// Token for authorization when connecting to the MCP server via SignalR.
-        /// Set via command line arg 'mcp-plugin-token' or environment variable 'MCP_PLUGIN_TOKEN'.
+        /// Credential provider callback (mcp-authorize b7): returns the current, auto-refreshed account
+        /// access token (an ES256 JWT) to present on the SignalR connection, or <c>null</c> for an
+        /// anonymous connection (a <c>none</c>-mode / offline local server). This replaces the removed
+        /// static <c>Token</c> string and the <c>MCP_PLUGIN_TOKEN</c> shared-token plumbing: the token is
+        /// no longer a fixed value read from an env/arg, it is fetched fresh on every (re)connect so a
+        /// proactively-refreshed JWT is always presented. The token always travels in the
+        /// <c>Authorization</c> header (never a query param) — see <see cref="HubConnectionProvider"/>.
+        /// Hosts wire this to <c>PluginCredentialProvider.AsAccessTokenProvider()</c> (machine-store
+        /// auto-adopt + refresh); leaving it null keeps the anonymous local-server behaviour.
         /// </summary>
-        public virtual string? Token { get; set; }
+        public virtual Func<Task<string?>>? CredentialProvider { get; set; }
+
+        /// <summary>
+        /// Instance-metadata handshake payload (mcp-authorize b7, design 04/06): identifies THIS editor
+        /// session to the server's account+instance pairing plane (b3). When set, the fields are sent as
+        /// non-secret query parameters on the hub connection (keyed by
+        /// <see cref="Consts.MCP.Server.HubQuery"/>); the server reads them in <c>oauth</c> mode to
+        /// register the instance under the account resolved from the (header-carried) token. Null keeps
+        /// the pre-b7 behaviour (the server falls back to a synthetic single-instance registration).
+        /// Runtime-only; never serialized to the on-disk connection config.
+        /// </summary>
+        [JsonIgnore]
+        public virtual ConnectionInstanceMetadata? InstanceMetadata { get; set; }
 
         /// <summary>
         /// Whether to automatically generate skill markdown files for each registered MCP tool.
@@ -121,18 +141,6 @@ namespace com.IvanMurzak.McpPlugin
             return endpoint ?? Consts.Hub.DefaultHost;
         }
 
-        public static string? GetTokenFromArgsOrEnv(string[]? args = null)
-        {
-            args ??= Environment.GetCommandLineArgs();
-            var token = Environment.GetEnvironmentVariable(Consts.MCP.Plugin.Env.McpPluginToken);
-            var commandLineArgs = ArgsUtils.ParseLineArguments(args);
-
-            if (commandLineArgs.TryGetValue(Consts.MCP.Plugin.Args.McpPluginToken.TrimStart('-'), out var argToken))
-                return argToken;
-
-            return token;
-        }
-
         public static int GetTimeoutFromArgsOrEnv(string[]? args = null)
         {
             args ??= Environment.GetCommandLineArgs();
@@ -165,10 +173,6 @@ namespace com.IvanMurzak.McpPlugin
             if (timeout != null && int.TryParse(timeout, out var parsedEnvTimeoutMs))
                 TimeoutMs = parsedEnvTimeoutMs;
 
-            var token = Environment.GetEnvironmentVariable(Consts.MCP.Plugin.Env.McpPluginToken);
-            if (token != null)
-                Token = token;
-
             var skillsFolder = Environment.GetEnvironmentVariable(Consts.MCP.Plugin.Env.McpSkillsFolder);
             if (skillsFolder != null)
                 SkillsPath = skillsFolder;
@@ -188,10 +192,6 @@ namespace com.IvanMurzak.McpPlugin
             var argPluginTimeout = commandLineArgs.GetValueOrDefault(Consts.MCP.Plugin.Args.McpServerTimeout.TrimStart('-'));
             if (argPluginTimeout != null && int.TryParse(argPluginTimeout, out var timeoutMs))
                 TimeoutMs = timeoutMs;
-
-            var argToken = commandLineArgs.GetValueOrDefault(Consts.MCP.Plugin.Args.McpPluginToken.TrimStart('-'));
-            if (argToken != null)
-                Token = argToken;
 
             var argSkillsFolder = commandLineArgs.GetValueOrDefault(Consts.MCP.Plugin.Args.McpSkillsFolder.TrimStart('-'));
             if (argSkillsFolder != null)

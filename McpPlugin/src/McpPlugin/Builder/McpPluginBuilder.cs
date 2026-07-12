@@ -302,7 +302,9 @@ namespace com.IvanMurzak.McpPlugin
         public virtual IMcpPluginBuilder WithConfigFromArgsOrEnv(string[]? args = null) => WithConfig(config =>
         {
             config.Host = ConnectionConfig.GetEndpointFromArgsOrEnv(args);
-            config.Token = ConnectionConfig.GetTokenFromArgsOrEnv(args);
+            // The legacy MCP_PLUGIN_TOKEN / mcp-plugin-token shared-token plumbing was removed in
+            // mcp-authorize b7. The plugin no longer reads a static token from args/env; the host wires
+            // config.CredentialProvider (auto-refreshed account JWT from the machine store) instead.
             config.TimeoutMs = ConnectionConfig.GetTimeoutFromArgsOrEnv(args);
         });
 

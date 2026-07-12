@@ -123,6 +123,20 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         }
 
         /// <summary>
+        /// The FULL project-path hash: the complete 64-char lowercase hex of the SHA-256 of the
+        /// normalized project root. This is the <c>projectPathHash</c> an engine plugin sends in its
+        /// hub instance-metadata handshake (mcp-authorize b7); the server pin-matches a session by
+        /// checking that the routing <see cref="Pin"/> is a case-insensitive prefix of this value
+        /// (<c>PluginInstance.MatchesPin</c>), so the two are derived from the same hash by construction.
+        /// </summary>
+        public static string DeriveProjectPathHash(string projectRoot)
+        {
+            if (projectRoot == null)
+                throw new ArgumentNullException(nameof(projectRoot));
+            return ToHex(HashOf(projectRoot), 32);
+        }
+
+        /// <summary>
         /// The pure hash-derived port (ignores any override). This is the byte-for-byte equivalent of
         /// the shipped Unity <c>GeneratePortFromDirectory</c> when given the same directory string.
         /// </summary>

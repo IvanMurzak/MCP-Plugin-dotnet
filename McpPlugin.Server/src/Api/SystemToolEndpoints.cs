@@ -40,7 +40,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
 
         /// <summary>
         /// Maps the system tool API endpoints onto the given <see cref="WebApplication"/>.
-        /// Authorization follows the same rules as direct tool call endpoints.
+        /// Authorization follows the same rules as direct tool call endpoints: required in
+        /// <see cref="Consts.MCP.Server.AuthOption.oauth"/> mode (fail closed — a valid token is required),
+        /// open only in <see cref="Consts.MCP.Server.AuthOption.none"/> mode. (Before mcp-authorize b7 this
+        /// gated on the now-unreachable <c>AuthOption.required</c>, so the endpoints were never gated in oauth
+        /// mode; fixed here.)
         /// </summary>
         public static WebApplication MapSystemToolApi(this WebApplication app, IDataArguments dataArguments)
         {
@@ -50,7 +54,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
             if (dataArguments == null)
                 throw new ArgumentNullException(nameof(dataArguments));
 
-            var requireAuth = dataArguments.Authorization == Consts.MCP.Server.AuthOption.required;
+            var requireAuth = dataArguments.Authorization == Consts.MCP.Server.AuthOption.oauth;
             var group = app.MapGroup(RoutePrefix);
 
             // GET /api/system-tools — list all registered system tools
