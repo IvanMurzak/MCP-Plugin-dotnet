@@ -57,10 +57,12 @@ namespace com.IvanMurzak.McpPlugin
                         // account JWT on every (re)connect. Null provider ⇒ anonymous (none-mode local server).
                         // SignalR places this token in the Authorization header for both the negotiate request
                         // and the WebSocket upgrade — the server reads it there (never a query param).
-                        var credentialProvider = connectionConfig.CredentialProvider;
-                        options.AccessTokenProvider = credentialProvider != null
-                            ? () => credentialProvider()
-                            : new Func<Task<string?>>(() => Task.FromResult<string?>(null));
+                        // Assign the credential-provider delegate directly (null ⇒ a constant null-token
+                        // provider for an anonymous none-mode connection). SignalR invokes the delegate on
+                        // every (re)connect, so a proactively-refreshed JWT is always fetched fresh — no
+                        // wrapping lambda needed.
+                        options.AccessTokenProvider = connectionConfig.CredentialProvider
+                            ?? (() => Task.FromResult<string?>(null));
 
 #if NET5_0_OR_GREATER
                         // OPT-IN transport CONNECT timeout (ConnectionConfig.ConnectTimeoutSeconds > 0): make an
