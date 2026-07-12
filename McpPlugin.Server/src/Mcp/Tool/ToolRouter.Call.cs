@@ -15,6 +15,9 @@ using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Auth;
+using com.IvanMurzak.McpPlugin.Server.Strategy;
+using com.IvanMurzak.McpPlugin.Server.Tools;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Protocol;
@@ -47,6 +50,34 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             var argumentsDict = request.Params.Arguments as IReadOnlyDictionary<string, JsonElement>
                 ?? new Dictionary<string, JsonElement>();
+
+            // Server-native tools (mcp-authorize b4) — the selection + enrollment surface handled by
+            // the RS itself, NEVER proxied to a plugin. Registered only in oauth mode; null otherwise
+            // (today's pure pass-through preserved). Checked BEFORE resolution so an engine-less agent
+            // can still call enroll_engine_plugin.
+            var nativeTools = request.Services.GetService<ServerNativeTools>();
+            if (nativeTools != null && ServerNativeTools.IsServerNativeTool(request.Params.Name))
+            {
+                var context = SelectionToolContext.FromCurrent();
+                var nativeResponse = await nativeTools.HandleAsync(request.Params.Name, argumentsDict, context, cancellationToken);
+                return nativeResponse.ToCallToolResult();
+            }
+
+            // oauth: when this agent session resolves to NO plugin instance, surface the design-04
+            // step-5 agent-actionable error (pinned-no-match vs account-empty) instead of the legacy
+            // 10x-retry → generic invoke failure. A Resolved session falls through to the proxy below
+            // (whose own retry loop still covers a transient mid-restart reconnect window).
+            if (nativeTools != null && request.Services.GetService<IMcpConnectionStrategy>() is AccountMcpStrategy accountStrategy)
+            {
+                var resolution = accountStrategy.ResolveCurrentSession();
+                if (resolution.Kind != InstanceResolutionKind.Resolved)
+                {
+                    var accountId = McpSessionTokenContext.CurrentIdentity?.AccountId;
+                    var actionable = AgentActionableErrors.ForResolution(resolution, accountStrategy.Instances, accountId);
+                    logger.Trace("Call '{0}': no instance resolved ({1}); returning agent-actionable error.", request.Params.Name, resolution.Kind);
+                    return new CallToolResult().SetError(actionable);
+                }
+            }
 
             var requestData = new RequestCallTool(request.Params.Name, argumentsDict);
             if (logger.IsTraceEnabled)

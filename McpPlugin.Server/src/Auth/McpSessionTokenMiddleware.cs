@@ -11,7 +11,9 @@
 using System;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Server.Tools;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace com.IvanMurzak.McpPlugin.Server.Auth
 {
@@ -30,6 +32,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
     /// </summary>
     public class McpSessionTokenMiddleware
     {
+        /// <summary>The MCP Streamable-HTTP session header (case-insensitive lookup).</summary>
+        public const string SessionIdHeader = "Mcp-Session-Id";
+
         private readonly RequestDelegate _next;
 
         public McpSessionTokenMiddleware(RequestDelegate next) => _next = next;
@@ -57,6 +62,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
 
             // Capture the project pin from the config URL's trailing /p/<pin> segment (design 04 D14).
             McpSessionTokenContext.CurrentProjectPin = TryExtractProjectPin(context.Request.Path.Value);
+
+            // Capture the MCP session id (mcp-authorize b4) and reload this session's sticky
+            // engine-instance selection so account routing honors it (design 04 step 2). The store is
+            // registered only in oauth mode — null in legacy/no-auth modes leaves selection untouched.
+            var sessionId = context.Request.Headers.TryGetValue(SessionIdHeader, out var sid) ? sid.ToString() : null;
+            McpSessionTokenContext.CurrentSessionId = string.IsNullOrEmpty(sessionId) ? null : sessionId;
+            var selectionStore = context.RequestServices?.GetService<ISessionSelectionStore>();
+            if (selectionStore != null)
+                McpSessionTokenContext.CurrentSelectedInstanceId = selectionStore.Get(sessionId);
 
             var remoteIp = context.Connection.RemoteIpAddress?.ToString();
             if (!string.IsNullOrEmpty(remoteIp))
@@ -87,6 +101,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 McpSessionTokenContext.CurrentIdentity = null;
                 McpSessionTokenContext.CurrentProjectPin = null;
                 McpSessionTokenContext.CurrentSelectedInstanceId = null;
+                McpSessionTokenContext.CurrentSessionId = null;
             }
         }
 

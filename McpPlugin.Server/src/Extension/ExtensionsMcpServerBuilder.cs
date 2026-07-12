@@ -11,12 +11,17 @@
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Auth.OAuth;
 using com.IvanMurzak.McpPlugin.Server.Security;
+using com.IvanMurzak.McpPlugin.Server.Strategy;
+using com.IvanMurzak.McpPlugin.Server.Tools;
 using com.IvanMurzak.McpPlugin.Server.Webhooks;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.DependencyInjection;
@@ -147,6 +152,49 @@ namespace com.IvanMurzak.McpPlugin.Server
                     sp.GetRequiredService<IJwksKeyProvider>(),
                     sp.GetRequiredService<IIntrospectionClient>(),
                     logger: sp.GetService<ILogger<AccessTokenValidator>>()));
+
+                // Server-native tools (mcp-authorize b4) — the account+instance selection + enrollment
+                // surface. Only meaningful in oauth mode (the pairing plane), so registered here.
+                mcpServerBuilder.Services.AddSingleton<ISessionSelectionStore, SessionSelectionStore>();
+
+                mcpServerBuilder.Services.AddSingleton<IEnrollmentClient>(sp =>
+                {
+                    var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
+                    var config = sp.GetRequiredService<OAuthResourceServerConfig>();
+                    var enrollEndpoint = $"{config.Issuer.TrimEnd('/')}/api/auth/enroll/create";
+                    EnrollCreatePost post = async (bearer, engine, publicUrl, ct) =>
+                    {
+                        var client = httpFactory.CreateClient();
+                        client.Timeout = TimeSpan.FromSeconds(10);
+                        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, enrollEndpoint);
+                        // Forward the session credential verbatim; NEVER log it.
+                        httpRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", bearer);
+                        var payload = JsonSerializer.Serialize(new Dictionary<string, string>
+                        {
+                            ["engine"] = engine,
+                            ["public_url"] = publicUrl
+                        });
+                        httpRequest.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+                        using var httpResponse = await client.SendAsync(httpRequest, ct);
+                        if (!httpResponse.IsSuccessStatusCode)
+                            return null;
+                        return await httpResponse.Content.ReadAsStringAsync(ct);
+                    };
+                    return new EnrollmentClient(post, dataArguments.PublicUrl!, logger: sp.GetService<ILogger<EnrollmentClient>>());
+                });
+
+                mcpServerBuilder.Services.AddSingleton<ServerNativeTools>(sp =>
+                {
+                    // In oauth mode the resolved IMcpConnectionStrategy is always the AccountMcpStrategy,
+                    // whose registry backs the selection tools.
+                    var strategy = sp.GetRequiredService<IMcpConnectionStrategy>() as AccountMcpStrategy
+                        ?? throw new InvalidOperationException("ServerNativeTools requires the oauth AccountMcpStrategy.");
+                    return new ServerNativeTools(
+                        strategy.Instances,
+                        sp.GetRequiredService<ISessionSelectionStore>(),
+                        sp.GetRequiredService<IEnrollmentClient>(),
+                        logger: sp.GetService<ILogger<ServerNativeTools>>());
+                });
             }
 
             // Origin validation options (mcp-authorize b2) — registered in ALL modes; consumed by
