@@ -56,7 +56,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         protected override AiAgentConfig CreateHttpConfig(AgentConfiguratorSettings settings, ILogger? logger)
             => new JsonAiAgentConfig(AgentName, GlobalConfigPath(settings), bodyPath: DefaultBodyPath, logger: logger)
                 .SetProperty("type", JsonValue.Create($"{TransportMethod.streamableHttp}")!, requiredForConfiguration: true)
-                .SetProperty("url", JsonValue.Create(settings.Host)!, requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
+                .SetProperty("url", JsonValue.Create(settings.PinnedHttpUrl)!, requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
                 .SetPropertyToRemove("command")
                 .SetPropertyToRemove("args");
 

@@ -9,12 +9,28 @@
 */
 
 #nullable enable
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.AgentConfig
 {
+    /// <summary>
+    /// How a credential is written into an HTTP MCP config (mcp-authorize b6). The default is
+    /// <see cref="Oauth"/>: the config carries no credential at all — the client performs native
+    /// MCP OAuth against the server URL (design 03 Flow A). <see cref="AccessToken"/> is the
+    /// advanced PAT escape hatch (Flow C) written ONLY on explicit request, preferring env-var /
+    /// user-scope placement; writing it into a project-scoped file emits a warning.
+    /// </summary>
+    public enum HttpCredentialMode
+    {
+        /// <summary>Default: no credential written; the client authorizes natively via OAuth.</summary>
+        Oauth,
+        /// <summary>Advanced PAT path: write the legacy bearer/header shape (explicit opt-in only).</summary>
+        AccessToken
+    }
+
     /// <summary>
     /// Engine-agnostic base for an AI-agent configurator. Each subclass knows one agent's
     /// config-file location(s) and the stdio/http server-entry shape; it produces
@@ -63,6 +79,16 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public abstract string? IconName { get; }
 
         /// <summary>
+        /// Whether this agent can complete native MCP OAuth against the server URL (design 03 Flow A).
+        /// Default <c>true</c> — the credential-free config is written and the client's own authorize
+        /// flow completes the loop. The few clients that cannot do MCP OAuth override this to
+        /// <c>false</c>, which is the signal for the engine UI to offer the "Advanced: use access
+        /// token" (PAT) path (<see cref="HttpCredentialMode.AccessToken"/>, design 03 Flow C). The
+        /// flag never changes what the DEFAULT path writes — that path is always credential-free.
+        /// </summary>
+        public virtual bool SupportsOAuth => true;
+
+        /// <summary>
         /// Builds the STDIO transport config for the given settings. Override per agent.
         /// Authorization is applied by <see cref="GetStdioConfig"/>; subclasses build the base entry only.
         /// </summary>
@@ -75,7 +101,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         protected abstract AiAgentConfig CreateHttpConfig(AgentConfiguratorSettings settings, ILogger? logger);
 
         /// <summary>
-        /// Returns the STDIO config with STDIO authorization applied, ready to <c>Configure()</c> / inspect.
+        /// Returns the STDIO config, ready to <c>Configure()</c> / inspect. Always credential-free
+        /// (mcp-authorize b6): stdio spawns in <c>none</c> mode (design 03 Flow D), so any stray
+        /// <c>token=</c> arg is stripped and no credential is ever written for the stdio transport.
         /// </summary>
         public AiAgentConfig GetStdioConfig(AgentConfiguratorSettings settings, ILogger? logger = null)
         {
@@ -85,30 +113,93 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         }
 
         /// <summary>
-        /// Returns the HTTP config with HTTP authorization applied, ready to <c>Configure()</c> / inspect.
+        /// Returns the HTTP config, ready to <c>Configure()</c> / inspect. On the default
+        /// <see cref="HttpCredentialMode.Oauth"/> path the config is credential-free — the client
+        /// authorizes natively against the pinned server URL (design 03 Flow A). Passing
+        /// <see cref="HttpCredentialMode.AccessToken"/> is the explicit advanced PAT path (Flow C):
+        /// it writes the legacy bearer shape and, when that credential would land in a
+        /// project-scoped file, emits a warning (prefer env-var / user-scope placement).
         /// </summary>
-        public AiAgentConfig GetHttpConfig(AgentConfiguratorSettings settings, ILogger? logger = null)
+        public AiAgentConfig GetHttpConfig(
+            AgentConfiguratorSettings settings,
+            ILogger? logger = null,
+            HttpCredentialMode credentialMode = HttpCredentialMode.Oauth)
         {
             var config = CreateHttpConfig(settings, logger);
-            ApplyHttpAuthorization(config, settings);
+            ApplyHttpAuthorization(config, settings, credentialMode);
+            WarnIfCredentialWouldLandInProjectFile(config, settings, credentialMode, logger);
             return config;
         }
 
         /// <summary>
-        /// Applies STDIO authorization to a config. Override for agent-specific token handling.
+        /// Applies STDIO authorization to a config. The default path is unconditionally
+        /// credential-free — this strips any existing <c>token=</c> arg (and HTTP-only
+        /// <c>headers</c>). Override only for agents whose stdio credential handling is not
+        /// args-based (e.g. Open Code, which builds a single <c>command</c> array).
         /// </summary>
         protected virtual void ApplyStdioAuthorization(AiAgentConfig config, AgentConfiguratorSettings settings)
         {
-            config.ApplyStdioAuthorization(settings.IsStdioAuthRequired, settings.Token);
+            config.ApplyStdioAuthorization(isRequired: false, token: null);
         }
 
         /// <summary>
-        /// Applies HTTP authorization to a config. Override for agent-specific token handling
-        /// (e.g. Codex's bearer-token env-var indirection).
+        /// Applies HTTP authorization to a config for the requested <paramref name="credentialMode"/>.
+        /// <see cref="HttpCredentialMode.Oauth"/> (default) strips any credential; only
+        /// <see cref="HttpCredentialMode.AccessToken"/> injects the legacy bearer shape, and only
+        /// when a token is present. Override for agent-specific token placement (e.g. Codex's
+        /// bearer-token env-var indirection, which keeps the secret out of the file entirely).
         /// </summary>
-        protected virtual void ApplyHttpAuthorization(AiAgentConfig config, AgentConfiguratorSettings settings)
+        protected virtual void ApplyHttpAuthorization(
+            AiAgentConfig config,
+            AgentConfiguratorSettings settings,
+            HttpCredentialMode credentialMode)
         {
-            config.ApplyHttpAuthorization(settings.IsHttpAuthRequired, settings.Token);
+            var writeToken = credentialMode == HttpCredentialMode.AccessToken && !string.IsNullOrEmpty(settings.Token);
+            config.ApplyHttpAuthorization(writeToken, settings.Token);
+        }
+
+        /// <summary>
+        /// Warns when the advanced PAT path would write the raw token VALUE into a config file that
+        /// lives under the project root (VCS-visible). Detected generically: the credential is
+        /// considered "in the file" when the built <see cref="AiAgentConfig.ExpectedFileContent"/>
+        /// contains the token value — so an env-var indirection (Codex) that keeps the secret out of
+        /// the file never trips it, and neither does a user-global config path.
+        /// </summary>
+        private static void WarnIfCredentialWouldLandInProjectFile(
+            AiAgentConfig config,
+            AgentConfiguratorSettings settings,
+            HttpCredentialMode credentialMode,
+            ILogger? logger)
+        {
+            if (credentialMode != HttpCredentialMode.AccessToken || string.IsNullOrEmpty(settings.Token))
+                return;
+
+            if (!config.ExpectedFileContent.Contains(settings.Token!, StringComparison.Ordinal))
+                return; // credential is not in the file (e.g. env-var placement) — nothing to warn about.
+
+            if (!IsProjectScopedPath(config.ConfigPath, settings.ProjectRootPath))
+                return; // user-global config path — the preferred placement for a PAT.
+
+            logger?.LogWarning(
+                "Writing an access token into project-scoped config file '{ConfigPath}' — it is under the project root and may be committed to version control. Prefer an env-var or user-scope placement for the access token.",
+                config.ConfigPath);
+        }
+
+        /// <summary>
+        /// True when <paramref name="configPath"/> resolves to a location under
+        /// <paramref name="projectRoot"/> (separator- and case-insensitive). Used to decide whether a
+        /// PAT write would land in a VCS-visible project file.
+        /// </summary>
+        internal static bool IsProjectScopedPath(string? configPath, string? projectRoot)
+        {
+            if (string.IsNullOrEmpty(configPath) || string.IsNullOrEmpty(projectRoot))
+                return false;
+
+            static string Norm(string p) => p.Replace('\\', '/').TrimEnd('/');
+            var root = Norm(projectRoot!);
+            var path = Norm(configPath!);
+            return path.Equals(root, StringComparison.OrdinalIgnoreCase)
+                || path.StartsWith(root + "/", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>

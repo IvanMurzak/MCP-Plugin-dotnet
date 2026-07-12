@@ -34,16 +34,16 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
 
         protected override AiAgentConfig CreateStdioConfig(AgentConfiguratorSettings settings, ILogger? logger)
         {
+            // mcp-authorize b6: credential-free, pinned stdio command array — ProjectIdentity port
+            // (marker override wins) + project=<pin>, no auth args (spawns in `none` mode, Flow D).
             var commandArray = new JsonArray
             {
                 settings.ExecutableFullPath.Replace('\\', '/'),
-                $"{Args.Port}={settings.Port}",
+                $"{Args.Port}={settings.ResolvedPort}",
                 $"{Args.PluginTimeout}={settings.TimeoutMs}",
                 $"{Args.ClientTransportMethod}={TransportMethod.stdio}",
-                $"{Args.Authorization}={settings.AuthOption}"
+                $"{Args.Project}={settings.ProjectPin}"
             };
-            if (settings.IsStdioAuthRequired && !string.IsNullOrEmpty(settings.Token))
-                commandArray.Add($"{Args.Token}={settings.Token}");
 
             return new JsonAiAgentConfig(AgentName, LocalConfigPath(settings), bodyPath: "mcp", logger: logger)
                 .SetProperty("type", JsonValue.Create("local")!, requiredForConfiguration: true)
@@ -57,15 +57,16 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
             => new JsonAiAgentConfig(AgentName, LocalConfigPath(settings), bodyPath: "mcp", logger: logger)
                 .SetProperty("type", JsonValue.Create("remote")!, requiredForConfiguration: true)
                 .SetProperty("enabled", JsonValue.Create(true)!, requiredForConfiguration: true)
-                .SetProperty("url", JsonValue.Create(settings.Host)!, requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
+                .SetProperty("url", JsonValue.Create(settings.PinnedHttpUrl)!, requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
                 .SetPropertyToRemove("command")
                 .SetPropertyToRemove("args");
 
-        // OpenCode embeds the token in the command array (not the args), so the base
-        // args-based STDIO authorization injection does not apply.
+        // OpenCode uses a single `command` array (not a separate `args` array), so the base
+        // args-based STDIO stripping does not apply. The command array is credential-free by
+        // construction (mcp-authorize b6), so there is nothing to strip.
         protected override void ApplyStdioAuthorization(AiAgentConfig config, AgentConfiguratorSettings settings)
         {
-            // no-op: token is handled inline in CreateStdioConfig's command array.
+            // no-op: CreateStdioConfig's command array carries no credential.
         }
 
         protected override IReadOnlyList<ConfigurationSection> BuildSections(

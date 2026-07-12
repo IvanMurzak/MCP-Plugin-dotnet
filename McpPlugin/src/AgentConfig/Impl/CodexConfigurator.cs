@@ -40,10 +40,10 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
                 .SetProperty("command", settings.ExecutableFullPath.Replace('\\', '/'), requiredForConfiguration: true, comparison: ValueComparisonMode.Path)
                 .SetProperty("args", new[]
                 {
-                    $"{Args.Port}={settings.Port}",
+                    $"{Args.Port}={settings.ResolvedPort}",
                     $"{Args.PluginTimeout}={settings.TimeoutMs}",
                     $"{Args.ClientTransportMethod}={TransportMethod.stdio}",
-                    $"{Args.Authorization}={settings.AuthOption}"
+                    $"{Args.Project}={settings.ProjectPin}"
                 }, requiredForConfiguration: true)
                 .SetProperty("tool_timeout_sec", 300, requiredForConfiguration: false)
                 .SetPropertyToRemove("url")
@@ -53,21 +53,24 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         protected override AiAgentConfig CreateHttpConfig(AgentConfiguratorSettings settings, ILogger? logger)
             => new TomlAiAgentConfig(AgentName, LocalConfigPath(settings), bodyPath: "mcp_servers", logger: logger)
                 .SetProperty("enabled", true, requiredForConfiguration: true)
-                .SetProperty("url", settings.Host, requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
+                .SetProperty("url", settings.PinnedHttpUrl, requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
                 .SetProperty("tool_timeout_sec", 300, requiredForConfiguration: false)
                 .SetProperty("startup_timeout_sec", 30, requiredForConfiguration: false)
                 .SetPropertyToRemove("command")
                 .SetPropertyToRemove("args")
                 .SetPropertyToRemove("type");
 
-        protected override void ApplyHttpAuthorization(AiAgentConfig config, AgentConfiguratorSettings settings)
+        protected override void ApplyHttpAuthorization(AiAgentConfig config, AgentConfiguratorSettings settings, HttpCredentialMode credentialMode)
         {
-            base.ApplyHttpAuthorization(config, settings);
+            base.ApplyHttpAuthorization(config, settings, credentialMode);
 
             var tomlConfig = config as TomlAiAgentConfig
                 ?? throw new InvalidCastException($"Expected TomlAiAgentConfig for Codex HTTP configuration but got {config.GetType().Name}");
 
-            if (settings.IsHttpAuthRequired && !string.IsNullOrEmpty(settings.Token))
+            // Advanced PAT path only (mcp-authorize b6): Codex reads the token from the
+            // GAME_DEV_AUTH_TOKEN env var, so the secret never lands in the config file (the
+            // preferred placement). The default OAuth path writes neither the indirection nor a token.
+            if (credentialMode == HttpCredentialMode.AccessToken && !string.IsNullOrEmpty(settings.Token))
                 tomlConfig.SetProperty(EnvVarNameBearerToken, EnvVarNameAuthToken, requiredForConfiguration: true);
             else
                 tomlConfig.SetPropertyToRemove(EnvVarNameBearerToken);

@@ -81,7 +81,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         }
 
         [Fact]
-        public void Codex_IsTomlBased_AndAuthInjectsEnvVar()
+        public void Codex_IsTomlBased_AndAdvancedPatInjectsEnvVar_ButDefaultPathDoesNot()
         {
             var root = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
             Directory.CreateDirectory(root);
@@ -93,9 +93,16 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
                     "http://localhost:50000/mcp", token: "secret",
                     authOption: Consts.MCP.Server.AuthOption.required);
 
-                var http = c.GetHttpConfig(settings);
-                http.ShouldBeOfType<TomlAiAgentConfig>();
-                http.ExpectedFileContent.ShouldContain("bearer_token_env_var");
+                // Default (OAuth) path: credential-free — no env-var indirection, no token value.
+                var oauth = c.GetHttpConfig(settings);
+                oauth.ShouldBeOfType<TomlAiAgentConfig>();
+                oauth.ExpectedFileContent.ShouldNotContain("bearer_token_env_var");
+                oauth.ExpectedFileContent.ShouldNotContain("secret");
+
+                // Advanced PAT path: env-var indirection is written; the token VALUE stays out of the file.
+                var pat = c.GetHttpConfig(settings, credentialMode: HttpCredentialMode.AccessToken);
+                pat.ExpectedFileContent.ShouldContain("bearer_token_env_var");
+                pat.ExpectedFileContent.ShouldNotContain("secret");
             }
             finally
             {
