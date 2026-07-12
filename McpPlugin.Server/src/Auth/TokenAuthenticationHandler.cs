@@ -94,9 +94,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
 
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
+            // OAuth mode (mcp-authorize b2): validate ES256 JWT / opaque-PAT introspection.
+            // Non-OAuth mode is `none` (offline / local dev / CI): anonymous — no token is
+            // required or accepted. The legacy shared-token (`--token` ServerToken) and DCR /
+            // client-credentials token-equality paths were removed in mcp-authorize b5, so there
+            // is no orphaned code path that still accepts a deleted credential (fail closed).
             return Options.OAuthMode
                 ? HandleOAuthAuthenticateAsync()
-                : HandleLegacyAuthenticateAsync();
+                : Task.FromResult(AuthenticateResult.NoResult());
         }
 
         // ── OAuth resource-server path (mcp-authorize b2) ─────────────────────────────────────────
@@ -151,129 +156,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             return AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName));
         }
 
-        // ── Legacy token path (auth=required / none) — unchanged behavior ─────────────────────────
-        async Task<AuthenticateResult> HandleLegacyAuthenticateAsync()
-        {
-            // If no plugins have connected with tokens and no server token is configured,
-            // allow anonymous access for backward compatibility
-            if (!Options.RequireToken)
-                return AuthenticateResult.NoResult();
-
-            var authHeader = Request.Headers["Authorization"].ToString();
-            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-                return AuthenticateResult.NoResult();
-
-            var token = authHeader.Substring("Bearer ".Length).Trim();
-            if (string.IsNullOrEmpty(token))
-            {
-                if (!IsHubPath())
-                {
-                    Logger.LogWarning(
-                        "MCP auth rejected: Empty Bearer token. ConnectionId: {ConnectionId}, RemoteIp: {RemoteIpAddress}, UserAgent: {UserAgent}, RequestPath: {RequestPath}",
-                        Context.TraceIdentifier, GetClientIpAddress(), Request.Headers.UserAgent.ToString(), Request.Path.Value);
-                }
-                return IsHubPath() ? AuthenticateResult.NoResult() : AuthenticateResult.Fail("Empty Bearer token.");
-            }
-
-            // Token resolution — three additive sources, checked in priority order:
-            //
-            //   1. Plugin connection token  — a Bearer token that a connected .NET plugin
-            //      registered via SignalR (AddClient). Maps token → SignalR connectionId.
-            //      Grants a "connection_id" claim so the request can be routed to that plugin.
-            //      Checked first because plugin connections are the primary auth mechanism.
-            //
-            //   2. DCR access token (RFC 7591) — a token issued by the /token endpoint after
-            //      Dynamic Client Registration. Grants a "client_id" claim.
-            //      Checked before ServerToken because DCR tokens are per-client and dynamic;
-            //      a DCR token should never be confused with the static ServerToken.
-            //
-            //   3. ServerToken (static fallback) — a pre-shared token set at server startup
-            //      via the `token` CLI argument / MCP_PLUGIN_TOKEN env var.
-            //      Checked last; acts as a shared secret for deployments that don't use DCR.
-            //
-            // All three sources are additive: any valid token from any source is accepted.
-            // The first successful match wins.
-
-            // Tier 1 — plugin connection token
-            AuthenticationTicket? ticket = null;
-            var connectionId = ClientUtils.GetConnectionIdByToken(token);
-            if (connectionId != null)
-            {
-                var claims = new[]
-                {
-                    new Claim(TokenClaimType, token),
-                    new Claim("connection_id", connectionId)
-                };
-                var identity = new ClaimsIdentity(claims, SchemeName);
-                var principal = new ClaimsPrincipal(identity);
-                ticket = new AuthenticationTicket(principal, SchemeName);
-            }
-
-            // Tier 2 — DCR access token (RFC 7591)
-            if (ticket == null)
-            {
-                var registeredClientId = ClientRegistrationStore.TryGetClientIdByAccessToken(token);
-                if (registeredClientId != null)
-                {
-                    var registeredClaims = new[]
-                    {
-                        new Claim(TokenClaimType, token),
-                        new Claim("client_id", registeredClientId)
-                    };
-                    var registeredIdentity = new ClaimsIdentity(registeredClaims, SchemeName);
-                    var registeredPrincipal = new ClaimsPrincipal(registeredIdentity);
-                    ticket = new AuthenticationTicket(registeredPrincipal, SchemeName);
-                }
-            }
-
-            // Tier 3 — static ServerToken fallback
-            if (ticket == null
-                && !string.IsNullOrEmpty(Options.ServerToken)
-                && string.Equals(token, Options.ServerToken, StringComparison.Ordinal))
-            {
-                var claims = new[]
-                {
-                    new Claim(TokenClaimType, token)
-                };
-                var identity = new ClaimsIdentity(claims, SchemeName);
-                var principal = new ClaimsPrincipal(identity);
-                ticket = new AuthenticationTicket(principal, SchemeName);
-            }
-
-            // No tier matched — unrecognized token.
-            //
-            // On the SignalR hub path (Consts.Hub.RemoteApp == "/hub/mcp-server") this happens
-            // for EVERY new plugin connection: the plugin's bearer token is registered with
-            // ClientUtils.AddClient only AFTER OnConnectedAsync runs, but middleware-level
-            // authentication runs BEFORE OnConnectedAsync — chicken-and-egg. The hub endpoint
-            // is not RequireAuthorization()-gated, so the connection still proceeds; but
-            // returning Fail here causes the framework to auto-emit a "[7] McpPluginToken was
-            // not authenticated" info log on every probe — a documented production-log noise
-            // source (issue #99). Returning NoResult on the hub path lets the connection
-            // through silently while preserving the Fail+401 challenge on every other path
-            // (which IS RequireAuthorization()-gated). The same hub-path-silencing rule is
-            // also applied to the empty-Bearer case above.
-            if (ticket == null)
-            {
-                if (!IsHubPath())
-                {
-                    Logger.LogWarning(
-                        "MCP auth rejected: Invalid or unrecognized token. ConnectionId: {ConnectionId}, RemoteIp: {RemoteIpAddress}, UserAgent: {UserAgent}, RequestPath: {RequestPath}, TokenFingerprint: {TokenFingerprint}",
-                        Context.TraceIdentifier, GetClientIpAddress(), Request.Headers.UserAgent.ToString(),
-                        Request.Path.Value, FingerprintToken(token));
-                }
-                return IsHubPath() ? AuthenticateResult.NoResult() : AuthenticateResult.Fail("Invalid or unrecognized token.");
-            }
-
-            // Single authorization webhook check for whichever tier matched.
-            // Note: AuthorizeAiAgentAsync returns false for both explicit denials
-            // and webhook failures (timeout/network error) when fail-open is disabled.
-            if (!await AuthorizeAiAgentAsync(token))
-                return AuthenticateResult.Fail("Authorization webhook rejected the connection.");
-
-            return AuthenticateResult.Success(ticket);
-        }
-
         bool TryGetBearerToken(out string token)
         {
             token = string.Empty;
@@ -286,7 +168,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
 
         // True when the request targets the SignalR hub endpoint. Used to silence the
         // "[7] McpPluginToken was not authenticated" info log noise on hub probes — see
-        // the comment on the no-tier-matched branch in HandleLegacyAuthenticateAsync.
+        // the invalid-token branch in HandleOAuthAuthenticateAsync (BaseHub does its own auth).
         bool IsHubPath()
         {
             var path = Request.Path.Value;
@@ -330,12 +212,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
 
     public class TokenAuthenticationOptions : AuthenticationSchemeOptions
     {
-        public string? ServerToken { get; set; }
-        public bool RequireToken { get; set; }
-
         /// <summary>
         /// When true, the handler runs the OAuth resource-server validation path (ES256/JWKS +
-        /// introspection) instead of the legacy token-equality path (mcp-authorize b2).
+        /// introspection). When false (the only other mode, <c>none</c>), the handler is anonymous:
+        /// no token is required or accepted. The legacy shared-token (<c>ServerToken</c>) and DCR
+        /// token-equality options were removed in mcp-authorize b5.
         /// </summary>
         public bool OAuthMode { get; set; }
     }

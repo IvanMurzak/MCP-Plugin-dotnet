@@ -20,9 +20,9 @@ using Microsoft.Extensions.Logging;
 namespace com.IvanMurzak.McpPlugin.Server.Strategy
 {
     /// <summary>
-    /// The <c>oauth</c> account+instance pairing plane (mcp-authorize b3, design doc 04). Replaces the
-    /// interim token-equality routing (<c>RequiredAuthMcpStrategy</c>, still used by legacy
-    /// <c>required</c> mode until b5) with account-scoped instance routing:
+    /// The <c>oauth</c> account+instance pairing plane (mcp-authorize b3, design doc 04). The legacy
+    /// token-equality routing (the former <c>RequiredAuthMcpStrategy</c> / <c>required</c> mode) was
+    /// deleted in mcp-authorize b5; this account-scoped instance routing is its replacement:
     /// <list type="bullet">
     ///   <item><b>Auth config</b> — flags the OAuth resource-server validation path (same as b2's
     ///   interim <c>OAuthMcpStrategy</c>, which this class supersedes).</item>
@@ -66,11 +66,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         public void ConfigureAuthentication(TokenAuthenticationOptions options, DataArguments dataArguments)
         {
             // OAuth mode: the handler validates the presented token against the AS (JWKS +
-            // introspection). No pre-shared ServerToken; RequireToken must be true so the handler
-            // runs on the (RequireAuthorization-gated) MCP endpoint.
+            // introspection). No pre-shared ServerToken — the RS never mints or equality-pairs
+            // tokens (mcp-authorize b5).
             options.OAuthMode = true;
-            options.ServerToken = null;
-            options.RequireToken = true;
         }
 
         // Plugin registration is driven by McpServerHub in oauth mode (RegisterInstance); the base

@@ -91,13 +91,14 @@ namespace com.IvanMurzak.McpPlugin.Server
                     authenticationScheme: TokenAuthenticationHandler.SchemeName,
                     options =>
                     {
+                        // The resolved strategy owns auth configuration (none → anonymous,
+                        // oauth → OAuthMode). setup is always registered by WithMcpServer; the
+                        // fallback stays anonymous/fail-closed (the legacy shared-token default was
+                        // removed in mcp-authorize b5 — a token never gates the endpoint on its own).
                         if (setup != null)
                             setup.Strategy.ConfigureAuthentication(options, dataArguments);
                         else
-                        {
-                            options.ServerToken = dataArguments.Token;
-                            options.RequireToken = !string.IsNullOrEmpty(dataArguments.Token);
-                        }
+                            options.OAuthMode = false;
                     });
             mcpServerBuilder.Services.AddAuthorization();
 

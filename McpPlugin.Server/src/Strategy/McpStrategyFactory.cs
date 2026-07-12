@@ -25,13 +25,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             return mode switch
             {
                 Consts.MCP.Server.AuthOption.none => new NoAuthMcpStrategy(),
-                Consts.MCP.Server.AuthOption.required => new RequiredAuthMcpStrategy(),
-                // mcp-authorize b3: oauth mode is now the account+instance pairing plane. The b2
-                // interim OAuthMcpStrategy (token-equality delegation) has been superseded.
+                // mcp-authorize b3: oauth mode is the account+instance pairing plane.
                 Consts.MCP.Server.AuthOption.oauth => new AccountMcpStrategy(),
+                // mcp-authorize b5 (coordinated breaking removal): the legacy shared-token
+                // pairing mode (`required`) is deleted. The RS never mints or equality-pairs
+                // tokens; it only validates them (oauth) or runs anonymous (none). Any other
+                // value — including the retired `required` — fails closed with an explicit error;
+                // no silent downgrade to `none`.
                 _ => throw new ArgumentException(
                     $"Unsupported auth option: {mode}. " +
-                    $"Supported auth options are: {Consts.MCP.Server.AuthOption.none}, {Consts.MCP.Server.AuthOption.required}, {Consts.MCP.Server.AuthOption.oauth}")
+                    $"Supported auth options are: {Consts.MCP.Server.AuthOption.none}, {Consts.MCP.Server.AuthOption.oauth}")
             };
         }
     }

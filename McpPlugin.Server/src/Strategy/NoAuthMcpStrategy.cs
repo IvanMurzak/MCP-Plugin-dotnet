@@ -32,8 +32,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 
         public void ConfigureAuthentication(TokenAuthenticationOptions options, DataArguments dataArguments)
         {
-            options.ServerToken = null;
-            options.RequireToken = false;
+            // no-auth (offline / local dev / CI): the HTTP endpoint is never token-gated, and the
+            // handler runs its anonymous path. No OAuth validation.
+            options.OAuthMode = false;
         }
 
         public void OnPluginConnected(Type hubType, string connectionId, string? token,

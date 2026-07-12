@@ -1,17 +1,25 @@
 # Transport + Auth Architecture
 
+> **Breaking change (mcp-authorize b5).** The legacy `authorization=required` shared-token
+> pairing mode — `RequiredAuthMcpStrategy`, the `--token` / `MCP_PLUGIN_TOKEN` shared secret used
+> for token-equality pairing, and the in-process DCR / client-credentials mini-AS
+> (`/oauth/register`, `/oauth/token`, `ClientRegistrationStore`) — has been **deleted**. The
+> resource server never mints, self-issues, or equality-pairs tokens; it only validates them.
+> The two supported auth modes are now **`none`** and **`oauth`**. The authoritative design lives
+> in the mcp-authorize design (`02-target-architecture.md`) and `03-auth-flows.md`.
+
 ## Overview
 
 The MCP Plugin Server is configured through **two independent axes**: **Transport** and **Auth**.
 Each axis has its own enum, CLI argument, and environment variable. They combine freely — any transport works with any auth option.
 
 ```
-Transport  ×  Auth  ×  Token
-   stdio          none        (optional)
-   streamableHttp required    (required when auth=required)
+Transport  ×  Auth
+   stdio          none    (offline / local dev / CI — anonymous, single plugin)
+   streamableHttp oauth   (OAuth 2.1 resource server — account-scoped pairing)
 ```
 
-All 4 combinations (2 transports × 2 auth options) are supported without conditional branching in the server code. The correct behavior is selected automatically at startup via the **Strategy Pattern** and **Transport Layer Pattern**.
+All combinations are supported without conditional branching in the server code. The correct behavior is selected automatically at startup via the **Strategy Pattern** and **Transport Layer Pattern**.
 
 ---
 
@@ -28,19 +36,23 @@ All 4 combinations (2 transports × 2 auth options) are supported without condit
 
 ### Auth — how plugin connections are authenticated and isolated
 
-| Source           | Key                          | Values              |
-|------------------|------------------------------|---------------------|
-| CLI argument     | `authorization=<value>`      | `none`, `required`  |
-| Environment var  | `MCP_AUTHORIZATION=<value>`  | `none`, `required`  |
+| Source           | Key                          | Values           |
+|------------------|------------------------------|------------------|
+| CLI argument     | `auth=<value>`               | `none`, `oauth`  |
+| Environment var  | `MCP_AUTH=<value>`           | `none`, `oauth`  |
 
-**Default**: `none` (when not set)
+**Default**: `none` (when not set). `auth=oauth` additionally requires `auth-issuer=<AS url>` and
+`public-url=<this RS's canonical resource id>`. (The legacy `authorization=` / `MCP_AUTHORIZATION=`
+argument names still parse for the `none` value; the retired `required` value now fails closed with
+an explicit startup error.)
 
-### Token — the shared secret used by `auth=required`
+### Credentials — validated, never minted
 
-| Source           | Key                       | Example                     |
-|------------------|---------------------------|-----------------------------|
-| CLI argument     | `--token=<value>`         | `--token=mySecret`          |
-| Environment var  | `MCP_PLUGIN_TOKEN=<value>`| `MCP_PLUGIN_TOKEN=mySecret` |
+In `oauth` mode the RS validates presented credentials against the external authorization server
+(ai-game.dev) — ES256 JWTs via cached JWKS, and opaque PATs via RFC 7662 introspection. It **never**
+mints, self-issues, or equality-pairs tokens; there is no server-side shared secret. See
+`03-auth-flows.md` (Flows A–C) for the full credential lifecycle. In `none` mode no credential is
+required or accepted (the endpoint is anonymous).
 
 ### Idle Timeout — streamableHttp session eviction window
 
@@ -76,8 +88,6 @@ Controls `HttpServerTransportOptions.MaxIdleSessionCount`. When the number of id
 
 > **Why both knobs matter (issue #119).** Production accumulated thousands of zombie `StreamableHttpSession` entries — each pinning a `PooledByteBufferWriter` grown to the largest SSE event it ever served (up to tens of MiB) — leaking multiple GB. The fix is purely lifecycle/eviction tuning: a documented 10-minute idle window reaps disconnected sessions promptly, and an explicit `MaxIdleSessionCount` caps the retained idle set an order of magnitude below the SDK default. Neither change touches the wire protocol, image/screenshot transfer, or auth semantics.
 
-**Optional at server launch** when `authorization=required`. When absent, the server enters dynamic-pairing mode — any plugin token is accepted and plugins/clients are paired by token equality. When present, only that exact token is accepted from connecting plugins. Ignored (but accepted) when `authorization=none`. Note: connecting plugins must always provide a token in `auth=required` mode regardless.
-
 ---
 
 ## Connection Strategy
@@ -86,94 +96,45 @@ The `IMcpConnectionStrategy` interface is the central coordinator for all auth-d
 
 ```
 McpStrategyFactory
-  ├── AuthOption.none     → NoAuthMcpStrategy
-  └── AuthOption.required → RequiredAuthMcpStrategy
+  ├── AuthOption.none  → NoAuthMcpStrategy
+  └── AuthOption.oauth → AccountMcpStrategy
 ```
 
-### NoAuthMcpStrategy (`authorization=none`)
+Any other value (including the retired `required`) throws at startup — fail closed, never a silent downgrade to `none`.
 
-Designed for a **single trusted plugin** connecting to a single MCP client (e.g. a developer's local machine running one Unity editor). The HTTP endpoint is never token-gated in this mode — token-based protection of the HTTP endpoint is reserved for `AuthOption.required`.
+### NoAuthMcpStrategy (`auth=none`)
 
-### RequiredAuthMcpStrategy (`authorization=required`)
+Designed for a **single trusted plugin** connecting to a single MCP client (e.g. a developer's local machine running one Unity editor). The HTTP endpoint is never token-gated in this mode; the anonymous, single-connection behavior is unchanged. This is the offline / local-dev / CI default and the stdio default.
 
-Designed for **multiple independent plugins** each owning a specific MCP client session. Every plugin connection must carry a unique Bearer token. Notifications and data queries are scoped strictly to the matching session.
+### AccountMcpStrategy (`auth=oauth`)
+
+The OAuth 2.1 resource-server **account + instance pairing plane**. A presented credential is validated against the authorization server (ES256 JWT via JWKS, or opaque PAT via introspection) and resolves to an ai-game.dev account (`sub`). Routing is strictly **account-scoped**: an agent session resolves to a live plugin instance by `pin(strict) → sticky → single → most-recently-active`, and a session for one account can never route to, be notified about, or observe another account's instances (fail closed). Full spec: the mcp-authorize design (`04-pairing-and-routing.md`).
 
 ---
 
 ## Behavior Comparison
 
-### Core properties
-
-| Property                   | `NoAuthMcpStrategy`           | `RequiredAuthMcpStrategy`          |
-|----------------------------|-------------------------------|------------------------------------|
-| `AuthOption`               | `none`                        | `required`                         |
-| `AllowMultipleConnections` | `false`                       | `true`                             |
-| Token required?            | No (optional)                 | Yes — plugins must provide a token |
-
-### `Validate(dataArguments)`
-
-| Strategy                   | Behavior                                                                      |
-|----------------------------|-------------------------------------------------------------------------------|
-| `NoAuthMcpStrategy`        | No-op. Token is optional.                                                     |
-| `RequiredAuthMcpStrategy`  | No-op. Server token is optional; enables dynamic-pairing when absent.         |
-
-### `ConfigureAuthentication(options, dataArguments)`
-
-| Strategy                   | `options.RequireToken`                    | `options.ServerToken`   |
-|----------------------------|-------------------------------------------|-------------------------|
-| `NoAuthMcpStrategy`        | Always `false`                            | Always `null`           |
-| `RequiredAuthMcpStrategy`  | Always `true`                             | Token value or `null`   |
-
-### `OnPluginConnected(hubType, connectionId, token, logger, disconnectClient)`
-
-| Strategy                   | Behavior                                                                                                    |
-|----------------------------|-------------------------------------------------------------------------------------------------------------|
-| `NoAuthMcpStrategy`        | Registers the new connection, then **disconnects all other** existing connections (single-connection rule). |
-| `RequiredAuthMcpStrategy`  | Registers the new connection. Existing connections are **not disturbed**.                                   |
-
-### `OnPluginDisconnected(hubType, connectionId, logger)`
-
-Both strategies remove the connection from the registry. No difference.
-
-### `ResolveConnectionId(token, retryOffset)`
-
-| Strategy                   | Behavior                                                                                                          |
-|----------------------------|-------------------------------------------------------------------------------------------------------------------|
-| `NoAuthMcpStrategy`        | Looks up by token first; falls back to round-robin across all connections.                                        |
-| `RequiredAuthMcpStrategy`  | Looks up by token first (primary path); falls back to round-robin as a safety net if the token lookup misses.    |
-
-In practice `NoAuthMcpStrategy` hits the round-robin fallback often (token is optional), while `RequiredAuthMcpStrategy` always has a token and almost always resolves by direct lookup.
-
-### `ShouldNotifySession(pluginConnectionId, sessionId)`
-
-This guards every MCP notification (tool-list changed, prompt-list changed, resource-list changed) from reaching the wrong MCP client session.
-
-| Strategy                   | Logic                                                                                                     | Result                                   |
-|----------------------------|-----------------------------------------------------------------------------------------------------------|------------------------------------------|
-| `NoAuthMcpStrategy`        | Always returns `true` — broadcast to every session.                                                       | All MCP clients see every notification.  |
-| `RequiredAuthMcpStrategy`  | Looks up the plugin's token; returns `true` only if it equals `sessionId`.                                | Each MCP client only sees its own plugin's notifications. |
-
-### `GetClientData(connectionId, sessionTracker)` / `GetServerData(...)`
-
-| Strategy                   | Scoping                                                                                    |
-|----------------------------|--------------------------------------------------------------------------------------------|
-| `NoAuthMcpStrategy`        | Returns the **first available** session data — no scoping needed (only one session).       |
-| `RequiredAuthMcpStrategy`  | Looks up the plugin's token from `connectionId`, then retrieves data **scoped to that token**. Falls back to unscoped if no token. |
+| Property / method                 | `NoAuthMcpStrategy` (`none`)                                   | `AccountMcpStrategy` (`oauth`)                                                        |
+|-----------------------------------|----------------------------------------------------------------|--------------------------------------------------------------------------------------|
+| `AllowMultipleConnections`        | `false`                                                        | `true`                                                                               |
+| `Validate`                        | No-op.                                                          | Requires `auth-issuer` + `public-url`.                                                |
+| `ConfigureAuthentication`         | `OAuthMode = false` (anonymous endpoint).                      | `OAuthMode = true` (validate JWT/PAT against the AS; the RS never mints tokens).      |
+| `OnPluginConnected`               | Registers, then **disconnects all others** (single-connection).| Registration is driven by `McpServerHub` after it validates the plugin's token + reads its instance metadata (account-scoped registry). |
+| `ResolveConnectionId`             | Token lookup, then round-robin fallback.                       | Account-scoped instance resolution; no fallback across accounts (fail closed).       |
+| `ShouldNotifySession` / `ResolveNotificationTarget` | Broadcast (single-plugin invariant).        | Targets the session's account-resolved instance, else **drops** — never leaks across accounts. |
+| `GetClientData` / `GetServerData` | First available session (only one).                           | Scoped to the connection's account; empty when it resolves to no account.            |
 
 ---
 
 ## Combination Matrix
 
-All 4 combinations work. The table shows the expected use case for each.
+| Transport        | Auth    | Typical use case                                                                                          |
+|------------------|---------|----------------------------------------------------------------------------------------------------------|
+| `stdio`          | `none`  | **Local dev, single user, offline.** The MCP client spawns the server as a subprocess. No accounts, no network. First spawn owns the derived per-project port; a later same-project spawn detects the live server and exits with an actionable message (design 03 Flow D). |
+| `streamableHttp` | `none`  | **Local HTTP server, single plugin.** Anonymous HTTP transport for local testing.                        |
+| `streamableHttp` | `oauth` | **Signed-in localhost AND hosted.** Account-scoped pairing: many engine instances across accounts, each isolated to its own account's agent sessions; multiple agent sessions in one project fan in to one server. |
 
-| Transport        | Auth       | Token     | Typical use case                                                                              |
-|------------------|------------|-----------|-----------------------------------------------------------------------------------------------|
-| `stdio`          | `none`     | —         | **Local dev, single user.** Claude Desktop spawns the server as a subprocess. Simple setup, no auth needed. |
-| `stdio`          | `none`     | set       | Local dev with optional transport-level token protection. One plugin, one Claude session.     |
-| `stdio`          | `required` | required  | Secure connection between MCP server and MCP plugin only. Does not impact MCP client.         |
-| `streamableHttp` | `none`     | —         | **Local HTTP server, single plugin.** Useful for testing HTTP transport without auth.         |
-| `streamableHttp` | `none`     | set       | Single plugin via HTTP with a basic shared secret for protection.                             |
-| `streamableHttp` | `required` | required  | **Multi-tenant / remote deployment.** Many .NET apps each connect with their own unique token. Each is isolated to its own Claude session. |
+`stdio` + `oauth` is valid but uncommon — a signed-in engine may connect with its JWT; in `none` mode the token is ignored for routing (identity is still logged for diagnostics).
 
 ---
 
@@ -185,13 +146,13 @@ Startup
                                       (stdio / streamableHttp)
 
   DataArguments.Authorization ────► McpStrategyFactory ──► IMcpConnectionStrategy
-                                      (none / required)
+                                      (none / oauth)
 
 Both singletons are registered in DI and flow through the entire server:
 
   BaseHub           ──uses──► IMcpConnectionStrategy (OnPluginConnected / OnPluginDisconnected)
-  McpServerHub      ──uses──► IMcpConnectionStrategy (GetClientData / GetServerData)
-  McpServerService  ──uses──► IMcpConnectionStrategy (ShouldNotifySession)
+  McpServerHub      ──uses──► IMcpConnectionStrategy (GetClientData / GetServerData; oauth instance registration)
+  McpServerService  ──uses──► IMcpConnectionStrategy (ResolveNotificationTarget)
   RemoteToolRunner  ──uses──► IMcpConnectionStrategy (ResolveConnectionId via ClientUtils.InvokeAsync)
   RemotePromptRunner──uses──► IMcpConnectionStrategy
   RemoteResourceRunner──uses►IMcpConnectionStrategy
@@ -208,23 +169,12 @@ dotnet run client-transport=stdio
 # Local HTTP server without auth
 dotnet run client-transport=streamableHttp port=8080
 
-# Local HTTP server with a static token
-dotnet run client-transport=streamableHttp port=8080 token=mySecret
-
-# Multi-tenant remote deployment
-dotnet run client-transport=streamableHttp port=8080 authorization=required token=sharedSecret
+# OAuth resource-server mode (localhost or hosted) — validates tokens against ai-game.dev
+dotnet run client-transport=streamableHttp port=23471 \
+    auth=oauth auth-issuer=https://ai-game.dev public-url=http://localhost:23471
 ```
 
-For remote multi-tenant use, each .NET plugin provides **its own** Bearer token when connecting:
-
-```csharp
-// In the .NET app (plugin side)
-new McpPluginBuilder(version)
-    .WithConfig(config => {
-        config.Host  = "http://my-server:8080";
-        config.Token = "uniqueTokenForThisApp";
-    })
-    .Build(reflector);
-```
-
-The server routes all MCP requests and notifications for that token exclusively to that plugin instance.
+In `oauth` mode credentials never travel in config files or launch arguments: MCP clients discover
+the authorization server via RFC 9728 protected-resource metadata and run the standard OAuth 2.1
+authorization-code + PKCE flow; engine plugins connect over SignalR presenting their device-grant
+JWT. See the mcp-authorize design (`03-auth-flows.md`).

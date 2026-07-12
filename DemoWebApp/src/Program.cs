@@ -57,6 +57,22 @@ namespace com.IvanMurzak.McpPlugin.DemoWebApp
                 consoleWriteLine($"Launch arguments: {string.Join(" ", args)}");
                 consoleWriteLine($"Parsed arguments: {dataArguments.ToPrettyJson()}");
 
+                // stdio same-project concurrency contract (mcp-authorize b5, design 03 Flow D):
+                // the FIRST spawn owns the derived per-project port; a LATER spawn for the same
+                // ProjectIdentity must NOT self-start a second server on an already-owned port.
+                // Detect the live server on the EXACT derived port (no probing) and exit with an
+                // actionable message instead of crashing on the Kestrel bind.
+                if (dataArguments.ClientTransport == Consts.MCP.Server.TransportMethod.stdio)
+                {
+                    var contention = com.IvanMurzak.McpPlugin.Server.Transport.StdioServerGuard.CheckExactPort(dataArguments.Port, dataArguments.Bind);
+                    if (contention.IsOwned)
+                    {
+                        consoleWriteLine(contention.Message!);
+                        logger.Info(contention.Message!);
+                        return;
+                    }
+                }
+
                 var builder = WebApplication.CreateBuilder(args);
 
                 // Replace default logging with NLog
