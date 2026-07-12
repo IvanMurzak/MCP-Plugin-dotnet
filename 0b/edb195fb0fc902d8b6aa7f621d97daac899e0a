@@ -1,0 +1,19 @@
+McpPlugin.Server/src/Auth/TokenAuthenticationHandler.cs
+  s_3aa40dff97ac64::t_5de0b31306f5b4 171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "0bedb195fb0fc902d8b6aa7f621d97daac899e0a",
+  "prompts": {},
+  "sessions": {
+    "s_3aa40dff97ac64": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab208bc8c0d21cceb",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
