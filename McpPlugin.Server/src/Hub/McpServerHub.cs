@@ -17,9 +17,12 @@ using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Hub.Server;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Auth;
+using com.IvanMurzak.McpPlugin.Server.Auth.OAuth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 using com.IvanMurzak.McpPlugin.Server.Webhooks;
 using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server
@@ -34,6 +37,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly IRequestTrackingService _requestTrackingService;
         readonly IMcpSessionTracker _sessionTracker;
         readonly IWebhookEventCollector _webhookCollector;
+        readonly IOAuthTokenValidator? _oauthValidator;
 
         public McpServerHub(
             ILogger<McpServerHub> logger,
@@ -46,7 +50,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             IMcpSessionTracker sessionTracker,
             IMcpConnectionStrategy strategy,
             IWebhookEventCollector webhookCollector,
-            IAuthorizationWebhookService authorizationWebhookService)
+            IAuthorizationWebhookService authorizationWebhookService,
+            IOAuthTokenValidator? oauthValidator = null)
             : base(logger, strategy, authorizationWebhookService)
         {
             _version = version ?? throw new ArgumentNullException(nameof(version));
@@ -57,6 +62,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
             _sessionTracker = sessionTracker ?? throw new ArgumentNullException(nameof(sessionTracker));
             _webhookCollector = webhookCollector ?? throw new ArgumentNullException(nameof(webhookCollector));
+            _oauthValidator = oauthValidator;
         }
 
         public override async Task OnConnectedAsync()
@@ -64,10 +70,87 @@ namespace com.IvanMurzak.McpPlugin.Server
             await base.OnConnectedAsync();
             if (_connectionRejected)
                 return;
+
+            // mcp-authorize b3: in oauth mode a plugin connection is validated (its `sub` is the
+            // account) and its instance metadata registered into the account+instance pairing plane
+            // BEFORE we compute the account-scoped initial client data below.
+            await TryRegisterOAuthInstanceAsync();
+
             var allActiveClients = _strategy.GetAllClientData(Context.ConnectionId, _sessionTracker);
             _logger.LogDebug("{method}. {guid}. Sending initial client data. Count: {count}",
                 nameof(OnConnectedAsync), _guid, allActiveClients.Length);
             await Clients.Caller.OnInitialClientData(allActiveClients);
+        }
+
+        /// <summary>
+        /// Registers this plugin connection into the <see cref="AccountMcpStrategy"/> registry when in
+        /// oauth mode (mcp-authorize b3). The account is taken from the VALIDATED plugin token (its
+        /// <c>sub</c>) — never from unauthenticated input — so an instance can never be registered
+        /// under a spoofed account. Instance metadata is read from the hub-connection query (the b7
+        /// wire format); when absent, a synthetic single-instance registration keeps the common case
+        /// routable. A token that fails validation is left unregistered (unroutable), not trusted.
+        /// </summary>
+        async Task TryRegisterOAuthInstanceAsync()
+        {
+            if (_strategy.AuthOption != Consts.MCP.Server.AuthOption.oauth)
+                return;
+            if (_strategy is not AccountMcpStrategy account)
+                return;
+
+            var httpContext = Context.GetHttpContext();
+            var token = ExtractBearer(httpContext?.Request.Headers["Authorization"].FirstOrDefault());
+            if (string.IsNullOrEmpty(token) || _oauthValidator == null)
+            {
+                _logger.LogWarning("{guid} oauth plugin connection without a validatable token — not registered (unroutable). ConnectionId: {connectionId}.",
+                    _guid, Context.ConnectionId);
+                return;
+            }
+
+            OAuthValidationResult validation;
+            try
+            {
+                validation = await _oauthValidator.ValidateAsync(token!, Context.ConnectionAborted);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "{guid} oauth plugin token validation threw — not registered. ConnectionId: {connectionId}.", _guid, Context.ConnectionId);
+                return;
+            }
+
+            var identity = validation.Succeeded ? ConnectionIdentity.Create(validation.Subject, validation.Scope, validation.ClientId) : null;
+            if (identity == null)
+            {
+                _logger.LogWarning("{guid} oauth plugin token rejected ({reason}) — not registered (unroutable). ConnectionId: {connectionId}.",
+                    _guid, validation.FailureReason ?? "no subject", Context.ConnectionId);
+                return;
+            }
+
+            var query = httpContext?.Request.Query;
+            var metadata = AccountMcpStrategy.BuildInstanceMetadata(
+                connectionId: Context.ConnectionId,
+                instanceId: QueryValue(query, Consts.MCP.Server.HubQuery.InstanceId),
+                engine: QueryValue(query, Consts.MCP.Server.HubQuery.Engine),
+                projectName: QueryValue(query, Consts.MCP.Server.HubQuery.ProjectName),
+                projectPathHash: QueryValue(query, Consts.MCP.Server.HubQuery.ProjectPathHash),
+                machineName: QueryValue(query, Consts.MCP.Server.HubQuery.MachineName));
+
+            account.RegisterInstance(identity, metadata, Context.ConnectionId, _logger);
+        }
+
+        static string? QueryValue(Microsoft.AspNetCore.Http.IQueryCollection? query, string key)
+        {
+            if (query == null || !query.TryGetValue(key, out var value))
+                return null;
+            var s = value.ToString();
+            return string.IsNullOrEmpty(s) ? null : s;
+        }
+
+        static string? ExtractBearer(string? authHeader)
+        {
+            if (string.IsNullOrEmpty(authHeader) || !authHeader!.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                return null;
+            var token = authHeader.Substring("Bearer ".Length).Trim();
+            return token.Length > 0 ? token : null;
         }
 
         public override Task OnDisconnectedAsync(Exception? exception)

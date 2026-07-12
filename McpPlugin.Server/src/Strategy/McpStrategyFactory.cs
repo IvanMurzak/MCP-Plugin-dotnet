@@ -26,7 +26,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             {
                 Consts.MCP.Server.AuthOption.none => new NoAuthMcpStrategy(),
                 Consts.MCP.Server.AuthOption.required => new RequiredAuthMcpStrategy(),
-                Consts.MCP.Server.AuthOption.oauth => new OAuthMcpStrategy(),
+                // mcp-authorize b3: oauth mode is now the account+instance pairing plane. The b2
+                // interim OAuthMcpStrategy (token-equality delegation) has been superseded.
+                Consts.MCP.Server.AuthOption.oauth => new AccountMcpStrategy(),
                 _ => throw new ArgumentException(
                     $"Unsupported auth option: {mode}. " +
                     $"Supported auth options are: {Consts.MCP.Server.AuthOption.none}, {Consts.MCP.Server.AuthOption.required}, {Consts.MCP.Server.AuthOption.oauth}")
