@@ -1,0 +1,73 @@
+docs/architecture-transport-auth.md
+  s_50edd0e0346255::t_cf90f17d8a9c98 3-10,17-19,22
+  s_50edd0e0346255::t_6c1ea2dbc85108 39-42,44-47,49,51-55
+  s_50edd0e0346255::t_759fa3b9ce4c62 99-100,103-105,107,109,111,117-125,131-135,137,149,154-155,172-174,177-180
+McpPlugin.Server/src/Transport/StdioServerGuard.cs
+  s_50edd0e0346255::t_2be79ca2f11ae7 1-109
+McpPlugin.Server.Tests/StdioServerGuardTests.cs
+  s_50edd0e0346255::t_ad37a4dfa40d3b 1-126
+McpPlugin.Server/src/Strategy/McpStrategyFactory.cs
+  s_4d68fcead85c12::t_f5c5d52672de5c 28,30-34,37
+DemoWebApp/src/Program.cs
+  s_ac3bc298ccbb86::t_1abc3d0cd39914 60-75
+McpPlugin.Server.Tests/BaseHubAuthorizationTests.cs
+  s_ac3bc298ccbb86::t_96eb0c423ffa05 257,260-262,266,296,298-300
+McpPlugin.Server.Tests/InitialClientDataTests.cs
+  s_ac3bc298ccbb86::t_0791bb943f10f5 115-116
+McpPlugin.Server.Tests/McpStrategyFactoryTests.cs
+  s_ac3bc298ccbb86::t_dd77aab4bd425f 35,38,41-54
+McpPlugin.Server.Tests/NoAuthMcpStrategyTests.cs
+  s_ac3bc298ccbb86::t_14f97ea0ac2f75 63,72-73,77,86-88
+McpPlugin.Server.Tests/NotificationRoutingTests.cs
+  s_ac3bc298ccbb86::t_0ca5166505c32e 31-32
+McpPlugin.Server.Tests/TokenAuthenticationHandlerOAuthTests.cs
+  s_ac3bc298ccbb86::t_9b94be1994c7ed 45
+McpPlugin.Server/src/Auth/TokenAuthenticationHandler.cs
+  s_ac3bc298ccbb86::t_ad30d51ec35843 97-101,104,217-219
+McpPlugin.Server/src/Extension/ExtensionsMcpServerBuilder.cs
+  s_ac3bc298ccbb86::t_0cac20f919aedb 94-97,101
+McpPlugin.Server/src/McpServerService.cs
+  s_ac3bc298ccbb86::t_c0255ec06cad73 55-57,184-186,190
+McpPlugin.Server/src/Strategy/AccountMcpStrategy.cs
+  s_ac3bc298ccbb86::t_edac887897c8ad 23-25,69-70
+McpPlugin.Server/src/Strategy/IMcpConnectionStrategy.cs
+  s_ac3bc298ccbb86::t_b21a03bbde50a4 31-32,38-39,44-46,60-61,74-76,83-85,90-91,97-99
+McpPlugin.Server/src/Strategy/NoAuthMcpStrategy.cs
+  s_ac3bc298ccbb86::t_75e026a4c4b3a0 35-37
+McpPlugin.Server/src/Transport/StreamableHttpTransportLayer.cs
+  s_ac3bc298ccbb86::t_783a9dfddeb3b0 170-173
+README.md
+  s_ac3bc298ccbb86::t_0b9a975e8aa9e9 236-238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "2098b516d3451fef7f92d1fb1e1bfa15e5f4c027",
+  "prompts": {},
+  "sessions": {
+    "s_4d68fcead85c12": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e554db1e-8d99-4f43-8cb8-319a6b2dfb3c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_50edd0e0346255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2164075-e554-49e6-8a57-fdc35f7f7e9d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_ac3bc298ccbb86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a8524205104b83933",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
