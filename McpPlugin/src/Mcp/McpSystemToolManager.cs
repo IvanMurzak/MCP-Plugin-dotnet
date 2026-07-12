@@ -11,6 +11,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -64,30 +65,47 @@ namespace com.IvanMurzak.McpPlugin
         public async Task<ResponseData<ResponseCallTool>> RunSystemTool(RequestCallTool request, CancellationToken cancellationToken = default)
         {
             if (request == null)
-                return ResponseData<ResponseCallTool>.Error(string.Empty, "Request is null.");
+                return ResponseData<ResponseCallTool>.Error(string.Empty, "Request is null.", ResponseErrorKind.BadRequest);
 
             var name = request.Name;
             if (string.IsNullOrWhiteSpace(name))
-                return ResponseData<ResponseCallTool>.Error(request.RequestID, "System tool name is empty.");
+                return ResponseData<ResponseCallTool>.Error(request.RequestID, "System tool name is empty.", ResponseErrorKind.BadRequest);
 
             if (!_tools.TryGetValue(name, out var tool))
             {
                 _logger.LogWarning("System tool '{name}' not found. Available: [{available}]",
                     name, string.Join(", ", _tools.Keys.OrderBy(k => k)));
-                return ResponseData<ResponseCallTool>.Error(request.RequestID, $"System tool '{name}' not found.");
+                return ResponseData<ResponseCallTool>.Error(request.RequestID, $"System tool '{name}' not found.", ResponseErrorKind.NotFound);
             }
 
             try
             {
                 _logger.LogDebug("Executing system tool '{name}'.", name);
                 var result = await tool.Run(request.RequestID, request.Arguments, cancellationToken);
+                if (result == null)
+                    return ResponseData<ResponseCallTool>.Error(request.RequestID, $"System tool '{name}' returned null result.", ResponseErrorKind.Internal);
+
                 return result.Pack(request.RequestID);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "System tool '{name}' failed.", name);
-                return ResponseData<ResponseCallTool>.Error(request.RequestID, $"System tool '{name}' failed: {ex.Message}");
+                return ResponseData<ResponseCallTool>.Error(request.RequestID, $"System tool '{name}' failed: {ex.Message}", ClassifyException(ex));
             }
+        }
+
+        static ResponseErrorKind ClassifyException(Exception ex)
+        {
+            if (ex is ArgumentException || ex is FormatException || ex is JsonException)
+                return ResponseErrorKind.BadRequest;
+            if (ex is FileNotFoundException || ex is DirectoryNotFoundException || ex is KeyNotFoundException)
+                return ResponseErrorKind.NotFound;
+            if (ex is InvalidOperationException)
+                return ResponseErrorKind.Conflict;
+            if (ex is TimeoutException)
+                return ResponseErrorKind.Timeout;
+
+            return ResponseErrorKind.Internal;
         }
 
         public Task<ResponseData<ResponseListTool[]>> RunListSystemTool(RequestListTool request, CancellationToken cancellationToken = default)

@@ -69,7 +69,15 @@ namespace com.IvanMurzak.McpPlugin.Server
                         token: McpSessionTokenContext.CurrentToken,
                         cancellationToken: cancellationToken);
 
-                    return responseData.Value ?? ResponseCallTool.Error("Response data is null");
+                    if (responseData.Status == ResponseStatus.Error)
+                    {
+                        var errorKind = responseData.ErrorKind == ResponseErrorKind.None
+                            ? ResponseErrorKind.Internal
+                            : responseData.ErrorKind;
+                        return ResponseCallTool.Error(responseData.Message ?? "System tool invocation failed", errorKind, responseData.HttpStatusCode);
+                    }
+
+                    return responseData.Value ?? ResponseCallTool.Error("Response data is null", ResponseErrorKind.Internal);
                 },
                 TimeSpan.FromMinutes(5),
                 cancellationToken);
@@ -93,7 +101,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 cancellationToken: cancellationToken);
 
             if (response.Status == ResponseStatus.Error)
-                return ResponseData<ResponseListTool[]>.Error(request.RequestID, response.Message ?? "Got an error during listing system tools");
+                return ResponseData<ResponseListTool[]>.Error(request.RequestID, response.Message ?? "Got an error during listing system tools", response.ErrorKind, response.HttpStatusCode);
 
             return response;
         }

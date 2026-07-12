@@ -10,6 +10,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -125,15 +126,15 @@ namespace com.IvanMurzak.McpPlugin
         {
             Interlocked.Increment(ref Unsafe.As<ulong, long>(ref toolCallsCount));
             if (data == null)
-                return ResponseData<ResponseCallTool>.Error(Common.Consts.Guid.Zero, "Tool data is null.")
+                return ResponseData<ResponseCallTool>.Error(Common.Consts.Guid.Zero, "Tool data is null.", ResponseErrorKind.BadRequest)
                     .Log(_logger);
 
             if (string.IsNullOrEmpty(data.Name))
-                return ResponseData<ResponseCallTool>.Error(data.RequestID, "Tool.Name is null.")
+                return ResponseData<ResponseCallTool>.Error(data.RequestID, "Tool.Name is null.", ResponseErrorKind.BadRequest)
                     .Log(_logger);
 
             if (!_tools.TryGetValue(data.Name, out var runner))
-                return ResponseData<ResponseCallTool>.Error(data.RequestID, $"Tool with Name '{data.Name}' not found.")
+                return ResponseData<ResponseCallTool>.Error(data.RequestID, $"Tool with Name '{data.Name}' not found.", ResponseErrorKind.NotFound)
                     .Log(_logger);
             try
             {
@@ -147,7 +148,7 @@ namespace com.IvanMurzak.McpPlugin
 
                 var result = await runner.Run(data.RequestID, data.Arguments, cancellationToken);
                 if (result == null)
-                    return ResponseData<ResponseCallTool>.Error(data.RequestID, $"Tool '{data.Name}' returned null result.")
+                    return ResponseData<ResponseCallTool>.Error(data.RequestID, $"Tool '{data.Name}' returned null result.", ResponseErrorKind.Internal)
                         .Log(_logger);
 
                 result.Log(_logger);
@@ -156,10 +157,23 @@ namespace com.IvanMurzak.McpPlugin
             }
             catch (Exception ex)
             {
-                // Handle or log the exception as needed
-                return ResponseData<ResponseCallTool>.Error(data.RequestID, $"Failed to run tool '{data.Name}'. Exception: {ex}")
+                return ResponseData<ResponseCallTool>.Error(data.RequestID, $"Failed to run tool '{data.Name}'. Exception: {ex.Message}", ClassifyException(ex))
                     .Log(_logger, $"RunCallTool[{data.Name}]", ex);
             }
+        }
+
+        static ResponseErrorKind ClassifyException(Exception ex)
+        {
+            if (ex is ArgumentException || ex is FormatException || ex is JsonException)
+                return ResponseErrorKind.BadRequest;
+            if (ex is FileNotFoundException || ex is DirectoryNotFoundException || ex is KeyNotFoundException)
+                return ResponseErrorKind.NotFound;
+            if (ex is InvalidOperationException)
+                return ResponseErrorKind.Conflict;
+            if (ex is TimeoutException)
+                return ResponseErrorKind.Timeout;
+
+            return ResponseErrorKind.Internal;
         }
 
         public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool data) => RunListTool(data, default);

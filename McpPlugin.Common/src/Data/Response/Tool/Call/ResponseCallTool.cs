@@ -21,32 +21,42 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         public virtual ResponseStatus Status { get; set; } = ResponseStatus.Error;
         public virtual List<ContentBlock> Content { get; set; } = new List<ContentBlock>();
         public virtual JsonNode? StructuredContent { get; set; } = null;
+        public ResponseErrorKind ErrorKind { get; set; } = ResponseErrorKind.None;
+        public int? HttpStatusCode { get; set; }
 
         public ResponseCallTool() { }
-        public ResponseCallTool(ResponseStatus status, List<ContentBlock> content) : this(
+        public ResponseCallTool(ResponseStatus status, List<ContentBlock> content, ResponseErrorKind errorKind = ResponseErrorKind.None, int? httpStatusCode = null) : this(
             requestId: string.Empty,
             status: status,
-            content: content)
+            content: content,
+            errorKind: errorKind,
+            httpStatusCode: httpStatusCode)
         {
             // none
         }
-        public ResponseCallTool(string requestId, ResponseStatus status, List<ContentBlock> content)
+        public ResponseCallTool(string requestId, ResponseStatus status, List<ContentBlock> content, ResponseErrorKind errorKind = ResponseErrorKind.None, int? httpStatusCode = null)
         {
             RequestID = requestId;
             Status = status;
             Content = content;
+            ErrorKind = errorKind;
+            HttpStatusCode = httpStatusCode;
         }
-        public ResponseCallTool(JsonNode? structuredContent, ResponseStatus status) : this(
+        public ResponseCallTool(JsonNode? structuredContent, ResponseStatus status, ResponseErrorKind errorKind = ResponseErrorKind.None, int? httpStatusCode = null) : this(
             requestId: string.Empty,
             structuredContent: structuredContent,
-            status: status)
+            status: status,
+            errorKind: errorKind,
+            httpStatusCode: httpStatusCode)
         {
             // none
         }
-        public ResponseCallTool(string requestId, JsonNode? structuredContent, ResponseStatus status)
+        public ResponseCallTool(string requestId, JsonNode? structuredContent, ResponseStatus status, ResponseErrorKind errorKind = ResponseErrorKind.None, int? httpStatusCode = null)
         {
             RequestID = requestId;
             Status = status;
+            ErrorKind = errorKind;
+            HttpStatusCode = httpStatusCode;
             StructuredContent = new JsonObject()
             {
                 [JsonSchema.Result] = structuredContent
