@@ -47,3 +47,36 @@ jobs:
         with:
           name: test-results
           path: TestResults/**/*.trx
+
+  # mcp-authorize Phase-2 gate (design 04/07, task b8): the cross-language golden-vector parity
+  # signal. The C# ProjectIdentity vectors (McpPlugin/src/AgentConfig/ProjectIdentity.GoldenVectors.json)
+  # are the canonical origin every TS/JS engine-CLI port MUST reproduce at Phase 4 (routing pin +
+  # deterministic local port). Kept a DISTINCT job so the contract has its own visible CI status the
+  # TS consumers plug into later; runs the reference tests hermetically (no external services).
+  golden-vector-parity:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      - name: Restore
+        run: dotnet restore McpPlugin.Tests/McpPlugin.Tests.csproj
+
+      - name: Build
+        run: dotnet build McpPlugin.Tests/McpPlugin.Tests.csproj --no-restore --configuration Release
+
+      - name: Golden-vector parity (C# ProjectIdentity reference)
+        run: >-
+          dotnet test McpPlugin.Tests/McpPlugin.Tests.csproj
+          --no-build --configuration Release --verbosity normal
+          --filter "FullyQualifiedName~ProjectIdentityGoldenVector"
+          -- RunConfiguration.TreatNoTestsAsError=true
