@@ -57,6 +57,15 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string Authorization = "authorization";
                     public const string IdleTimeoutSeconds = "idle-timeout-seconds";
                     public const string MaxIdleSessionCount = "max-idle-session-count";
+
+                    // OAuth resource-server arguments (mcp-authorize b2).
+                    // <c>auth</c> is the target-state name for <c>authorization</c> ({none|oauth});
+                    // the legacy <c>authorization</c> arg is retained until the legacy surface is
+                    // removed (mcp-authorize b5).
+                    public const string Auth = "auth";
+                    public const string AuthIssuer = "auth-issuer";
+                    public const string PublicUrl = "public-url";
+                    public const string Bind = "bind";
                 }
 
                 public static partial class Env
@@ -68,6 +77,12 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string Authorization = "MCP_AUTHORIZATION";
                     public const string IdleTimeoutSeconds = "MCP_PLUGIN_IDLE_TIMEOUT_SECONDS";
                     public const string MaxIdleSessionCount = "MCP_PLUGIN_MAX_IDLE_SESSION_COUNT";
+
+                    // OAuth resource-server environment variables (mcp-authorize b2).
+                    public const string Auth = "MCP_AUTH";
+                    public const string AuthIssuer = "MCP_AUTH_ISSUER";
+                    public const string PublicUrl = "MCP_PUBLIC_URL";
+                    public const string Bind = "MCP_BIND";
                 }
 
                 /// <summary>
@@ -166,7 +181,15 @@ namespace com.IvanMurzak.McpPlugin.Common
                 {
                     unknown,
                     none,
-                    required
+                    required,
+
+                    /// <summary>
+                    /// OAuth 2.1 resource-server mode (mcp-authorize b2). The server validates
+                    /// ES256 JWTs against the authorization server's JWKS and opaque tokens via
+                    /// introspection; it never mints tokens. Selected via <c>--auth oauth</c> /
+                    /// <c>MCP_AUTH=oauth</c>.
+                    /// </summary>
+                    oauth
                 }
 
                 /// <summary>

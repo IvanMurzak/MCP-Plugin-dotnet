@@ -124,11 +124,50 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
         public void ConfigureApp(WebApplication app, DataArguments dataArguments)
         {
             var logger = LogManager.GetCurrentClassLogger();
-            var requireAuth = dataArguments.Authorization == Consts.MCP.Server.AuthOption.required;
+            var mode = dataArguments.Authorization;
 
-            logger.Debug("Configuring HTTP transport endpoints. RequireAuth={requireAuth}", requireAuth);
+            logger.Debug("Configuring HTTP transport endpoints. Auth={mode}", mode);
 
-            if (requireAuth)
+            if (mode == Consts.MCP.Server.AuthOption.oauth)
+            {
+                // OAuth resource-server mode (mcp-authorize b2): serve ONLY Protected Resource
+                // Metadata (RFC 9728) pointing at the EXTERNAL authorization server. The RS never
+                // mints tokens, so no /oauth/register, /oauth/token, or AS-metadata are served here.
+                var oauthConfig = app.Services.GetService<Auth.OAuth.OAuthResourceServerConfig>();
+
+                // Public, non-secret PRM (RFC 9728). Served at BOTH the bare well-known path AND —
+                // when --public-url carries a path (e.g. https://host/mcp) — the path-inserted URL
+                // the 401 challenge advertises (OAuthResourceServerConfig.ProtectedResourceMetadataUrl),
+                // so a spec-compliant client following the challenge does not 404 on a path-bearing
+                // resource. Shared handler avoids duplicating the body across both routes.
+                RequestDelegate servePrm = async ctx =>
+                {
+                    if (oauthConfig == null)
+                    {
+                        await Results.StatusCode(500).ExecuteAsync(ctx);
+                        return;
+                    }
+                    // CORS-open so browser-based MCP clients can read it.
+                    ctx.Response.Headers["Access-Control-Allow-Origin"] = "*";
+                    var document = Auth.OAuth.OAuthProtectedResourceMetadata.Build(oauthConfig);
+                    await Results.Json(document).ExecuteAsync(ctx);
+                };
+
+                const string bareMetadataPath = "/.well-known/oauth-protected-resource";
+                app.MapGet(bareMetadataPath, servePrm).AllowAnonymous();
+
+                // Path-bearing resource → also serve at the challenge-advertised path-inserted URL.
+                if (oauthConfig != null
+                    && Uri.TryCreate(oauthConfig.ProtectedResourceMetadataUrl(), UriKind.Absolute, out var prmUri)
+                    && !string.Equals(prmUri.AbsolutePath, bareMetadataPath, StringComparison.Ordinal))
+                {
+                    app.MapGet(prmUri.AbsolutePath, servePrm).AllowAnonymous();
+                }
+
+                app.MapMcp("/").RequireAuthorization();
+                app.MapMcp("/mcp").RequireAuthorization();
+            }
+            else if (mode == Consts.MCP.Server.AuthOption.required)
             {
                 // MCP: OAuth 2.0 Protected Resource Metadata (RFC 9728)
                 // Tells clients that this server is its own authorization server

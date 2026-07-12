@@ -39,6 +39,11 @@ namespace com.IvanMurzak.McpPlugin.Server
             forwardedHeadersOptions.KnownProxies.Clear();
             app.UseForwardedHeaders(forwardedHeadersOptions);
 
+            // Origin validation (MCP transport MUST — mcp-authorize b2): reject a present-but-non-
+            // allowed Origin with 403 on the MCP endpoint AND the SignalR negotiate path, in ALL
+            // auth modes (the DNS-rebinding defense; runs before routing/auth).
+            app.UseMiddleware<Security.OriginValidationMiddleware>();
+
             // Setup routing ----------------------------------------------------
             app.UseRouting();
 

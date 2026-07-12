@@ -9,13 +9,18 @@
 */
 
 using System;
+using System.Collections.Generic;
+using System.Net.Http;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
+using com.IvanMurzak.McpPlugin.Server.Auth.OAuth;
+using com.IvanMurzak.McpPlugin.Server.Security;
 using com.IvanMurzak.McpPlugin.Server.Webhooks;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
@@ -90,6 +95,63 @@ namespace com.IvanMurzak.McpPlugin.Server
                         }
                     });
             mcpServerBuilder.Services.AddAuthorization();
+
+            // OAuth resource-server services (mcp-authorize b2) — registered only in oauth mode.
+            // The TokenAuthenticationHandler's optional IOAuthTokenValidator/OAuthResourceServerConfig
+            // ctor params resolve from these; in legacy modes they stay null (unchanged behavior).
+            if (dataArguments.Authorization == Consts.MCP.Server.AuthOption.oauth)
+            {
+                mcpServerBuilder.Services.AddHttpClient();
+
+                var oauthConfig = new OAuthResourceServerConfig(dataArguments.AuthIssuer!, dataArguments.PublicUrl!);
+                mcpServerBuilder.Services.AddSingleton(oauthConfig);
+                mcpServerBuilder.Services.AddSingleton<IJwksDiskCache>(_ => new FileJwksDiskCache());
+
+                mcpServerBuilder.Services.AddSingleton<IJwksKeyProvider>(sp =>
+                {
+                    var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
+                    var cache = sp.GetRequiredService<IJwksDiskCache>();
+                    JwksFetch fetch = async ct =>
+                    {
+                        var client = httpFactory.CreateClient();
+                        client.Timeout = TimeSpan.FromSeconds(10);
+                        using var response = await client.GetAsync(oauthConfig.JwksUri, ct);
+                        if (!response.IsSuccessStatusCode)
+                            return null;
+                        return await response.Content.ReadAsStringAsync(ct);
+                    };
+                    return new JwksKeyProvider(fetch, cache, logger: sp.GetService<ILogger<JwksKeyProvider>>());
+                });
+
+                mcpServerBuilder.Services.AddSingleton<IIntrospectionClient>(sp =>
+                {
+                    var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
+                    IntrospectionPost post = async (token, ct) =>
+                    {
+                        var client = httpFactory.CreateClient();
+                        client.Timeout = TimeSpan.FromSeconds(10);
+                        var body = new FormUrlEncodedContent(new[]
+                        {
+                            new KeyValuePair<string, string>("token", token)
+                        });
+                        using var response = await client.PostAsync(oauthConfig.IntrospectionEndpoint, body, ct);
+                        if (!response.IsSuccessStatusCode)
+                            return null;
+                        return await response.Content.ReadAsStringAsync(ct);
+                    };
+                    return new IntrospectionClient(post, logger: sp.GetService<ILogger<IntrospectionClient>>());
+                });
+
+                mcpServerBuilder.Services.AddSingleton<IOAuthTokenValidator>(sp => new AccessTokenValidator(
+                    sp.GetRequiredService<OAuthResourceServerConfig>(),
+                    sp.GetRequiredService<IJwksKeyProvider>(),
+                    sp.GetRequiredService<IIntrospectionClient>(),
+                    logger: sp.GetService<ILogger<AccessTokenValidator>>()));
+            }
+
+            // Origin validation options (mcp-authorize b2) — registered in ALL modes; consumed by
+            // OriginValidationMiddleware (wired in ExtensionsWebApplication.UseMcpPluginServer).
+            mcpServerBuilder.Services.AddSingleton(OriginValidationOptions.FromArguments(dataArguments));
 
             mcpServerBuilder.Services.AddRouting();
 

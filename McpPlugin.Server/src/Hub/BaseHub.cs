@@ -47,7 +47,14 @@ namespace com.IvanMurzak.McpPlugin.Server
         public override async Task OnConnectedAsync()
         {
             var httpContext = Context.GetHttpContext();
-            var token = httpContext?.Request.Query["access_token"].FirstOrDefault();
+
+            // OAuth mode (mcp-authorize b2): the hub credential MUST arrive via the Authorization
+            // header only — the ?access_token= query param is NOT honored (it leaks into logs and
+            // referrers). Legacy modes keep the query fallback for backward compatibility.
+            string? token = _strategy.AuthOption == Consts.MCP.Server.AuthOption.oauth
+                ? null
+                : httpContext?.Request.Query["access_token"].FirstOrDefault();
+
             var remoteIpAddress = GetClientIpAddress(httpContext);
             var userAgent = httpContext?.Request.Headers.UserAgent.ToString() is { Length: > 0 } ua ? ua : null;
             var requestPath = httpContext?.Request.Path.Value;

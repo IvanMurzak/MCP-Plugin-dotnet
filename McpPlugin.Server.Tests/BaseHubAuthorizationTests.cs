@@ -387,5 +387,76 @@ namespace McpPlugin.Server.Tests
                     It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()),
                 Times.Once);
         }
+
+        // --- OAuth hub credential source: Authorization header only, no ?access_token= (b2) ---
+
+        static Mock<HubCallerContext> CreateContextWithQueryAndHeader(string? queryAccessToken, string? bearerToken)
+        {
+            var mockContext = new Mock<HubCallerContext>();
+            mockContext.Setup(c => c.ConnectionId).Returns(UniqueId());
+            mockContext.Setup(c => c.ConnectionAborted).Returns(CancellationToken.None);
+
+            var httpContext = new DefaultHttpContext();
+            if (queryAccessToken != null)
+                httpContext.Request.QueryString = new QueryString("?access_token=" + queryAccessToken);
+            if (bearerToken != null)
+                httpContext.Request.Headers["Authorization"] = $"Bearer {bearerToken}";
+
+            var features = new FeatureCollection();
+            features.Set<IHttpContextFeature>(new HttpContextFeature { HttpContext = httpContext });
+            mockContext.Setup(c => c.Features).Returns(features);
+            return mockContext;
+        }
+
+        [Fact]
+        public async Task OnConnectedAsync_OAuthMode_IgnoresAccessTokenQueryParam_UsesHeader()
+        {
+            var mockContext = CreateContextWithQueryAndHeader(queryAccessToken: "QUERY-TOKEN", bearerToken: "HEADER-TOKEN");
+            var (hub, _, webhook, _) = CreateAuthModeTestHub(mockContext, authOption: Consts.MCP.Server.AuthOption.oauth);
+
+            await hub.OnConnectedAsync();
+
+            // oauth mode uses the Authorization header token; the query param is ignored.
+            webhook.Verify(w => w.AuthorizePluginAsync(
+                    It.IsAny<string>(), "HEADER-TOKEN",
+                    It.IsAny<string?>(), It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task OnConnectedAsync_OAuthMode_QueryParamOnly_TokenIgnored()
+        {
+            var mockContext = CreateContextWithQueryAndHeader(queryAccessToken: "QUERY-TOKEN", bearerToken: null);
+            var (hub, _, webhook, _) = CreateAuthModeTestHub(mockContext, authOption: Consts.MCP.Server.AuthOption.oauth);
+
+            await hub.OnConnectedAsync();
+
+            // No Authorization header ⇒ no token in oauth mode (query param NOT honored).
+            webhook.Verify(w => w.AuthorizePluginAsync(
+                    It.IsAny<string>(), null,
+                    It.IsAny<string?>(), It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task OnConnectedAsync_LegacyMode_StillHonorsAccessTokenQueryParam()
+        {
+            // Regression guard: legacy (auth=none) keeps the ?access_token= query fallback.
+            var mockContext = CreateContextWithQueryAndHeader(queryAccessToken: "QUERY-TOKEN", bearerToken: null);
+            var (hub, _, webhook, _) = CreateAuthModeTestHub(mockContext, authOption: Consts.MCP.Server.AuthOption.none);
+
+            await hub.OnConnectedAsync();
+
+            webhook.Verify(w => w.AuthorizePluginAsync(
+                    It.IsAny<string>(), "QUERY-TOKEN",
+                    It.IsAny<string?>(), It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>(),
+                    It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()),
+                Times.Once);
+        }
     }
 }
