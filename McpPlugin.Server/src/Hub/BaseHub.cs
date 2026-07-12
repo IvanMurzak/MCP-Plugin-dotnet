@@ -65,34 +65,6 @@ namespace com.IvanMurzak.McpPlugin.Server
                     token = authHeader.Substring("Bearer ".Length).Trim();
             }
 
-            // Short-circuit: in auth=required mode, an empty/missing token is always rejected
-            // by RequiredAuthMcpStrategy.OnPluginConnected anyway. Skip the AuthorizationWebhook
-            // round-trip — it would only return a "Missing bearerToken" denial and emit a Warning
-            // log line on the webhook side. Cuts a documented production-log noise source for
-            // tokenless connection probes (issue #99). Behavior in auth=none mode is unchanged.
-            if (string.IsNullOrEmpty(token)
-                && _strategy.AuthOption == Consts.MCP.Server.AuthOption.required)
-            {
-                _connectionRejected = true;
-                _logger.LogDebug(
-                    "{guid} MCP Plugin connection rejected (auth=required, empty token) — webhook skipped. ConnectionId: {connectionId}, RemoteIp: {remoteIpAddress}, UserAgent: {userAgent}, RequestPath: {requestPath}.",
-                    _guid, Context.ConnectionId, remoteIpAddress, userAgent, requestPath);
-
-                try
-                {
-                    await Clients.Caller.ForceDisconnect("Authorization failed. A bearer token is required in auth=required mode.");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogDebug(ex,
-                        "{guid} Failed to send ForceDisconnect notification for rejected connection. ConnectionId: {connectionId}.",
-                        _guid, Context.ConnectionId);
-                }
-
-                Context.Abort();
-                return;
-            }
-
             // Check authorization webhook
             var allowed = await _authorizationWebhookService.AuthorizePluginAsync(
                 connectionId: Context.ConnectionId,

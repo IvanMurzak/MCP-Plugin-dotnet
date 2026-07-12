@@ -32,14 +32,26 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public void Create_Required_ReturnsRequiredAuthMcpStrategy()
+        public void Create_OAuth_ReturnsAccountMcpStrategy()
         {
             // Act
-            var strategy = _factory.Create(Consts.MCP.Server.AuthOption.required);
+            var strategy = _factory.Create(Consts.MCP.Server.AuthOption.oauth);
 
             // Assert
-            strategy.ShouldBeOfType<RequiredAuthMcpStrategy>();
-            strategy.AuthOption.ShouldBe(Consts.MCP.Server.AuthOption.required);
+            strategy.ShouldBeOfType<AccountMcpStrategy>();
+            strategy.AuthOption.ShouldBe(Consts.MCP.Server.AuthOption.oauth);
+        }
+
+        [Fact]
+        public void Create_Required_ThrowsArgumentException()
+        {
+            // mcp-authorize b5: the legacy shared-token pairing mode is deleted. The factory now
+            // switches ONLY on {none, oauth}; `required` fails closed with an explicit error
+            // (no silent downgrade to `none`).
+            Action act = () => _factory.Create(Consts.MCP.Server.AuthOption.required);
+
+            Should.Throw<ArgumentException>(act)
+                .Message.ShouldContain("Unsupported auth option");
         }
 
         [Fact]

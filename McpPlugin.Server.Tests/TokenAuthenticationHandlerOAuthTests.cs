@@ -42,7 +42,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         static (TokenAuthenticationHandler Handler, DefaultHttpContext Context, AuthenticationScheme Scheme) Create(
             IOAuthTokenValidator? validator)
         {
-            var options = new TokenAuthenticationOptions { OAuthMode = true, RequireToken = true };
+            var options = new TokenAuthenticationOptions { OAuthMode = true };
             var monitor = new Mock<IOptionsMonitor<TokenAuthenticationOptions>>();
             monitor.Setup(x => x.CurrentValue).Returns(options);
             monitor.Setup(x => x.Get(TokenAuthenticationHandler.SchemeName)).Returns(options);

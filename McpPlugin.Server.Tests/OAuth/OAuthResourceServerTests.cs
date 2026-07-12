@@ -104,8 +104,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.OAuth
             }));
 
             options.OAuthMode.ShouldBeTrue();
-            options.RequireToken.ShouldBeTrue();
-            options.ServerToken.ShouldBeNull();
         }
     }
 }

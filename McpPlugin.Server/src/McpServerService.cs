@@ -52,9 +52,9 @@ namespace com.IvanMurzak.McpPlugin.Server
         // _physicalSessionId: unique per HTTP/stdio connection (MCP protocol session UUID).
         //   Used as the tracker key and ref-count key so every physical connection
         //   gets its own entry, even when multiple clients share the same Bearer token.
-        // _routingToken: the Bearer token from the HTTP Authorization header (or configured
-        //   token for stdio auth=required). Used to route SignalR notifications to the correct
-        //   plugin and to filter GetAllClientData() calls. Null in no-auth mode.
+        // _routingToken: the account-scoping key — the account id (JWT `sub`) in oauth mode.
+        //   Used to route SignalR notifications to the correct plugin and to filter
+        //   GetAllClientData() calls. Null in no-auth mode.
         string _physicalSessionId = "unknown";
         string? _routingToken = null;
 
@@ -181,16 +181,13 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             // _routingToken: the account-scoping key for notification routing + GetAllClientData()
             // filtering. In oauth mode (mcp-authorize b3) it is the ACCOUNT id (the JWT `sub`) — the
-            // account+instance pairing plane routes by account, never by the raw token. In legacy
-            // required mode it is the Bearer token (stdio falls back to dataArguments.Token so the key
-            // matches what the plugin registered with). Null in no-auth mode (broadcast to all plugins).
+            // account+instance pairing plane routes by account, never by the raw token. Null in
+            // no-auth mode (broadcast to all plugins). The legacy `required` shared-token fallback
+            // (stdio → dataArguments.Token) was removed with the mode in mcp-authorize b5.
             var isOAuth = _strategy.AuthOption == Common.Consts.MCP.Server.AuthOption.oauth;
             _routingToken = isOAuth
                 ? McpSessionTokenContext.CurrentIdentity?.AccountId
-                : (McpSessionTokenContext.CurrentToken
-                   ?? (_strategy.AuthOption == Common.Consts.MCP.Server.AuthOption.required
-                       ? _dataArguments.Token
-                       : null));
+                : McpSessionTokenContext.CurrentToken;
 
             // _physicalSessionId: unique per physical connection so each gets its own tracker entry.
             // In oauth mode the key is composed as `<sub>:<session_id>` (design 04) so a DIFFERENT

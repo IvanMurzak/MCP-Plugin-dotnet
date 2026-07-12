@@ -60,7 +60,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public void ConfigureAuthentication_WithoutToken_DoesNotRequireToken()
+        public void ConfigureAuthentication_WithoutToken_StaysAnonymous()
         {
             // Arrange
             var dataArguments = new DataArguments(new string[0]);
@@ -69,13 +69,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // Act
             _strategy.ConfigureAuthentication(options, dataArguments);
 
-            // Assert
-            options.RequireToken.ShouldBeFalse();
-            options.ServerToken.ShouldBeNull();
+            // Assert — no-auth mode never runs the OAuth validation path.
+            options.OAuthMode.ShouldBeFalse();
         }
 
         [Fact]
-        public void ConfigureAuthentication_WithToken_DoesNotRequireToken()
+        public void ConfigureAuthentication_WithToken_StaysAnonymous()
         {
             // Arrange
             var dataArguments = new DataArguments(new[] { "token=test-token" });
@@ -84,9 +83,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // Act
             _strategy.ConfigureAuthentication(options, dataArguments);
 
-            // Assert — no-auth mode never gates the HTTP endpoint, even if a token is supplied
-            options.RequireToken.ShouldBeFalse();
-            options.ServerToken.ShouldBeNull();
+            // Assert — no-auth mode never gates the HTTP endpoint, even if a legacy token is supplied
+            // (the shared-token credential path was removed in mcp-authorize b5).
+            options.OAuthMode.ShouldBeFalse();
         }
 
         [Fact]
