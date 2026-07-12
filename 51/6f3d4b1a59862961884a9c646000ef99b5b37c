@@ -1,0 +1,70 @@
+McpPlugin.Common/src/Data/Response/ResponseErrorKind.cs
+  s_9bb276d7183c60::t_a79fe5842b3e6b 1-23
+McpPlugin.Tests/Mcp/ToolErrorClassificationTests.cs
+  s_9bb276d7183c60::t_2793d1f75be4b6 1-158
+McpPlugin.Common/src/Data/Response/Tool/Call/ResponseCallTool.Static.cs
+  s_9bb276d7183c60::t_a79fe5842b3e6b 22
+  s_3c149407cdd5d4::t_39f3a548bf4502 20,25,37-39,64,68-70
+McpPlugin.Server.Tests/DirectToolEndpointErrorStatusTests.cs
+  s_9bb276d7183c60::t_4d7424e4429731 1-70,72-100,102-113,117-122,125-157,159,164-177,179,184-194
+  s_9bb276d7183c60::t_45e974d5fe11d1 71,101,114-116,123-124,158,160-163,178,180-183
+McpPlugin.Tests/Data/ResponseCallToolErrorMetadataTests.cs
+  s_9bb276d7183c60::t_5daf90d04f43ae 1-83
+McpPlugin.Common/src/Data/Response/Tool/Call/ResponseCallTool.cs
+  s_9bb276d7183c60::t_a79fe5842b3e6b 24-25,28,31
+  s_3c149407cdd5d4::t_a22a1b1b6c1e1c 32-33,37,42-43,45,48-50,54,58-59
+McpPlugin.Server/src/Api/DirectHttpErrorMapper.cs
+  s_9bb276d7183c60::t_59331667376f65 1-34
+McpPlugin.Common/src/Data/Response/ResponseData.cs
+  s_3c149407cdd5d4::t_a43e1e59cfc5a2 36,38-40,53-54,73,75-77
+McpPlugin.Common/src/Data/Response/Tool/Call/ResponseCallToolExtensions.cs
+  s_3c149407cdd5d4::t_ffdc95b8abde0c 33
+McpPlugin.Server/src/Api/DirectToolCallEndpoints.cs
+  s_3c149407cdd5d4::t_0df9c2a90e335d 85,92,243,250
+McpPlugin.Server/src/Api/SystemToolEndpoints.cs
+  s_3c149407cdd5d4::t_80f7828a568d18 86,93,242,249
+McpPlugin.Server/src/Client/ClientUtils.cs
+  s_50edd0e0346255::t_7a3473e45a7902 161,164,175-176,192,207,223,229-232,237
+McpPlugin.Server/src/Client/RemoteSystemToolRunner.cs
+  s_50edd0e0346255::t_d94562756f6092 72-80,104
+McpPlugin.Server/src/Client/RemoteToolRunner.cs
+  s_50edd0e0346255::t_b8625c086cc096 67-75,101
+McpPlugin.Server/src/Client/RequestTrackingService.cs
+  s_3c149407cdd5d4::t_16425fbb4646a7 152,182,202
+McpPlugin/src/Mcp/McpSystemToolManager.cs
+  s_3c149407cdd5d4::t_d06db10513643b 14,68,72,78,85-87,93,97-110
+McpPlugin/src/Mcp/McpToolManager.cs
+  s_3c149407cdd5d4::t_bf72589859f9c3 13,129,133,137,151,160,165-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "516f3d4b1a59862961884a9c646000ef99b5b37c",
+  "prompts": {},
+  "sessions": {
+    "s_3c149407cdd5d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "845aef5f-a4aa-4844-b9e6-479df3530c09",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_50edd0e0346255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2164075-e554-49e6-8a57-fdc35f7f7e9d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_9bb276d7183c60": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f551e-4ca8-7e60-be86-dea13e2ffad8",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
