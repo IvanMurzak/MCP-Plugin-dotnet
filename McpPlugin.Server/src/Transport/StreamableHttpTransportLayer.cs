@@ -124,11 +124,34 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
         public void ConfigureApp(WebApplication app, DataArguments dataArguments)
         {
             var logger = LogManager.GetCurrentClassLogger();
-            var requireAuth = dataArguments.Authorization == Consts.MCP.Server.AuthOption.required;
+            var mode = dataArguments.Authorization;
 
-            logger.Debug("Configuring HTTP transport endpoints. RequireAuth={requireAuth}", requireAuth);
+            logger.Debug("Configuring HTTP transport endpoints. Auth={mode}", mode);
 
-            if (requireAuth)
+            if (mode == Consts.MCP.Server.AuthOption.oauth)
+            {
+                // OAuth resource-server mode (mcp-authorize b2): serve ONLY Protected Resource
+                // Metadata (RFC 9728) pointing at the EXTERNAL authorization server. The RS never
+                // mints tokens, so no /oauth/register, /oauth/token, or AS-metadata are served here.
+                var oauthConfig = app.Services.GetService<Auth.OAuth.OAuthResourceServerConfig>();
+
+                app.MapGet("/.well-known/oauth-protected-resource", async (HttpContext ctx) =>
+                {
+                    if (oauthConfig == null)
+                    {
+                        await Results.StatusCode(500).ExecuteAsync(ctx);
+                        return;
+                    }
+                    // Public, non-secret metadata — CORS-open so browser-based MCP clients can read it.
+                    ctx.Response.Headers["Access-Control-Allow-Origin"] = "*";
+                    var document = Auth.OAuth.OAuthProtectedResourceMetadata.Build(oauthConfig);
+                    await Results.Json(document).ExecuteAsync(ctx);
+                }).AllowAnonymous();
+
+                app.MapMcp("/").RequireAuthorization();
+                app.MapMcp("/mcp").RequireAuthorization();
+            }
+            else if (mode == Consts.MCP.Server.AuthOption.required)
             {
                 // MCP: OAuth 2.0 Protected Resource Metadata (RFC 9728)
                 // Tells clients that this server is its own authorization server

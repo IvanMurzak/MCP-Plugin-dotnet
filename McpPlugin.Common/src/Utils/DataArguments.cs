@@ -23,6 +23,11 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         Consts.MCP.Server.AuthOption Authorization { get; }
         string? Token { get; }
 
+        // OAuth resource-server configuration (mcp-authorize b2)
+        string? AuthIssuer { get; }
+        string? PublicUrl { get; }
+        string? Bind { get; }
+
         // Webhook configuration
         string? WebhookToolUrl { get; }
         string? WebhookPromptUrl { get; }
@@ -45,6 +50,18 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         public Consts.MCP.Server.TransportMethod ClientTransport { get; private set; }
         public Consts.MCP.Server.AuthOption Authorization { get; private set; } = Consts.MCP.Server.AuthOption.none;
         public string? Token { get; private set; }
+
+        // OAuth resource-server configuration (mcp-authorize b2)
+        public string? AuthIssuer { get; private set; }
+        public string? PublicUrl { get; private set; }
+
+        /// <summary>
+        /// Bind address for the streamableHttp Kestrel listener. <c>null</c>/empty defaults to
+        /// <b>loopback</b> (decision D8 — the local RS is loopback-only by default; DNS-rebinding
+        /// is still blocked by Origin validation). Set <c>--bind any</c> / <c>--bind 0.0.0.0</c>
+        /// (or a specific IP) to opt into LAN / container exposure.
+        /// </summary>
+        public string? Bind { get; private set; }
 
         // Webhook configuration
         public string? WebhookToolUrl { get; private set; }
@@ -112,6 +129,25 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var envDeployment = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.Authorization);
             if (envDeployment != null && Enum.TryParse(envDeployment, true, out Consts.MCP.Server.AuthOption parsedEnvDeployment))
                 Authorization = parsedEnvDeployment;
+
+            // MCP_AUTH is the target-state name for MCP_AUTHORIZATION; parsed after it so it wins.
+            var envAuth = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.Auth);
+            if (envAuth != null && Enum.TryParse(envAuth, true, out Consts.MCP.Server.AuthOption parsedEnvAuth))
+                Authorization = parsedEnvAuth;
+
+            // --- OAuth resource-server variables ---
+
+            var envAuthIssuer = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.AuthIssuer);
+            if (envAuthIssuer != null)
+                AuthIssuer = envAuthIssuer;
+
+            var envPublicUrl = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.PublicUrl);
+            if (envPublicUrl != null)
+                PublicUrl = envPublicUrl;
+
+            var envBind = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.Bind);
+            if (envBind != null)
+                Bind = envBind;
 
             // --- Webhook variables ---
 
@@ -194,6 +230,25 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var argDeployment = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.Authorization.TrimStart('-'));
             if (argDeployment != null && Enum.TryParse(argDeployment, true, out Consts.MCP.Server.AuthOption parsedArgDeployment))
                 Authorization = parsedArgDeployment;
+
+            // --auth is the target-state name for --authorization; parsed after it so it wins.
+            var argAuth = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.Auth.TrimStart('-'));
+            if (argAuth != null && Enum.TryParse(argAuth, true, out Consts.MCP.Server.AuthOption parsedArgAuth))
+                Authorization = parsedArgAuth;
+
+            // --- OAuth resource-server variables ---
+
+            var argAuthIssuer = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.AuthIssuer.TrimStart('-'));
+            if (argAuthIssuer != null)
+                AuthIssuer = argAuthIssuer;
+
+            var argPublicUrl = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.PublicUrl.TrimStart('-'));
+            if (argPublicUrl != null)
+                PublicUrl = argPublicUrl;
+
+            var argBind = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.Bind.TrimStart('-'));
+            if (argBind != null)
+                Bind = argBind;
 
             // --- Webhook variables ---
 

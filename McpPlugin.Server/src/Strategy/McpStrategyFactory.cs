@@ -26,9 +26,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             {
                 Consts.MCP.Server.AuthOption.none => new NoAuthMcpStrategy(),
                 Consts.MCP.Server.AuthOption.required => new RequiredAuthMcpStrategy(),
+                Consts.MCP.Server.AuthOption.oauth => new OAuthMcpStrategy(),
                 _ => throw new ArgumentException(
                     $"Unsupported auth option: {mode}. " +
-                    $"Supported auth options are: {Consts.MCP.Server.AuthOption.none}, {Consts.MCP.Server.AuthOption.required}")
+                    $"Supported auth options are: {Consts.MCP.Server.AuthOption.none}, {Consts.MCP.Server.AuthOption.required}, {Consts.MCP.Server.AuthOption.oauth}")
             };
         }
     }

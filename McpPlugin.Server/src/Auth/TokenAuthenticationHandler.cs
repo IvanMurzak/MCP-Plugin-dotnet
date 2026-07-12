@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -16,6 +17,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Server.Auth.OAuth;
 using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
@@ -28,23 +30,50 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
     {
         public const string SchemeName = "McpPluginToken";
         public const string TokenClaimType = "mcp_plugin_token";
+        public const string SubjectClaimType = "sub";
+        public const string ScopeClaimType = "scope";
+        public const string ClientIdClaimType = "client_id";
 
         readonly IAuthorizationWebhookService _authorizationWebhookService;
+        readonly IOAuthTokenValidator? _oauthValidator;
+        readonly OAuthResourceServerConfig? _oauthConfig;
 
         public TokenAuthenticationHandler(
             IOptionsMonitor<TokenAuthenticationOptions> options,
             ILoggerFactory logger,
             UrlEncoder encoder,
-            IAuthorizationWebhookService authorizationWebhookService)
+            IAuthorizationWebhookService authorizationWebhookService,
+            IOAuthTokenValidator? oauthValidator = null,
+            OAuthResourceServerConfig? oauthConfig = null)
             : base(options, logger, encoder)
         {
             _authorizationWebhookService = authorizationWebhookService ?? throw new ArgumentNullException(nameof(authorizationWebhookService));
+            _oauthValidator = oauthValidator;
+            _oauthConfig = oauthConfig;
         }
 
         protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
         {
-            var baseUrl = $"{Request.Scheme}://{Request.Host}";
             Response.StatusCode = 401;
+
+            if (Options.OAuthMode && _oauthConfig != null)
+            {
+                // MCP OAuth resource-server challenge (RFC 9728): the client MUST be able to discover
+                // the authorization server from the ABSOLUTE resource_metadata URL, plus the scope.
+                var metadataUrl = _oauthConfig.ProtectedResourceMetadataUrl();
+                Response.Headers.WWWAuthenticate =
+                    $"Bearer resource_metadata=\"{metadataUrl}\", scope=\"{OAuthResourceServerConfig.AgentScope}\"";
+                await Response.WriteAsJsonAsync(new
+                {
+                    error = "invalid_token",
+                    error_description = "Authentication required. Discover the authorization server via the resource_metadata URL and present a Bearer access token.",
+                    resource_metadata = metadataUrl,
+                    scope = OAuthResourceServerConfig.AgentScope
+                });
+                return;
+            }
+
+            var baseUrl = $"{Request.Scheme}://{Request.Host}";
             Response.Headers.WWWAuthenticate = $"Bearer realm=\"MCP Plugin Server\", resource=\"{baseUrl}\"";
             await Response.WriteAsJsonAsync(new
             {
@@ -63,7 +92,67 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             });
         }
 
-        protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
+        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        {
+            return Options.OAuthMode
+                ? HandleOAuthAuthenticateAsync()
+                : HandleLegacyAuthenticateAsync();
+        }
+
+        // ── OAuth resource-server path (mcp-authorize b2) ─────────────────────────────────────────
+        async Task<AuthenticateResult> HandleOAuthAuthenticateAsync()
+        {
+            if (!TryGetBearerToken(out var token))
+            {
+                // No/empty/non-Bearer credential. On the hub path stay silent (BaseHub does its own
+                // auth). Elsewhere NoResult lets the RequireAuthorization pipeline issue the 401
+                // resource_metadata challenge.
+                return AuthenticateResult.NoResult();
+            }
+
+            if (_oauthValidator == null)
+            {
+                Logger.LogError("OAuth mode is enabled but no token validator is configured.");
+                return IsHubPath() ? AuthenticateResult.NoResult() : AuthenticateResult.Fail("OAuth validator not configured.");
+            }
+
+            var validation = await _oauthValidator.ValidateAsync(token, Context.RequestAborted);
+            if (!validation.Succeeded)
+            {
+                if (!IsHubPath())
+                {
+                    Logger.LogWarning(
+                        "MCP OAuth auth rejected: {Reason}. RemoteIp: {RemoteIpAddress}, UserAgent: {UserAgent}, RequestPath: {RequestPath}, TokenFingerprint: {TokenFingerprint}",
+                        validation.FailureReason, GetClientIpAddress(), Request.Headers.UserAgent.ToString(),
+                        Request.Path.Value, FingerprintToken(token));
+                }
+                return IsHubPath()
+                    ? AuthenticateResult.NoResult()
+                    : AuthenticateResult.Fail($"Invalid token: {validation.FailureReason}");
+            }
+
+            // Optional enforcement channel (hosted account-status revocation). NoOp locally.
+            if (!await AuthorizeAiAgentAsync(token))
+                return AuthenticateResult.Fail("Authorization webhook rejected the connection.");
+
+            var claims = new List<Claim> { new Claim(TokenClaimType, token) };
+            if (!string.IsNullOrEmpty(validation.Subject))
+            {
+                claims.Add(new Claim(SubjectClaimType, validation.Subject!));
+                claims.Add(new Claim(ClaimTypes.NameIdentifier, validation.Subject!));
+            }
+            if (!string.IsNullOrEmpty(validation.Scope))
+                claims.Add(new Claim(ScopeClaimType, validation.Scope!));
+            if (!string.IsNullOrEmpty(validation.ClientId))
+                claims.Add(new Claim(ClientIdClaimType, validation.ClientId!));
+
+            var identity = new ClaimsIdentity(claims, SchemeName);
+            var principal = new ClaimsPrincipal(identity);
+            return AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName));
+        }
+
+        // ── Legacy token path (auth=required / none) — unchanged behavior ─────────────────────────
+        async Task<AuthenticateResult> HandleLegacyAuthenticateAsync()
         {
             // If no plugins have connected with tokens and no server token is configured,
             // allow anonymous access for backward compatibility
@@ -163,7 +252,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             // source (issue #99). Returning NoResult on the hub path lets the connection
             // through silently while preserving the Fail+401 challenge on every other path
             // (which IS RequireAuthorization()-gated). The same hub-path-silencing rule is
-            // also applied to the empty-Bearer case above (line 76).
+            // also applied to the empty-Bearer case above.
             if (ticket == null)
             {
                 if (!IsHubPath())
@@ -185,9 +274,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             return AuthenticateResult.Success(ticket);
         }
 
+        bool TryGetBearerToken(out string token)
+        {
+            token = string.Empty;
+            var authHeader = Request.Headers["Authorization"].ToString();
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                return false;
+            token = authHeader.Substring("Bearer ".Length).Trim();
+            return token.Length > 0;
+        }
+
         // True when the request targets the SignalR hub endpoint. Used to silence the
         // "[7] McpPluginToken was not authenticated" info log noise on hub probes — see
-        // the comment on the no-tier-matched branch in HandleAuthenticateAsync.
+        // the comment on the no-tier-matched branch in HandleLegacyAuthenticateAsync.
         bool IsHubPath()
         {
             var path = Request.Path.Value;
@@ -233,5 +332,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
     {
         public string? ServerToken { get; set; }
         public bool RequireToken { get; set; }
+
+        /// <summary>
+        /// When true, the handler runs the OAuth resource-server validation path (ES256/JWKS +
+        /// introspection) instead of the legacy token-equality path (mcp-authorize b2).
+        /// </summary>
+        public bool OAuthMode { get; set; }
     }
 }
