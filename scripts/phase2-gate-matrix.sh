@@ -42,13 +42,15 @@ echo ""
 echo "== Phase-2 isolation/selection/pin/Origin/stdio matrix (McpPlugin.Server.Tests) =="
 dotnet test McpPlugin.Server.Tests/McpPlugin.Server.Tests.csproj \
   --no-build --configuration "${CONFIGURATION}" --verbosity normal \
-  --filter "FullyQualifiedName~IsolationMatrix"
+  --filter "FullyQualifiedName~IsolationMatrix" \
+  -- RunConfiguration.TreatNoTestsAsError=true
 
 echo ""
 echo "== Golden-vector parity: C# ProjectIdentity reference (McpPlugin.Tests) =="
 dotnet test McpPlugin.Tests/McpPlugin.Tests.csproj \
   --no-build --configuration "${CONFIGURATION}" --verbosity normal \
-  --filter "FullyQualifiedName~ProjectIdentityGoldenVector"
+  --filter "FullyQualifiedName~ProjectIdentityGoldenVector" \
+  -- RunConfiguration.TreatNoTestsAsError=true
 
 echo ""
 echo "== Phase-2 gate: PASS =="

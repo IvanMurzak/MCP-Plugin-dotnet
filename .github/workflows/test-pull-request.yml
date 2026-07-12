@@ -79,3 +79,4 @@ jobs:
           dotnet test McpPlugin.Tests/McpPlugin.Tests.csproj
           --no-build --configuration Release --verbosity normal
           --filter "FullyQualifiedName~ProjectIdentityGoldenVector"
+          -- RunConfiguration.TreatNoTestsAsError=true

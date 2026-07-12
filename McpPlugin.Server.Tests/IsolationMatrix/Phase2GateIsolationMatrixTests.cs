@@ -224,7 +224,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.IsolationMatrix
             // A hypothetical buggy strategy routes account A's session to account B's connection.
             const string leakedConnection = "conn-B1"; // owned by account B
 
-            Should.Throw<Exception>(() =>
+            Should.Throw<ShouldAssertException>(() =>
                 AssertRouteStaysInAccount(sessionAccount: AccountA, resolvedConnectionId: leakedConnection),
                 "the isolation matrix must FAIL when a session is routed to another account's instance");
 
@@ -246,7 +246,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.IsolationMatrix
 
             // A leaky target smuggles in account B's connection — must be caught.
             var leaky = new[] { "conn-A1", "conn-B1" };
-            Should.Throw<Exception>(() => AssertNotificationStaysInAccount(AccountA, leaky),
+            Should.Throw<ShouldAssertException>(() => AssertNotificationStaysInAccount(AccountA, leaky),
                 "the isolation matrix must FAIL when an account's notification target includes another tenant's connection");
         }
 
