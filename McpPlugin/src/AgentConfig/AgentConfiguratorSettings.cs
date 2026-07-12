@@ -9,6 +9,7 @@
 */
 
 #nullable enable
+using System;
 using System.Runtime.InteropServices;
 using com.IvanMurzak.McpPlugin.Common;
 
@@ -192,5 +193,56 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         /// <summary>Convenience: <see cref="OperatingSystem"/> is <see cref="OperatingSystemKind.Windows"/>.</summary>
         public bool IsWindows => OperatingSystem == OperatingSystemKind.Windows;
+
+        // --- mcp-authorize b6: project-pinned, marker-aware identity resolution (design 03/06). ---
+        // Every config writer consults the same ProjectIdentity + project marker so the routing pin
+        // and the per-project local port can never silently diverge between the plugin and a
+        // terminal-written config. Resolved lazily and cached (a marker read is file I/O, and the
+        // identity is stable for the settings' <see cref="ProjectRootPath"/>).
+        private ProjectIdentity? _identity;
+
+        /// <summary>
+        /// The project's <see cref="ProjectIdentity"/> — routing pin plus the resolved local port
+        /// (the project marker's <c>portOverride</c> wins, else the deterministic hash-derived port).
+        /// Read once from the marker at <see cref="ProjectRootPath"/> and cached.
+        /// </summary>
+        public ProjectIdentity Identity => _identity ??= ProjectIdentity.Derive(ProjectRootPath, ProjectMarker.Read(ProjectRootPath));
+
+        /// <summary>The routing pin (first 8 hex chars of the ProjectIdentity SHA-256). Non-secret, safe to commit.</summary>
+        public string ProjectPin => Identity.Pin;
+
+        /// <summary>
+        /// The resolved per-project local port: the project marker's <c>portOverride</c> when set,
+        /// otherwise the deterministic hash-derived port. This is the port written into configs
+        /// (stdio <c>port=</c> arg and the loopback HTTP URL), NOT the raw engine-supplied
+        /// <see cref="Port"/> — b6 single-sources the local port from <see cref="ProjectIdentity"/>.
+        /// </summary>
+        public int ResolvedPort => Identity.Port;
+
+        /// <summary>
+        /// The HTTP <c>url</c> written into configs on the default (credential-free) path: the base
+        /// <see cref="Host"/> with the <c>/p/&lt;pin&gt;</c> routing path segment appended, and — for a
+        /// loopback URL in <see cref="ConnectionMode.Local"/> — the port rewritten to
+        /// <see cref="ResolvedPort"/>. The pin rides as a path segment (not a query param) so a lost
+        /// pin 404s loudly instead of silently degrading to unpinned routing (design 03 Flow F).
+        /// </summary>
+        public string PinnedHttpUrl => BuildPinnedHttpUrl();
+
+        private string BuildPinnedHttpUrl()
+        {
+            var pin = ProjectPin;
+            if (Uri.TryCreate(Host, UriKind.Absolute, out var uri))
+            {
+                // Only the per-project LOCAL loopback port is rewritten from ProjectIdentity; a hosted
+                // (or non-loopback) target keeps its authority verbatim (default ports stay implicit).
+                var authority = ConnectionMode == ConnectionMode.Local && uri.IsLoopback
+                    ? $"{uri.Scheme}://{uri.Host}:{ResolvedPort}"
+                    : uri.GetLeftPart(UriPartial.Authority);
+                var basePath = uri.AbsolutePath.TrimEnd('/');
+                return $"{authority}{basePath}/p/{pin}{uri.Query}";
+            }
+            // Non-absolute host (defensive): append the pin segment without a port rewrite.
+            return $"{Host.TrimEnd('/')}/p/{pin}";
+        }
     }
 }

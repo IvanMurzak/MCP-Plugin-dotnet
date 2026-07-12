@@ -23,13 +23,18 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
     /// </summary>
     internal static class AgentConfigBuilders
     {
-        /// <summary>The standard stdio arg array (port, plugin-timeout, client-transport, authorization).</summary>
+        /// <summary>
+        /// The standard stdio arg array (mcp-authorize b6, design 06): the ProjectIdentity-derived
+        /// per-project <c>port=</c> (marker <c>portOverride</c> wins), plugin-timeout, client-transport,
+        /// and the <c>project=&lt;pin&gt;</c> routing arg. NO auth args — stdio spawns in <c>none</c> mode
+        /// on the default path (the credential-free / anonymous local flow).
+        /// </summary>
         public static JsonArray StdioArgs(AgentConfiguratorSettings s) => new()
         {
-            $"{Args.Port}={s.Port}",
+            $"{Args.Port}={s.ResolvedPort}",
             $"{Args.PluginTimeout}={s.TimeoutMs}",
             $"{Args.ClientTransportMethod}={TransportMethod.stdio}",
-            $"{Args.Authorization}={s.AuthOption}"
+            $"{Args.Project}={s.ProjectPin}"
         };
 
         /// <summary>
@@ -72,7 +77,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         {
             var config = new JsonAiAgentConfig(name, configPath, bodyPath, logger)
                 .SetProperty("type", JsonValue.Create(type)!, requiredForConfiguration: true)
-                .SetProperty("url", JsonValue.Create(settings.Host)!, requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
+                .SetProperty("url", JsonValue.Create(settings.PinnedHttpUrl)!, requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
                 .SetPropertyToRemove("command")
                 .SetPropertyToRemove("args");
             if (disabled.HasValue)

@@ -45,7 +45,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
                 .SetProperty("enabled", JsonValue.Create(true)!, requiredForConfiguration: true)
                 .SetPropertyToRemove("disabled")
                 .SetProperty("type", JsonValue.Create("http")!, requiredForConfiguration: true)
-                .SetProperty("url", JsonValue.Create(settings.Host)!, requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
+                .SetProperty("url", JsonValue.Create(settings.PinnedHttpUrl)!, requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
                 .SetPropertyToRemove("command")
                 .SetPropertyToRemove("args");
 

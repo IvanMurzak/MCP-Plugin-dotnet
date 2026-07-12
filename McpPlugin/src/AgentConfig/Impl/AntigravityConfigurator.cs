@@ -47,7 +47,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
             => new JsonAiAgentConfig(AgentName, GlobalConfigPath(settings), bodyPath: "mcpServers", logger: logger)
                 .AddIdentityKey("serverUrl")
                 .SetProperty("disabled", JsonValue.Create(false)!, requiredForConfiguration: true)
-                .SetProperty("serverUrl", JsonValue.Create(settings.Host)!, requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
+                .SetProperty("serverUrl", JsonValue.Create(settings.PinnedHttpUrl)!, requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
                 .SetPropertyToRemove("command")
                 .SetPropertyToRemove("args")
                 .SetPropertyToRemove("url")

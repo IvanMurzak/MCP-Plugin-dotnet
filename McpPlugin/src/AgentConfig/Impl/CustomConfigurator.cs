@@ -86,8 +86,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
                 items.Add(ConfigurationItem.ReadOnlyField(DockerCommands.Run(settings)));
 
                 items.Add(ConfigurationItem.Description("3. Copy paste the json into your MCP Client to configure it."));
+                // mcp-authorize b6: credential-free, project-pinned URL (no token in the snippet).
                 items.Add(ConfigurationItem.ReadOnlyField(
-                    $"{{\"mcpServers\":{{\"{AiAgentConfig.DefaultMcpServerName}\":{{\"type\":\"http\",\"url\":\"{settings.Host}\"}}}}}}"));
+                    $"{{\"mcpServers\":{{\"{AiAgentConfig.DefaultMcpServerName}\":{{\"type\":\"http\",\"url\":\"{settings.PinnedHttpUrl}\"}}}}}}"));
 
                 items.Add(ConfigurationItem.Description("4. (Optional) Stop and remove the MCP server using Docker when you are done."));
                 items.Add(ConfigurationItem.ReadOnlyField(DockerCommands.Stop(settings)));
