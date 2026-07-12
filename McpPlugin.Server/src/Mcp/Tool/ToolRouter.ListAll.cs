@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Tools;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Protocol;
@@ -35,6 +36,13 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (request.Services == null)
                 return new ListToolsResult().SetError("[Error] 'request.Services' is null");
 
+            // Server-native tools (mcp-authorize b4) — the account+instance selection/enrollment
+            // surface served by the RS itself, merged alongside the paired plugin's tools (design 04).
+            // Registered only in oauth mode; null otherwise (leaving today's pure pass-through). They
+            // MUST appear even when NO plugin is connected so an engine-less agent can still call
+            // enroll_engine_plugin — hence they are merged into every return path below.
+            var nativeTools = request.Services.GetService<ServerNativeTools>()?.Descriptors;
+
             var clientToolHub = request.Services.GetRequiredService<IClientToolHub>();
             logger.Trace("ListAll Using ClientToolHub: {0}", clientToolHub.GetType().GetTypeShortName());
 
@@ -50,26 +58,26 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
             catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
             {
-                logger.Warn("ListAll timed out after {0}s: MCP Plugin not yet connected. Returning empty tools list.", _listToolsTimeout.TotalSeconds);
-                return new ListToolsResult() { Tools = new List<Tool>() };
+                logger.Warn("ListAll timed out after {0}s: MCP Plugin not yet connected. Returning server-native tools only.", _listToolsTimeout.TotalSeconds);
+                return Merge(null, nativeTools);
             }
 
             if (response == null)
             {
-                logger.Warn("ListAll response is null. Returning empty tools list.");
-                return new ListToolsResult() { Tools = new List<Tool>() };
+                logger.Warn("ListAll response is null. Returning server-native tools only.");
+                return Merge(null, nativeTools);
             }
 
             if (response.Status == ResponseStatus.Error)
             {
-                logger.Warn("ListAll error (plugin may not be connected yet): {0}. Returning empty tools list.", response.Message);
-                return new ListToolsResult() { Tools = new List<Tool>() };
+                logger.Warn("ListAll error (plugin may not be connected yet): {0}. Returning server-native tools only.", response.Message);
+                return Merge(null, nativeTools);
             }
 
             if (response.Value == null)
             {
-                logger.Warn("ListAll response value is null. Returning empty tools list.");
-                return new ListToolsResult() { Tools = new List<Tool>() };
+                logger.Warn("ListAll response value is null. Returning server-native tools only.");
+                return Merge(null, nativeTools);
             }
 
             // Trusted internal clients (cli/desktop) opt in via the
@@ -77,15 +85,21 @@ namespace com.IvanMurzak.McpPlugin.Server
             // including `Enabled = false` tools tagged with `_meta.enabled = false`.
             // Every other caller continues to get the pre-existing filtered view.
             // See ExtensionsListMeta.SelectVisible for the predicate.
-            var result = new ListToolsResult()
-            {
-                Tools = response.Value.SelectVisible(x => x.Enabled, x => x.ToTool())
-            };
+            var result = Merge(response.Value.SelectVisible(x => x.Enabled, x => x.ToTool()), nativeTools);
 
             if (logger.IsTraceEnabled)
                 logger.Trace("ListAll, result: {0}", result.ToPrettyJson());
 
             return result;
+        }
+
+        /// <summary>Combines the plugin's tools with the server-native tools (either may be null/empty).</summary>
+        static ListToolsResult Merge(IList<Tool>? pluginTools, IReadOnlyList<Tool>? nativeTools)
+        {
+            var tools = pluginTools != null ? new List<Tool>(pluginTools) : new List<Tool>();
+            if (nativeTools != null && nativeTools.Count > 0)
+                tools.AddRange(nativeTools);
+            return new ListToolsResult() { Tools = tools };
         }
     }
 }

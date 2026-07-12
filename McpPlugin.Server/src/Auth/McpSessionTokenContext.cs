@@ -25,6 +25,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         static readonly AsyncLocal<ConnectionIdentity?> _currentIdentity = new();
         static readonly AsyncLocal<string?> _currentProjectPin = new();
         static readonly AsyncLocal<string?> _currentSelectedInstanceId = new();
+        static readonly AsyncLocal<string?> _currentSessionId = new();
 
         public static string? CurrentToken
         {
@@ -62,6 +63,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         {
             get => _currentSelectedInstanceId.Value;
             set => _currentSelectedInstanceId.Value = value;
+        }
+
+        /// <summary>
+        /// The MCP session id (the <c>Mcp-Session-Id</c> header value) for the in-flight request
+        /// (mcp-authorize b4). Captured by <see cref="McpSessionTokenMiddleware"/> and used as the
+        /// sticky-selection key by <c>select_engine_instance</c> (see
+        /// <see cref="Tools.ISessionSelectionStore"/>). Null on the initialize request (no id yet)
+        /// and for stdio (no HTTP context).
+        /// </summary>
+        public static string? CurrentSessionId
+        {
+            get => _currentSessionId.Value;
+            set => _currentSessionId.Value = value;
         }
 
         public static string? CurrentClientIp

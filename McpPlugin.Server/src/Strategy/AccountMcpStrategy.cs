@@ -104,19 +104,30 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             return instance;
         }
 
+        /// <summary>
+        /// Resolves the CURRENT agent session (from the ambient <see cref="McpSessionTokenContext"/>)
+        /// to a plugin instance, returning the full <see cref="InstanceResolution"/> so callers can
+        /// surface the design-04 step-5 agent-actionable error variants (pinned-no-match vs
+        /// account-empty). Fail-closed: no identity ⇒ <see cref="InstanceResolution.AccountEmpty"/>.
+        /// </summary>
+        public InstanceResolution ResolveCurrentSession()
+        {
+            var identity = McpSessionTokenContext.CurrentIdentity;
+            if (identity == null)
+                return InstanceResolution.AccountEmpty();
+
+            return _instances.Resolve(
+                identity.AccountId,
+                McpSessionTokenContext.CurrentProjectPin,
+                McpSessionTokenContext.CurrentSelectedInstanceId);
+        }
+
         public string? ResolveConnectionId(string? token, int retryOffset)
         {
             // Account routing reads the resolved session context (identity + pin + sticky), NOT the
             // raw token. Fail closed when there is no identity (e.g. stdio without a JWT): never fall
             // back to another account's instance.
-            var identity = McpSessionTokenContext.CurrentIdentity;
-            if (identity == null)
-                return null;
-
-            var resolution = _instances.Resolve(
-                identity.AccountId,
-                McpSessionTokenContext.CurrentProjectPin,
-                McpSessionTokenContext.CurrentSelectedInstanceId);
+            var resolution = ResolveCurrentSession();
 
             if (resolution.Kind != InstanceResolutionKind.Resolved || resolution.Instance == null)
                 return null;
