@@ -1,0 +1,92 @@
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/PluginCredentialProvider.cs
+  s_50edd0e0346255::t_325dc9767f5069 1-296
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionConfig.cs
+  s_50edd0e0346255::t_a00e078ad80027 13
+docs/architecture-transport-auth.md
+  s_50edd0e0346255::t_d8aedc7f52ff2f 11
+  s_50edd0e0346255::t_fd66f4702307bd 12-14
+  s_7b4772351fb885::t_764f9fdf4c1705 15-21
+McpPlugin.Tests/Network/Connection/ConnectionInstanceMetadataTests.cs
+  s_50edd0e0346255::t_ac89d17290ea89 1-110
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/ServerTargetResolver.cs
+  s_50edd0e0346255::t_237cf63b63df72 4
+  s_50edd0e0346255::t_11c9975705740a 1-3,5-74
+McpPlugin.Tests/Network/Connection/Credentials/PluginCredentialProviderTests.cs
+  s_50edd0e0346255::t_66b33466e43bc5 183
+  s_3c149407cdd5d4::t_d81f75b7e8183d 1-182,184-248
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/AuthState.cs
+  s_50edd0e0346255::t_cde72cfe63b2e7 1-31
+McpPlugin.Server.Tests/DirectToolEndpointsAuthGatingTests.cs
+  s_50edd0e0346255::t_4035b33a3a6520 1-142
+  s_50edd0e0346255::t_07d588e8daa531 143
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/ConnectionCredentialCoordinator.cs
+  s_50edd0e0346255::t_c5ea1df3dba551 52
+  s_50edd0e0346255::t_b77e5f721fda3a 1-51,53-108
+  s_50edd0e0346255::t_27a94e0d7a60af 109-111
+  s_7b4772351fb885::t_27bca40198d961 112-113
+McpPlugin.Tests/Network/Connection/Credentials/ConnectionCredentialCoordinatorTests.cs
+  s_50edd0e0346255::t_fb1089a45392d7 1-135,137-153,157-164,167-185
+  s_50edd0e0346255::t_c6809405228dd1 136
+  s_50edd0e0346255::t_1ed2d4a32e6f81 154-156
+  s_50edd0e0346255::t_a6c7b0453c0c50 165-166
+McpPlugin/src/McpPlugin/Builder/McpPluginBuilder.cs
+  s_9bb276d7183c60::t_bf0c5e23dff9ba 305-307
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionInstanceMetadata.cs
+  s_9bb276d7183c60::t_8d4ee9ac71f1c6 1-150
+McpPlugin.Common/src/Utils/Consts.MCP.cs
+  s_7b4772351fb885::t_e2526297d63ba0 37-39
+McpPlugin.Server.Tests/InstanceMetadataHandshakeRegistrationTests.cs
+  s_7b4772351fb885::t_6bb0ea03dcb997 1-99
+McpPlugin.Server/src/Api/DirectToolCallEndpoints.cs
+  s_7b4772351fb885::t_e6daafbbcc4e4a 43-46,56
+McpPlugin.Server/src/Api/SystemToolEndpoints.cs
+  s_7b4772351fb885::t_ef44121c1eb000 43-47,57
+McpPlugin.Tests/Network/Connection/LegacySharedTokenRemovalTests.cs
+  s_7b4772351fb885::t_fb4279bfedf22b 1-76
+McpPlugin/src/AgentConfig/ProjectIdentity.cs
+  s_7b4772351fb885::t_908346043fea6f 125-138
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/ITokenRefresher.cs
+  s_7b4772351fb885::t_60c6a03937a5dc 1-81
+McpPlugin/src/McpPlugin/Network/Connection/Provider/HubConnectionProvider.cs
+  s_7b4772351fb885::t_ed2133e81eaf93 46-52,54,56-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "214af2d7ba0fded27aca77ec3323b4a15575f0af",
+  "prompts": {},
+  "sessions": {
+    "s_3c149407cdd5d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "845aef5f-a4aa-4844-b9e6-479df3530c09",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_50edd0e0346255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2164075-e554-49e6-8a57-fdc35f7f7e9d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_7b4772351fb885": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9bd21b4842eac7a9",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_9bb276d7183c60": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f551e-4ca8-7e60-be86-dea13e2ffad8",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
