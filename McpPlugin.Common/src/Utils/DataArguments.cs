@@ -28,6 +28,9 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         string? PublicUrl { get; }
         string? Bind { get; }
 
+        // Session project pin for stdio account routing (mcp-authorize b3, design 04 D14)
+        string? ProjectPin { get; }
+
         // Webhook configuration
         string? WebhookToolUrl { get; }
         string? WebhookPromptUrl { get; }
@@ -62,6 +65,14 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         /// (or a specific IP) to opt into LAN / container exposure.
         /// </summary>
         public string? Bind { get; private set; }
+
+        /// <summary>
+        /// The session's project pin (mcp-authorize b3, design 04 D14) supplied on a stdio spawn as
+        /// <c>project=&lt;pin&gt;</c>. Pins the session's routing to instances whose project path hash
+        /// matches — never another project. Null when unset. The streamableHttp equivalent is the
+        /// <c>/p/&lt;pin&gt;</c> URL path segment (captured per-request by the session middleware).
+        /// </summary>
+        public string? ProjectPin { get; private set; }
 
         // Webhook configuration
         public string? WebhookToolUrl { get; private set; }
@@ -249,6 +260,12 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var argBind = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.Bind.TrimStart('-'));
             if (argBind != null)
                 Bind = argBind;
+
+            // --- Session project pin (stdio account routing, mcp-authorize b3) ---
+
+            var argProject = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.Project.TrimStart('-'));
+            if (!string.IsNullOrEmpty(argProject))
+                ProjectPin = argProject!.Trim().ToLowerInvariant();
 
             // --- Webhook variables ---
 

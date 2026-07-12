@@ -22,11 +22,46 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         static readonly AsyncLocal<string?> _currentClientIp = new();
         static readonly AsyncLocal<string?> _currentUserAgent = new();
         static readonly AsyncLocal<bool> _isTrustedInternalClient = new();
+        static readonly AsyncLocal<ConnectionIdentity?> _currentIdentity = new();
+        static readonly AsyncLocal<string?> _currentProjectPin = new();
+        static readonly AsyncLocal<string?> _currentSelectedInstanceId = new();
 
         public static string? CurrentToken
         {
             get => _currentToken.Value;
             set => _currentToken.Value = value;
+        }
+
+        /// <summary>
+        /// The resolved <see cref="ConnectionIdentity"/> for the in-flight request in <c>oauth</c>
+        /// mode (mcp-authorize b3). Its <see cref="ConnectionIdentity.AccountId"/> is the account
+        /// routing key. Null in legacy (token-equality / no-auth) modes and for stdio (no HTTP context).
+        /// </summary>
+        public static ConnectionIdentity? CurrentIdentity
+        {
+            get => _currentIdentity.Value;
+            set => _currentIdentity.Value = value;
+        }
+
+        /// <summary>
+        /// The project pin captured for the session (design 04 D14): the <c>/p/&lt;pin&gt;</c> URL
+        /// path segment (HTTP) or the <c>project=&lt;pin&gt;</c> stdio spawn arg. A pinned session
+        /// routes ONLY to instances whose project path hash matches — never another project.
+        /// </summary>
+        public static string? CurrentProjectPin
+        {
+            get => _currentProjectPin.Value;
+            set => _currentProjectPin.Value = value;
+        }
+
+        /// <summary>
+        /// The session's sticky-selected instance id (set by <c>select_engine_instance</c> in b4).
+        /// Honored while alive; narrows a pin but never overrides it to a different project. Null in b3.
+        /// </summary>
+        public static string? CurrentSelectedInstanceId
+        {
+            get => _currentSelectedInstanceId.Value;
+            set => _currentSelectedInstanceId.Value = value;
         }
 
         public static string? CurrentClientIp

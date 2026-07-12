@@ -71,15 +71,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.OAuth
         [Fact]
         public void StrategyFactory_CreatesOAuthStrategy()
         {
+            // mcp-authorize b3: oauth mode is now the account+instance pairing plane (AccountMcpStrategy),
+            // superseding the b2 interim OAuthMcpStrategy.
             var strategy = new McpStrategyFactory().Create(Consts.MCP.Server.AuthOption.oauth);
-            strategy.ShouldBeOfType<OAuthMcpStrategy>();
+            strategy.ShouldBeOfType<AccountMcpStrategy>();
             strategy.AuthOption.ShouldBe(Consts.MCP.Server.AuthOption.oauth);
         }
 
         [Fact]
         public void OAuthStrategy_Validate_RequiresIssuerAndPublicUrl()
         {
-            var strategy = new OAuthMcpStrategy();
+            var strategy = new AccountMcpStrategy();
 
             Should.Throw<ArgumentException>(() =>
                 strategy.Validate(new DataArguments(new[] { "auth=oauth" })));
@@ -94,7 +96,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.OAuth
         [Fact]
         public void OAuthStrategy_ConfigureAuthentication_SetsOAuthMode()
         {
-            var strategy = new OAuthMcpStrategy();
+            var strategy = new AccountMcpStrategy();
             var options = new TokenAuthenticationOptions();
             strategy.ConfigureAuthentication(options, new DataArguments(new[]
             {

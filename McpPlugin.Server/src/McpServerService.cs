@@ -131,6 +131,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                 case NotificationTarget.TargetKind.Specific:
                     await _hubContext.Clients.Client(target.ConnectionId!).OnMcpClientConnected(connectedClient, allActiveClients);
                     break;
+                case NotificationTarget.TargetKind.SpecificMany:
+                    foreach (var connectionId in target.ConnectionIds)
+                        await _hubContext.Clients.Client(connectionId).OnMcpClientConnected(connectedClient, allActiveClients);
+                    break;
                 case NotificationTarget.TargetKind.Broadcast:
                     await _hubContext.Clients.All.OnMcpClientConnected(connectedClient, allActiveClients);
                     break;
@@ -154,6 +158,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                 case NotificationTarget.TargetKind.Specific:
                     await _hubContext.Clients.Client(target.ConnectionId!).OnMcpClientDisconnected(disconnectedClient, remainingClients);
                     break;
+                case NotificationTarget.TargetKind.SpecificMany:
+                    foreach (var connectionId in target.ConnectionIds)
+                        await _hubContext.Clients.Client(connectionId).OnMcpClientDisconnected(disconnectedClient, remainingClients);
+                    break;
                 case NotificationTarget.TargetKind.Broadcast:
                     await _hubContext.Clients.All.OnMcpClientDisconnected(disconnectedClient, remainingClients);
                     break;
@@ -171,21 +179,28 @@ namespace com.IvanMurzak.McpPlugin.Server
                 GetType().GetTypeShortName(), McpSessionOrServer?.SessionId, _mcpServer?.ClientInfo?.Name, _mcpServer?.ClientInfo?.Title);
             _disposables.Clear();
 
-            // _routingToken: Bearer token used to route notifications to the correct plugin and to
-            // scope GetAllClientData() queries. Null in no-auth mode (broadcasts to all plugins).
-            // For auth=required on stdio (no HTTP context), fall back to dataArguments.Token so
-            // the routing key matches what the plugin registered with.
-            _routingToken = McpSessionTokenContext.CurrentToken
-                         ?? (_strategy.AuthOption == Common.Consts.MCP.Server.AuthOption.required
-                             ? _dataArguments.Token
-                             : null);
+            // _routingToken: the account-scoping key for notification routing + GetAllClientData()
+            // filtering. In oauth mode (mcp-authorize b3) it is the ACCOUNT id (the JWT `sub`) — the
+            // account+instance pairing plane routes by account, never by the raw token. In legacy
+            // required mode it is the Bearer token (stdio falls back to dataArguments.Token so the key
+            // matches what the plugin registered with). Null in no-auth mode (broadcast to all plugins).
+            var isOAuth = _strategy.AuthOption == Common.Consts.MCP.Server.AuthOption.oauth;
+            _routingToken = isOAuth
+                ? McpSessionTokenContext.CurrentIdentity?.AccountId
+                : (McpSessionTokenContext.CurrentToken
+                   ?? (_strategy.AuthOption == Common.Consts.MCP.Server.AuthOption.required
+                       ? _dataArguments.Token
+                       : null));
 
-            // _physicalSessionId: always unique per HTTP session (MCP protocol UUID) so each
-            // physical connection gets its own tracker entry regardless of shared tokens.
-            // Fall back to the routing token (stdio) or a generated ID as a last resort.
-            _physicalSessionId = McpSessionOrServer?.SessionId
-                              ?? _routingToken
-                              ?? Common.Consts.MCP.Server.TransportMethod.stdio.ToString();
+            // _physicalSessionId: unique per physical connection so each gets its own tracker entry.
+            // In oauth mode the key is composed as `<sub>:<session_id>` (design 04) so a DIFFERENT
+            // account can NEVER adopt another account's session even if the MCP session UUID collided.
+            var physicalBase = McpSessionOrServer?.SessionId
+                            ?? _routingToken
+                            ?? Common.Consts.MCP.Server.TransportMethod.stdio.ToString();
+            _physicalSessionId = (isOAuth && !string.IsNullOrEmpty(_routingToken))
+                ? $"{_routingToken}:{physicalBase}"
+                : physicalBase;
 
             _sessionTracker.Update(_physicalSessionId, _routingToken, GetClientData(), GetServerData());
             _sessionTracker.AddRef(_physicalSessionId);

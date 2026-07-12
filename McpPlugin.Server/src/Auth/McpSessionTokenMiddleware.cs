@@ -50,6 +50,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                     McpSessionTokenContext.CurrentToken = authHeader.Substring("Bearer ".Length).Trim();
             }
 
+            // OAuth account routing (mcp-authorize b3): resolve the request identity from the validated
+            // claims the TokenAuthenticationHandler OAuth path issued (sub → AccountId, scope → Role).
+            // Null-safe in legacy modes — no sub claim ⇒ null identity ⇒ token-equality routing unchanged.
+            McpSessionTokenContext.CurrentIdentity = ConnectionIdentity.FromPrincipal(context.User);
+
+            // Capture the project pin from the config URL's trailing /p/<pin> segment (design 04 D14).
+            McpSessionTokenContext.CurrentProjectPin = TryExtractProjectPin(context.Request.Path.Value);
+
             var remoteIp = context.Connection.RemoteIpAddress?.ToString();
             if (!string.IsNullOrEmpty(remoteIp))
                 McpSessionTokenContext.CurrentClientIp = remoteIp;
@@ -76,7 +84,47 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 McpSessionTokenContext.CurrentClientIp = null;
                 McpSessionTokenContext.CurrentUserAgent = null;
                 McpSessionTokenContext.IsTrustedInternalClient = false;
+                McpSessionTokenContext.CurrentIdentity = null;
+                McpSessionTokenContext.CurrentProjectPin = null;
+                McpSessionTokenContext.CurrentSelectedInstanceId = null;
             }
+        }
+
+        /// <summary>
+        /// Extracts the project pin from a request path whose config URL ends in a
+        /// <c>/p/&lt;pin&gt;</c> segment (design 04 D14). Returns the LAST such <c>&lt;pin&gt;</c>
+        /// (the config URL suffix), or null when absent. The pin is the first 8 hex chars of the
+        /// project SHA-256; validated loosely as 1–64 hex chars so a malformed segment is ignored.
+        /// </summary>
+        public static string? TryExtractProjectPin(string? path)
+        {
+            if (string.IsNullOrEmpty(path))
+                return null;
+
+            var segments = path!.Split('/');
+            string? pin = null;
+            for (var i = 0; i + 1 < segments.Length; i++)
+            {
+                if (!string.Equals(segments[i], "p", StringComparison.Ordinal))
+                    continue;
+                var candidate = segments[i + 1];
+                if (IsHex(candidate))
+                    pin = candidate.ToLowerInvariant();
+            }
+            return pin;
+        }
+
+        static bool IsHex(string? s)
+        {
+            if (string.IsNullOrEmpty(s) || s!.Length > 64)
+                return false;
+            foreach (var c in s)
+            {
+                var isHex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+                if (!isHex)
+                    return false;
+            }
+            return true;
         }
     }
 }

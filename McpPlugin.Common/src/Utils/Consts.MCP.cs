@@ -66,6 +66,26 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string AuthIssuer = "auth-issuer";
                     public const string PublicUrl = "public-url";
                     public const string Bind = "bind";
+
+                    // Project pin (mcp-authorize b3, design 04 D14). The stdio spawn arg carrying the
+                    // session's project pin (first 8 hex chars of the ProjectIdentity SHA-256). The
+                    // HTTP equivalent is the /p/&lt;pin&gt; URL path segment.
+                    public const string Project = "project";
+                }
+
+                /// <summary>
+                /// Query-string parameters an engine plugin sends on its SignalR hub connection to
+                /// register its instance metadata in <c>oauth</c> account routing (mcp-authorize b3,
+                /// design 04). Non-secret; the credential itself always travels in the
+                /// <c>Authorization</c> header (never the query). The wire format is finalized in b7.
+                /// </summary>
+                public static class HubQuery
+                {
+                    public const string InstanceId = "instance_id";
+                    public const string Engine = "engine";
+                    public const string ProjectName = "project_name";
+                    public const string ProjectPathHash = "project_path_hash";
+                    public const string MachineName = "machine_name";
                 }
 
                 public static partial class Env
