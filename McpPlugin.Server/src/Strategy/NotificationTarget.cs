@@ -89,7 +89,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         public override bool Equals(object? obj) => obj is NotificationTarget other && Equals(other);
 
         public override int GetHashCode()
-            => unchecked(((int)Kind * 397) ^ (ConnectionId != null ? StringComparer.Ordinal.GetHashCode(ConnectionId) : 0));
+        {
+            unchecked
+            {
+                var hash = ((int)Kind * 397) ^ (ConnectionId != null ? StringComparer.Ordinal.GetHashCode(ConnectionId) : 0);
+                // Fold in the SpecificMany set so the hash stays consistent with Equals (which compares
+                // ConnectionIds via SequenceEqual) — otherwise every SpecificMany target collides to one bucket.
+                foreach (var id in ConnectionIds)
+                    hash = (hash * 397) ^ StringComparer.Ordinal.GetHashCode(id);
+                return hash;
+            }
+        }
 
         public static bool operator ==(NotificationTarget left, NotificationTarget right) => left.Equals(right);
         public static bool operator !=(NotificationTarget left, NotificationTarget right) => !left.Equals(right);
