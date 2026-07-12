@@ -30,7 +30,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         public static ResponseData<ResponseCallTool> Pack(this ResponseCallTool target, string requestId, string? message = null)
         {
             if (target.Status == ResponseStatus.Error)
-                return ResponseData<ResponseCallTool>.Error(requestId, message ?? target.GetMessage() ?? "Tool execution error.")
+                return ResponseData<ResponseCallTool>.Error(requestId, message ?? target.GetMessage() ?? "Tool execution error.", target.ErrorKind, target.HttpStatusCode)
                     .SetData(target);
             else if (target.Status == ResponseStatus.Success)
                 return ResponseData<ResponseCallTool>.Success(requestId, message ?? target.GetMessage() ?? "Tool executed successfully.")

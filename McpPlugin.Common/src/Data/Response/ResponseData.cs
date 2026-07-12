@@ -33,9 +33,11 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         {
             Message = message
         };
-        public static new ResponseData<T> Error(string requestId, string? message = null) => new ResponseData<T>(requestId, ResponseStatus.Error)
+        public static new ResponseData<T> Error(string requestId, string? message = null, ResponseErrorKind errorKind = ResponseErrorKind.None, int? httpStatusCode = null) => new ResponseData<T>(requestId, ResponseStatus.Error)
         {
-            Message = message
+            Message = message,
+            ErrorKind = errorKind,
+            HttpStatusCode = httpStatusCode
         };
         public static new ResponseData<T> Processing(string requestId, string? message = null) => new ResponseData<T>(requestId, ResponseStatus.Processing)
         {
@@ -48,6 +50,8 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         public string RequestID { get; set; } = string.Empty;
         public ResponseStatus Status { get; set; }
         public string? Message { get; set; }
+        public ResponseErrorKind ErrorKind { get; set; } = ResponseErrorKind.None;
+        public int? HttpStatusCode { get; set; }
 
         public ResponseData() { }
         public ResponseData(string requestId, ResponseStatus status)
@@ -66,9 +70,11 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         {
             Message = message
         };
-        public static ResponseData Error(string requestId, string? message = null) => new ResponseData(requestId, ResponseStatus.Error)
+        public static ResponseData Error(string requestId, string? message = null, ResponseErrorKind errorKind = ResponseErrorKind.None, int? httpStatusCode = null) => new ResponseData(requestId, ResponseStatus.Error)
         {
-            Message = message
+            Message = message,
+            ErrorKind = errorKind,
+            HttpStatusCode = httpStatusCode
         };
         public static ResponseData Processing(string requestId, string? message = null) => new ResponseData(requestId, ResponseStatus.Processing)
         {

@@ -71,7 +71,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 case EnrollPlugin:
                     return HandleEnrollAsync(arguments, context, cancellationToken);
                 default:
-                    return Task.FromResult(ResponseCallTool.Error($"'{name}' is not a server-native tool."));
+                    return Task.FromResult(ResponseCallTool.Error($"'{name}' is not a server-native tool.", ResponseErrorKind.NotFound));
             }
         }
 
@@ -99,11 +99,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
         ResponseCallTool HandleSelect(IReadOnlyDictionary<string, JsonElement> arguments, SelectionToolContext context)
         {
             if (string.IsNullOrEmpty(context.SessionId))
-                return ResponseCallTool.Error("Cannot set a selection without an active MCP session.");
+                return ResponseCallTool.Error("Cannot set a selection without an active MCP session.", ResponseErrorKind.BadRequest);
 
             var instances = _instances.GetInstances(context.AccountId);
             if (instances.Count == 0)
-                return ResponseCallTool.Error("No engine instances are connected for your account. Use enroll_engine_plugin to set one up.");
+                return ResponseCallTool.Error("No engine instances are connected for your account. Use enroll_engine_plugin to set one up.", ResponseErrorKind.Unavailable);
 
             var instanceId = GetStringArg(arguments, "instance_id");
             var projectName = GetStringArg(arguments, "project_name");
@@ -113,25 +113,25 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             {
                 target = instances.FirstOrDefault(i => string.Equals(i.InstanceId, instanceId, StringComparison.Ordinal));
                 if (target == null)
-                    return ResponseCallTool.Error($"No connected instance has id '{instanceId}'. Use list_engine_instances to see valid ids.");
+                    return ResponseCallTool.Error($"No connected instance has id '{instanceId}'. Use list_engine_instances to see valid ids.", ResponseErrorKind.NotFound);
             }
             else if (!string.IsNullOrEmpty(projectName))
             {
                 var matches = instances.Where(i => string.Equals(i.ProjectName, projectName, StringComparison.OrdinalIgnoreCase)).ToList();
                 if (matches.Count == 0)
-                    return ResponseCallTool.Error($"No connected instance is for project '{projectName}'. Use list_engine_instances to see connected projects.");
+                    return ResponseCallTool.Error($"No connected instance is for project '{projectName}'. Use list_engine_instances to see connected projects.", ResponseErrorKind.NotFound);
                 if (matches.Count > 1)
-                    return ResponseCallTool.Error($"Multiple instances match project '{projectName}'; pass instance_id instead (see list_engine_instances).");
+                    return ResponseCallTool.Error($"Multiple instances match project '{projectName}'; pass instance_id instead (see list_engine_instances).", ResponseErrorKind.Conflict);
                 target = matches[0];
             }
             else
             {
-                return ResponseCallTool.Error("Provide 'instance_id' (preferred) or a unique 'project_name'.");
+                return ResponseCallTool.Error("Provide 'instance_id' (preferred) or a unique 'project_name'.", ResponseErrorKind.BadRequest);
             }
 
             // A sticky selection may narrow a pin but NEVER override it to a different project (design 04 step 2).
             if (!string.IsNullOrEmpty(context.ProjectPin) && !target.MatchesPin(context.ProjectPin))
-                return ResponseCallTool.Error("This session is pinned to a project; you can only select an instance of the pinned project.");
+                return ResponseCallTool.Error("This session is pinned to a project; you can only select an instance of the pinned project.", ResponseErrorKind.Conflict);
 
             _selections.Set(context.SessionId!, target.InstanceId);
             // Take effect within this request too (routing reads the ambient AsyncLocal).
@@ -145,14 +145,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
         {
             var engine = (GetStringArg(arguments, "engine") ?? string.Empty).Trim().ToLowerInvariant();
             if (engine != "unity" && engine != "godot" && engine != "unreal")
-                return ResponseCallTool.Error("Argument 'engine' is required and must be one of: unity, godot, unreal.");
+                return ResponseCallTool.Error("Argument 'engine' is required and must be one of: unity, godot, unreal.", ResponseErrorKind.BadRequest);
 
             if (string.IsNullOrEmpty(context.Bearer))
-                return ResponseCallTool.Error("No session credential is available to enroll with. Sign in first.");
+                return ResponseCallTool.Error("No session credential is available to enroll with. Sign in first.", ResponseErrorKind.BadRequest);
 
             var result = await _enrollment.CreateAsync(engine, context.Bearer!, cancellationToken);
             if (!result.Success || string.IsNullOrEmpty(result.EnrollCode))
-                return ResponseCallTool.Error(result.Error ?? "Enrollment failed.");
+                return ResponseCallTool.Error(result.Error ?? "Enrollment failed.", ResponseErrorKind.Unavailable);
 
             var command = $"npx {CliPackage(engine)} install-plugin --enroll {result.EnrollCode}";
             return ResponseCallTool.Success(

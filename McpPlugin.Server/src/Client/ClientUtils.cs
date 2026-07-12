@@ -158,10 +158,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             where THub : Hub
         {
             if (hubContext == null)
-                return ResponseData<TResponse>.Error(request.RequestID, $"'{nameof(hubContext)}' is null.").Log(logger);
+                return ResponseData<TResponse>.Error(request.RequestID, $"'{nameof(hubContext)}' is null.", ResponseErrorKind.Internal).Log(logger);
 
             if (string.IsNullOrEmpty(methodName))
-                return ResponseData<TResponse>.Error(request.RequestID, $"'{nameof(methodName)}' is null.").Log(logger);
+                return ResponseData<TResponse>.Error(request.RequestID, $"'{nameof(methodName)}' is null.", ResponseErrorKind.Internal).Log(logger);
 
             try
             {
@@ -172,6 +172,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                 }
 
                 var retryCount = 0;
+                var sawClient = false;
+                var sawTimeout = false;
                 while (retryCount < maxRetries)
                 {
                     retryCount++;
@@ -187,6 +189,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                         await Task.Delay(1000, cancellationToken); // Wait before retrying
                         continue;
                     }
+                    sawClient = true;
 
                     if (logger.IsEnabled(LogLevel.Trace))
                     {
@@ -201,7 +204,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                         {
                             var result = await invokeTask;
                             if (result == null)
-                                return ResponseData<TResponse>.Error(request.RequestID, $"Invoke '{request}' returned null result.")
+                                return ResponseData<TResponse>.Error(request.RequestID, $"Invoke '{request}' returned null result.", ResponseErrorKind.Internal)
                                     .Log(logger);
 
                             LastSuccessfulClients[typeof(McpServerHub)] = connectionId!;
@@ -217,17 +220,21 @@ namespace com.IvanMurzak.McpPlugin.Server
                     }
 
                     // Timeout occurred
+                    sawTimeout = true;
                     logger.LogWarning($"Invoke '{methodName}': Timeout: Client '{connectionId}' did not respond in {dataArguments.PluginTimeoutMs} ms. Removing from ConnectedClients.");
                     // RemoveCurrentClient(client);
                     await Task.Delay(retryDelayMs, cancellationToken); // Wait before retrying
                     // Restart the loop to try again with a new client
                 }
-                return ResponseData<TResponse>.Error(request.RequestID, $"Invoke '{methodName}': Failed to invoke '{request}' after {retryCount} retries.")
+                var errorKind = sawTimeout
+                    ? ResponseErrorKind.Timeout
+                    : sawClient ? ResponseErrorKind.Internal : ResponseErrorKind.Unavailable;
+                return ResponseData<TResponse>.Error(request.RequestID, $"Invoke '{methodName}': Failed to invoke '{request}' after {retryCount} retries.", errorKind)
                     .Log(logger);
             }
             catch (Exception ex)
             {
-                return ResponseData<TResponse>.Error(request.RequestID, $"Invoke '{methodName}': Failed to invoke '{request}'. Exception: {ex}")
+                return ResponseData<TResponse>.Error(request.RequestID, $"Invoke '{methodName}': Failed to invoke '{request}'. Exception: {ex}", ResponseErrorKind.Internal)
                     .Log(logger, ex: ex);
             }
         }

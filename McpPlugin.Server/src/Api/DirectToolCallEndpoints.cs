@@ -82,14 +82,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
 
             if (response == null)
             {
-                context.Response.StatusCode = 500;
+                context.Response.StatusCode = 502;
                 await context.Response.WriteAsJsonAsync(new { error = "Tool hub returned a null response." });
                 return;
             }
 
             if (response.Status == ResponseStatus.Error)
             {
-                context.Response.StatusCode = 500;
+                context.Response.StatusCode = DirectHttpErrorMapper.GetStatusCode(response, 500);
                 await context.Response.WriteAsJsonAsync(new { error = response.Message ?? "Failed to list tools." });
                 return;
             }
@@ -240,14 +240,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
 
             if (response == null)
             {
-                context.Response.StatusCode = 500;
+                context.Response.StatusCode = 502;
                 await context.Response.WriteAsJsonAsync(new { error = "Tool hub returned a null response." });
                 return;
             }
 
             if (response.Status == ResponseStatus.Error)
             {
-                context.Response.StatusCode = 500;
+                context.Response.StatusCode = DirectHttpErrorMapper.GetStatusCode(response, 400);
                 await context.Response.WriteAsJsonAsync(new { error = response.Message ?? $"Tool '{name}' returned an error." });
                 return;
             }

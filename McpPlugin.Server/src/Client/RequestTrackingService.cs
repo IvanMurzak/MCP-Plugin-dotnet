@@ -149,7 +149,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                     {
                         IsCompleted = true;
                         _completionSource.TrySetResult(
-                            ResponseCallTool.Error($"Request {RequestId} timed out after {timeout}").SetRequestID(RequestId));
+                            ResponseCallTool.Error($"Request {RequestId} timed out after {timeout}", ResponseErrorKind.Timeout).SetRequestID(RequestId));
                     }
                 });
             }
@@ -175,11 +175,11 @@ namespace com.IvanMurzak.McpPlugin.Server
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    return ResponseCallTool.Error("Request was canceled").SetRequestID(RequestId);
+                    return ResponseCallTool.Error("Request was canceled", ResponseErrorKind.Timeout).SetRequestID(RequestId);
                 }
                 catch (OperationCanceledException) when (TimeoutCts.Token.IsCancellationRequested)
                 {
-                    return ResponseCallTool.Error("Request timed out").SetRequestID(RequestId);
+                    return ResponseCallTool.Error("Request timed out", ResponseErrorKind.Timeout).SetRequestID(RequestId);
                 }
             }
 
