@@ -20,6 +20,7 @@ using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
 using Xunit;
+using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
 namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 {
@@ -69,6 +70,22 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             response.Status.ShouldBe(ResponseStatus.Error);
             response.ErrorKind.ShouldBe(expected);
+        }
+
+        [Fact]
+        public async Task RunCallTool_ReflectedToolExecutionFailure_IsInternal()
+        {
+            var reflector = new Reflector();
+            var builder = new McpPluginBuilder(new Version());
+            var method = typeof(ReflectedThrowingTool).GetMethod(nameof(ReflectedThrowingTool.Throw));
+            builder.WithTool("reflected-throw", "Reflected Throw", typeof(ReflectedThrowingTool), method!);
+            var plugin = builder.Build(reflector);
+
+            var response = await plugin.McpManager.ToolManager!.RunCallTool(
+                new RequestCallTool("request-1", "reflected-throw", EmptyArgs));
+
+            response.Status.ShouldBe(ResponseStatus.Error);
+            response.ErrorKind.ShouldBe(ResponseErrorKind.Internal);
         }
 
         [Fact]
@@ -153,6 +170,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             public Task<ResponseCallTool> Run(string requestId, IReadOnlyDictionary<string, JsonElement>? namedParameters, CancellationToken cancellationToken = default)
                 => Task.FromException<ResponseCallTool>(_exception);
+        }
+
+        sealed class ReflectedThrowingTool
+        {
+            public string Throw() => throw new ApplicationException("reflected tool failed");
         }
     }
 }

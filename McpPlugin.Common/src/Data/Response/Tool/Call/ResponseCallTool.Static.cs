@@ -22,7 +22,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
             return Error($"[Error] {exception?.Message}\n{exception?.StackTrace}", errorKind, httpStatusCode);
         }
 
-        public static ResponseCallTool Error(string? message = null, ResponseErrorKind errorKind = ResponseErrorKind.BadRequest, int? httpStatusCode = null)
+        public static ResponseCallTool Error(string? message = null, ResponseErrorKind errorKind = ResponseErrorKind.Internal, int? httpStatusCode = null)
         {
             return new ResponseCallTool(
                 status: ResponseStatus.Error,
@@ -61,7 +61,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
                 status: ResponseStatus.Success);
         }
 
-        public static ResponseCallTool ErrorStructured(JsonNode? structuredContent, ResponseErrorKind errorKind = ResponseErrorKind.BadRequest, int? httpStatusCode = null)
+        public static ResponseCallTool ErrorStructured(JsonNode? structuredContent, ResponseErrorKind errorKind = ResponseErrorKind.Internal, int? httpStatusCode = null)
         {
             return new ResponseCallTool(
                 structuredContent: structuredContent,

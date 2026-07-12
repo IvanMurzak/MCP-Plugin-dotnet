@@ -175,7 +175,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    return ResponseCallTool.Error("Request was canceled").SetRequestID(RequestId);
+                    return ResponseCallTool.Error("Request was canceled", ResponseErrorKind.Timeout).SetRequestID(RequestId);
                 }
                 catch (OperationCanceledException) when (TimeoutCts.Token.IsCancellationRequested)
                 {

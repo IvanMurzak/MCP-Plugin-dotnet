@@ -182,7 +182,7 @@ namespace com.IvanMurzak.McpPlugin
                 var errorMessage = $"Parameter validation failed for tool '{Title ?? this.Method?.Name}': {ex.Message}";
                 _logger?.LogError(ex, errorMessage);
                 return ResponseCallTool
-                    .Error(errorMessage)
+                    .Error(errorMessage, ResponseErrorKind.BadRequest)
                     .SetRequestID(requestId);
             }
             catch (TargetParameterCountException ex)
@@ -190,7 +190,7 @@ namespace com.IvanMurzak.McpPlugin
                 var errorMessage = $"Parameter count mismatch for tool '{Title ?? this.Method?.Name}'. Expected {this.Method?.GetParameters().Length} parameters, but received {parameters?.Length}";
                 _logger?.LogError(ex, errorMessage);
                 return ResponseCallTool
-                    .Error(errorMessage)
+                    .Error(errorMessage, ResponseErrorKind.BadRequest)
                     .SetRequestID(requestId);
             }
             catch (Exception ex)
@@ -198,7 +198,7 @@ namespace com.IvanMurzak.McpPlugin
                 var errorMessage = $"Tool execution failed for '{Title ?? this.Method?.Name}': {(ex.InnerException ?? ex).Message}";
                 _logger?.LogError(ex, $"{errorMessage}\n{ex.StackTrace}");
                 return ResponseCallTool
-                    .Error(errorMessage)
+                    .Error(errorMessage, ResponseErrorKind.Internal)
                     .SetRequestID(requestId);
             }
         }
@@ -231,7 +231,7 @@ namespace com.IvanMurzak.McpPlugin
                 var errorMessage = $"Parameter validation failed for tool '{Title ?? this.Method?.Name}': {ex.Message}";
                 _logger?.LogError(ex, errorMessage);
                 return ResponseCallTool
-                    .Error(errorMessage)
+                    .Error(errorMessage, ResponseErrorKind.BadRequest)
                     .SetRequestID(requestId);
             }
             catch (JsonException ex)
@@ -239,7 +239,7 @@ namespace com.IvanMurzak.McpPlugin
                 var errorMessage = $"JSON parameter parsing failed for tool '{Title ?? this.Method?.Name}': {ex.Message}";
                 _logger?.LogError(ex, errorMessage);
                 return ResponseCallTool
-                    .Error(errorMessage)
+                    .Error(errorMessage, ResponseErrorKind.BadRequest)
                     .SetRequestID(requestId);
             }
             catch (Exception ex)
@@ -247,7 +247,7 @@ namespace com.IvanMurzak.McpPlugin
                 var errorMessage = $"Tool execution failed for '{Title ?? this.Method?.Name}': {(ex.InnerException ?? ex).Message}";
                 _logger?.LogError(ex, $"{errorMessage}\n{ex.StackTrace}");
                 return ResponseCallTool
-                    .Error(errorMessage)
+                    .Error(errorMessage, ResponseErrorKind.Internal)
                     .SetRequestID(requestId);
             }
         }
@@ -265,7 +265,7 @@ namespace com.IvanMurzak.McpPlugin
                 var errorMessage = $"Request ID cannot be null or empty for tool '{Title ?? this.Method?.Name}'";
                 _logger?.LogError(errorMessage);
                 return ResponseCallTool
-                    .Error(errorMessage)
+                    .Error(errorMessage, ResponseErrorKind.BadRequest)
                     .SetRequestID(requestId);
             }
 
@@ -274,7 +274,7 @@ namespace com.IvanMurzak.McpPlugin
                 var errorMessage = $"Method information is not available for tool '{Title}'";
                 _logger?.LogError(errorMessage);
                 return ResponseCallTool
-                    .Error(errorMessage)
+                    .Error(errorMessage, ResponseErrorKind.Internal)
                     .SetRequestID(requestId);
             }
 
@@ -284,7 +284,7 @@ namespace com.IvanMurzak.McpPlugin
                 var errorMessage = $"Method '{this.Method.Name}' in tool '{Title}' is not accessible (must be public or protected)";
                 _logger?.LogError(errorMessage);
                 return ResponseCallTool
-                    .Error(errorMessage)
+                    .Error(errorMessage, ResponseErrorKind.Internal)
                     .SetRequestID(requestId);
             }
 

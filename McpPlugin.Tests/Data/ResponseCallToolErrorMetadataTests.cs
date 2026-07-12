@@ -19,9 +19,19 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
     public class ResponseCallToolErrorMetadataTests
     {
         [Fact]
-        public void Error_WithMessage_DefaultsToBadRequest()
+        public void Error_WithMessage_DefaultsToInternal()
         {
             var response = ResponseCallTool.Error("Invalid input.");
+
+            response.Status.ShouldBe(ResponseStatus.Error);
+            response.ErrorKind.ShouldBe(ResponseErrorKind.Internal);
+            response.HttpStatusCode.ShouldBeNull();
+        }
+
+        [Fact]
+        public void Error_WithExplicitBadRequest_PreservesBadRequest()
+        {
+            var response = ResponseCallTool.Error("Invalid input.", ResponseErrorKind.BadRequest);
 
             response.Status.ShouldBe(ResponseStatus.Error);
             response.ErrorKind.ShouldBe(ResponseErrorKind.BadRequest);
