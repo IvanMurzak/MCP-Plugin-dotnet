@@ -168,7 +168,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
 
         // True when the request targets the SignalR hub endpoint. Used to silence the
         // "[7] McpPluginToken was not authenticated" info log noise on hub probes — see
-        // the comment on the no-tier-matched branch in HandleLegacyAuthenticateAsync.
+        // the invalid-token branch in HandleOAuthAuthenticateAsync (BaseHub does its own auth).
         bool IsHubPath()
         {
             var path = Request.Path.Value;
