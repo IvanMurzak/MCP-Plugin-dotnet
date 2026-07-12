@@ -43,16 +43,26 @@ namespace com.IvanMurzak.McpPlugin
             {
                 var connectionConfig = _serviceProvider.GetRequiredService<IOptions<ConnectionConfig>>().Value;
 
+                // Instance-metadata handshake (mcp-authorize b7): the non-secret identity fields ride as
+                // query parameters so the server can register this editor session in its account+instance
+                // pairing plane (b3). The credential (JWT) itself NEVER goes in the query — it is presented
+                // via AccessTokenProvider (the Authorization header) below.
+                var baseUrl = connectionConfig.Host + endpoint;
+                var url = connectionConfig.InstanceMetadata?.AppendToUrl(baseUrl) ?? baseUrl;
+
                 var hubConnectionBuilder = new HubConnectionBuilder()
-                    .WithUrl(connectionConfig.Host + endpoint, options =>
+                    .WithUrl(url, options =>
                     {
-                        options.AccessTokenProvider = () =>
-                        {
-                            var token = connectionConfig.Token;
-                            if (string.IsNullOrWhiteSpace(token))
-                                return Task.FromResult<string?>(null);
-                            return Task.FromResult<string?>(token);
-                        };
+                        // Credential-provider callback (mcp-authorize b7): fetches the current, auto-refreshed
+                        // account JWT on every (re)connect. Null provider ⇒ anonymous (none-mode local server).
+                        // SignalR places this token in the Authorization header for both the negotiate request
+                        // and the WebSocket upgrade — the server reads it there (never a query param).
+                        // Assign the credential-provider delegate directly (null ⇒ a constant null-token
+                        // provider for an anonymous none-mode connection). SignalR invokes the delegate on
+                        // every (re)connect, so a proactively-refreshed JWT is always fetched fresh — no
+                        // wrapping lambda needed.
+                        options.AccessTokenProvider = connectionConfig.CredentialProvider
+                            ?? (() => Task.FromResult<string?>(null));
 
 #if NET5_0_OR_GREATER
                         // OPT-IN transport CONNECT timeout (ConnectionConfig.ConnectTimeoutSeconds > 0): make an

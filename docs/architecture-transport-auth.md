@@ -8,6 +8,17 @@
 > The two supported auth modes are now **`none`** and **`oauth`**. The authoritative design lives
 > in the mcp-authorize design (`02-target-architecture.md`) and `03-auth-flows.md`.
 
+> **Follow-up (mcp-authorize b7).** The client/plugin side of the shared-token removal is now
+> complete: the engine plugin no longer reads a static `MCP_PLUGIN_TOKEN` / `mcp-plugin-token`
+> shared token. `ConnectionConfig.Token` is replaced by a **credential-provider callback** that
+> presents an auto-refreshed account JWT (machine-store auto-adopt — the zero-button rule) in the
+> `Authorization` header, and the instance-metadata handshake
+> `{instanceId, engine, projectName, projectPathHash, machineName}` rides as non-secret hub query
+> parameters (the token never appears in the query). It also fixes the direct-tool REST endpoints
+> (`/api/tools`, `/api/system-tools`): they now **require authorization in `oauth` mode** (they
+> previously gated on the deleted `required` mode and were unintentionally never gated), and stay
+> open in `none` mode.
+
 ## Overview
 
 The MCP Plugin Server is configured through **two independent axes**: **Transport** and **Auth**.
