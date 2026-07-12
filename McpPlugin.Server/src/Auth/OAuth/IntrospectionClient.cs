@@ -37,6 +37,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
 
         public static readonly TimeSpan DefaultCacheTtl = TimeSpan.FromSeconds(60);
 
+        // Hard bound on cached entries. Cache values are only useful for one TTL window, so this
+        // caps memory even under a flood of distinct opaque tokens (each token hashes to a unique
+        // key). Without it the dictionary would grow without bound (entries were only expired on
+        // read, never removed).
+        private const int MaxCacheEntries = 4096;
+
         public IntrospectionClient(
             IntrospectionPost post,
             Func<DateTimeOffset>? now = null,
@@ -77,8 +83,27 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
             if (!TryParse(json, out var result))
                 return IntrospectionResult.Inactive; // malformed response, not cached
 
+            // Bound the cache: opportunistically drop expired entries when full, and if it is still
+            // full (extreme churn within one TTL window) skip caching this result — correctness is
+            // unaffected (the next request simply re-introspects).
+            if (_cache.Count >= MaxCacheEntries)
+            {
+                PruneExpired(now);
+                if (_cache.Count >= MaxCacheEntries)
+                    return result;
+            }
+
             _cache[key] = new CacheEntry(result, now);
             return result;
+        }
+
+        private void PruneExpired(DateTimeOffset now)
+        {
+            foreach (var kvp in _cache)
+            {
+                if (now - kvp.Value.CachedAt >= _cacheTtl)
+                    _cache.TryRemove(kvp.Key, out _);
+            }
         }
 
         private static bool TryParse(string json, out IntrospectionResult result)

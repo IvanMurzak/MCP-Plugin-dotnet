@@ -135,18 +135,34 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                 // mints tokens, so no /oauth/register, /oauth/token, or AS-metadata are served here.
                 var oauthConfig = app.Services.GetService<Auth.OAuth.OAuthResourceServerConfig>();
 
-                app.MapGet("/.well-known/oauth-protected-resource", async (HttpContext ctx) =>
+                // Public, non-secret PRM (RFC 9728). Served at BOTH the bare well-known path AND —
+                // when --public-url carries a path (e.g. https://host/mcp) — the path-inserted URL
+                // the 401 challenge advertises (OAuthResourceServerConfig.ProtectedResourceMetadataUrl),
+                // so a spec-compliant client following the challenge does not 404 on a path-bearing
+                // resource. Shared handler avoids duplicating the body across both routes.
+                RequestDelegate servePrm = async ctx =>
                 {
                     if (oauthConfig == null)
                     {
                         await Results.StatusCode(500).ExecuteAsync(ctx);
                         return;
                     }
-                    // Public, non-secret metadata — CORS-open so browser-based MCP clients can read it.
+                    // CORS-open so browser-based MCP clients can read it.
                     ctx.Response.Headers["Access-Control-Allow-Origin"] = "*";
                     var document = Auth.OAuth.OAuthProtectedResourceMetadata.Build(oauthConfig);
                     await Results.Json(document).ExecuteAsync(ctx);
-                }).AllowAnonymous();
+                };
+
+                const string bareMetadataPath = "/.well-known/oauth-protected-resource";
+                app.MapGet(bareMetadataPath, servePrm).AllowAnonymous();
+
+                // Path-bearing resource → also serve at the challenge-advertised path-inserted URL.
+                if (oauthConfig != null
+                    && Uri.TryCreate(oauthConfig.ProtectedResourceMetadataUrl(), UriKind.Absolute, out var prmUri)
+                    && !string.Equals(prmUri.AbsolutePath, bareMetadataPath, StringComparison.Ordinal))
+                {
+                    app.MapGet(prmUri.AbsolutePath, servePrm).AllowAnonymous();
+                }
 
                 app.MapMcp("/").RequireAuthorization();
                 app.MapMcp("/mcp").RequireAuthorization();

@@ -45,7 +45,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
         {
             if (kid == null || !_keysByKid.TryGetValue(kid, out var parameters))
                 return null;
-            return ECDsa.Create(parameters);
+            try
+            {
+                return ECDsa.Create(parameters);
+            }
+            catch (Exception ex) when (ex is CryptographicException || ex is ArgumentException)
+            {
+                // Invalid key material (point not on the curve, bad coordinates) → fail closed as an
+                // unknown key rather than throwing out of the validator (the RS "never throws").
+                return null;
+            }
         }
 
         /// <summary>
@@ -99,6 +108,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
             if (!TryGetString(key, "x", out var x) || !Base64Url.TryDecode(x, out var xb))
                 return false;
             if (!TryGetString(key, "y", out var y) || !Base64Url.TryDecode(y, out var yb))
+                return false;
+
+            // P-256 field elements are exactly 32 bytes; reject any mis-sized coordinate (fail closed)
+            // so a malformed JWK never reaches ECDsa.Create with an invalid point.
+            if (xb.Length != 32 || yb.Length != 32)
                 return false;
 
             // Reject a key advertised for anything other than signature verification.
