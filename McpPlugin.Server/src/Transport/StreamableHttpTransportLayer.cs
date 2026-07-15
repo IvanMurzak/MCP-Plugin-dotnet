@@ -164,6 +164,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
 
                 app.MapMcp("/").RequireAuthorization();
                 app.MapMcp("/mcp").RequireAuthorization();
+                MapPinnedMcp(app, requireAuthorization: true);
             }
             else
             {
@@ -173,6 +174,31 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                 // mcp-authorize b5 — the RS never mints tokens.
                 app.MapMcp("/");
                 app.MapMcp("/mcp");
+                MapPinnedMcp(app, requireAuthorization: false);
+            }
+        }
+
+        /// <summary>
+        /// Mount the MCP streamable-HTTP endpoint at the project-pinned config paths (mcp-authorize g4,
+        /// design 04 D14 / 03 Flow F). The b6 configurators write <c>https://host/mcp/p/&lt;pin&gt;</c>;
+        /// production nginx strips the <c>/mcp</c> prefix so the server receives <c>/p/&lt;pin&gt;</c>,
+        /// while a direct/local client (no nginx) sends <c>/mcp/p/&lt;pin&gt;</c>. Both must route to the
+        /// SAME handler as <c>/mcp</c> — before this the endpoint mapped only at <c>/</c> and <c>/mcp</c>,
+        /// so a pinned request 404'd before <see cref="Auth.McpSessionTokenMiddleware"/> could capture the
+        /// pin or the OAuth 401 challenge could run. <c>{pin}</c> is a route token only so the endpoint
+        /// matches; its value is ignored by the MCP handler — the pin is captured from the ORIGINAL
+        /// request path by the middleware (route-parameter matching preserves the path, unlike a
+        /// pre-routing rewrite, which would strip the pin before capture). Served in BOTH auth modes so
+        /// the pinned URL behaves exactly like <c>/mcp</c> (401 in oauth, anonymous session in none).
+        /// </summary>
+        static void MapPinnedMcp(WebApplication app, bool requireAuthorization)
+        {
+            var pinned = app.MapMcp("/p/{pin}");
+            var pinnedWithPrefix = app.MapMcp("/mcp/p/{pin}");
+            if (requireAuthorization)
+            {
+                pinned.RequireAuthorization();
+                pinnedWithPrefix.RequireAuthorization();
             }
         }
 
