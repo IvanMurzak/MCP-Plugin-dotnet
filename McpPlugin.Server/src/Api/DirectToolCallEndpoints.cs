@@ -39,11 +39,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
 
         /// <summary>
         /// Maps the direct tool call API endpoints onto the given <see cref="WebApplication"/>.
-        /// Authorization is required when <paramref name="dataArguments"/> has <see cref="IDataArguments.Authorization"/>
-        /// set to <see cref="Consts.MCP.Server.AuthOption.oauth"/> — the REST tool surface must present a valid
-        /// token in oauth mode (fail closed); it is open only in <see cref="Consts.MCP.Server.AuthOption.none"/> mode.
-        /// (Before mcp-authorize b7 this gated on the now-unreachable <c>AuthOption.required</c> — deleted with the
-        /// legacy shared-token pairing mode in b5 — so the endpoints were NEVER gated in oauth mode. Fixed here.)
+        /// Authorization is required in every credential-bearing mode — <see cref="Consts.MCP.Server.AuthOption.oauth"/>,
+        /// the offline <see cref="Consts.MCP.Server.AuthOption.token"/> (mcp-authorize g6), and the deprecated
+        /// <see cref="Consts.MCP.Server.AuthOption.required"/> alias — so the REST tool surface (which can EXECUTE
+        /// tools) is never an unauthenticated bypass of the endpoint's credential gate (fail closed). It is open only
+        /// in <see cref="Consts.MCP.Server.AuthOption.none"/> mode. (Before mcp-authorize b7 this gated on the then-unreachable
+        /// <c>required</c> value, so it was never gated in oauth mode; g6 additionally closes the token-mode gap.)
         /// </summary>
         public static WebApplication MapDirectToolCallApi(this WebApplication app, IDataArguments dataArguments)
         {
@@ -53,7 +54,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
             if (dataArguments == null)
                 throw new ArgumentNullException(nameof(dataArguments));
 
-            var requireAuth = dataArguments.Authorization == Consts.MCP.Server.AuthOption.oauth;
+            var requireAuth = AuthGating.RequiresAuthorization(dataArguments.Authorization);
             var group = app.MapGroup(RoutePrefix);
 
             // GET /api/tools — list all registered tools

@@ -19,6 +19,16 @@
 > previously gated on the deleted `required` mode and were unintentionally never gated), and stay
 > open in `none` mode.
 
+> **Offline token mode (mcp-authorize g6).** A third auth mode, **`token`**, is the OFFLINE
+> counterpart of `oauth`: a loopback single-project server gates BOTH the SignalR plugin connection
+> and the streamableHttp MCP endpoint on a single static bearer secret (`--token` /
+> `MCP_PLUGIN_TOKEN`), validated with a **constant-time** compare (`LocalTokenMcpStrategy`). No
+> authorization server, JWT, or egress is required. This is NOT a revival of the b5 multi-tenant
+> token-equality pairing — it is one plugin + one secret. The legacy `authorization=required` value
+> is **retained as a deprecated alias** onto this strategy (so an un-migrated config runs token-gated
+> instead of crashing), never a silent downgrade to anonymous. Constant-time compare is a deliberate
+> security upgrade over the b5-era `string.Equals(Ordinal)`.
+
 ## Overview
 
 The MCP Plugin Server is configured through **two independent axes**: **Transport** and **Auth**.
@@ -27,6 +37,7 @@ Each axis has its own enum, CLI argument, and environment variable. They combine
 ```
 Transport  ×  Auth
    stdio          none    (offline / local dev / CI — anonymous, single plugin)
+   streamableHttp token   (offline shared-secret — loopback single-project, constant-time gate)
    streamableHttp oauth   (OAuth 2.1 resource server — account-scoped pairing)
 ```
 
@@ -47,23 +58,25 @@ All combinations are supported without conditional branching in the server code.
 
 ### Auth — how plugin connections are authenticated and isolated
 
-| Source           | Key                          | Values           |
-|------------------|------------------------------|------------------|
-| CLI argument     | `auth=<value>`               | `none`, `oauth`  |
-| Environment var  | `MCP_AUTH=<value>`           | `none`, `oauth`  |
+| Source           | Key                          | Values                    |
+|------------------|------------------------------|---------------------------|
+| CLI argument     | `auth=<value>`               | `none`, `token`, `oauth`  |
+| Environment var  | `MCP_AUTH=<value>`           | `none`, `token`, `oauth`  |
 
 **Default**: `none` (when not set). `auth=oauth` additionally requires `auth-issuer=<AS url>` and
-`public-url=<this RS's canonical resource id>`. (The legacy `authorization=` / `MCP_AUTHORIZATION=`
-argument names still parse for the `none` value; the retired `required` value now fails closed with
-an explicit startup error.)
+`public-url=<this RS's canonical resource id>`; `auth=token` additionally requires a non-empty
+`token=<secret>` / `MCP_PLUGIN_TOKEN`. (The legacy `authorization=` / `MCP_AUTHORIZATION=` argument
+names still parse; the deprecated `required` value is aliased onto `token` — see the g6 note above.)
 
 ### Credentials — validated, never minted
 
 In `oauth` mode the RS validates presented credentials against the external authorization server
 (ai-game.dev) — ES256 JWTs via cached JWKS, and opaque PATs via RFC 7662 introspection. It **never**
 mints, self-issues, or equality-pairs tokens; there is no server-side shared secret. See
-`03-auth-flows.md` (Flows A–C) for the full credential lifecycle. In `none` mode no credential is
-required or accepted (the endpoint is anonymous).
+`03-auth-flows.md` (Flows A–C) for the full credential lifecycle. In `token` mode the RS holds a
+single static shared secret (from `--token` / `MCP_PLUGIN_TOKEN`) and constant-time-compares the
+presented bearer against it — the offline, loopback-only counterpart of `oauth`; it still never mints
+tokens. In `none` mode no credential is required or accepted (the endpoint is anonymous).
 
 ### Idle Timeout — streamableHttp session eviction window
 
@@ -107,15 +120,21 @@ The `IMcpConnectionStrategy` interface is the central coordinator for all auth-d
 
 ```
 McpStrategyFactory
-  ├── AuthOption.none  → NoAuthMcpStrategy
-  └── AuthOption.oauth → AccountMcpStrategy
+  ├── AuthOption.none     → NoAuthMcpStrategy
+  ├── AuthOption.token    → LocalTokenMcpStrategy
+  ├── AuthOption.required → LocalTokenMcpStrategy   (deprecated alias, g6)
+  └── AuthOption.oauth    → AccountMcpStrategy
 ```
 
-Any other value (including the retired `required`) throws at startup — fail closed, never a silent downgrade to `none`.
+`unknown` (or any unrecognised value) throws at startup — fail closed, never a silent downgrade to `none`.
 
 ### NoAuthMcpStrategy (`auth=none`)
 
 Designed for a **single trusted plugin** connecting to a single MCP client (e.g. a developer's local machine running one Unity editor). The HTTP endpoint is never token-gated in this mode; the anonymous, single-connection behavior is unchanged. This is the offline / local-dev / CI default and the stdio default.
+
+### LocalTokenMcpStrategy (`auth=token`, mcp-authorize g6)
+
+The **offline shared-secret** plane — the loopback single-project counterpart of `AccountMcpStrategy`. Modeled on `NoAuthMcpStrategy` (single plugin connection, broadcast routing) but gated on one static secret: `Validate` requires a non-empty `--token`; `ConfigureAuthentication` flags the local-token validation path so the streamableHttp endpoint is `RequireAuthorization`-gated (constant-time compare, **no** RFC 9728 resource metadata — there is no AS to discover); `OnPluginConnected` rejects a tokenless or mismatched plugin (constant-time compare) then enforces the single-connection invariant. The secret is compared via `TokenComparison.FixedTimeEquals` (fixed-length SHA-256 digest, no length side channel). A non-loopback `--bind` is **warned but allowed** (LAN cleartext-token caveat, owner ruling). The deprecated `required` value resolves to this same strategy (back-compat).
 
 ### AccountMcpStrategy (`auth=oauth`)
 
@@ -125,15 +144,15 @@ The OAuth 2.1 resource-server **account + instance pairing plane**. A presented 
 
 ## Behavior Comparison
 
-| Property / method                 | `NoAuthMcpStrategy` (`none`)                                   | `AccountMcpStrategy` (`oauth`)                                                        |
-|-----------------------------------|----------------------------------------------------------------|--------------------------------------------------------------------------------------|
-| `AllowMultipleConnections`        | `false`                                                        | `true`                                                                               |
-| `Validate`                        | No-op.                                                          | Requires `auth-issuer` + `public-url`.                                                |
-| `ConfigureAuthentication`         | `OAuthMode = false` (anonymous endpoint).                      | `OAuthMode = true` (validate JWT/PAT against the AS; the RS never mints tokens).      |
-| `OnPluginConnected`               | Registers, then **disconnects all others** (single-connection).| Registration is driven by `McpServerHub` after it validates the plugin's token + reads its instance metadata (account-scoped registry). |
-| `ResolveConnectionId`             | Token lookup, then round-robin fallback.                       | Account-scoped instance resolution; no fallback across accounts (fail closed).       |
-| `ShouldNotifySession` / `ResolveNotificationTarget` | Broadcast (single-plugin invariant).        | Targets the session's account-resolved instance, else **drops** — never leaks across accounts. |
-| `GetClientData` / `GetServerData` | First available session (only one).                           | Scoped to the connection's account; empty when it resolves to no account.            |
+| Property / method                 | `NoAuthMcpStrategy` (`none`)                                   | `LocalTokenMcpStrategy` (`token`)                                                     | `AccountMcpStrategy` (`oauth`)                                                        |
+|-----------------------------------|----------------------------------------------------------------|--------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
+| `AllowMultipleConnections`        | `false`                                                        | `false`                                                                              | `true`                                                                               |
+| `Validate`                        | No-op.                                                          | Requires a non-empty `--token`; warns (allows) on non-loopback `--bind`.             | Requires `auth-issuer` + `public-url`.                                                |
+| `ConfigureAuthentication`         | `OAuthMode = false` (anonymous endpoint).                      | `LocalTokenMode = true` (constant-time compare vs the static `--token`).             | `OAuthMode = true` (validate JWT/PAT against the AS; the RS never mints tokens).      |
+| `OnPluginConnected`               | Registers, then **disconnects all others** (single-connection).| **Rejects** tokenless/mismatched (constant-time); else registers + disconnects others (single-connection). | Registration is driven by `McpServerHub` after it validates the plugin's token + reads its instance metadata (account-scoped registry). |
+| `ResolveConnectionId`             | Token lookup, then round-robin fallback.                       | Token lookup, then round-robin fallback (single connection).                        | Account-scoped instance resolution; no fallback across accounts (fail closed).       |
+| `ShouldNotifySession` / `ResolveNotificationTarget` | Broadcast (single-plugin invariant).        | Broadcast (single-plugin invariant).                                                | Targets the session's account-resolved instance, else **drops** — never leaks across accounts. |
+| `GetClientData` / `GetServerData` | First available session (only one).                           | First available session (only one).                                                 | Scoped to the connection's account; empty when it resolves to no account.            |
 
 ---
 
@@ -143,6 +162,7 @@ The OAuth 2.1 resource-server **account + instance pairing plane**. A presented 
 |------------------|---------|----------------------------------------------------------------------------------------------------------|
 | `stdio`          | `none`  | **Local dev, single user, offline.** The MCP client spawns the server as a subprocess. No accounts, no network. First spawn owns the derived per-project port; a later same-project spawn detects the live server and exits with an actionable message (design 03 Flow D). |
 | `streamableHttp` | `none`  | **Local HTTP server, single plugin.** Anonymous HTTP transport for local testing.                        |
+| `streamableHttp` | `token` | **Offline shared-secret, single plugin.** Loopback-only local server gated on one static `--token`, constant-time compared — no authorization server / egress required. The offline counterpart of `oauth`. |
 | `streamableHttp` | `oauth` | **Signed-in localhost AND hosted.** Account-scoped pairing: many engine instances across accounts, each isolated to its own account's agent sessions; multiple agent sessions in one project fan in to one server. |
 
 `stdio` + `oauth` is valid but uncommon — a signed-in engine may connect with its JWT; in `none` mode the token is ignored for routing (identity is still logged for diagnostics).

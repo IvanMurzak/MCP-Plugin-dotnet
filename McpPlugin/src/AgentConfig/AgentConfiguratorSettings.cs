@@ -183,11 +183,23 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 dockerImage: dockerImage);
         }
 
-        /// <summary>True when HTTP authorization should be injected (cloud always requires it).</summary>
+        /// <summary>
+        /// True when HTTP authorization should be injected — i.e. the client config must carry an
+        /// <c>Authorization: Bearer &lt;secret&gt;</c> header. Cloud always requires it; the offline
+        /// <c>token</c> mode requires it (mcp-authorize g6, HTTP only); the deprecated <c>required</c>
+        /// alias keeps it for back-compat. <c>none</c> and <c>oauth</c> stay URL-only (oauth authorizes
+        /// natively against the server URL; none is anonymous).
+        /// </summary>
         public bool IsHttpAuthRequired =>
-            ConnectionMode == ConnectionMode.Cloud || AuthOption == Consts.MCP.Server.AuthOption.required;
+            ConnectionMode == ConnectionMode.Cloud
+            || AuthOption == Consts.MCP.Server.AuthOption.token
+            || AuthOption == Consts.MCP.Server.AuthOption.required;
 
-        /// <summary>True when STDIO authorization (token arg) should be injected.</summary>
+        /// <summary>
+        /// True when STDIO authorization (token arg) should be injected. Only the deprecated
+        /// <c>required</c> mode ever gated stdio; the offline <c>token</c> mode is HTTP-only —
+        /// stdio spawns stay credential-free (mcp-authorize b6 / g6).
+        /// </summary>
         public bool IsStdioAuthRequired =>
             AuthOption == Consts.MCP.Server.AuthOption.required;
 

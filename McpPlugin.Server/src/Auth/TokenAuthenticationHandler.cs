@@ -94,14 +94,50 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
 
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
-            // OAuth mode (mcp-authorize b2): validate ES256 JWT / opaque-PAT introspection.
-            // Non-OAuth mode is `none` (offline / local dev / CI): anonymous — no token is
-            // required or accepted. The legacy shared-token (`--token` ServerToken) and DCR /
-            // client-credentials token-equality paths were removed in mcp-authorize b5, so there
-            // is no orphaned code path that still accepts a deleted credential (fail closed).
-            return Options.OAuthMode
-                ? HandleOAuthAuthenticateAsync()
-                : Task.FromResult(AuthenticateResult.NoResult());
+            // Three mutually-exclusive modes, chosen by the resolved connection strategy:
+            //   • OAuthMode (mcp-authorize b2) — validate ES256 JWT / opaque-PAT introspection.
+            //   • LocalTokenMode (mcp-authorize g6) — offline shared-secret: constant-time compare the
+            //     presented bearer against the configured --token secret.
+            //   • neither → `none` (offline / local dev / CI): anonymous, no token accepted.
+            // The legacy multi-tier shared-token / DCR token-equality paths were removed in b5; the g6
+            // local-token path is a single constant-time comparison, not their reintroduction.
+            if (Options.OAuthMode)
+                return HandleOAuthAuthenticateAsync();
+            if (Options.LocalTokenMode)
+                return Task.FromResult(HandleLocalTokenAuthenticate());
+            return Task.FromResult(AuthenticateResult.NoResult());
+        }
+
+        // ── Offline local-token path (mcp-authorize g6) ───────────────────────────────────────────
+        AuthenticateResult HandleLocalTokenAuthenticate()
+        {
+            if (!TryGetBearerToken(out var token))
+            {
+                // No/empty/non-Bearer credential. On the hub path stay silent (BaseHub does its own
+                // auth via the strategy). Elsewhere NoResult lets the RequireAuthorization pipeline
+                // issue the non-OAuth `Bearer realm="MCP Plugin Server"` 401 challenge.
+                return AuthenticateResult.NoResult();
+            }
+
+            // Constant-time compare over SHA-256 digests — no length/content timing side channel, and a
+            // deliberate upgrade over the deleted b5 `string.Equals(Ordinal)`.
+            if (!TokenComparison.FixedTimeEquals(token, Options.LocalToken))
+            {
+                if (!IsHubPath())
+                {
+                    Logger.LogWarning(
+                        "MCP local-token auth rejected: token mismatch. RemoteIp: {RemoteIpAddress}, UserAgent: {UserAgent}, RequestPath: {RequestPath}, TokenFingerprint: {TokenFingerprint}",
+                        GetClientIpAddress(), Request.Headers.UserAgent.ToString(), Request.Path.Value, FingerprintToken(token));
+                }
+                return IsHubPath()
+                    ? AuthenticateResult.NoResult()
+                    : AuthenticateResult.Fail("Invalid token.");
+            }
+
+            var claims = new List<Claim> { new Claim(TokenClaimType, token) };
+            var identity = new ClaimsIdentity(claims, SchemeName);
+            var principal = new ClaimsPrincipal(identity);
+            return AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName));
         }
 
         // ── OAuth resource-server path (mcp-authorize b2) ─────────────────────────────────────────
@@ -214,10 +250,23 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
     {
         /// <summary>
         /// When true, the handler runs the OAuth resource-server validation path (ES256/JWKS +
-        /// introspection). When false (the only other mode, <c>none</c>), the handler is anonymous:
-        /// no token is required or accepted. The legacy shared-token (<c>ServerToken</c>) and DCR
+        /// introspection). Mutually exclusive with <see cref="LocalTokenMode"/>; when both are false
+        /// the handler is anonymous (<c>none</c> mode). The legacy multi-tier shared-token / DCR
         /// token-equality options were removed in mcp-authorize b5.
         /// </summary>
         public bool OAuthMode { get; set; }
+
+        /// <summary>
+        /// When true, the handler runs the offline local-token path (mcp-authorize g6): the presented
+        /// bearer is compared against <see cref="LocalToken"/> in constant time. Mutually exclusive with
+        /// <see cref="OAuthMode"/>. Set by <c>LocalTokenMcpStrategy.ConfigureAuthentication</c>.
+        /// </summary>
+        public bool LocalTokenMode { get; set; }
+
+        /// <summary>
+        /// The static shared secret accepted in <see cref="LocalTokenMode"/> (from <c>--token</c> /
+        /// <c>MCP_PLUGIN_TOKEN</c>). Never logged; compared with a fixed-length constant-time digest.
+        /// </summary>
+        public string? LocalToken { get; set; }
     }
 }
