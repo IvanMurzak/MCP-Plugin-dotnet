@@ -202,6 +202,13 @@ namespace com.IvanMurzak.McpPlugin.Common
                 {
                     unknown,
                     none,
+
+                    /// <summary>
+                    /// Legacy shared-token pairing mode name (mcp-authorize b5 removed its dedicated
+                    /// strategy). RETAINED so an un-migrated <c>authorization=required</c> config does
+                    /// not silently downgrade to anonymous: the server's <c>McpStrategyFactory</c>
+                    /// aliases <c>required</c> onto the offline <see cref="token"/> strategy (mcp-authorize g6).
+                    /// </summary>
                     required,
 
                     /// <summary>
@@ -210,7 +217,17 @@ namespace com.IvanMurzak.McpPlugin.Common
                     /// introspection; it never mints tokens. Selected via <c>--auth oauth</c> /
                     /// <c>MCP_AUTH=oauth</c>.
                     /// </summary>
-                    oauth
+                    oauth,
+
+                    /// <summary>
+                    /// Offline shared-secret mode (mcp-authorize g6). A loopback single-project server
+                    /// gates BOTH the SignalR plugin connection and the streamableHttp MCP endpoint on a
+                    /// single static bearer secret (<c>--token</c> / <c>MCP_PLUGIN_TOKEN</c>), validated
+                    /// with a constant-time compare. No authorization server / egress required — the
+                    /// offline counterpart of <see cref="oauth"/>. Selected via <c>--auth token</c> /
+                    /// <c>MCP_AUTH=token</c>.
+                    /// </summary>
+                    token
                 }
 
                 /// <summary>

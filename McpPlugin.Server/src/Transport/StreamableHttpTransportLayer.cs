@@ -166,6 +166,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                 app.MapMcp("/mcp").RequireAuthorization();
                 MapPinnedMcp(app, requireAuthorization: true);
             }
+            else if (mode == Consts.MCP.Server.AuthOption.token
+                || mode == Consts.MCP.Server.AuthOption.required)
+            {
+                // Offline token mode (mcp-authorize g6): gate the MCP endpoint with RequireAuthorization
+                // exactly like oauth, but WITHOUT the RFC 9728 Protected-Resource-Metadata routes — there
+                // is no authorization server to discover; the credential is the local static --token,
+                // validated by TokenAuthenticationHandler's constant-time compare. Without this gate the
+                // token would be validated but never ENFORCED (unauthenticated requests would still reach
+                // the endpoint). `required` is aliased onto the same token strategy (back-compat).
+                app.MapMcp("/").RequireAuthorization();
+                app.MapMcp("/mcp").RequireAuthorization();
+                MapPinnedMcp(app, requireAuthorization: true);
+            }
             else
             {
                 // none mode (offline / local dev / CI): anonymous MCP endpoint, no auth gate.

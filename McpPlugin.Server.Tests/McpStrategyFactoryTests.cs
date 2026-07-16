@@ -43,15 +43,26 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public void Create_Required_ThrowsArgumentException()
+        public void Create_Token_ReturnsLocalTokenMcpStrategy()
         {
-            // mcp-authorize b5: the legacy shared-token pairing mode is deleted. The factory now
-            // switches ONLY on {none, oauth}; `required` fails closed with an explicit error
-            // (no silent downgrade to `none`).
-            Action act = () => _factory.Create(Consts.MCP.Server.AuthOption.required);
+            // mcp-authorize g6: the offline shared-secret mode.
+            var strategy = _factory.Create(Consts.MCP.Server.AuthOption.token);
 
-            Should.Throw<ArgumentException>(act)
-                .Message.ShouldContain("Unsupported auth option");
+            strategy.ShouldBeOfType<LocalTokenMcpStrategy>();
+            strategy.AuthOption.ShouldBe(Consts.MCP.Server.AuthOption.token);
+        }
+
+        [Fact]
+        public void Create_Required_AliasesOntoLocalTokenMcpStrategy()
+        {
+            // mcp-authorize g6 back-compat: the deprecated `required` alias must NOT throw (that would
+            // crash an un-migrated binary) and must NOT downgrade to anonymous — it maps onto the same
+            // token-gated strategy so old `authorization=required` configs keep working token-gated.
+            var strategy = _factory.Create(Consts.MCP.Server.AuthOption.required);
+
+            strategy.ShouldBeOfType<LocalTokenMcpStrategy>();
+            // The resolved strategy reports the target-state `token` option, not the legacy alias name.
+            strategy.AuthOption.ShouldBe(Consts.MCP.Server.AuthOption.token);
         }
 
         [Fact]

@@ -22,20 +22,37 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
     {
         public IMcpConnectionStrategy Create(Consts.MCP.Server.AuthOption mode)
         {
-            return mode switch
+            switch (mode)
             {
-                Consts.MCP.Server.AuthOption.none => new NoAuthMcpStrategy(),
+                case Consts.MCP.Server.AuthOption.none:
+                    return new NoAuthMcpStrategy();
+
                 // mcp-authorize b3: oauth mode is the account+instance pairing plane.
-                Consts.MCP.Server.AuthOption.oauth => new AccountMcpStrategy(),
-                // mcp-authorize b5 (coordinated breaking removal): the legacy shared-token
-                // pairing mode (`required`) is deleted. The RS never mints or equality-pairs
-                // tokens; it only validates them (oauth) or runs anonymous (none). Any other
-                // value — including the retired `required` — fails closed with an explicit error;
-                // no silent downgrade to `none`.
-                _ => throw new ArgumentException(
-                    $"Unsupported auth option: {mode}. " +
-                    $"Supported auth options are: {Consts.MCP.Server.AuthOption.none}, {Consts.MCP.Server.AuthOption.oauth}")
-            };
+                case Consts.MCP.Server.AuthOption.oauth:
+                    return new AccountMcpStrategy();
+
+                // mcp-authorize g6: offline shared-secret mode — a loopback single-project server
+                // gated on a single static token, validated with a constant-time compare.
+                case Consts.MCP.Server.AuthOption.token:
+                    return new LocalTokenMcpStrategy();
+
+                // mcp-authorize g6 back-compat alias: an un-migrated binary still emitting
+                // `authorization=required` (+ token) runs token-gated instead of crashing. This is a
+                // strict superset that ALSO resolves the g5 boot crash for un-migrated configs — never
+                // a silent downgrade to anonymous (which dropping `required` would cause). Deprecated:
+                // migrate the config to `auth=token`.
+                case Consts.MCP.Server.AuthOption.required:
+                    NLog.LogManager.GetCurrentClassLogger().Warn(
+                        "auth=required is deprecated (mcp-authorize g6): aliasing it onto the offline 'token' strategy. Migrate the configuration to 'auth=token'.");
+                    return new LocalTokenMcpStrategy();
+
+                // Any other value — including the retired `unknown` — fails closed with an explicit
+                // error; no silent downgrade to `none`.
+                default:
+                    throw new ArgumentException(
+                        $"Unsupported auth option: {mode}. " +
+                        $"Supported auth options are: {Consts.MCP.Server.AuthOption.none}, {Consts.MCP.Server.AuthOption.oauth}, {Consts.MCP.Server.AuthOption.token} (and the deprecated {Consts.MCP.Server.AuthOption.required} alias).");
+            }
         }
     }
 }

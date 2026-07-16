@@ -31,14 +31,17 @@ using Xunit;
 namespace com.IvanMurzak.McpPlugin.Server.Tests
 {
     /// <summary>
-    /// mcp-authorize b7 folded fix 2 (🔒 security regression): the direct-tool REST surface (<c>/api/tools</c>)
-    /// and the system-tool surface (<c>/api/system-tools</c>) MUST require a valid token in <c>oauth</c> mode
-    /// (fail closed) and be reachable in <c>none</c> mode. Before b7 both gated on the now-unreachable
-    /// <c>AuthOption.required</c>, so they were NEVER authorization-gated in oauth mode.
+    /// 🔒 The direct-tool REST surface (<c>/api/tools</c>) and the system-tool surface (<c>/api/system-tools</c>)
+    /// can EXECUTE tools, so they MUST fail closed in every credential-bearing mode — <c>oauth</c>, the offline
+    /// <c>token</c> (mcp-authorize g6), and the deprecated <c>required</c> alias — and be reachable only in
+    /// <c>none</c> mode. b7 closed the oauth gap (both once gated on the now-unreachable <c>required</c>); g6
+    /// closes the token-mode gap so the REST surface is never an unauthenticated bypass of the endpoint's token gate.
     /// </summary>
     [Collection("McpPlugin.Server")]
     public sealed class DirectToolEndpointsAuthGatingTests
     {
+        const string Secret = "rest-gate-secret";
+
         [Theory]
         [InlineData("/api/tools")]
         [InlineData("/api/system-tools")]
@@ -50,6 +53,49 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var response = await client.GetAsync(route);
 
             response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized, $"{route} must fail closed (401) in oauth mode without a token");
+        }
+
+        [Theory]
+        [InlineData("/api/tools")]
+        [InlineData("/api/system-tools")]
+        public async Task TokenMode_WithoutToken_Returns401(string route)
+        {
+            await using var host = await StartHostAsync(Consts.MCP.Server.AuthOption.token);
+            using var client = new HttpClient { BaseAddress = new Uri(host.BaseUrl) };
+
+            var response = await client.GetAsync(route);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized, $"{route} must fail closed (401) in token mode without a token");
+        }
+
+        [Theory]
+        [InlineData("/api/tools")]
+        [InlineData("/api/system-tools")]
+        public async Task RequiredAliasMode_WithoutToken_Returns401(string route)
+        {
+            // The deprecated `required` alias resolves to token-gated behavior — it must gate the REST surface too.
+            await using var host = await StartHostAsync(Consts.MCP.Server.AuthOption.required);
+            using var client = new HttpClient { BaseAddress = new Uri(host.BaseUrl) };
+
+            var response = await client.GetAsync(route);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized, $"{route} must fail closed (401) in the required-alias mode without a token");
+        }
+
+        [Theory]
+        [InlineData("/api/tools")]
+        [InlineData("/api/system-tools")]
+        public async Task TokenMode_WithValidToken_IsReachable(string route)
+        {
+            await using var host = await StartHostAsync(Consts.MCP.Server.AuthOption.token);
+            using var client = new HttpClient { BaseAddress = new Uri(host.BaseUrl) };
+            var request = new HttpRequestMessage(HttpMethod.Get, route);
+            request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {Secret}");
+
+            var response = await client.SendAsync(request);
+
+            response.StatusCode.ShouldNotBe(HttpStatusCode.Unauthorized, $"{route} must be reachable with the correct token");
+            ((int)response.StatusCode).ShouldBeLessThan(500, $"{route} should serve the (empty) tool list with a valid token");
         }
 
         [Theory]
@@ -79,11 +125,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             builder.Services.AddSingleton<IClientSystemToolHub>(new StubSystemToolHub());
             builder.Services.AddSingleton(Mock.Of<IAuthorizationWebhookService>());
 
+            var localTokenMode = authOption == Consts.MCP.Server.AuthOption.token
+                || authOption == Consts.MCP.Server.AuthOption.required;
+
             builder.Services
                 .AddAuthentication(TokenAuthenticationHandler.SchemeName)
                 .AddScheme<TokenAuthenticationOptions, TokenAuthenticationHandler>(
                     TokenAuthenticationHandler.SchemeName,
-                    options => options.OAuthMode = authOption == Consts.MCP.Server.AuthOption.oauth);
+                    options =>
+                    {
+                        options.OAuthMode = authOption == Consts.MCP.Server.AuthOption.oauth;
+                        options.LocalTokenMode = localTokenMode;
+                        if (localTokenMode)
+                            options.LocalToken = Secret;
+                    });
             builder.Services.AddAuthorization();
 
             var app = builder.Build();
