@@ -1,0 +1,77 @@
+docs/architecture-transport-auth.md
+  s_6f592db52a45cd::t_b86afcce52df7d 23-30
+  s_6f592db52a45cd::t_f5d04fcdf3b7b0 22
+  s_6f592db52a45cd::t_6e32869850057d 31
+  s_6f592db52a45cd::t_ff6b3e42f33072 40
+  s_8137aa2c8384f2::t_f243c769261d1a 61-64,67-69,76-79,123-126,129,135-138,147-155,165
+McpPlugin.Server.Tests/DirectToolEndpointsAuthGatingTests.cs
+  s_6f592db52a45cd::t_b9f1ad5969e024 34-38,43-44,58-60,71-73,85-87
+  s_6f592db52a45cd::t_7df64716e664e7 61-63,68-70
+  s_6f592db52a45cd::t_7b7ea987d2e02e 74-76,82-84
+  s_6f592db52a45cd::t_f3562bc28c500c 88-90
+  s_8137aa2c8384f2::t_a62878f01ce8de 64-67,77-81,91-100,128-130,135-141
+McpPlugin.Server.Tests/TokenComparisonTests.cs
+  s_6f592db52a45cd::t_3772bbdc494f6b 1-52
+McpPlugin.Server/src/Auth/TokenComparison.cs
+  s_6f592db52a45cd::t_9085eadbf6d41d 1-48
+McpPlugin.Server/src/Strategy/McpStrategyFactory.cs
+  s_6f592db52a45cd::t_d8e7646f0a28b5 25,27-29
+  s_8137aa2c8384f2::t_e678cef6e5b606 31-55
+McpPlugin/src/ServerLaunch/ServerLaunchArguments.cs
+  s_6f592db52a45cd::t_3ebea96dd0586f 6
+  s_6f592db52a45cd::t_9cb4c46a6d89f2 1-5,7-115
+McpPlugin.Server/src/Strategy/LocalTokenMcpStrategy.cs
+  s_6f592db52a45cd::t_ae11bbbf170712 64
+  s_6f592db52a45cd::t_7cc9f5ab4339c1 1-63,65-160
+McpPlugin.Server/src/Api/AuthGating.cs
+  s_6f592db52a45cd::t_eaebe4963344ab 1-33
+McpPlugin.Server.Tests/TokenModeTransportGatingTests.cs
+  s_6f592db52a45cd::t_7d03868e912084 24
+  s_6f592db52a45cd::t_5162ee74c0c630 1-23,25-144
+McpPlugin.Tests/AgentConfig/AgentConfiguratorSettingsAuthTests.cs
+  s_6f592db52a45cd::t_4365792ccf144c 1-67
+McpPlugin.Tests/ServerLaunch/ServerLaunchArgumentsTests.cs
+  s_6f592db52a45cd::t_ee03e19a4b2df7 1-128
+McpPlugin.Server.Tests/TokenAuthenticationHandlerLocalTokenTests.cs
+  s_6f592db52a45cd::t_4a8312957ef418 1-161
+McpPlugin.Server.Tests/LocalTokenMcpStrategyTests.cs
+  s_6f592db52a45cd::t_e2f207b2484fe2 1-200
+McpPlugin.Common/src/Utils/Consts.MCP.cs
+  s_8137aa2c8384f2::t_e535a7c3917737 205-211,220-230
+McpPlugin.Server.Tests/McpStrategyFactoryTests.cs
+  s_8137aa2c8384f2::t_862fa3f258d73e 46,48-49,51-65
+McpPlugin.Server/src/Api/DirectToolCallEndpoints.cs
+  s_8137aa2c8384f2::t_c52bf0440b4ff3 42-47,57
+McpPlugin.Server/src/Api/SystemToolEndpoints.cs
+  s_8137aa2c8384f2::t_94e553788442d1 43-48,58
+McpPlugin.Server/src/Auth/TokenAuthenticationHandler.cs
+  s_8137aa2c8384f2::t_e09b9f0be85615 97-140,253-254,258-270
+McpPlugin.Server/src/Transport/StreamableHttpTransportLayer.cs
+  s_8137aa2c8384f2::t_01608bd0b3e121 169-181
+McpPlugin/src/AgentConfig/AgentConfiguratorSettings.cs
+  s_8137aa2c8384f2::t_6f910062ee6f1f 186-192,194-196,198-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "9c43b5e6dd7e8f40bc23808fbca2096362b9bcc4",
+  "prompts": {},
+  "sessions": {
+    "s_6f592db52a45cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef366ff5-239c-4fa7-bb64-5cc7ee319537",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_8137aa2c8384f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a9dfaea72ca562e62",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
