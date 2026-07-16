@@ -123,13 +123,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             // deliberate upgrade over the deleted b5 `string.Equals(Ordinal)`.
             if (!TokenComparison.FixedTimeEquals(token, Options.LocalToken))
             {
-                if (!IsHubPath())
+                var isHubPath = IsHubPath();
+                if (!isHubPath)
                 {
                     Logger.LogWarning(
                         "MCP local-token auth rejected: token mismatch. RemoteIp: {RemoteIpAddress}, UserAgent: {UserAgent}, RequestPath: {RequestPath}, TokenFingerprint: {TokenFingerprint}",
                         GetClientIpAddress(), Request.Headers.UserAgent.ToString(), Request.Path.Value, FingerprintToken(token));
                 }
-                return IsHubPath()
+                return isHubPath
                     ? AuthenticateResult.NoResult()
                     : AuthenticateResult.Fail("Invalid token.");
             }
