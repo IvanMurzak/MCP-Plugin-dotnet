@@ -119,6 +119,15 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// <see cref="HttpCredentialMode.AccessToken"/> is the explicit advanced PAT path (Flow C):
         /// it writes the legacy bearer shape and, when that credential would land in a
         /// project-scoped file, emits a warning (prefer env-var / user-scope placement).
+        /// <para>
+        /// CONTRACT (mcp-authorize i1 / BUG-A): any caller that builds an EXPECTED config to compare
+        /// against what <c>Configure()</c> writes — i.e. a status / detect / match check — MUST pass
+        /// <c>settings.ResolveHttpCredentialMode()</c>, not rely on this credential-free
+        /// <see cref="HttpCredentialMode.Oauth"/> default. Omitting it makes a token-mode config read
+        /// as permanent <see cref="ConfiguratorStatus.ReconfigureNeeded"/> (the original BUG-A). The
+        /// default stays credential-free on purpose: it is fail-safe (never surfaces the Bearer
+        /// secret) and correct for display / write-suppressed paths.
+        /// </para>
         /// </summary>
         public AiAgentConfig GetHttpConfig(
             AgentConfiguratorSettings settings,
@@ -359,6 +368,12 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Common.Consts.MCP.Server.TransportMethod transport,
             ILogger? logger)
         {
+            // Display path: intentionally renders the credential-free OAuth shape (no resolved
+            // credential mode). Do NOT thread settings.ResolveHttpCredentialMode() here — this is a
+            // user-visible ReadOnlyField, and the AccessToken shape would surface the raw
+            // Authorization: Bearer <secret> in the UI. Only the status validators (IsDetected /
+            // IsConfigured / GetStatus) resolve the mode, because they must MATCH what Configure
+            // wrote; display must not EXPOSE the secret (mcp-authorize i1 / BUG-A scoping).
             var config = transport == Common.Consts.MCP.Server.TransportMethod.stdio
                 ? GetStdioConfig(settings, logger)
                 : GetHttpConfig(settings, logger);
