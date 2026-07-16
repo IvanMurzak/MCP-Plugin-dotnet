@@ -80,6 +80,79 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             }
         }
 
+        // --- mcp-authorize i1 (BUG-A): the status validator must be token-aware. A LOCAL server in
+        // the offline `token` auth mode writes an Authorization: Bearer header (HttpCredentialMode
+        // .AccessToken); the "expected" config a status check builds must resolve the SAME credential
+        // mode from settings, else a correctly-written token config reads back as ReconfigureNeeded
+        // forever. These two tests pin the round-trip and the stale-token signal. ---
+
+        private static AgentConfiguratorSettings TokenSettings(string root, string token) => new(
+            operatingSystem: OperatingSystemKind.Windows,
+            projectRootPath: root,
+            executableFullPath: "C:/Tools/srv.exe",
+            port: 50000,
+            timeoutMs: 30000,
+            host: "http://localhost:50000/mcp",
+            token: token,
+            connectionMode: ConnectionMode.Local,
+            authOption: Consts.MCP.Server.AuthOption.token);
+
+        [Fact]
+        public void TokenMode_HttpConfig_RoundTrips_AsConfigured()
+        {
+            var root = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            Directory.CreateDirectory(root);
+            try
+            {
+                var c = new ClaudeCodeConfigurator();
+                var settings = TokenSettings(root, "local-secret");
+
+                // Local + token mode resolves to the Bearer-header (AccessToken) credential mode.
+                settings.ResolveHttpCredentialMode().ShouldBe(HttpCredentialMode.AccessToken);
+
+                // Write exactly what the engine Configure button writes for these settings.
+                c.GetHttpConfig(settings, credentialMode: settings.ResolveHttpCredentialMode())
+                    .Configure().ShouldBeTrue();
+
+                // Regression: the token-mode config must read back as Configured — no spurious banner.
+                c.IsConfigured(settings, TransportMethod.streamableHttp).ShouldBeTrue();
+                c.GetStatus(settings, TransportMethod.streamableHttp).ShouldBe(ConfiguratorStatus.Configured);
+                c.Describe(settings, TransportMethod.streamableHttp).Status.ShouldBe(ConfiguratorStatus.Configured);
+            }
+            finally
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+
+        [Fact]
+        public void TokenMode_StaleToken_ReadsAsReconfigureNeeded()
+        {
+            var root = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            Directory.CreateDirectory(root);
+            try
+            {
+                var c = new ClaudeCodeConfigurator();
+
+                // Configure was run earlier with the OLD local token.
+                var oldSettings = TokenSettings(root, "old-secret");
+                c.GetHttpConfig(oldSettings, credentialMode: oldSettings.ResolveHttpCredentialMode())
+                    .Configure().ShouldBeTrue();
+
+                // The current LocalToken has since rotated — same project, new token value.
+                var newSettings = TokenSettings(root, "new-secret");
+
+                // The on-disk Bearer <old> no longer matches the expected Bearer <new>: detected, stale.
+                c.IsConfigured(newSettings, TransportMethod.streamableHttp).ShouldBeFalse();
+                c.GetStatus(newSettings, TransportMethod.streamableHttp).ShouldBe(ConfiguratorStatus.ReconfigureNeeded);
+                c.Describe(newSettings, TransportMethod.streamableHttp).Status.ShouldBe(ConfiguratorStatus.ReconfigureNeeded);
+            }
+            finally
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+
         [Fact]
         public void Codex_IsTomlBased_AndAdvancedPatInjectsEnvVar_ButDefaultPathDoesNot()
         {

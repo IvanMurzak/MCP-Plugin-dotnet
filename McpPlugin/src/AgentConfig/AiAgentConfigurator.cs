@@ -208,7 +208,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public bool IsDetected(AgentConfiguratorSettings settings, ILogger? logger = null)
         {
             return GetStdioConfig(settings, logger).IsDetected()
-                || GetHttpConfig(settings, logger).IsDetected();
+                || GetHttpConfig(settings, logger, settings.ResolveHttpCredentialMode()).IsDetected();
         }
 
         /// <summary>
@@ -222,7 +222,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         {
             var config = transport == Common.Consts.MCP.Server.TransportMethod.stdio
                 ? GetStdioConfig(settings, logger)
-                : GetHttpConfig(settings, logger);
+                : GetHttpConfig(settings, logger, settings.ResolveHttpCredentialMode());
             return config.IsConfigured();
         }
 
@@ -244,7 +244,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
             var config = transport == Common.Consts.MCP.Server.TransportMethod.stdio
                 ? GetStdioConfig(settings, logger)
-                : GetHttpConfig(settings, logger);
+                : GetHttpConfig(settings, logger, settings.ResolveHttpCredentialMode());
 
             return config.IsDetected()
                 ? ConfiguratorStatus.ReconfigureNeeded

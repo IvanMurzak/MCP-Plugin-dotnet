@@ -203,6 +203,23 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public bool IsStdioAuthRequired =>
             AuthOption == Consts.MCP.Server.AuthOption.required;
 
+        /// <summary>
+        /// The <see cref="HttpCredentialMode"/> the HTTP config writer uses for these settings
+        /// (mcp-authorize g5/g6). A LOCAL server in the offline <c>token</c> mode is Bearer-gated, so
+        /// its client config MUST carry the <c>Authorization: Bearer &lt;local-secret&gt;</c> header
+        /// (<see cref="HttpCredentialMode.AccessToken"/>). Every other case — <c>none</c>, <c>oauth</c>,
+        /// and Cloud — keeps the default credential-free OAuth path (URL-only; the client authorizes
+        /// natively against the server URL). Single source of truth shared across engines so Unity /
+        /// Godot / Unreal resolve the credential mode identically — the "expected" config a status
+        /// check builds always matches what Configure writes. Pure; hoisted from Unity's former
+        /// <c>AiAgentConfiguratorView.ResolveHttpCredentialMode</c> (mcp-authorize i1).
+        /// </summary>
+        public HttpCredentialMode ResolveHttpCredentialMode() =>
+            ConnectionMode == ConnectionMode.Local
+            && AuthOption == Consts.MCP.Server.AuthOption.token
+                ? HttpCredentialMode.AccessToken
+                : HttpCredentialMode.Oauth;
+
         /// <summary>Convenience: <see cref="OperatingSystem"/> is <see cref="OperatingSystemKind.Windows"/>.</summary>
         public bool IsWindows => OperatingSystem == OperatingSystemKind.Windows;
 
