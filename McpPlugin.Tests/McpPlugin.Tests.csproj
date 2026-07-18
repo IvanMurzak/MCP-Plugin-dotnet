@@ -26,6 +26,7 @@
     <!-- Committed cross-language golden vectors for ProjectIdentity; copied next to the test
          assembly so ProjectIdentityGoldenVectorTests can load them at runtime. -->
     <None Include="../McpPlugin/src/AgentConfig/ProjectIdentity.GoldenVectors.json" Link="ProjectIdentity.GoldenVectors.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../McpPlugin/src/AgentConfig/ProjectIdentity.GoldenVectors.v2.json" Link="ProjectIdentity.GoldenVectors.v2.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

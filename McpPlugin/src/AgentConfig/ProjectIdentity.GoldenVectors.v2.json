@@ -1,0 +1,100 @@
+{
+  "version": 2,
+  "description": "Cross-language golden vectors for ProjectIdentity v2 (auth-fixes T3 / defect B5). v2 differs from v1 (ProjectIdentity.GoldenVectors.json) by ONE normalization step: backslashes are converted to forward slashes BEFORE hashing, so a Windows project root reported with '\\' and the same root reported with '/' hash IDENTICALLY. This is the shared cross-language artifact the cli-core TS port MUST reproduce (routing pin + deterministic local port). The C# reference implementation (McpPlugin/src/AgentConfig/ProjectIdentity.cs — DerivePinV2 / DerivePortV2 / DeriveProjectPathHashV2 / NormalizeV2) is the canonical origin. The v1 file is kept untouched for the legacy dual-hash transition. Regenerate/verify via McpPlugin.Tests ProjectIdentityGoldenVectorV2Tests.",
+  "algorithm": {
+    "steps": [
+      "1. Trim trailing directory separators ('/' and '\\') from the project root (so '/a/b' and '/a/b/' are the same project).",
+      "2. Convert every backslash '\\' to a forward slash '/'  (THIS is the only difference from v1 — it makes 'C:\\a' and 'C:/a' identical).",
+      "3. Lowercase the result. C#: string.ToLowerInvariant(). NOTE: this diverges from JS String.prototype.toLowerCase() for some Unicode chars — see `unicodeDivergence`.",
+      "4. UTF-8 encode, then SHA-256 hash.",
+      "5. pin  = the first 4 bytes of the hash as 8 lowercase hex characters.",
+      "6. port = 20000 + (littleEndianUInt32(first 4 bytes of the hash) % 10000).  Range: 20000-29999."
+    ],
+    "minPort": 20000,
+    "maxPort": 29999,
+    "pinLength": 8,
+    "separatorNormalization": "v2: backslashes ARE converted to forward slashes before hashing ('C:\\a' and 'C:/a' hash IDENTICALLY). Trim trailing separators first, then replace '\\' -> '/', then lowercase. Do NOT path.normalize()/path.resolve() before deriving — only the '\\' -> '/' substitution.",
+    "whichStringIsHashed": "the normalized project root supplied by the caller, NOT Environment.CurrentDirectory / process.cwd()."
+  },
+  "vectors": [
+    {
+      "path": "/home/user/my-game",
+      "pin": "34ea75f2",
+      "port": 23940,
+      "note": "POSIX typical project path — no backslashes, so v2 == v1."
+    },
+    {
+      "path": "/home/user/my-game/",
+      "pin": "34ea75f2",
+      "port": 23940,
+      "note": "Trailing slash is trimmed -> identical to '/home/user/my-game'."
+    },
+    {
+      "path": "/home/USER/My-Game",
+      "pin": "34ea75f2",
+      "port": 23940,
+      "note": "Case-folded -> identical to '/home/user/my-game'."
+    },
+    {
+      "path": "C:\\Users\\user\\my-game",
+      "pin": "5a87324e",
+      "port": 24298,
+      "note": "Windows backslash form. v2 converts '\\' -> '/' so this now hashes IDENTICALLY to the forward-slash form below (v1 gave a DIFFERENT pin 8ef72cf7 here — that divergence was B5)."
+    },
+    {
+      "path": "C:\\Users\\user\\my-game\\",
+      "pin": "5a87324e",
+      "port": 24298,
+      "note": "Trailing backslash trimmed, then '\\' -> '/' -> identical to the two forms."
+    },
+    {
+      "path": "C:/Users/user/my-game",
+      "pin": "5a87324e",
+      "port": 24298,
+      "note": "Forward-slash form. Under v2 it MATCHES the backslash form (the B5 fix); under v1 the two differed."
+    },
+    {
+      "path": "/home/İstanbul/game",
+      "pin": "672d80a7",
+      "port": 25303,
+      "note": "Contains U+0130 (LATIN CAPITAL LETTER I WITH DOT ABOVE). No backslash -> v2 == v1. Canonical C# value; see `unicodeDivergence`."
+    },
+    {
+      "path": "/srv/games/space sim",
+      "pin": "08c6cbb6",
+      "port": 27816,
+      "note": "Path containing a space; no backslash -> v2 == v1."
+    }
+  ],
+  "separatorEquivalence": {
+    "note": "The defining property of v2: a backslash project root and its forward-slash equivalent produce the SAME pin/port. This is what fixes B5 (Windows CLI enroll-pin vs plugin forward-slash hash divergence).",
+    "pairs": [
+      {
+        "backslash": "C:\\Users\\user\\my-game",
+        "forwardSlash": "C:/Users/user/my-game",
+        "pin": "5a87324e",
+        "port": 24298
+      }
+    ]
+  },
+  "unicodeDivergence": {
+    "note": "C# string.ToLowerInvariant() and JS String.prototype.toLowerCase() do NOT agree on every character. The value in `vectors` (produced by the C# origin) is canonical; a JS/TS port MUST reproduce it. This section records what a NAIVE toLowerCase() port produces so the divergence is explicit and testable in the consuming CLIs.",
+    "cases": [
+      {
+        "path": "/home/İstanbul/game",
+        "char": "U+0130 LATIN CAPITAL LETTER I WITH DOT ABOVE",
+        "canonical": {
+          "pin": "672d80a7",
+          "port": 25303,
+          "producedBy": "C# ToLowerInvariant leaves U+0130 unchanged (no case fold)."
+        },
+        "jsNaiveToLowerCase": {
+          "pin": "77300275",
+          "port": 27751,
+          "loweredCodepoints": "U+0069 U+0307 (i + COMBINING DOT ABOVE)",
+          "warning": "A naive JS/TS port would produce THIS incorrect value. It must special-case U+0130 (and any char where toLowerCase() disagrees with ToLowerInvariant) to match `canonical`."
+        }
+      }
+    ]
+  }
+}

@@ -194,14 +194,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             string? engine,
             string? projectName,
             string? projectPathHash,
-            string? machineName)
+            string? machineName,
+            string? projectPathHashLegacy = null)
         {
             return new PluginInstanceMetadata(
                 InstanceId: string.IsNullOrEmpty(instanceId) ? connectionId : instanceId!,
                 Engine: engine ?? string.Empty,
                 ProjectName: projectName ?? string.Empty,
                 ProjectPathHash: projectPathHash ?? string.Empty,
-                MachineName: machineName ?? string.Empty);
+                MachineName: machineName ?? string.Empty,
+                ProjectPathHashLegacy: projectPathHashLegacy ?? string.Empty);
         }
     }
 }

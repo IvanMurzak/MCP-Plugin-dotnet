@@ -159,9 +159,85 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             return TrimTrailingSeparators(projectRoot).ToLowerInvariant();
         }
 
+        // ─────────────────────────────────────────────────────────────────────────────────────────
+        // v2 identity (auth-fixes T3 / defect B5). The v1 methods above are kept verbatim for the
+        // legacy hash so old configs keep matching (dual-hash transition, decision M1). v2 adds ONE
+        // step to the normalization — converting '\' to '/' — so a Windows project root reported with
+        // backslashes (<c>C:\a\b</c>) and the same root reported with forward slashes (<c>C:/a/b</c>)
+        // hash IDENTICALLY. That kills B5: the CLI enroll-pin (derived from a backslash path) and the
+        // plugin's forward-slash hash no longer diverge on Windows. Cross-language parity is gated by
+        // the committed <c>ProjectIdentity.GoldenVectors.v2.json</c> (alongside the untouched v1 file).
+        // ─────────────────────────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// The v2 pre-hash string: the project root with trailing directory separators trimmed, every
+        /// backslash converted to a forward slash, then lowercased with <see cref="string.ToLowerInvariant"/>.
+        /// This is the single normalization primitive the pin (v2), the full project-path hash (v2), and
+        /// the deterministic port (<see cref="DerivePortV2"/>) all share. Exposed so the golden-vector
+        /// tooling, the cross-language cli-core port, AND the engine runtimes can reproduce the exact
+        /// pre-hash string — the latter is the <b>B10</b> primitive: an engine deriving its local port
+        /// from an ad-hoc (untrimmed, un-separator-normalized) path can switch to this and stay in
+        /// lock-step with the routing pin.
+        /// </summary>
+        public static string NormalizeV2(string projectRoot)
+        {
+            if (projectRoot == null)
+                throw new ArgumentNullException(nameof(projectRoot));
+            return TrimTrailingSeparators(projectRoot).Replace('\\', '/').ToLowerInvariant();
+        }
+
+        /// <summary>
+        /// The v2 routing pin (first 8 lowercase hex chars of the SHA-256 of <see cref="NormalizeV2"/>).
+        /// This is the pin the configurators (Editor Configure / cli-core setup-mcp / enroll) now emit;
+        /// it prefix-matches an engine plugin's v2 <c>projectPathHash</c> in the hub handshake.
+        /// </summary>
+        public static string DerivePinV2(string projectRoot)
+        {
+            if (projectRoot == null)
+                throw new ArgumentNullException(nameof(projectRoot));
+            return ToHex(HashOfV2(projectRoot), PinLength / 2);
+        }
+
+        /// <summary>
+        /// The FULL v2 project-path hash (64-char lowercase hex of the SHA-256 of <see cref="NormalizeV2"/>).
+        /// This is the <c>projectPathHash</c> (v2) an engine plugin sends in its hub instance-metadata
+        /// handshake; the server pin-matches by checking the routing pin is a case-insensitive prefix of
+        /// it (<c>PluginInstance.MatchesPin</c>, which now also checks the v1 legacy hash for old configs).
+        /// </summary>
+        public static string DeriveProjectPathHashV2(string projectRoot)
+        {
+            if (projectRoot == null)
+                throw new ArgumentNullException(nameof(projectRoot));
+            return ToHex(HashOfV2(projectRoot), 32);
+        }
+
+        /// <summary>
+        /// The v2 hash-derived port (ignores any override) — the deterministic local port computed from
+        /// the <see cref="NormalizeV2"/> string. Same byte math as <see cref="DerivePort"/>, only the
+        /// pre-hash normalization differs (separators converted). This is the <b>B10</b> port-derivation
+        /// primitive engines consume so the local port and the routing pin derive from one normalized
+        /// string (Unity-side consumption is a follow-up task).
+        /// </summary>
+        public static int DerivePortV2(string projectRoot)
+        {
+            if (projectRoot == null)
+                throw new ArgumentNullException(nameof(projectRoot));
+            return PortFromHash(HashOfV2(projectRoot));
+        }
+
         internal static byte[] HashOf(string projectRoot)
         {
             var normalized = Normalize(projectRoot);
+            var bytes = Encoding.UTF8.GetBytes(normalized);
+            using (var sha256 = SHA256.Create())
+            {
+                return sha256.ComputeHash(bytes);
+            }
+        }
+
+        internal static byte[] HashOfV2(string projectRoot)
+        {
+            var normalized = NormalizeV2(projectRoot);
             var bytes = Encoding.UTF8.GetBytes(normalized);
             using (var sha256 = SHA256.Create())
             {

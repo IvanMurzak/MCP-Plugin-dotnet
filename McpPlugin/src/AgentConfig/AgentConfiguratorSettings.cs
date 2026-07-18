@@ -229,6 +229,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         // terminal-written config. Resolved lazily and cached (a marker read is file I/O, and the
         // identity is stable for the settings' <see cref="ProjectRootPath"/>).
         private ProjectIdentity? _identity;
+        private string? _projectPin;
 
         /// <summary>
         /// The project's <see cref="ProjectIdentity"/> — routing pin plus the resolved local port
@@ -237,8 +238,17 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// </summary>
         public ProjectIdentity Identity => _identity ??= ProjectIdentity.Derive(ProjectRootPath, ProjectMarker.Read(ProjectRootPath));
 
-        /// <summary>The routing pin (first 8 hex chars of the ProjectIdentity SHA-256). Non-secret, safe to commit.</summary>
-        public string ProjectPin => Identity.Pin;
+        /// <summary>
+        /// The routing pin written into every config (HTTP <c>/p/&lt;pin&gt;</c> segment and stdio
+        /// <c>project=&lt;pin&gt;</c> arg). This is the <b>v2</b> pin (first 8 hex chars of the
+        /// separator-normalized SHA-256, see <see cref="ProjectIdentity.DerivePinV2"/>) so a config
+        /// generated from a Windows backslash root matches a plugin whose forward-slash hash it now
+        /// equals (auth-fixes T3 / defect B5). Old (v1-pin) configs still route via the plugin's legacy
+        /// hash. Non-secret, safe to commit. The port stays on the v1 derivation (<see cref="ResolvedPort"/>)
+        /// until the engine runtimes adopt the v2 port primitive. Derived once and cached (the pin is
+        /// stable for the settings' <see cref="ProjectRootPath"/>), matching <see cref="Identity"/>.
+        /// </summary>
+        public string ProjectPin => _projectPin ??= ProjectIdentity.DerivePinV2(ProjectRootPath);
 
         /// <summary>
         /// The resolved per-project local port: the project marker's <c>portOverride</c> when set,

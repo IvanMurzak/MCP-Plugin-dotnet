@@ -132,7 +132,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                 engine: QueryValue(query, Consts.MCP.Server.HubQuery.Engine),
                 projectName: QueryValue(query, Consts.MCP.Server.HubQuery.ProjectName),
                 projectPathHash: QueryValue(query, Consts.MCP.Server.HubQuery.ProjectPathHash),
-                machineName: QueryValue(query, Consts.MCP.Server.HubQuery.MachineName));
+                machineName: QueryValue(query, Consts.MCP.Server.HubQuery.MachineName),
+                projectPathHashLegacy: QueryValue(query, Consts.MCP.Server.HubQuery.ProjectPathHashLegacy));
 
             account.RegisterInstance(identity, metadata, Context.ConnectionId, _logger);
         }

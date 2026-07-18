@@ -24,17 +24,47 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
         const string ProjectRoot = "/home/dev/MyGame";
 
         [Fact]
-        public void Create_DerivesProjectPathHash_WithPinAsPrefix()
+        public void Create_DerivesDualHash_V2Primary_V1Legacy_WithPinsAsPrefix()
         {
             var metadata = ConnectionInstanceMetadata.Create("unity", "MyGame", ProjectRoot);
 
-            metadata.ProjectPathHash.ShouldBe(ProjectIdentity.DeriveProjectPathHash(ProjectRoot));
+            // Primary hash is the v2 (separator-normalized) hash; the v2 pin is its prefix.
+            metadata.ProjectPathHash.ShouldBe(ProjectIdentity.DeriveProjectPathHashV2(ProjectRoot));
             metadata.ProjectPathHash.Length.ShouldBe(64);
-            // The routing pin is the first 8 hex chars of the same hash — so the server pin-matches by prefix.
-            metadata.ProjectPathHash.ShouldStartWith(ProjectIdentity.DerivePin(ProjectRoot));
+            metadata.ProjectPathHash.ShouldStartWith(ProjectIdentity.DerivePinV2(ProjectRoot));
+
+            // Legacy hash is the v1 hash of the same path; the v1 pin is its prefix.
+            metadata.ProjectPathHashLegacy.ShouldBe(ProjectIdentity.DeriveProjectPathHash(ProjectRoot));
+            metadata.ProjectPathHashLegacy.Length.ShouldBe(64);
+            metadata.ProjectPathHashLegacy.ShouldStartWith(ProjectIdentity.DerivePin(ProjectRoot));
+
             metadata.InstanceId.ShouldNotBeNullOrEmpty();
             metadata.Engine.ShouldBe("unity");
             metadata.ProjectName.ShouldBe("MyGame");
+        }
+
+        [Fact]
+        public void Create_OnWindowsBackslashRoot_V2AndLegacyHashesDiffer()
+        {
+            var backslashRoot = "C:" + ((char)92) + "Games" + ((char)92) + "MyGame";
+            var metadata = ConnectionInstanceMetadata.Create("unity", "MyGame", backslashRoot);
+
+            // v2 normalizes '\' -> '/', so the primary hash differs from the v1 legacy hash on Windows —
+            // this is exactly the divergence (B5) the dual-hash transition carries both sides of.
+            metadata.ProjectPathHash.ShouldBe(ProjectIdentity.DeriveProjectPathHashV2(backslashRoot));
+            metadata.ProjectPathHashLegacy.ShouldBe(ProjectIdentity.DeriveProjectPathHash(backslashRoot));
+            metadata.ProjectPathHash.ShouldNotBe(metadata.ProjectPathHashLegacy);
+        }
+
+        [Fact]
+        public void ToQuery_CarriesBothV2AndLegacyHashes()
+        {
+            var metadata = ConnectionInstanceMetadata.Create("unity", "MyGame", ProjectRoot);
+
+            var query = metadata.ToQuery();
+
+            query[Consts.MCP.Server.HubQuery.ProjectPathHash].ShouldBe(metadata.ProjectPathHash);
+            query[Consts.MCP.Server.HubQuery.ProjectPathHashLegacy].ShouldBe(metadata.ProjectPathHashLegacy);
         }
 
         [Fact]

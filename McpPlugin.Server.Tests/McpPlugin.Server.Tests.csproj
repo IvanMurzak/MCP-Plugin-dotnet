@@ -20,6 +20,10 @@
 
   <ItemGroup>
     <ProjectReference Include="../McpPlugin.Server/McpPlugin.Server.csproj" />
+    <!-- Test-only: the routing tests derive REAL path hashes via ProjectIdentity (McpPlugin client
+         assembly). The server itself never derives hashes — it prefix-matches wire values — so this
+         reference is deliberately NOT on McpPlugin.Server. -->
+    <ProjectReference Include="../McpPlugin/McpPlugin.csproj" />
   </ItemGroup>
 
 </Project>
