@@ -13,7 +13,7 @@
 > shared token. `ConnectionConfig.Token` is replaced by a **credential-provider callback** that
 > presents an auto-refreshed account JWT (machine-store auto-adopt — the zero-button rule) in the
 > `Authorization` header, and the instance-metadata handshake
-> `{instanceId, engine, projectName, projectPathHash, machineName}` rides as non-secret hub query
+> `{instanceId, engine, projectName, projectPathHash, projectPathHashLegacy, machineName}` rides as non-secret hub query
 > parameters (the token never appears in the query). It also fixes the direct-tool REST endpoints
 > (`/api/tools`, `/api/system-tools`): they now **require authorization in `oauth` mode** (they
 > previously gated on the deleted `required` mode and were unintentionally never gated), and stay
@@ -28,6 +28,18 @@
 > is **retained as a deprecated alias** onto this strategy (so an un-migrated config runs token-gated
 > instead of crashing), never a silent downgrade to anonymous. Constant-time compare is a deliberate
 > security upgrade over the b5-era `string.Equals(Ordinal)`.
+
+> **Pin v2 + dual-hash (auth-fixes T3, defect B5).** The routing pin/hash derivation
+> (`ProjectIdentity`) gained a **v2** normalization that converts `\` to `/` before hashing, so a
+> Windows project root reported with backslashes and the same root reported with forward slashes hash
+> IDENTICALLY (previously they diverged — B5, a Windows-only routing failure). The transition is
+> **seamless** and requires no server protocol change: the plugin sends BOTH the v2 hash
+> (`project_path_hash`) AND the v1 hash (`project_path_hash_legacy`) in the handshake, and
+> `PluginInstance.MatchesPin` matches a session pin as a prefix of **either** hash — so an OLD
+> `.mcp.json` (v1 pin) keeps routing to a NEW plugin, and a NEW config (v2 pin) routes too. The v1
+> methods and their golden vectors (`ProjectIdentity.GoldenVectors.json`) are kept untouched for the
+> legacy hash; the v2 vectors live alongside in `ProjectIdentity.GoldenVectors.v2.json` (the shared
+> cross-language artifact the engine-CLI ports reproduce). Configurators now emit the v2 pin.
 
 ## Overview
 

@@ -37,8 +37,16 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>Human-facing project name, e.g. <c>"MyGame"</c>.</summary>
         public string ProjectName { get; }
 
-        /// <summary>Full SHA-256 hex of the normalized project path (see <see cref="ProjectIdentity.DeriveProjectPathHash"/>). Stable across editor restarts; pin-matched by prefix.</summary>
+        /// <summary>Full SHA-256 hex of the <b>v2</b>-normalized project path (see <see cref="ProjectIdentity.DeriveProjectPathHashV2"/>). Stable across editor restarts; pin-matched by prefix.</summary>
         public string ProjectPathHash { get; }
+
+        /// <summary>
+        /// Full SHA-256 hex of the <b>v1 (legacy)</b>-normalized project path (see
+        /// <see cref="ProjectIdentity.DeriveProjectPathHash"/>). Sent alongside the v2 hash so a
+        /// session pinned by an OLD config (v1 pin) still matches this NEW plugin (dual-hash
+        /// transition, auth-fixes T3 / defect B5). Empty when unknown; never matches a pin when empty.
+        /// </summary>
+        public string ProjectPathHashLegacy { get; }
 
         /// <summary>The host machine name.</summary>
         public string MachineName { get; }
@@ -48,7 +56,8 @@ namespace com.IvanMurzak.McpPlugin
             string engine,
             string projectName,
             string projectPathHash,
-            string machineName)
+            string machineName,
+            string? projectPathHashLegacy = null)
         {
             if (string.IsNullOrEmpty(instanceId))
                 throw new ArgumentException("InstanceId must be non-empty.", nameof(instanceId));
@@ -57,14 +66,18 @@ namespace com.IvanMurzak.McpPlugin
             Engine = engine ?? string.Empty;
             ProjectName = projectName ?? string.Empty;
             ProjectPathHash = projectPathHash ?? string.Empty;
+            ProjectPathHashLegacy = projectPathHashLegacy ?? string.Empty;
             MachineName = machineName ?? string.Empty;
         }
 
         /// <summary>
         /// Builds metadata for a project. The <see cref="ProjectPathHash"/> is derived deterministically
-        /// from <paramref name="projectRootPath"/> (same hash whose first 8 hex chars are the routing pin);
-        /// <paramref name="instanceId"/> defaults to a fresh GUID (mint one per editor session and reuse it
-        /// across reconnects); <paramref name="machineName"/> defaults to <see cref="Environment.MachineName"/>.
+        /// from <paramref name="projectRootPath"/> using the <b>v2</b> normalization (same hash whose
+        /// first 8 hex chars are the v2 routing pin); <see cref="ProjectPathHashLegacy"/> carries the
+        /// <b>v1</b> hash of the same path so old (v1-pin) configs still match (dual-hash transition,
+        /// auth-fixes T3 / defect B5). <paramref name="instanceId"/> defaults to a fresh GUID (mint one
+        /// per editor session and reuse it across reconnects); <paramref name="machineName"/> defaults
+        /// to <see cref="Environment.MachineName"/>.
         /// </summary>
         public static ConnectionInstanceMetadata Create(
             string engine,
@@ -80,8 +93,9 @@ namespace com.IvanMurzak.McpPlugin
                 instanceId: string.IsNullOrEmpty(instanceId) ? Guid.NewGuid().ToString() : instanceId!,
                 engine: engine ?? string.Empty,
                 projectName: projectName ?? string.Empty,
-                projectPathHash: ProjectIdentity.DeriveProjectPathHash(projectRootPath),
-                machineName: string.IsNullOrEmpty(machineName) ? SafeMachineName() : machineName!);
+                projectPathHash: ProjectIdentity.DeriveProjectPathHashV2(projectRootPath),
+                machineName: string.IsNullOrEmpty(machineName) ? SafeMachineName() : machineName!,
+                projectPathHashLegacy: ProjectIdentity.DeriveProjectPathHash(projectRootPath));
         }
 
         /// <summary>
@@ -98,6 +112,7 @@ namespace com.IvanMurzak.McpPlugin
             AddIfPresent(query, Consts.MCP.Server.HubQuery.Engine, Engine);
             AddIfPresent(query, Consts.MCP.Server.HubQuery.ProjectName, ProjectName);
             AddIfPresent(query, Consts.MCP.Server.HubQuery.ProjectPathHash, ProjectPathHash);
+            AddIfPresent(query, Consts.MCP.Server.HubQuery.ProjectPathHashLegacy, ProjectPathHashLegacy);
             AddIfPresent(query, Consts.MCP.Server.HubQuery.MachineName, MachineName);
             return query;
         }

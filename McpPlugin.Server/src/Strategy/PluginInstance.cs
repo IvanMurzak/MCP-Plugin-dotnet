@@ -23,8 +23,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         string InstanceId,       // GUID minted per editor session (engine-side)
         string Engine,           // "unity" | "godot" | "unreal"
         string ProjectName,      // e.g. "MyGame"
-        string ProjectPathHash,  // stable id across editor restarts (sha256 hex of normalized path)
-        string MachineName);
+        string ProjectPathHash,  // v2 hash: stable id across editor restarts (sha256 hex of v2-normalized path)
+        string MachineName,
+        // Dual-hash transition (auth-fixes T3 / defect B5): the v1 (legacy) hash of the same path,
+        // sent alongside the v2 hash so a session pinned by an OLD (v1-pin) config still matches. May
+        // be empty for a pre-dual-hash plugin (then only the v2 hash is pin-matchable).
+        string ProjectPathHashLegacy = "");
 
     /// <summary>
     /// A single live engine-plugin connection within one account's bucket (mcp-authorize b3). Identity
@@ -46,8 +50,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         /// <summary>Human-facing project name, e.g. "MyGame".</summary>
         public string ProjectName { get; }
 
-        /// <summary>SHA-256 hex of the normalized project path — stable across editor restarts. Pin-matched by prefix.</summary>
+        /// <summary>SHA-256 hex of the v2-normalized project path — stable across editor restarts. Pin-matched by prefix.</summary>
         public string ProjectPathHash { get; }
+
+        /// <summary>
+        /// SHA-256 hex of the v1 (legacy)-normalized project path — sent alongside <see cref="ProjectPathHash"/>
+        /// so a session pinned by an OLD (v1-pin) config still matches (dual-hash transition, auth-fixes
+        /// T3 / defect B5). Empty for a pre-dual-hash plugin; never matches a pin when empty.
+        /// </summary>
+        public string ProjectPathHashLegacy { get; }
 
         /// <summary>The engine plugin's host machine name.</summary>
         public string MachineName { get; }
@@ -72,6 +83,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             Engine = metadata.Engine ?? string.Empty;
             ProjectName = metadata.ProjectName ?? string.Empty;
             ProjectPathHash = metadata.ProjectPathHash ?? string.Empty;
+            ProjectPathHashLegacy = metadata.ProjectPathHashLegacy ?? string.Empty;
             MachineName = metadata.MachineName ?? string.Empty;
             ConnectedAt = connectedAt;
             _connectionId = connectionId;
@@ -102,15 +114,22 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         /// <summary>
         /// True when a session pin routes to this instance: the pin is the first 8 hex chars of the
         /// project's SHA-256, so it matches when it is a case-insensitive prefix of the full
-        /// <see cref="ProjectPathHash"/>. A dedup key ties an instance to its (path,engine,machine).
+        /// project-path hash. Dual-hash transition (auth-fixes T3 / defect B5): the pin matches when it
+        /// is a prefix of EITHER the v2 <see cref="ProjectPathHash"/> (new configs) OR the v1
+        /// <see cref="ProjectPathHashLegacy"/> (old configs), so an old <c>.mcp.json</c> keeps routing
+        /// to a new plugin. A dedup key ties an instance to its (path,engine,machine).
         /// </summary>
         public bool MatchesPin(string? pin)
         {
             if (string.IsNullOrEmpty(pin))
                 return false;
-            if (string.IsNullOrEmpty(ProjectPathHash))
-                return false;
-            return ProjectPathHash.StartsWith(pin, StringComparison.OrdinalIgnoreCase);
+            if (!string.IsNullOrEmpty(ProjectPathHash) &&
+                ProjectPathHash.StartsWith(pin, StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (!string.IsNullOrEmpty(ProjectPathHashLegacy) &&
+                ProjectPathHashLegacy.StartsWith(pin, StringComparison.OrdinalIgnoreCase))
+                return true;
+            return false;
         }
 
         /// <summary>The dedup key: same physical editor project re-launched (new InstanceId) collides on this.</summary>

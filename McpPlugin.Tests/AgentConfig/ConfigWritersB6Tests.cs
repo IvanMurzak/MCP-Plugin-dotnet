@@ -187,6 +187,33 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             finally { Directory.Delete(root, recursive: true); }
         }
 
+        // ---- auth-fixes T3 / defect B5: the emitted pin is the v2 (separator-normalized) pin. ----
+
+        [Fact]
+        public void ProjectPin_IsV2Pin_NotV1_ForBackslashRoot_AndCarriesIntoConfigs()
+        {
+            // The configurator MUST emit the v2 pin so a Windows backslash root and its forward-slash
+            // form route together (B5). A hardcoded backslash literal keeps this deterministic on Linux
+            // CI, where Path.GetTempPath() is forward-slash (there v1 == v2 and the divergence hides).
+            var backslashRoot = "C:" + ((char)92) + "Games" + ((char)92) + "MyProj";
+            var settings = new AgentConfiguratorSettings(
+                operatingSystem: OperatingSystemKind.Windows,
+                projectRootPath: backslashRoot,
+                executableFullPath: "C:/Tools/server.exe",
+                port: 50000,
+                timeoutMs: 30000,
+                host: "https://ai-game.dev/mcp",
+                connectionMode: ConnectionMode.Cloud);
+
+            var v2Pin = ProjectIdentity.DerivePinV2(backslashRoot);
+            settings.ProjectPin.ShouldBe(v2Pin);
+            settings.ProjectPin.ShouldNotBe(ProjectIdentity.DerivePin(backslashRoot)); // v2 ≠ v1 on Windows
+
+            var c = new ClaudeCodeConfigurator();
+            c.GetHttpConfig(settings).ExpectedFileContent.ShouldContain($"/p/{v2Pin}");
+            c.GetStdioConfig(settings).ExpectedFileContent.ShouldContain($"{Consts.MCP.Server.Args.Project}={v2Pin}");
+        }
+
         // ---- DoD 1: dedup / upsert regression on the new pinned shape. ----
 
         [Fact]

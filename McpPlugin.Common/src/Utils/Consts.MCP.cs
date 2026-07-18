@@ -86,6 +86,12 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string Engine = "engine";
                     public const string ProjectName = "project_name";
                     public const string ProjectPathHash = "project_path_hash";
+
+                    // Dual-hash transition (auth-fixes T3 / defect B5). The plugin sends BOTH the v2
+                    // hash (above, separator-normalized) AND this v1 legacy hash so a session pinned by
+                    // an OLD config (v1 pin) still matches a NEW plugin. The server pin-matches either.
+                    public const string ProjectPathHashLegacy = "project_path_hash_legacy";
+
                     public const string MachineName = "machine_name";
                 }
 
