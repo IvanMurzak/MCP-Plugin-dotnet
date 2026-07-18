@@ -123,13 +123,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         {
             if (string.IsNullOrEmpty(pin))
                 return false;
-            if (!string.IsNullOrEmpty(ProjectPathHash) &&
-                ProjectPathHash.StartsWith(pin, StringComparison.OrdinalIgnoreCase))
-                return true;
-            if (!string.IsNullOrEmpty(ProjectPathHashLegacy) &&
-                ProjectPathHashLegacy.StartsWith(pin, StringComparison.OrdinalIgnoreCase))
-                return true;
-            return false;
+            string prefix = pin; // narrowed to non-null/non-empty by the guard above
+            // The pin matches when it prefixes EITHER hash (v2 for new configs, v1 legacy for old ones).
+            return IsPrefixedBy(ProjectPathHash) || IsPrefixedBy(ProjectPathHashLegacy);
+
+            bool IsPrefixedBy(string hash) =>
+                !string.IsNullOrEmpty(hash) && hash.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>The dedup key: same physical editor project re-launched (new InstanceId) collides on this.</summary>
