@@ -26,6 +26,9 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         // OAuth resource-server configuration (mcp-authorize b2)
         string? AuthIssuer { get; }
         string? PublicUrl { get; }
+
+        // Optional server-side metadata / fetch-base override (auth-fixes L2a / Gap B). Null unless set.
+        string? AuthMetadataUrl { get; }
         string? Bind { get; }
 
         // Session project pin for stdio account routing (mcp-authorize b3, design 04 D14)
@@ -57,6 +60,17 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         // OAuth resource-server configuration (mcp-authorize b2)
         public string? AuthIssuer { get; private set; }
         public string? PublicUrl { get; private set; }
+
+        /// <summary>
+        /// Optional server-side metadata / fetch-base override (auth-fixes L2a / Gap B). When set, the
+        /// OAuth resource server fetches JWKS / OAuth discovery / introspection / enrollment from this
+        /// base instead of <see cref="AuthIssuer"/>; the token <c>iss</c> claim check and the RFC 9728
+        /// PRM <c>authorization_servers</c> stay on <see cref="AuthIssuer"/> (client-facing). Null
+        /// (default, incl. all of prod) → behavior is byte-identical to deriving from the issuer. Set
+        /// via <c>--auth-metadata-url</c> / <c>MCP_AUTH_METADATA_URL</c> for a fully-local OAuth
+        /// deployment where the client-facing issuer host is unreachable from inside the RS container.
+        /// </summary>
+        public string? AuthMetadataUrl { get; private set; }
 
         /// <summary>
         /// Bind address for the streamableHttp Kestrel listener. <c>null</c>/empty defaults to
@@ -155,6 +169,10 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var envPublicUrl = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.PublicUrl);
             if (envPublicUrl != null)
                 PublicUrl = envPublicUrl;
+
+            var envAuthMetadataUrl = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.AuthMetadataUrl);
+            if (envAuthMetadataUrl != null)
+                AuthMetadataUrl = envAuthMetadataUrl;
 
             var envBind = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.Bind);
             if (envBind != null)
@@ -256,6 +274,10 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var argPublicUrl = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.PublicUrl.TrimStart('-'));
             if (argPublicUrl != null)
                 PublicUrl = argPublicUrl;
+
+            var argAuthMetadataUrl = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.AuthMetadataUrl.TrimStart('-'));
+            if (argAuthMetadataUrl != null)
+                AuthMetadataUrl = argAuthMetadataUrl;
 
             var argBind = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.Bind.TrimStart('-'));
             if (argBind != null)

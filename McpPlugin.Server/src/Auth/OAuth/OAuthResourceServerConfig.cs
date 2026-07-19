@@ -16,8 +16,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
     /// <summary>
     /// Resolved OAuth resource-server configuration (mcp-authorize b2), built from
     /// <c>--auth-issuer</c> (the AS) and <c>--public-url</c> (this RS's canonical resource id / the
-    /// value a token's <c>aud</c> must contain). Endpoints are derived from the issuer per the
-    /// well-known conventions (RFC 8414 JWKS, RFC 7662 introspection).
+    /// value a token's <c>aud</c> must contain). Server-side fetch endpoints are derived from the
+    /// well-known conventions (RFC 8414 JWKS, RFC 7662 introspection) over a fetch base that defaults
+    /// to the issuer but can be repointed via an optional <c>--auth-metadata-url</c> override
+    /// (auth-fixes L2a / Gap B) — see <see cref="MetadataUrl"/>. The client-facing surface (the token
+    /// <c>iss</c> check and the RFC 9728 PRM <c>authorization_servers</c>) always stays on
+    /// <see cref="Issuer"/>.
     /// </summary>
     public sealed class OAuthResourceServerConfig
     {
@@ -35,13 +39,27 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
 
         public TimeSpan ClockSkew { get; }
 
-        /// <summary>The AS JWKS document URL (<c>{issuer}/.well-known/jwks.json</c>).</summary>
+        /// <summary>
+        /// The server-side metadata / fetch base URL — the base from which JWKS, introspection, and
+        /// enrollment endpoints are derived. Defaults to <see cref="Issuer"/>; an explicit
+        /// <c>--auth-metadata-url</c> / <c>MCP_AUTH_METADATA_URL</c> override (auth-fixes L2a / Gap B)
+        /// repoints ONLY these server-side fetches, leaving the client-facing <c>iss</c> claim and PRM
+        /// <c>authorization_servers</c> on <see cref="Issuer"/>. Used by a fully-local OAuth deployment
+        /// where the client resolves the AS at a host address (e.g. <c>http://localhost</c>) that, from
+        /// inside the RS container, would point back at the container itself.
+        /// </summary>
+        public string MetadataUrl { get; }
+
+        /// <summary>The AS JWKS document URL (<c>{metadata-base}/.well-known/jwks.json</c>).</summary>
         public string JwksUri { get; }
 
-        /// <summary>The AS token-introspection endpoint (<c>{issuer}/oauth/introspect</c>).</summary>
+        /// <summary>The AS token-introspection endpoint (<c>{metadata-base}/oauth/introspect</c>).</summary>
         public string IntrospectionEndpoint { get; }
 
-        public OAuthResourceServerConfig(string issuer, string resourceUrl, TimeSpan? clockSkew = null)
+        /// <summary>The AS account-enrollment endpoint (<c>{metadata-base}/api/auth/enroll/create</c>).</summary>
+        public string EnrollmentEndpoint { get; }
+
+        public OAuthResourceServerConfig(string issuer, string resourceUrl, TimeSpan? clockSkew = null, string? metadataUrl = null)
         {
             if (string.IsNullOrWhiteSpace(issuer))
                 throw new ArgumentException("OAuth mode requires --auth-issuer (the authorization server URL).", nameof(issuer));
@@ -51,8 +69,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
             Issuer = issuer.Trim().TrimEnd('/');
             ResourceUrl = resourceUrl.Trim();
             ClockSkew = clockSkew ?? DefaultClockSkew;
-            JwksUri = $"{Issuer}/.well-known/jwks.json";
-            IntrospectionEndpoint = $"{Issuer}/oauth/introspect";
+
+            // Server-side fetch base (auth-fixes L2a / Gap B). An empty/whitespace override falls back
+            // to Issuer, so all of prod (which never sets it) is byte-identical to the pre-override
+            // behavior. When set, ONLY the server-side fetch URLs below move to the override base —
+            // Issuer and ProtectedResourceMetadataUrl()/PRM stay on the issuer (client-facing).
+            MetadataUrl = string.IsNullOrWhiteSpace(metadataUrl)
+                ? Issuer
+                : metadataUrl!.Trim().TrimEnd('/');
+            JwksUri = $"{MetadataUrl}/.well-known/jwks.json";
+            IntrospectionEndpoint = $"{MetadataUrl}/oauth/introspect";
+            EnrollmentEndpoint = $"{MetadataUrl}/api/auth/enroll/create";
         }
 
         /// <summary>

@@ -109,7 +109,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 mcpServerBuilder.Services.AddHttpClient();
 
-                var oauthConfig = new OAuthResourceServerConfig(dataArguments.AuthIssuer!, dataArguments.PublicUrl!);
+                var oauthConfig = new OAuthResourceServerConfig(dataArguments.AuthIssuer!, dataArguments.PublicUrl!, metadataUrl: dataArguments.AuthMetadataUrl);
                 mcpServerBuilder.Services.AddSingleton(oauthConfig);
                 mcpServerBuilder.Services.AddSingleton<IJwksDiskCache>(_ => new FileJwksDiskCache());
 
@@ -162,7 +162,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                 {
                     var httpFactory = sp.GetRequiredService<IHttpClientFactory>();
                     var config = sp.GetRequiredService<OAuthResourceServerConfig>();
-                    var enrollEndpoint = $"{config.Issuer.TrimEnd('/')}/api/auth/enroll/create";
+                    // Enroll (like JWKS + introspection) uses the server-side fetch base, which honors
+                    // the optional --auth-metadata-url override; unset → derived from Issuer (auth-fixes L2a).
+                    var enrollEndpoint = config.EnrollmentEndpoint;
                     EnrollCreatePost post = async (bearer, engine, publicUrl, ct) =>
                     {
                         var client = httpFactory.CreateClient();
