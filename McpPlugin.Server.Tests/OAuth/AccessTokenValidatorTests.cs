@@ -44,6 +44,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.OAuth
         static Task<OAuthValidationResult> Validate(AccessTokenValidator v, string token)
             => v.ValidateAsync(token, CancellationToken.None);
 
+        static Task<OAuthValidationResult> Validate(AccessTokenValidator v, string token, TokenValidationPlane plane)
+            => v.ValidateAsync(token, plane, CancellationToken.None);
+
         [Fact]
         public async Task ValidEs256Token_Succeeds()
         {
@@ -238,6 +241,131 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.OAuth
 
             result.Succeeded.ShouldBeFalse();
             result.FailureReason!.ShouldContain("exp");
+        }
+
+        // ── Plane separation (auth-fixes B11) ───────────────────────────────────────────────────────
+        // The plugin hub-token carries aud=urn:agd:hub. The agent plane (strict, canonical resource)
+        // rejects it, so before this fix McpServerHub never registered the instance → agent tools/list
+        // silently degraded to the 3 native tools. The plugin plane allow-lists urn:agd:hub while
+        // keeping the agent plane strict — plane separation must hold in BOTH directions.
+
+        const string PluginAud = AccessTokenValidator.PluginAudience; // "urn:agd:hub"
+
+        static string PluginToken(ECDsa key, string? aud = PluginAud, string scope = "mcp:plugin", string sub = "user-123")
+            => TestJwt.SignEs256(key, Kid, TestJwt.Claims(Issuer, aud ?? PluginAud, Now.AddHours(1), sub: sub, scope: scope));
+
+        [Fact]
+        public async Task PluginHubToken_OnPluginPlane_Registers()
+        {
+            // (a) k1 repro control: a real plugin hub-token (aud=urn:agd:hub, scope=mcp:plugin) is now
+            // ACCEPTED on the plugin plane, so McpServerHub can register the instance.
+            using var key = TestJwt.CreateKey();
+            var token = PluginToken(key);
+
+            var result = await Validate(Validator(key), token, TokenValidationPlane.Plugin);
+
+            result.Succeeded.ShouldBeTrue(result.FailureReason);
+            result.Subject.ShouldBe("user-123");
+            result.Scope.ShouldBe("mcp:plugin");
+        }
+
+        [Fact]
+        public async Task PluginHubToken_OnAgentPlane_Rejected()
+        {
+            // (b) A plugin hub-token (aud=urn:agd:hub) is STILL rejected for agent-plane operations:
+            // the agent plane only accepts the canonical resource id.
+            using var key = TestJwt.CreateKey();
+            var token = PluginToken(key);
+
+            var result = await Validate(Validator(key), token, TokenValidationPlane.Agent);
+
+            result.Succeeded.ShouldBeFalse();
+            result.FailureReason!.ShouldContain("audience");
+        }
+
+        [Fact]
+        public async Task PluginHubToken_OnDefaultOverload_IsAgentPlane_Rejected()
+        {
+            // The parameterless overload is the agent plane — a plugin audience is rejected, proving the
+            // default path never silently accepts urn:agd:hub.
+            using var key = TestJwt.CreateKey();
+            var token = PluginToken(key);
+
+            var result = await Validate(Validator(key), token); // agent plane (default)
+
+            result.Succeeded.ShouldBeFalse();
+            result.FailureReason!.ShouldContain("audience");
+        }
+
+        [Fact]
+        public async Task AgentToken_OnPluginPlane_CannotRegister()
+        {
+            // Plane separation, the vice-versa direction (k1 §7): an agent token (aud=canonical resource,
+            // scope=mcp:agent) must NEVER register as a plugin instance. The canonical resource is in the
+            // plugin allow-list, so ONLY the mcp:plugin scope guard keeps this out.
+            using var key = TestJwt.CreateKey();
+            var token = TestJwt.SignEs256(key, Kid, TestJwt.Claims(Issuer, Resource, Now.AddHours(1), scope: "mcp:agent"));
+
+            var result = await Validate(Validator(key), token, TokenValidationPlane.Plugin);
+
+            result.Succeeded.ShouldBeFalse();
+            result.FailureReason!.ShouldContain("audience");
+        }
+
+        [Fact]
+        public async Task PluginToken_AudiencedToCanonicalResource_OnPluginPlane_Registers()
+        {
+            // A plugin-scoped token audienced to the canonical resource (the other allow-list member) is
+            // accepted on the plugin plane — the mcp:plugin scope distinguishes it from an agent token.
+            using var key = TestJwt.CreateKey();
+            var token = TestJwt.SignEs256(key, Kid, TestJwt.Claims(Issuer, Resource, Now.AddHours(1), scope: "mcp:plugin"));
+
+            var result = await Validate(Validator(key), token, TokenValidationPlane.Plugin);
+
+            result.Succeeded.ShouldBeTrue(result.FailureReason);
+        }
+
+        [Fact]
+        public async Task AgentToken_OnAgentPlane_StillSucceeds()
+        {
+            // Regression guard: the agent plane's behavior is entirely unchanged by the fix.
+            using var key = TestJwt.CreateKey();
+            var token = TestJwt.SignEs256(key, Kid, TestJwt.Claims(Issuer, Resource, Now.AddHours(1), scope: "mcp:agent"));
+
+            var result = await Validate(Validator(key), token, TokenValidationPlane.Agent);
+
+            result.Succeeded.ShouldBeTrue(result.FailureReason);
+            result.Scope.ShouldBe("mcp:agent");
+        }
+
+        [Theory]
+        [InlineData(TokenValidationPlane.Agent)]
+        [InlineData(TokenValidationPlane.Plugin)]
+        public async Task SpoofedAudience_RejectedOnEveryPlane(TokenValidationPlane plane)
+        {
+            // (c) A spoofed/unknown audience is rejected on BOTH planes — the plugin allow-list is a
+            // strict set, never a lenient bypass. The scope is plugin so only the aud can cause the fail.
+            using var key = TestJwt.CreateKey();
+            var token = TestJwt.SignEs256(key, Kid, TestJwt.Claims(Issuer, "https://evil.example/mcp", Now.AddHours(1), scope: "mcp:plugin"));
+
+            var result = await Validate(Validator(key), token, plane);
+
+            result.Succeeded.ShouldBeFalse();
+            result.FailureReason!.ShouldContain("audience");
+        }
+
+        [Fact]
+        public async Task PluginAudienceInArray_OnPluginPlane_Registers()
+        {
+            // Array-aud plugin token: the plugin audience anywhere in the aud array is honored.
+            using var key = TestJwt.CreateKey();
+            var claims = TestJwt.Claims(Issuer, PluginAud, Now.AddHours(1), scope: "mcp:plugin");
+            claims["aud"] = new[] { "https://other.example", PluginAud };
+            var token = TestJwt.SignEs256(key, Kid, claims);
+
+            var result = await Validate(Validator(key), token, TokenValidationPlane.Plugin);
+
+            result.Succeeded.ShouldBeTrue(result.FailureReason);
         }
 
         // ── Opaque token path (introspection) ─────────────────────────────────────────────────────

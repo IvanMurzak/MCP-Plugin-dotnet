@@ -166,6 +166,85 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             Text(response).ShouldNotContain("inst-X");
         }
 
+        // ─────────────────────────── Routing diagnostics (auth-fixes T6 / B6 / B7) ───────────────────────────
+
+        [Fact]
+        public async Task List_ShowsPerInstancePin_AndProjectBasename()
+        {
+            var (tools, registry, _, _, _) = NewTools();
+            registry.Register(Account, Meta("inst-A", project: "GameA"), "conn-A");
+
+            var text = Text(await tools.HandleAsync(ServerNativeTools.ListInstances, NoArgs, Ctx()));
+
+            // The instance line now carries the 8-hex routing pin and the project basename (B7).
+            text.ShouldContain($"pin {PinA}");
+            text.ShouldContain("unity:GameA");
+        }
+
+        [Fact]
+        public async Task List_PinnedSession_WithMatch_ShowsMatchedInstance()
+        {
+            var (tools, registry, _, _, _) = NewTools();
+            registry.Register(Account, Meta("inst-A", pathHash: HashA), "conn-A");
+
+            var text = Text(await tools.HandleAsync(ServerNativeTools.ListInstances, NoArgs, Ctx(pin: PinA)));
+
+            text.ShouldContain($"session pin: {PinA}");
+            text.ShouldContain("matched: inst-A");
+        }
+
+        [Fact]
+        public async Task List_PinnedSession_NoMatch_ShowsNoneWithActionableHint()
+        {
+            var (tools, registry, _, _, _) = NewTools();
+            // A live instance exists, but not for the pinned project (B6 NoMatchPinned diagnosis).
+            registry.Register(Account, Meta("inst-B", project: "Beta", pathHash: HashB, machine: "PC-2"), "conn-B");
+
+            var text = Text(await tools.HandleAsync(ServerNativeTools.ListInstances, NoArgs, Ctx(pin: PinA)));
+
+            text.ShouldContain($"session pin: {PinA}");
+            text.ShouldContain("matched: none");
+            text.ShouldContain("select_engine_instance");
+        }
+
+        [Fact]
+        public async Task List_UnpinnedSession_ReportsNoPin()
+        {
+            var (tools, registry, _, _, _) = NewTools();
+            registry.Register(Account, Meta("inst-A"), "conn-A");
+
+            var text = Text(await tools.HandleAsync(ServerNativeTools.ListInstances, NoArgs, Ctx(pin: null)));
+
+            text.ShouldContain("session pin: none");
+        }
+
+        [Fact]
+        public async Task List_EmptyAccount_PinnedSession_ShowsNoneWithEnrollHint()
+        {
+            var (tools, _, _, _, _) = NewTools();
+
+            var text = Text(await tools.HandleAsync(ServerNativeTools.ListInstances, NoArgs, Ctx(pin: PinA)));
+
+            text.ShouldContain($"session pin: {PinA}");
+            text.ShouldContain("matched: none");
+            text.ShouldContain("enroll_engine_plugin");
+        }
+
+        [Fact]
+        public async Task List_ProjectDiagnostic_ShowsBasenameOnly_NeverFullPath()
+        {
+            var (tools, registry, _, _, _) = NewTools();
+            // A plugin self-reports a path-like project name; diagnostics must leak only the basename
+            // (06 threat table — never a full filesystem path).
+            registry.Register(Account, Meta("inst-A", project: @"C:\Users\secret\Projects\MyGame"), "conn-A");
+
+            var text = Text(await tools.HandleAsync(ServerNativeTools.ListInstances, NoArgs, Ctx()));
+
+            text.ShouldContain("unity:MyGame");
+            text.ShouldNotContain("secret");
+            text.ShouldNotContain(@"C:\Users");
+        }
+
         // ─────────────────────────────── select_engine_instance ───────────────────────────────
 
         [Fact]

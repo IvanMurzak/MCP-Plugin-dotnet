@@ -35,6 +35,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             public FakeValidator(OAuthValidationResult result) => _result = result;
             public Task<OAuthValidationResult> ValidateAsync(string token, CancellationToken cancellationToken)
                 => Task.FromResult(_result);
+            public Task<OAuthValidationResult> ValidateAsync(string token, TokenValidationPlane plane, CancellationToken cancellationToken)
+                => Task.FromResult(_result);
         }
 
         static readonly OAuthResourceServerConfig Config = new OAuthResourceServerConfig("https://as.example", "http://localhost:23471");

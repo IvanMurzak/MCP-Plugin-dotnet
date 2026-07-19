@@ -26,8 +26,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
     ///         defeats the <c>alg:none</c> and HS256-with-the-public-key key-confusion attacks:
     ///         no symmetric or "none" path is ever taken and no key material is loaded before the
     ///         algorithm is confirmed); signature verified with the JWKS P-256 key resolved by
-    ///         <c>kid</c>; strict <c>iss</c>, strict per-resource <c>aud</c> (loopback-aliased),
-    ///         and <c>exp</c>/<c>nbf</c> with ±5 min skew.</item>
+    ///         <c>kid</c>; strict <c>iss</c>, plane-aware <c>aud</c> (loopback-aliased) — the agent plane
+    ///         requires the canonical resource id, the plugin plane additionally allow-lists the plugin
+    ///         audience <c>urn:agd:hub</c> (auth-fixes B11) — and <c>exp</c>/<c>nbf</c> with ±5 min skew.</item>
     ///   <item><b>Opaque tokens</b> — routed to introspection (fail-closed).</item>
     /// </list>
     /// Every failure path returns <see cref="OAuthValidationResult.Fail"/>; nothing throws.
@@ -36,6 +37,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
     {
         private const string RequiredAlgorithm = "ES256";
         private const int P256SignatureLength = 64; // r(32) || s(32), IEEE P1363
+
+        /// <summary>
+        /// The plugin-plane audience (auth-fixes B11). Plugin hub-tokens are minted with
+        /// <c>aud=urn:agd:hub</c> (a plane marker, distinct from the RS resource id). Accepted ONLY on
+        /// the <see cref="TokenValidationPlane.Plugin"/> plane, never on the agent plane. Compared by
+        /// exact ordinal value — it is a URN, not a URL, so it is NOT run through URL normalization.
+        /// </summary>
+        public const string PluginAudience = "urn:agd:hub";
+
+        /// <summary>The OAuth scope that marks a plugin-plane token (kept in lockstep with <c>ConnectionIdentity.ScopePlugin</c>).</summary>
+        private const string PluginScope = "mcp:plugin";
 
         private readonly OAuthResourceServerConfig _config;
         private readonly IJwksKeyProvider _jwks;
@@ -58,12 +70,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
         }
 
         public Task<OAuthValidationResult> ValidateAsync(string token, CancellationToken cancellationToken)
+            => ValidateAsync(token, TokenValidationPlane.Agent, cancellationToken);
+
+        public Task<OAuthValidationResult> ValidateAsync(string token, TokenValidationPlane plane, CancellationToken cancellationToken)
         {
             if (string.IsNullOrWhiteSpace(token))
                 return Task.FromResult(OAuthValidationResult.Fail("unknown", "empty token"));
 
             return LooksLikeJwt(token, out var header, out var payload, out var signature)
-                ? ValidateJwtAsync(header, payload, signature, cancellationToken)
+                ? ValidateJwtAsync(header, payload, signature, plane, cancellationToken)
                 : ValidateOpaqueAsync(token, cancellationToken);
         }
 
@@ -95,7 +110,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
             return true;
         }
 
-        private async Task<OAuthValidationResult> ValidateJwtAsync(string headerSeg, string payloadSeg, string signatureSeg, CancellationToken cancellationToken)
+        private async Task<OAuthValidationResult> ValidateJwtAsync(string headerSeg, string payloadSeg, string signatureSeg, TokenValidationPlane plane, CancellationToken cancellationToken)
         {
             // ---- Header: enforce ES256 BEFORE touching any key material (alg-confusion defense) --
             if (!Base64Url.TryDecode(headerSeg, out var headerBytes))
@@ -157,7 +172,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
                 if (!string.Equals(iss, _config.Issuer, StringComparison.Ordinal))
                     return OAuthValidationResult.Fail("jwt", "issuer mismatch");
 
-                if (!AudienceContainsResource(claims))
+                if (!AudienceAcceptedForPlane(claims, plane))
                     return OAuthValidationResult.Fail("jwt", "audience mismatch");
 
                 var now = _now();
@@ -193,24 +208,72 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
             return OAuthValidationResult.Success("opaque", result.Subject, result.Scope);
         }
 
-        private bool AudienceContainsResource(JsonElement claims)
+        /// <summary>
+        /// Plane-aware audience acceptance (auth-fixes B11). Both planes fail-closed when <c>aud</c> is
+        /// absent or matches nothing.
+        /// <list type="bullet">
+        ///   <item><b>Agent plane:</b> <c>aud</c> must be the canonical RS <see cref="OAuthResourceServerConfig.ResourceUrl"/>
+        ///         (loopback-normalized). The plugin audience <c>urn:agd:hub</c> is NOT accepted.</item>
+        ///   <item><b>Plugin plane:</b> a strict allow-list — <c>aud</c> is accepted when it is the plugin
+        ///         audience <c>urn:agd:hub</c> (exact), OR the canonical RS resource AND the token also
+        ///         carries the <c>mcp:plugin</c> scope. The scope guard keeps an agent token
+        ///         (<c>aud=</c>canonical, <c>scope=mcp:agent</c>) from ever registering as a plugin.</item>
+        /// </list>
+        /// </summary>
+        private bool AudienceAcceptedForPlane(JsonElement claims, TokenValidationPlane plane)
         {
             if (!claims.TryGetProperty("aud", out var aud))
                 return false;
 
+            var hasPluginScope = plane == TokenValidationPlane.Plugin && ScopeContains(claims, PluginScope);
+
             if (aud.ValueKind == JsonValueKind.String)
-                return UrlNormalization.ResourcesMatch(aud.GetString(), _config.ResourceUrl);
+                return AudienceEntryAccepted(aud.GetString(), plane, hasPluginScope);
 
             if (aud.ValueKind == JsonValueKind.Array)
             {
                 foreach (var entry in aud.EnumerateArray())
                 {
                     if (entry.ValueKind == JsonValueKind.String
-                        && UrlNormalization.ResourcesMatch(entry.GetString(), _config.ResourceUrl))
+                        && AudienceEntryAccepted(entry.GetString(), plane, hasPluginScope))
                         return true;
                 }
             }
 
+            return false;
+        }
+
+        private bool AudienceEntryAccepted(string? audEntry, TokenValidationPlane plane, bool hasPluginScope)
+        {
+            if (string.IsNullOrEmpty(audEntry))
+                return false;
+
+            // The plugin-plane audience (urn:agd:hub) is ONLY ever accepted on the plugin plane — this is
+            // the whole plane separation. It is a URN (no authority), so it is compared by exact ordinal
+            // value, never routed through URL normalization.
+            if (string.Equals(audEntry, PluginAudience, StringComparison.Ordinal))
+                return plane == TokenValidationPlane.Plugin;
+
+            // The canonical RS resource id (loopback-normalized). Accepted on the agent plane always; on
+            // the plugin plane only when the token is genuinely plugin-scoped (mcp:plugin), so an
+            // agent-scoped token audienced to the canonical resource can never register as a plugin.
+            if (UrlNormalization.ResourcesMatch(audEntry, _config.ResourceUrl))
+                return plane == TokenValidationPlane.Agent || hasPluginScope;
+
+            return false;
+        }
+
+        /// <summary>True when the space-delimited <c>scope</c> claim contains <paramref name="scope"/> as a whole token.</summary>
+        private static bool ScopeContains(JsonElement claims, string scope)
+        {
+            var raw = GetString(claims, "scope");
+            if (string.IsNullOrEmpty(raw))
+                return false;
+            foreach (var s in raw!.Split(' '))
+            {
+                if (string.Equals(s, scope, StringComparison.Ordinal))
+                    return true;
+            }
             return false;
         }
 

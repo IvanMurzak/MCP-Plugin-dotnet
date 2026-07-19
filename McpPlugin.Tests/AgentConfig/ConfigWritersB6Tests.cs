@@ -169,6 +169,37 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         }
 
         [Fact]
+        public void ClaudeCode_ManualHttpCommand_UsesTheSamePinnedUrl_AsConfigure()
+        {
+            // B8 (auth-fixes): the displayed "manual" `claude mcp add` command must use the SAME pinned
+            // URL that Configure writes into .mcp.json (settings.PinnedHttpUrl, i.e. .../mcp/p/<pin>),
+            // not the bare unpinned host — an unpinned URL only routes when the account has one instance.
+            var root = NewTempDir();
+            try
+            {
+                var c = new ClaudeCodeConfigurator();
+                var settings = Settings(root);
+                var pinnedUrl = settings.PinnedHttpUrl;
+
+                // What Configure writes.
+                c.GetHttpConfig(settings).ExpectedFileContent.ShouldContain($"\"url\": \"{pinnedUrl}\"");
+
+                // The manual command shown in the UI.
+                var manualCommand = c.Describe(settings, TransportMethod.streamableHttp).Sections
+                    .SelectMany(s => s.Items)
+                    .Select(i => i.Text ?? string.Empty)
+                    .First(t => t.Contains("claude mcp add"));
+
+                manualCommand.ShouldContain(pinnedUrl);
+                manualCommand.ShouldContain("/p/" + settings.ProjectPin);
+                // Never the bare unpinned host (which lacks the /p/<pin> routing segment).
+                manualCommand.ShouldNotContain($"http {AiAgentConfig.DefaultMcpServerName} {settings.Host} ");
+                manualCommand.Trim().ShouldNotEndWith(settings.Host);
+            }
+            finally { Directory.Delete(root, recursive: true); }
+        }
+
+        [Fact]
         public void GlobalConfigurators_AreExplicitlyProjectPinned()
         {
             // Design 06 D14: the three inherently-global configurators still carry the project pin,

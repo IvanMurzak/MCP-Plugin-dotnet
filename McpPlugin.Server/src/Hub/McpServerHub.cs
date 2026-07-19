@@ -109,7 +109,12 @@ namespace com.IvanMurzak.McpPlugin.Server
             OAuthValidationResult validation;
             try
             {
-                validation = await _oauthValidator.ValidateAsync(token!, Context.ConnectionAborted);
+                // Plugin-plane validation (auth-fixes B11): the plugin hub-token carries
+                // aud=urn:agd:hub, which the strict agent-plane aud check rejects. The plugin plane
+                // allow-lists that audience while keeping the agent plane strict on the RS resource, so
+                // an unregistered-bucket → silent "3 tools" degrade no longer happens. Plane separation
+                // is enforced in the validator: an agent token can never register as a plugin instance.
+                validation = await _oauthValidator.ValidateAsync(token!, TokenValidationPlane.Plugin, Context.ConnectionAborted);
             }
             catch (Exception ex)
             {
