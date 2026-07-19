@@ -34,6 +34,51 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.OAuth
         }
 
         [Fact]
+        public void Config_MetadataUrlUnset_FetchEndpointsDeriveFromIssuer()
+        {
+            // auth-fixes L2a / Gap B regression guard: with NO --auth-metadata-url override (the
+            // default, incl. all of prod), the server-side fetch base and every fetch URL derived
+            // from it must stay byte-identical to deriving straight from the issuer.
+            var config = new OAuthResourceServerConfig("https://ai-game.dev/", "http://localhost:23471");
+
+            config.MetadataUrl.ShouldBe("https://ai-game.dev");
+            config.MetadataUrl.ShouldBe(config.Issuer);
+            config.JwksUri.ShouldBe("https://ai-game.dev/.well-known/jwks.json");
+            config.IntrospectionEndpoint.ShouldBe("https://ai-game.dev/oauth/introspect");
+            config.EnrollmentEndpoint.ShouldBe("https://ai-game.dev/api/auth/enroll/create");
+
+            // A whitespace-only override is treated as unset (falls back to the issuer).
+            var blankOverride = new OAuthResourceServerConfig("https://ai-game.dev", "http://localhost:23471", metadataUrl: "   ");
+            blankOverride.MetadataUrl.ShouldBe("https://ai-game.dev");
+            blankOverride.JwksUri.ShouldBe("https://ai-game.dev/.well-known/jwks.json");
+        }
+
+        [Fact]
+        public void Config_MetadataUrlSet_SplitsFetchBaseFromClientFacingIssuer()
+        {
+            // auth-fixes L2a / Gap B: when --auth-metadata-url is set, ONLY the server-side fetch
+            // URLs (JWKS / introspection / enrollment) move to the override base. The client-facing
+            // iss claim source (Issuer) and the RFC 9728 PRM authorization_servers must NOT move —
+            // that split is the whole point of the override (client resolves the AS on the host,
+            // the RS container fetches from an in-container/base address).
+            var config = new OAuthResourceServerConfig(
+                issuer: "https://ai-game.dev",
+                resourceUrl: "http://localhost:23471",
+                metadataUrl: "http://mcp-server:8080/");
+
+            // Server-side fetches move to the override base (trailing slash normalized away).
+            config.MetadataUrl.ShouldBe("http://mcp-server:8080");
+            config.JwksUri.ShouldBe("http://mcp-server:8080/.well-known/jwks.json");
+            config.IntrospectionEndpoint.ShouldBe("http://mcp-server:8080/oauth/introspect");
+            config.EnrollmentEndpoint.ShouldBe("http://mcp-server:8080/api/auth/enroll/create");
+
+            // Client-facing surface stays on the issuer.
+            config.Issuer.ShouldBe("https://ai-game.dev");
+            var prm = OAuthProtectedResourceMetadata.Build(config);
+            ((string[])prm["authorization_servers"]).ShouldBe(new[] { "https://ai-game.dev" });
+        }
+
+        [Fact]
         public void Config_RejectsMissingIssuerOrResource()
         {
             Should.Throw<ArgumentException>(() => new OAuthResourceServerConfig("", "http://localhost:1"));

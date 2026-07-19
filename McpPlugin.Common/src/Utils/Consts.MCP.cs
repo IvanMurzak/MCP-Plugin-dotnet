@@ -66,6 +66,13 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string Auth = "auth";
                     public const string AuthIssuer = "auth-issuer";
                     public const string PublicUrl = "public-url";
+
+                    // Optional server-side metadata / fetch-base override (auth-fixes L2a / Gap B).
+                    // When set, the resource server fetches JWKS / introspection /
+                    // enrollment from this base instead of <c>auth-issuer</c>; the token <c>iss</c>
+                    // check and the RFC 9728 PRM <c>authorization_servers</c> stay on <c>auth-issuer</c>.
+                    // Unset (default, incl. all of prod) → byte-identical to deriving from the issuer.
+                    public const string AuthMetadataUrl = "auth-metadata-url";
                     public const string Bind = "bind";
 
                     // Project pin (mcp-authorize b3, design 04 D14). The stdio spawn arg carrying the
@@ -109,6 +116,10 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string Auth = "MCP_AUTH";
                     public const string AuthIssuer = "MCP_AUTH_ISSUER";
                     public const string PublicUrl = "MCP_PUBLIC_URL";
+
+                    // Optional server-side metadata / fetch-base override (auth-fixes L2a / Gap B).
+                    // See <see cref="Args.AuthMetadataUrl"/> for semantics.
+                    public const string AuthMetadataUrl = "MCP_AUTH_METADATA_URL";
                     public const string Bind = "MCP_BIND";
                 }
 

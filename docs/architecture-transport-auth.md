@@ -80,6 +80,15 @@ All combinations are supported without conditional branching in the server code.
 `token=<secret>` / `MCP_PLUGIN_TOKEN`. (The legacy `authorization=` / `MCP_AUTHORIZATION=` argument
 names still parse; the deprecated `required` value is aliased onto `token` — see the g6 note above.)
 
+**Optional server-side metadata / fetch-base override** (`auth-metadata-url=<url>` /
+`MCP_AUTH_METADATA_URL`): in `oauth` mode the RS normally fetches JWKS, OAuth introspection, and
+account enrollment from `auth-issuer`. When this override is set, those **server-side fetches** use
+`<url>` as their base instead; the token `iss` claim check and the RFC 9728 PRM
+`authorization_servers` (both client-facing) stay on `auth-issuer`. Unset (the default, incl. all of
+prod) → behavior is byte-identical to deriving every fetch URL from the issuer. Use it for a
+fully-local OAuth deployment where the client resolves the AS at a host address (e.g.
+`http://localhost`) that, inside the RS container, would point back at the container itself.
+
 ### Credentials — validated, never minted
 
 In `oauth` mode the RS validates presented credentials against the external authorization server
