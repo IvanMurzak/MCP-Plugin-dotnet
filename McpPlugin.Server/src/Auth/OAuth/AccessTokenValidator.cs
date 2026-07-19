@@ -46,9 +46,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
         /// </summary>
         public const string PluginAudience = "urn:agd:hub";
 
-        /// <summary>The OAuth scope that marks a plugin-plane token (kept in lockstep with <c>ConnectionIdentity.ScopePlugin</c>).</summary>
-        private const string PluginScope = "mcp:plugin";
-
         private readonly OAuthResourceServerConfig _config;
         private readonly IJwksKeyProvider _jwks;
         private readonly IIntrospectionClient _introspection;
@@ -225,7 +222,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
             if (!claims.TryGetProperty("aud", out var aud))
                 return false;
 
-            var hasPluginScope = plane == TokenValidationPlane.Plugin && ScopeContains(claims, PluginScope);
+            var hasPluginScope = plane == TokenValidationPlane.Plugin && ScopeContains(claims, ConnectionIdentity.ScopePlugin);
 
             if (aud.ValueKind == JsonValueKind.String)
                 return AudienceEntryAccepted(aud.GetString(), plane, hasPluginScope);
