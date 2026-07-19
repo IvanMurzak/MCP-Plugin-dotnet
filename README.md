@@ -64,7 +64,7 @@ graph LR
   - **Fuzzy Matching**: AI can find and call methods even with partial names or slightly mismatched signatures.
   - **Automatic Schema Generation**: Precise JSON schemas are generated for your C# types to help LLMs understand your code perfectly.
 - **Real-time Bidirectional Communication**: Uses SignalR for a persistent, low-latency link between your apps and the bridge.
-- **Flexible Transport**: The bridge supports both `stdio` (for local AI agents like Claude Desktop) and `http` (for remote connections).
+- **Flexible Transport**: The bridge supports both `stdio` (for local AI agents like Claude Desktop) and `streamableHttp` (for remote connections).
 - **Dependency Injection**: First-class support for `Microsoft.Extensions.DependencyInjection`.
 - **Assembly Scanning**: Automatically discover and register components from your entire project.
 
@@ -95,7 +95,7 @@ cd DemoWebApp
 dotnet run port=11111 client-transport=stdio
 ```
 
-*Note: Use `client-transport=stdio` if connecting from Claude Desktop, or `client-transport=http` for HTTP-based clients.*
+*Note: Use `client-transport=stdio` if connecting from Claude Desktop, or `client-transport=streamableHttp` for HTTP-based clients.*
 
 **Hosting in your own Web App:**
 
@@ -412,7 +412,7 @@ You can run the bridge server in a Docker container:
 
 ```bash
 docker build -t mcp-bridge -f McpPlugin.Server/Dockerfile .
-docker run -p 8080:8080 mcp-bridge port=8080 client-transport=http
+docker run -p 8080:8080 mcp-bridge port=8080 client-transport=streamableHttp
 ```
 
 ## Project Structure
