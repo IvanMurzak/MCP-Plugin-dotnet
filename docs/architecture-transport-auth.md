@@ -152,6 +152,11 @@ The **offline shared-secret** plane — the loopback single-project counterpart 
 
 The OAuth 2.1 resource-server **account + instance pairing plane**. A presented credential is validated against the authorization server (ES256 JWT via JWKS, or opaque PAT via introspection) and resolves to an ai-game.dev account (`sub`). Routing is strictly **account-scoped**: an agent session resolves to a live plugin instance by `pin(strict) → sticky → single → most-recently-active`, and a session for one account can never route to, be notified about, or observe another account's instances (fail closed). Full spec: the mcp-authorize design (`04-pairing-and-routing.md`).
 
+**Plane-aware audience validation (auth-fixes B11).** `AccessTokenValidator` accepts a `TokenValidationPlane` so the same validator enforces *different* audiences on the two planes, and the two must stay separated:
+
+- **Agent plane** (an AI-agent MCP request, via `TokenAuthenticationHandler`): the token `aud` must be the RS's canonical resource id (`--public-url`, e.g. `https://ai-game.dev/mcp`). A plugin hub-token is rejected here.
+- **Plugin plane** (an engine-plugin hub registration, via `McpServerHub.TryRegisterOAuthInstanceAsync`): a strict allow-list — the plugin audience `urn:agd:hub` (exact), **or** the canonical resource id when the token also carries the `mcp:plugin` scope. This is required because plugin hub-tokens are minted with `aud=urn:agd:hub` (a plane marker, not the RS resource id); without the plugin-plane allow-list the connection is accepted but the instance is never registered → the account bucket stays empty → the agent's `tools/list` silently degrades to the 3 native tools. The `mcp:plugin` scope guard keeps an agent token (`aud=`canonical, `scope=mcp:agent`) from ever registering as a plugin instance.
+
 ---
 
 ## Behavior Comparison

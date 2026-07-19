@@ -76,11 +76,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
         }
 
         // ─────────────────────────────── list_engine_instances ───────────────────────────────
+        // Routing observability (auth-fixes T6, closes B6/B7): each instance line carries its routing
+        // pin (8-hex) and project basename, and the response ends with a "session pin → matched" line
+        // plus an actionable hint when the session's pin resolves to nothing. All reads are account-
+        // scoped (never cross-sub); only the project BASENAME is ever emitted, never a full path.
         ResponseCallTool HandleList(SelectionToolContext context)
         {
             var instances = _instances.GetInstances(context.AccountId);
             if (instances.Count == 0)
-                return ResponseCallTool.Success("No engine instances are connected for your account. Use enroll_engine_plugin to set one up.");
+            {
+                return ResponseCallTool.Success(
+                    "No engine instances are connected for your account. Use enroll_engine_plugin to set one up.\n" +
+                    SessionPinDiagnostic(context.ProjectPin, matched: null, accountEmpty: true));
+            }
 
             var selected = _selections.Get(context.SessionId);
             var lines = instances
@@ -88,11 +96,63 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 .Select(i =>
                 {
                     var mark = string.Equals(i.InstanceId, selected, StringComparison.Ordinal) ? " (selected)" : string.Empty;
-                    return $"- {i.InstanceId}: {i.Engine}:{i.ProjectName} on {i.MachineName}; " +
+                    // Only the project BASENAME is ever emitted (06 threat table — never a full path),
+                    // plus the 8-hex routing pin so «why do I see these tools» is diagnosable (B7).
+                    return $"- {i.InstanceId}: {i.Engine}:{Basename(i.ProjectName)} on {i.MachineName}; " +
+                           $"pin {PinOf(i)}; " +
                            $"connected {i.ConnectedAt:u}, last active {i.LastActiveAt:u}{mark}";
                 });
 
-            return ResponseCallTool.Success("Connected engine instances for your account:\n" + string.Join("\n", lines));
+            var matched = string.IsNullOrEmpty(context.ProjectPin)
+                ? null
+                : instances.Where(i => i.MatchesPin(context.ProjectPin)).ToList();
+
+            return ResponseCallTool.Success(
+                "Connected engine instances for your account:\n" + string.Join("\n", lines) + "\n" +
+                SessionPinDiagnostic(context.ProjectPin, matched, accountEmpty: false));
+        }
+
+        /// <summary>
+        /// The T6 "session pin → matched" diagnostic line (+ an actionable hint on no-match). Explains,
+        /// in one tool call, WHY a session sees the engine tools it does — the core of B6/B7.
+        /// </summary>
+        static string SessionPinDiagnostic(string? sessionPin, IReadOnlyList<PluginInstance>? matched, bool accountEmpty)
+        {
+            if (string.IsNullOrEmpty(sessionPin))
+                return "session pin: none (this session is not pinned to a project; routing uses the single/most-recently-active instance).";
+
+            if (accountEmpty)
+                return $"session pin: {sessionPin} → matched: none. Your account has no connected engine instances — open your project's editor (it connects automatically) or use enroll_engine_plugin.";
+
+            if (matched == null || matched.Count == 0)
+                return $"session pin: {sessionPin} → matched: none. No connected editor matches this session's project pin — open that project's editor, or use select_engine_instance to route to a connected instance instead.";
+
+            var ids = string.Join(", ", matched.Select(i => i.InstanceId));
+            return $"session pin: {sessionPin} → matched: {ids}";
+        }
+
+        /// <summary>The instance's 8-hex routing pin (the leading chars of its v2 project-path hash), or a marker when absent.</summary>
+        static string PinOf(PluginInstance instance)
+        {
+            var hash = instance.ProjectPathHash;
+            if (string.IsNullOrEmpty(hash))
+                return "(none)";
+            return (hash.Length >= 8 ? hash.Substring(0, 8) : hash).ToLowerInvariant();
+        }
+
+        /// <summary>
+        /// The basename of a project identifier — never a full path (06 threat table). ProjectName is
+        /// normally already a bare name, but a plugin could self-report a path; this strips any
+        /// directory prefix defensively so diagnostics never leak a filesystem layout.
+        /// </summary>
+        static string Basename(string? projectName)
+        {
+            if (string.IsNullOrEmpty(projectName))
+                return "(unknown)";
+            var trimmed = projectName!.TrimEnd('/', '\\');
+            var cut = trimmed.LastIndexOfAny(new[] { '/', '\\' });
+            var name = cut >= 0 ? trimmed.Substring(cut + 1) : trimmed;
+            return string.IsNullOrEmpty(name) ? "(unknown)" : name;
         }
 
         // ─────────────────────────────── select_engine_instance ──────────────────────────────

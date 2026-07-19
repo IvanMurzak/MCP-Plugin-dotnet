@@ -71,7 +71,10 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
             }
 
             var authHeader = isAuthRequired ? $" --header \"Authorization: Bearer {token}\"" : string.Empty;
-            var addCommandHttp = $"claude mcp add --transport http {AiAgentConfig.DefaultMcpServerName} {settings.Host}{authHeader}";
+            // B8: the displayed "manual" command must use the SAME pinned URL that Configure writes into
+            // .mcp.json (settings.PinnedHttpUrl, i.e. .../mcp/p/<pin>), not the bare unpinned host — an
+            // unpinned URL only routes when the account has a single instance.
+            var addCommandHttp = $"claude mcp add --transport http {AiAgentConfig.DefaultMcpServerName} {settings.PinnedHttpUrl}{authHeader}";
             return new[]
             {
                 new ConfigurationSection("Start", true, new[]
