@@ -68,7 +68,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string PublicUrl = "public-url";
 
                     // Optional server-side metadata / fetch-base override (auth-fixes L2a / Gap B).
-                    // When set, the resource server fetches JWKS / OAuth discovery / introspection /
+                    // When set, the resource server fetches JWKS / introspection /
                     // enrollment from this base instead of <c>auth-issuer</c>; the token <c>iss</c>
                     // check and the RFC 9728 PRM <c>authorization_servers</c> stay on <c>auth-issuer</c>.
                     // Unset (default, incl. all of prod) → byte-identical to deriving from the issuer.

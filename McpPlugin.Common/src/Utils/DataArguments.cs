@@ -63,7 +63,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
 
         /// <summary>
         /// Optional server-side metadata / fetch-base override (auth-fixes L2a / Gap B). When set, the
-        /// OAuth resource server fetches JWKS / OAuth discovery / introspection / enrollment from this
+        /// OAuth resource server fetches JWKS / introspection / enrollment from this
         /// base instead of <see cref="AuthIssuer"/>; the token <c>iss</c> claim check and the RFC 9728
         /// PRM <c>authorization_servers</c> stay on <see cref="AuthIssuer"/> (client-facing). Null
         /// (default, incl. all of prod) → behavior is byte-identical to deriving from the issuer. Set
