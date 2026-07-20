@@ -24,14 +24,20 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
     internal static class AgentConfigBuilders
     {
         /// <summary>
-        /// The standard stdio arg array (mcp-authorize b6, design 06): the ProjectIdentity-derived
-        /// per-project <c>port=</c> (marker <c>portOverride</c> wins), plugin-timeout, client-transport,
-        /// and the <c>project=&lt;pin&gt;</c> routing arg. NO auth args — stdio spawns in <c>none</c> mode
-        /// on the default path (the credential-free / anonymous local flow).
+        /// The standard stdio arg array (mcp-authorize b6, design 06): the per-project <c>port=</c>
+        /// (<see cref="AgentConfiguratorSettings.PinnedPort"/> — marker <c>portOverride</c>, else a port
+        /// typed into <c>Host</c>, else the derived v2 port), plugin-timeout, client-transport, and the
+        /// <c>project=&lt;pin&gt;</c> routing arg. NO auth args — stdio spawns in <c>none</c> mode on the
+        /// default path (the credential-free / anonymous local flow).
+        ///
+        /// <para>The <c>port=</c> arg names <see cref="AgentConfiguratorSettings.PinnedPort"/>, not
+        /// <see cref="AgentConfiguratorSettings.ResolvedPort"/>: the engine binder returns <c>uri.Port</c>
+        /// for BOTH transports, so a stdio arg that skipped the typed-host level told the spawned server
+        /// to dial a port the plugin was not listening on (auth-fixes T1 / defect A, stdio half).</para>
         /// </summary>
         public static JsonArray StdioArgs(AgentConfiguratorSettings s) => new()
         {
-            $"{Args.Port}={s.ResolvedPort}",
+            $"{Args.Port}={s.PinnedPort}",
             $"{Args.PluginTimeout}={s.TimeoutMs}",
             $"{Args.ClientTransportMethod}={TransportMethod.stdio}",
             $"{Args.Project}={s.ProjectPin}"

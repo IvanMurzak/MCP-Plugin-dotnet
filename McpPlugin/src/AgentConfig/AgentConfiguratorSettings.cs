@@ -85,9 +85,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         /// <summary>
         /// The raw engine-supplied port (the port the engine's own binder resolved). NOT what the
-        /// config writers emit: the stdio <c>port=</c> arg uses <see cref="ResolvedPort"/> and the
-        /// loopback HTTP url uses <see cref="PinnedHttpPort"/>. This value backs the Docker container
-        /// name / port mapping and the displayed copy-paste <c>mcp add</c> one-liners.
+        /// config writers emit: both the stdio <c>port=</c> arg and the loopback HTTP url use
+        /// <see cref="PinnedPort"/>. This value backs the Docker container name / port mapping and
+        /// the displayed copy-paste <c>mcp add</c> one-liners.
         /// </summary>
         public int Port { get; }
 
@@ -260,12 +260,14 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public string ProjectPin => Identity.Pin;
 
         /// <summary>
-        /// The resolved per-project local port: the project marker's <c>portOverride</c> when set,
-        /// otherwise the deterministic hash-derived port. This is the port written into the stdio
-        /// <c>port=</c> arg, NOT the raw engine-supplied <see cref="Port"/> — b6 single-sources the
-        /// local port from <see cref="ProjectIdentity"/>. The loopback HTTP URL uses
-        /// <see cref="PinnedHttpPort"/>, which additionally honours a port the user typed into
-        /// <see cref="Host"/> (defect A) — a level that only exists on the HTTP path.
+        /// The marker-resolved per-project local port: the project marker's <c>portOverride</c> when
+        /// set, otherwise the deterministic v2 hash-derived port — b6 single-sources the local port
+        /// from <see cref="ProjectIdentity"/> rather than the raw engine-supplied <see cref="Port"/>.
+        ///
+        /// <para>This is NOT what the config writers emit. Both transports write
+        /// <see cref="PinnedPort"/>, which layers a port the user typed into <see cref="Host"/>
+        /// BETWEEN this property's two cases (defect A). <see cref="ResolvedPort"/> therefore supplies
+        /// precedence levels 1 and 3; see <see cref="PinnedPort"/> for the full ordering.</para>
         ///
         /// <para>Shares the single cached <see cref="Identity"/> — and therefore the exact
         /// <see cref="ProjectIdentity.NormalizeV2"/> pre-hash string — with <see cref="ProjectPin"/>
@@ -281,8 +283,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public int? ExplicitHostPort => TryGetExplicitPort(Host);
 
         /// <summary>
-        /// The port written into the loopback HTTP <c>url</c> (<see cref="PinnedHttpUrl"/>), resolved by
-        /// a three-level precedence (auth-fixes T1 / defect A, owner ruling 2026-07-19):
+        /// The per-project local port the config writers emit — the stdio <c>port=</c> arg AND the
+        /// loopback HTTP <c>url</c> (<see cref="PinnedHttpUrl"/>) — resolved by a three-level precedence
+        /// (auth-fixes T1 / defect A, owner ruling 2026-07-19, extended to stdio 2026-07-19):
         /// <list type="number">
         ///   <item>the project marker's <c>portOverride</c> — an explicit per-project pin, wins outright;</item>
         ///   <item>an explicit port in the <see cref="Host"/> URL — the port the USER typed;</item>
@@ -296,6 +299,16 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// this fix the writer overwrote that typed port with the derived one, so the server listened on
         /// the port the user chose while the config told the agent to dial a different one. Honouring the
         /// typed port makes the WRITER agree with the BINDER — that agreement is the whole point.</para>
+        ///
+        /// <para><b>Why this is transport-neutral</b> (it was named <c>PinnedHttpPort</c> when only the
+        /// HTTP url consumed it): that binder property is not transport-scoped — it resolves the ONE port
+        /// the plugin binds, and the stdio server the config spawns dials that same port. So a stdio
+        /// <c>port=</c> arg on the old two-level precedence disagreed with the binder in exactly the way
+        /// the HTTP url used to. The per-transport difference lives at the CALL SITE, not here:
+        /// <see cref="BuildPinnedHttpUrl"/> applies this port only to a <see cref="ConnectionMode.Local"/>
+        /// loopback authority (a hosted target keeps its authority verbatim, which already preserved any
+        /// typed port), whereas stdio has no authority to preserve and applies the precedence directly.
+        /// Both end up naming the port the binder actually binds.</para>
         ///
         /// <para>Level 1 still outranks level 2: <c>portOverride</c> is a deliberate per-project marker
         /// written to pin a project's port, so it beats an incidental port in the host string.</para>
@@ -314,7 +327,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         ///   production today.</item>
         /// </list></para>
         /// </summary>
-        public int PinnedHttpPort =>
+        public int PinnedPort =>
             // marker override (1) else typed host port (2) else derived v2 port (3) — see the list above.
             Identity.PortIsOverridden ? ResolvedPort : ExplicitHostPort ?? ResolvedPort;
 
@@ -322,7 +335,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// The HTTP <c>url</c> written into configs on the default (credential-free) path: the base
         /// <see cref="Host"/> with the <c>/p/&lt;pin&gt;</c> routing path segment appended, and — for a
         /// loopback URL in <see cref="ConnectionMode.Local"/> — the port set to
-        /// <see cref="PinnedHttpPort"/>. The pin rides as a path segment (not a query param) so a lost
+        /// <see cref="PinnedPort"/>. The pin rides as a path segment (not a query param) so a lost
         /// pin 404s loudly instead of silently degrading to unpinned routing (design 03 Flow F).
         /// </summary>
         public string PinnedHttpUrl => BuildPinnedHttpUrl();
@@ -334,10 +347,10 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             {
                 // Only the per-project LOCAL loopback port is resolved here; a hosted (or non-loopback)
                 // target keeps its authority verbatim (default ports stay implicit). The loopback port
-                // follows PinnedHttpPort's marker > typed > derived precedence, so a port the user typed
+                // follows PinnedPort's marker > typed > derived precedence, so a port the user typed
                 // into Host survives into the written config instead of being silently overwritten.
                 var authority = ConnectionMode == ConnectionMode.Local && uri.IsLoopback
-                    ? $"{uri.Scheme}://{uri.Host}:{PinnedHttpPort}"
+                    ? $"{uri.Scheme}://{uri.Host}:{PinnedPort}"
                     : uri.GetLeftPart(UriPartial.Authority);
                 var basePath = uri.AbsolutePath.TrimEnd('/');
                 return $"{authority}{basePath}/p/{pin}{uri.Query}";

@@ -115,7 +115,10 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
                     var content = c.GetStdioConfig(settings).ExpectedFileContent;
 
                     content.ShouldContain($"{Consts.MCP.Server.Args.Project}={settings.ProjectPin}", customMessage: $"{c.AgentId} stdio must carry project=<pin>");
-                    content.ShouldContain($"{Consts.MCP.Server.Args.Port}={settings.ResolvedPort}", customMessage: $"{c.AgentId} stdio must carry the ProjectIdentity port");
+                    // auth-fixes T1 / defect A (stdio half): the written port is PinnedPort, which for
+                    // this host (an explicit :50000) is the typed port — the one the binder binds.
+                    // This assertion previously named settings.ResolvedPort.
+                    content.ShouldContain($"{Consts.MCP.Server.Args.Port}={settings.PinnedPort}", customMessage: $"{c.AgentId} stdio must carry the pinned port");
                     content.ShouldNotContain($"{Consts.MCP.Server.Args.Authorization}=", customMessage: $"{c.AgentId} stdio must not carry an authorization arg on the default path");
                     content.ShouldNotContain($"{Consts.MCP.Server.Args.Token}=", customMessage: $"{c.AgentId} stdio must not carry a token arg on the default path");
                     content.ShouldNotContain(PatValue, customMessage: $"{c.AgentId} stdio must not embed the token value");
@@ -154,9 +157,13 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
                 var settings = Settings(root); // host "http://localhost:50000/mcp" — an EXPLICIT typed port
                 var pin = settings.ProjectPin;
 
-                // stdio still carries the ProjectIdentity port (marker override, else derived v2).
+                // auth-fixes T1 / defect A, stdio half: the stdio port= arg now honours the port typed
+                // into Host (50000) rather than overwriting it with the derived port — the same fix the
+                // HTTP url got below, and the same port the engine binder binds for BOTH transports.
+                // This assertion previously named settings.ResolvedPort.
                 var stdio = c.GetStdioConfig(settings).ExpectedFileContent;
-                stdio.ShouldContain($"\"{Consts.MCP.Server.Args.Port}={settings.ResolvedPort}\"");
+                stdio.ShouldContain($"\"{Consts.MCP.Server.Args.Port}=50000\"");
+                stdio.ShouldNotContain($"\"{Consts.MCP.Server.Args.Port}={settings.ResolvedPort}\"");
                 stdio.ShouldContain($"\"{Consts.MCP.Server.Args.PluginTimeout}=30000\"");
                 stdio.ShouldContain($"\"{Consts.MCP.Server.Args.ClientTransportMethod}=stdio\"");
                 stdio.ShouldContain($"\"{Consts.MCP.Server.Args.Project}={pin}\"");
@@ -299,10 +306,10 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         /// the URL authority and the pin in the <c>/p/&lt;pin&gt;</c> segment of one written config must
         /// both come from the v2 normalization. This is the user-visible shape from the bug report.
         ///
-        /// <para>The host is deliberately PORTLESS so the URL exercises precedence level 3 (the derived
-        /// v2 port). With an explicit port in the host the URL would — correctly, per defect A's owner
-        /// ruling — carry that typed port instead, and this test would no longer be observing defect B.
-        /// The stdio half is unaffected by the host either way.</para>
+        /// <para>The host is deliberately PORTLESS so BOTH halves exercise precedence level 3 (the
+        /// derived v2 port). With an explicit port in the host the URL — and, since the stdio half moved
+        /// onto the same precedence, the <c>port=</c> arg too — would correctly carry that typed port per
+        /// defect A's owner ruling, and this test would no longer be observing defect B.</para>
         /// </summary>
         [Fact]
         public void WrittenConfig_UrlPortAndPin_AreBothV2_ForBackslashRoot()
@@ -393,10 +400,15 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
                 settings.ExplicitHostPort.ShouldBe(50000);
                 settings.ResolvedPort.ShouldBe(overridePort);
                 settings.Identity.PortIsOverridden.ShouldBeTrue();
-                settings.PinnedHttpPort.ShouldBe(overridePort);
+                settings.PinnedPort.ShouldBe(overridePort);
 
                 var c = new ClaudeCodeConfigurator();
-                c.GetStdioConfig(settings).ExpectedFileContent.ShouldContain($"{Consts.MCP.Server.Args.Port}={overridePort}");
+                var stdio = c.GetStdioConfig(settings).ExpectedFileContent;
+                stdio.ShouldContain($"{Consts.MCP.Server.Args.Port}={overridePort}");
+                // Level 1 beats level 2 on stdio too — before the stdio half moved onto PinnedPort this
+                // held for the trivial reason that stdio ignored the typed port entirely; now it is a
+                // real precedence assertion.
+                stdio.ShouldNotContain($"{Consts.MCP.Server.Args.Port}=50000");
 
                 var http = c.GetHttpConfig(settings).ExpectedFileContent;
                 http.ShouldContain($"localhost:{overridePort}/");
@@ -440,14 +452,14 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
 
                 settings.Identity.PortIsOverridden.ShouldBeFalse(); // no marker => levels 2/3 only
                 settings.ExplicitHostPort.ShouldBe(typedPort);
-                settings.PinnedHttpPort.ShouldBe(expectedPort);
+                settings.PinnedPort.ShouldBe(expectedPort);
 
                 if (typedPort.HasValue)
                     // The derived port is a DIFFERENT value, so the row genuinely distinguishes the paths
                     // (the derived range is 20000-29999, which neither 50000 nor 80 can collide with).
                     settings.ResolvedPort.ShouldNotBe(typedPort.Value);
                 else
-                    settings.PinnedHttpPort.ShouldBe(ProjectIdentity.DerivePortV2(root));
+                    settings.PinnedPort.ShouldBe(ProjectIdentity.DerivePortV2(root));
 
                 settings.PinnedHttpUrl.ShouldBe($"http://localhost:{expectedPort}/mcp/p/{settings.ProjectPin}");
 
@@ -473,6 +485,105 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
 
                 var lan = Settings(root, host: "http://192.168.1.5:9000/mcp");
                 lan.PinnedHttpUrl.ShouldBe($"http://192.168.1.5:9000/mcp/p/{lan.ProjectPin}");
+            }
+            finally { Directory.Delete(root, recursive: true); }
+        }
+
+        // ---- auth-fixes T1 / defect A, STDIO half (owner ruling extended to stdio 2026-07-19). ----
+        //
+        // The stdio `port=` arg now follows the SAME three-level precedence as the loopback HTTP url:
+        //   1. project marker portOverride   (highest)
+        //   2. explicit port in the Host URL (the port the user typed)
+        //   3. deterministic derived v2 port (fallback)
+        //
+        // Before this, the arg named ResolvedPort, which has no typed-host level — so a user who typed a
+        // custom port and configured over stdio got a config telling the spawned server to dial a port
+        // the plugin was not listening on. The engine binder (UnityMcpPluginEditor.Port) returns uri.Port
+        // for BOTH transports, so stdio was simply the half that had not caught up with the binder.
+
+        /// <summary>
+        /// All three precedence levels, asserted across EVERY real configurator rather than one.
+        ///
+        /// <para>That breadth is the point: THREE different code paths emit this arg —
+        /// <c>AgentConfigBuilders.StdioArgs</c> (most agents), <c>CodexConfigurator</c>'s hand-rolled TOML
+        /// array, and <c>OpenCodeConfigurator</c>'s single <c>command</c> array. A fix applied only to the
+        /// shared builder would silently leave the other two on the old behaviour.</para>
+        /// </summary>
+        [Theory]
+        // Level 3 — no port in Host, so the derived v2 port.
+        [InlineData("http://localhost/mcp", null, null)]
+        // Level 2 — a port typed into Host is honoured, including an explicit scheme-DEFAULT port that
+        // Uri.Port could not distinguish from "no port at all".
+        [InlineData("http://localhost:50000/mcp", null, 50000)]
+        [InlineData("http://localhost:80/mcp", null, 80)]
+        // Level 1 — a marker portOverride beats a typed host port AND the derived port.
+        [InlineData("http://localhost:50000/mcp", 27777, 27777)]
+        [InlineData("http://localhost/mcp", 27777, 27777)]
+        public void StdioPortArg_FollowsTheSameThreeLevelPrecedence_AcrossEveryConfigurator(
+            string host, int? markerOverride, int? expectedPort)
+        {
+            var root = NewTempDir();
+            try
+            {
+                if (markerOverride.HasValue)
+                    new ProjectMarker { PortOverride = markerOverride.Value }.Write(root);
+
+                var derived = ProjectIdentity.DerivePortV2(root);
+                var expected = expectedPort ?? derived;
+                var settings = Settings(root, host: host);
+
+                settings.Identity.PortIsOverridden.ShouldBe(markerOverride.HasValue);
+                settings.PinnedPort.ShouldBe(expected);
+
+                foreach (var c in RealConfigurators())
+                {
+                    var content = c.GetStdioConfig(settings).ExpectedFileContent;
+                    content.ShouldContain($"{Consts.MCP.Server.Args.Port}={expected}",
+                        customMessage: $"{c.AgentId} stdio must carry the pinned port {expected}");
+
+                    // On every row where a higher level applies, the derived port must be ABSENT — this
+                    // is what fails against the old ResolvedPort-based arg. (The derived range is
+                    // 20000-29999, which none of the typed ports above can collide with; the 27777
+                    // override is inside it, hence the guard rather than an unconditional assertion.)
+                    if (expected != derived)
+                        content.ShouldNotContain($"{Consts.MCP.Server.Args.Port}={derived}",
+                            customMessage: $"{c.AgentId} stdio must not fall back to the derived port {derived}");
+                }
+            }
+            finally { Directory.Delete(root, recursive: true); }
+        }
+
+        /// <summary>
+        /// The stdio arg is deliberately NOT gated on loopback / <see cref="ConnectionMode"/>, unlike the
+        /// HTTP url's authority rewrite. Pinned because the asymmetry looks like an oversight and is not.
+        ///
+        /// <para>The gate exists on the HTTP side only because a hosted authority is kept VERBATIM, which
+        /// already preserves whatever port the user typed — so gating there costs nothing. stdio has no
+        /// authority to preserve, and the binder it must agree with (<c>uri.Port</c>) is itself ungated,
+        /// so applying the precedence directly is what keeps writer and binder in step.</para>
+        /// </summary>
+        [Fact]
+        public void StdioPortArg_IsNotGatedOnLoopbackOrConnectionMode()
+        {
+            var root = NewTempDir();
+            try
+            {
+                var c = new ClaudeCodeConfigurator();
+
+                // Non-loopback LAN host: writer and binder both name the typed 9000, and the HTTP url
+                // (authority kept verbatim) independently names it too — all three agree.
+                var lan = Settings(root, host: "http://192.168.1.5:9000/mcp");
+                lan.PinnedPort.ShouldBe(9000);
+                c.GetStdioConfig(lan).ExpectedFileContent.ShouldContain($"{Consts.MCP.Server.Args.Port}=9000");
+                c.GetHttpConfig(lan).ExpectedFileContent.ShouldContain("http://192.168.1.5:9000/mcp/p/");
+
+                // Cloud host with no port: nothing to honour, so stdio falls back to the derived v2 port.
+                // The cloud HTTP url carries no port at all — the local spawn still needs one, so the two
+                // legitimately differ here rather than disagreeing about the same value.
+                var cloud = Settings(root, connectionMode: ConnectionMode.Cloud, host: "https://ai-game.dev/mcp");
+                cloud.PinnedPort.ShouldBe(ProjectIdentity.DerivePortV2(root));
+                c.GetStdioConfig(cloud).ExpectedFileContent
+                    .ShouldContain($"{Consts.MCP.Server.Args.Port}={ProjectIdentity.DerivePortV2(root)}");
             }
             finally { Directory.Delete(root, recursive: true); }
         }
