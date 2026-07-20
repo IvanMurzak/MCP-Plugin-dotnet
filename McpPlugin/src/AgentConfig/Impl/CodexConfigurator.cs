@@ -38,16 +38,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
             => new TomlAiAgentConfig(AgentName, LocalConfigPath(settings), bodyPath: "mcp_servers", logger: logger)
                 .SetProperty("enabled", true, requiredForConfiguration: true)
                 .SetProperty("command", settings.ExecutableFullPath.Replace('\\', '/'), requiredForConfiguration: true, comparison: ValueComparisonMode.Path)
-                // Codex is TOML-only, so it hand-rolls the arg list AgentConfigBuilders.StdioArgs builds
-                // for the JSON agents. Keep it in lockstep — notably the PinnedPort precedence
-                // (marker portOverride > port typed into Host > derived v2), auth-fixes T1 / defect A.
-                .SetProperty("args", new[]
-                {
-                    $"{Args.Port}={settings.PinnedPort}",
-                    $"{Args.PluginTimeout}={settings.TimeoutMs}",
-                    $"{Args.ClientTransportMethod}={TransportMethod.stdio}",
-                    $"{Args.Project}={settings.ProjectPin}"
-                }, requiredForConfiguration: true)
+                // Codex is TOML-only, so the args land in a TOML array rather than the JSON one
+                // AgentConfigBuilders.StdioArgs builds — but the VALUES come from the same source of truth.
+                .SetProperty("args", AgentConfigBuilders.StdioArgValues(settings), requiredForConfiguration: true)
                 .SetProperty("tool_timeout_sec", 300, requiredForConfiguration: false)
                 .SetPropertyToRemove("url")
                 .SetPropertyToRemove("type")

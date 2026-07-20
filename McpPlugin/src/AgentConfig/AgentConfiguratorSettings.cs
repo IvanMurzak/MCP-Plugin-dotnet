@@ -301,8 +301,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// typed port makes the WRITER agree with the BINDER — that agreement is the whole point.</para>
         ///
         /// <para><b>Why this is transport-neutral</b> (it was named <c>PinnedHttpPort</c> when only the
-        /// HTTP url consumed it): that binder property is not transport-scoped — it resolves the ONE port
-        /// the plugin binds, and the stdio server the config spawns dials that same port. So a stdio
+        /// HTTP url consumed it): Unity's binder property is not transport-scoped — it resolves the ONE
+        /// port the plugin binds, and the stdio server the config spawns dials that same port. So a stdio
         /// <c>port=</c> arg on the old two-level precedence disagreed with the binder in exactly the way
         /// the HTTP url used to. The per-transport difference lives at the CALL SITE, not here:
         /// <see cref="BuildPinnedHttpUrl"/> applies this port only to a <see cref="ConnectionMode.Local"/>
@@ -325,6 +325,19 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         ///   <c>portOverride</c> combined with an explicit port in <see cref="Host"/> resolves to the
         ///   override here and to the typed port there. Latent: nothing writes <c>portOverride</c> in
         ///   production today.</item>
+        ///   <item><b>Level 2 is a UNITY-shaped rule.</b> The claim above that the binder honours a typed
+        ///   port holds for Unity's binder; the other two engine consumers deliberately do the OPPOSITE
+        ///   on loopback. Godot's <c>GodotProjectIdentity.ResolveLocalServerBindPort</c> ignores a
+        ///   loopback host's own explicit port and binds the derived port ("a loopback port override goes
+        ///   through the marker <c>portOverride</c>"), and Unreal's bridge asserts the written config port
+        ///   is never the raw engine-supplied host port. So on a <see cref="ConnectionMode.Local"/>
+        ///   loopback <see cref="Host"/> carrying a typed port, level 2 makes this writer disagree with
+        ///   BOTH of those binders — the inverse of the Unity case it was introduced for. Each pins the
+        ///   old invariant in a test that fails on their next McpPlugin bump
+        ///   (<c>ResolveLocalServerBindPort_LoopbackExplicitPort_StillDerives_MatchingTheWriter</c>,
+        ///   <c>WrittenConfigPort_EqualsServerBindPort_OnDefaultLocalPath</c>). Whether the right
+        ///   resolution is a per-engine policy seam here or a binder change there is an OWNER call and
+        ///   deliberately out of scope for this writer-side change.</item>
         /// </list></para>
         /// </summary>
         public int PinnedPort =>

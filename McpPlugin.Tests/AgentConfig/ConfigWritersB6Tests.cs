@@ -498,16 +498,20 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         //
         // Before this, the arg named ResolvedPort, which has no typed-host level — so a user who typed a
         // custom port and configured over stdio got a config telling the spawned server to dial a port
-        // the plugin was not listening on. The engine binder (UnityMcpPluginEditor.Port) returns uri.Port
-        // for BOTH transports, so stdio was simply the half that had not caught up with the binder.
+        // the plugin was not listening on. Unity's binder (UnityMcpPluginEditor.Port) returns uri.Port for
+        // BOTH transports, so stdio was simply the half that had not caught up with that binder. (Godot's
+        // and Unreal's binders derive instead on loopback — see AgentConfiguratorSettings.PinnedPort
+        // § "Residual divergence from the binder"; reconciling them is an owner call, not asserted here.)
 
         /// <summary>
         /// All three precedence levels, asserted across EVERY real configurator rather than one.
         ///
-        /// <para>That breadth is the point: THREE different code paths emit this arg —
-        /// <c>AgentConfigBuilders.StdioArgs</c> (most agents), <c>CodexConfigurator</c>'s hand-rolled TOML
-        /// array, and <c>OpenCodeConfigurator</c>'s single <c>command</c> array. A fix applied only to the
-        /// shared builder would silently leave the other two on the old behaviour.</para>
+        /// <para>That breadth is the point. Three emitters put this arg on the wire —
+        /// <c>AgentConfigBuilders.StdioArgs</c> (most agents), <c>CodexConfigurator</c>'s TOML array, and
+        /// <c>OpenCodeConfigurator</c>'s single <c>command</c> array — and they each hand-rolled the list
+        /// independently, which is how the stdio half of defect A survived the HTTP half's fix. They now
+        /// share <c>AgentConfigBuilders.StdioArgValues</c>, so this theory's job is to catch an emitter
+        /// DRIFTING BACK OFF that source of truth (or a fourth one landing that never joined it).</para>
         /// </summary>
         [Theory]
         // Level 3 — no port in Host, so the derived v2 port.
@@ -555,12 +559,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
 
         /// <summary>
         /// The stdio arg is deliberately NOT gated on loopback / <see cref="ConnectionMode"/>, unlike the
-        /// HTTP url's authority rewrite. Pinned because the asymmetry looks like an oversight and is not.
-        ///
-        /// <para>The gate exists on the HTTP side only because a hosted authority is kept VERBATIM, which
-        /// already preserves whatever port the user typed — so gating there costs nothing. stdio has no
-        /// authority to preserve, and the binder it must agree with (<c>uri.Port</c>) is itself ungated,
-        /// so applying the precedence directly is what keeps writer and binder in step.</para>
+        /// HTTP url's authority rewrite. Pinned because the asymmetry looks like an oversight and is not —
+        /// <c>AgentConfiguratorSettings.PinnedPort</c> carries the reasoning.
         /// </summary>
         [Fact]
         public void StdioPortArg_IsNotGatedOnLoopbackOrConnectionMode()
