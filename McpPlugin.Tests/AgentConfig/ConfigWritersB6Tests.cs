@@ -35,6 +35,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         // A token value distinctive enough that a substring assertion cannot false-match.
         private const string PatValue = "S3CR3T-PAT-VALUE";
 
+        // A literal backslash, built from its char code so no escaping subtlety can alter it.
+        private static string Bs => ((char)92).ToString();
+
         private static AgentConfiguratorSettings Settings(
             string root,
             string? token = null,
@@ -245,6 +248,67 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             c.GetStdioConfig(settings).ExpectedFileContent.ShouldContain($"{Consts.MCP.Server.Args.Project}={v2Pin}");
         }
 
+        // ---- auth-fixes T1 / defect B: the pin and the port come from ONE normalization. ----
+
+        /// <summary>
+        /// THE regression test for defect B. Before the fix, one settings object derived its pin from
+        /// <c>DerivePinV2</c> (separator-normalized) but its port from the v1 <c>ProjectIdentity.Derive</c>
+        /// (NOT normalized), so on a Windows backslash root the written config mixed a v1 port with a v2
+        /// pin — e.g. <c>http://localhost:29540/p/a8087ea6</c>, where 29540 is the v1 port of
+        /// <c>c:\tmp\mcpauth-test\test-project</c> and a8087ea6 is the v2 pin of
+        /// <c>c:/tmp/mcpauth-test/test-project</c>. The engine runtimes bind the v2 port (defect B10), so
+        /// the agent dialled a port nothing was listening on.
+        ///
+        /// <para>A hardcoded backslash literal keeps this deterministic on Linux CI, where
+        /// <c>Path.GetTempPath()</c> is forward-slash and v1 == v2 — the exact blind spot that let the
+        /// bug ship.</para>
+        /// </summary>
+        [Fact]
+        public void PinAndPort_ComeFromTheSameNormalization_ForBackslashRoot()
+        {
+            var backslashRoot = "C:" + Bs + "tmp" + Bs + "mcpauth-test" + Bs + "test-project";
+            var forwardSlashRoot = backslashRoot.Replace(Bs, "/");
+            var settings = Settings(backslashRoot);
+
+            // Both halves of the identity agree with the v2 primitives...
+            settings.ProjectPin.ShouldBe(ProjectIdentity.DerivePinV2(backslashRoot));
+            settings.ResolvedPort.ShouldBe(ProjectIdentity.DerivePortV2(backslashRoot));
+
+            // ...and, the defining property, with the SAME (forward-slash) pre-hash string, so the
+            // separator form the engine happens to report can never split pin from port.
+            settings.ProjectPin.ShouldBe(ProjectIdentity.DerivePinV2(forwardSlashRoot));
+            settings.ResolvedPort.ShouldBe(ProjectIdentity.DerivePortV2(forwardSlashRoot));
+
+            // The bug itself: the port must NOT be the v1 (un-normalized) derivation, which on a
+            // backslash root is a different hash of a different string.
+            ProjectIdentity.DerivePortV2(backslashRoot).ShouldNotBe(ProjectIdentity.DerivePort(backslashRoot));
+            settings.ResolvedPort.ShouldNotBe(ProjectIdentity.DerivePort(backslashRoot));
+        }
+
+        /// <summary>
+        /// The same invariant observed end-to-end, through what Configure actually writes: the port in
+        /// the URL authority and the pin in the <c>/p/&lt;pin&gt;</c> segment of one written config must
+        /// both come from the v2 normalization. This is the user-visible shape from the bug report.
+        /// </summary>
+        [Fact]
+        public void WrittenConfig_UrlPortAndPin_AreBothV2_ForBackslashRoot()
+        {
+            var backslashRoot = "C:" + Bs + "tmp" + Bs + "mcpauth-test" + Bs + "test-project";
+            var v2Pin = ProjectIdentity.DerivePinV2(backslashRoot);
+            var v2Port = ProjectIdentity.DerivePortV2(backslashRoot);
+            var settings = Settings(backslashRoot);
+
+            var c = new ClaudeCodeConfigurator();
+
+            var http = c.GetHttpConfig(settings).ExpectedFileContent;
+            http.ShouldContain($"\"url\": \"http://localhost:{v2Port}/mcp/p/{v2Pin}\"");
+            http.ShouldNotContain($"localhost:{ProjectIdentity.DerivePort(backslashRoot)}");
+
+            var stdio = c.GetStdioConfig(settings).ExpectedFileContent;
+            stdio.ShouldContain($"\"{Consts.MCP.Server.Args.Port}={v2Port}\"");
+            stdio.ShouldContain($"\"{Consts.MCP.Server.Args.Project}={v2Pin}\"");
+        }
+
         // ---- DoD 1: dedup / upsert regression on the new pinned shape. ----
 
         [Fact]
@@ -321,7 +385,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             {
                 var settings = Settings(root);
                 settings.Identity.PortIsOverridden.ShouldBeFalse();
-                settings.ResolvedPort.ShouldBe(ProjectIdentity.DerivePort(root));
+                // auth-fixes T1 / defect B: the derived port is the v2 (separator-normalized) port —
+                // the SAME normalization ProjectPin uses. This assertion previously named DerivePort
+                // (v1); on a forward-slash root the two agree, which is precisely why the suite could
+                // not see the Windows divergence. See PinAndPort_ComeFromTheSameNormalization_* below.
+                settings.ResolvedPort.ShouldBe(ProjectIdentity.DerivePortV2(root));
                 settings.ResolvedPort.ShouldBeInRange(ProjectIdentity.MinPort, ProjectIdentity.MaxPort);
             }
             finally { Directory.Delete(root, recursive: true); }

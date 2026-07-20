@@ -229,14 +229,18 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         // terminal-written config. Resolved lazily and cached (a marker read is file I/O, and the
         // identity is stable for the settings' <see cref="ProjectRootPath"/>).
         private ProjectIdentity? _identity;
-        private string? _projectPin;
 
         /// <summary>
         /// The project's <see cref="ProjectIdentity"/> — routing pin plus the resolved local port
         /// (the project marker's <c>portOverride</c> wins, else the deterministic hash-derived port).
         /// Read once from the marker at <see cref="ProjectRootPath"/> and cached.
+        ///
+        /// <para>Derived via <see cref="ProjectIdentity.DeriveV2"/>, so the pin and the port come from
+        /// ONE <see cref="ProjectIdentity.NormalizeV2"/> pre-hash string (auth-fixes T1 / defect B).
+        /// <see cref="ProjectPin"/> and <see cref="ResolvedPort"/> both read off this single object,
+        /// which is what makes a v1/v2 mix within one settings instance unrepresentable.</para>
         /// </summary>
-        public ProjectIdentity Identity => _identity ??= ProjectIdentity.Derive(ProjectRootPath, ProjectMarker.Read(ProjectRootPath));
+        public ProjectIdentity Identity => _identity ??= ProjectIdentity.DeriveV2(ProjectRootPath, ProjectMarker.Read(ProjectRootPath));
 
         /// <summary>
         /// The routing pin written into every config (HTTP <c>/p/&lt;pin&gt;</c> segment and stdio
@@ -244,17 +248,24 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// separator-normalized SHA-256, see <see cref="ProjectIdentity.DerivePinV2"/>) so a config
         /// generated from a Windows backslash root matches a plugin whose forward-slash hash it now
         /// equals (auth-fixes T3 / defect B5). Old (v1-pin) configs still route via the plugin's legacy
-        /// hash. Non-secret, safe to commit. The port stays on the v1 derivation (<see cref="ResolvedPort"/>)
-        /// until the engine runtimes adopt the v2 port primitive. Derived once and cached (the pin is
-        /// stable for the settings' <see cref="ProjectRootPath"/>), matching <see cref="Identity"/>.
+        /// hash. Non-secret, safe to commit. Read straight off <see cref="Identity"/>, whose
+        /// <see cref="ResolvedPort"/> shares the same v2 normalization — the engine runtimes already
+        /// adopted the v2 port primitive (<c>UnityMcpPlugin.GeneratePortFromDirectory</c> →
+        /// <see cref="ProjectIdentity.DerivePortV2"/>, defect B10), and this writer now matches them.
         /// </summary>
-        public string ProjectPin => _projectPin ??= ProjectIdentity.DerivePinV2(ProjectRootPath);
+        public string ProjectPin => Identity.Pin;
 
         /// <summary>
         /// The resolved per-project local port: the project marker's <c>portOverride</c> when set,
         /// otherwise the deterministic hash-derived port. This is the port written into configs
         /// (stdio <c>port=</c> arg and the loopback HTTP URL), NOT the raw engine-supplied
         /// <see cref="Port"/> — b6 single-sources the local port from <see cref="ProjectIdentity"/>.
+        ///
+        /// <para>Shares <see cref="Identity"/> — and therefore the exact
+        /// <see cref="ProjectIdentity.NormalizeV2"/> pre-hash string — with <see cref="ProjectPin"/>.
+        /// Before auth-fixes T1 this read a v1 (non-separator-normalized) port while the pin was
+        /// already v2, so on Windows (where <c>ProjectRootPath</c> carries backslashes) the written
+        /// config mixed a v1 port with a v2 pin and pointed at a port the plugin never bound.</para>
         /// </summary>
         public int ResolvedPort => Identity.Port;
 

@@ -225,6 +225,45 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             return PortFromHash(HashOfV2(projectRoot));
         }
 
+        /// <summary>
+        /// Derive the <b>fully v2</b> identity for <paramref name="projectRoot"/>: both the
+        /// <see cref="Pin"/> and the hash-derived <see cref="Port"/> come from the single
+        /// <see cref="NormalizeV2"/> pre-hash string, so one identity object can never mix the v1 and
+        /// v2 normalizations. When <paramref name="portOverride"/> is non-null (the user's explicit
+        /// override from the project marker) it always wins for <see cref="Port"/>; the
+        /// <see cref="Pin"/> is always hash-derived.
+        ///
+        /// <para>This is the factory every configurator path uses (auth-fixes T1 / defect B). The v1
+        /// <see cref="Derive(string, int?)"/> is retained verbatim for legacy consumers and the v1
+        /// golden vectors, but mixing the two within one settings object is exactly the bug this
+        /// method exists to make unrepresentable: on Windows <c>ProjectRootPath</c> carries
+        /// backslashes, so a v1 port and a v2 pin hash <b>different strings</b> and the written
+        /// config points at a port nothing is listening on.</para>
+        /// </summary>
+        /// <param name="projectRoot">The project root path (as the engine reports it — separators are normalized here).</param>
+        /// <param name="portOverride">Optional explicit user port override; wins when set.</param>
+        public static ProjectIdentity DeriveV2(string projectRoot, int? portOverride = null)
+        {
+            if (projectRoot == null)
+                throw new ArgumentNullException(nameof(projectRoot));
+
+            var hash = HashOfV2(projectRoot);
+            var pin = ToHex(hash, PinLength / 2);
+            var derivedPort = PortFromHash(hash);
+
+            if (portOverride.HasValue)
+                return new ProjectIdentity(pin, portOverride.Value, portIsOverridden: true);
+
+            return new ProjectIdentity(pin, derivedPort, portIsOverridden: false);
+        }
+
+        /// <summary>
+        /// Convenience overload of <see cref="DeriveV2(string, int?)"/> that reads the port override
+        /// from a project marker (may be null).
+        /// </summary>
+        public static ProjectIdentity DeriveV2(string projectRoot, ProjectMarker? marker)
+            => DeriveV2(projectRoot, marker?.PortOverride);
+
         internal static byte[] HashOf(string projectRoot)
         {
             var normalized = Normalize(projectRoot);
