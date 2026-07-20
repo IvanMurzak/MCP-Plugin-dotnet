@@ -71,8 +71,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public string Pin { get; }
 
         /// <summary>
-        /// The resolved local port. Equal to <see cref="DerivePort"/> unless an explicit user port
-        /// override was supplied (from the project marker), in which case the override wins.
+        /// The resolved local port. Equal to the hash-derived port of whichever factory produced this
+        /// identity — <see cref="DerivePort"/> for <see cref="Derive(string, int?)"/>,
+        /// <see cref="DerivePortV2"/> for <see cref="DeriveV2(string, int?)"/> — unless an explicit user
+        /// port override was supplied (from the project marker), in which case the override wins and
+        /// <see cref="PortIsOverridden"/> is true.
         /// </summary>
         public int Port { get; }
 

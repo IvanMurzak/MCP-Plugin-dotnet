@@ -83,7 +83,12 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// <summary>Absolute path to the MCP server executable (stdio transport <c>command</c>).</summary>
         public string ExecutableFullPath { get; }
 
-        /// <summary>The MCP server port (stdio transport arg).</summary>
+        /// <summary>
+        /// The raw engine-supplied port (the port the engine's own binder resolved). NOT what the
+        /// config writers emit: the stdio <c>port=</c> arg uses <see cref="ResolvedPort"/> and the
+        /// loopback HTTP url uses <see cref="PinnedHttpPort"/>. This value backs the Docker container
+        /// name / port mapping and the displayed copy-paste <c>mcp add</c> one-liners.
+        /// </summary>
         public int Port { get; }
 
         /// <summary>Plugin timeout in milliseconds (stdio transport arg).</summary>
@@ -249,10 +254,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// separator-normalized SHA-256, see <see cref="ProjectIdentity.DerivePinV2"/>) so a config
         /// generated from a Windows backslash root matches a plugin whose forward-slash hash it now
         /// equals (auth-fixes T3 / defect B5). Old (v1-pin) configs still route via the plugin's legacy
-        /// hash. Non-secret, safe to commit. Read straight off <see cref="Identity"/>, whose
-        /// <see cref="ResolvedPort"/> shares the same v2 normalization — the engine runtimes already
-        /// adopted the v2 port primitive (<c>UnityMcpPlugin.GeneratePortFromDirectory</c> →
-        /// <see cref="ProjectIdentity.DerivePortV2"/>, defect B10), and this writer now matches them.
+        /// hash. Non-secret, safe to commit. Read straight off <see cref="Identity"/> — see
+        /// <see cref="ProjectIdentity.DeriveV2"/> for why the pin and the port must share one derivation.
         /// </summary>
         public string ProjectPin => Identity.Pin;
 
@@ -262,13 +265,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// <c>port=</c> arg, NOT the raw engine-supplied <see cref="Port"/> — b6 single-sources the
         /// local port from <see cref="ProjectIdentity"/>. The loopback HTTP URL uses
         /// <see cref="PinnedHttpPort"/>, which additionally honours a port the user typed into
-        /// <see cref="Host"/> (defect A) — a port that only exists on the HTTP path.
+        /// <see cref="Host"/> (defect A) — a level that only exists on the HTTP path.
         ///
-        /// <para>Shares <see cref="Identity"/> — and therefore the exact
-        /// <see cref="ProjectIdentity.NormalizeV2"/> pre-hash string — with <see cref="ProjectPin"/>.
-        /// Before auth-fixes T1 this read a v1 (non-separator-normalized) port while the pin was
-        /// already v2, so on Windows (where <c>ProjectRootPath</c> carries backslashes) the written
-        /// config mixed a v1 port with a v2 pin and pointed at a port the plugin never bound.</para>
+        /// <para>Shares the single cached <see cref="Identity"/> — and therefore the exact
+        /// <see cref="ProjectIdentity.NormalizeV2"/> pre-hash string — with <see cref="ProjectPin"/>
+        /// (auth-fixes T1 / defect B; see <see cref="ProjectIdentity.DeriveV2"/>).</para>
         /// </summary>
         public int ResolvedPort => Identity.Port;
 
@@ -298,11 +299,24 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         ///
         /// <para>Level 1 still outranks level 2: <c>portOverride</c> is a deliberate per-project marker
         /// written to pin a project's port, so it beats an incidental port in the host string.</para>
+        ///
+        /// <para><b>Residual divergence from the binder</b> (both engine-side, both outside this writer's
+        /// reach — recorded so the agreement above is not read as absolute):
+        /// <list type="bullet">
+        ///   <item>A <see cref="Host"/> with NO port (or an empty <c>host:</c>) — the binder's
+        ///   <c>uri.Port</c> synthesises the scheme default (80/443), which passes its
+        ///   <c>&gt; 0 &amp;&amp; &lt;= MaxPort</c> guard, so it binds 80 while this writer falls back to the
+        ///   derived port. Unreachable on the shipped default, whose <c>Host</c> is
+        ///   <c>http://localhost:{derived}</c> — an explicit port that both sides agree on.</item>
+        ///   <item>Level 1 vs level 2 — the binder never reads the project marker, so a
+        ///   <c>portOverride</c> combined with an explicit port in <see cref="Host"/> resolves to the
+        ///   override here and to the typed port there. Latent: nothing writes <c>portOverride</c> in
+        ///   production today.</item>
+        /// </list></para>
         /// </summary>
         public int PinnedHttpPort =>
-            Identity.PortIsOverridden
-                ? ResolvedPort                      // 1. marker portOverride wins outright
-                : ExplicitHostPort ?? ResolvedPort; // 2. user-typed port, else 3. derived v2 port
+            // marker override (1) else typed host port (2) else derived v2 port (3) — see the list above.
+            Identity.PortIsOverridden ? ResolvedPort : ExplicitHostPort ?? ResolvedPort;
 
         /// <summary>
         /// The HTTP <c>url</c> written into configs on the default (credential-free) path: the base
@@ -352,7 +366,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             // Isolate the authority: after "scheme://" (if present), up to the first '/', '?' or '#'.
             var schemeEnd = host!.IndexOf("://", StringComparison.Ordinal);
             var start = schemeEnd >= 0 ? schemeEnd + 3 : 0;
-            var end = host.IndexOfAny(new[] { '/', '?', '#' }, start);
+            var end = host.IndexOfAny(AuthorityTerminators, start);
             var authority = end >= 0 ? host.Substring(start, end - start) : host.Substring(start);
 
             // Drop any userinfo ("user:pass@host:port") — its colon is not a port separator.
@@ -367,17 +381,16 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             if (colon < 0 || colon == authority.Length - 1)
                 return null;
 
-            var portText = authority.Substring(colon + 1);
-            foreach (var ch in portText)
-            {
-                if (ch < '0' || ch > '9')
-                    return null;
-            }
-
-            if (!int.TryParse(portText, NumberStyles.None, CultureInfo.InvariantCulture, out var port))
-                return null; // overflows int — far beyond MaxPort anyway
+            // NumberStyles.None is the whole validator: it rejects sign, whitespace, separators and any
+            // non-ASCII-digit character, so a hand-rolled digit scan on top would be redundant. The
+            // theory in ConfigWritersB6Tests locks that (non-numeric, non-ASCII-digit and overflow rows).
+            if (!int.TryParse(authority.Substring(colon + 1), NumberStyles.None, CultureInfo.InvariantCulture, out var port))
+                return null;
 
             return port > 0 && port <= Consts.Hub.MaxPort ? port : (int?)null;
         }
+
+        /// <summary>Characters that terminate a URL authority. Static so the parse allocates nothing.</summary>
+        private static readonly char[] AuthorityTerminators = { '/', '?', '#' };
     }
 }

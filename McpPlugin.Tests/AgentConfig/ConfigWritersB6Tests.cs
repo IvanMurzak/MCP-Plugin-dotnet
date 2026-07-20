@@ -265,7 +265,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         ///
         /// <para>A hardcoded backslash literal keeps this deterministic on Linux CI, where
         /// <c>Path.GetTempPath()</c> is forward-slash and v1 == v2 — the exact blind spot that let the
-        /// bug ship.</para>
+        /// bug ship. The root is a HASH INPUT only; it is never created on disk.</para>
         /// </summary>
         [Fact]
         public void PinAndPort_ComeFromTheSameNormalization_ForBackslashRoot()
@@ -273,6 +273,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             var backslashRoot = "C:" + Bs + "tmp" + Bs + "mcpauth-test" + Bs + "test-project";
             var forwardSlashRoot = backslashRoot.Replace(Bs, "/");
             var settings = Settings(backslashRoot);
+
+            // Identity resolution reads <root>/.ai-game-dev/project.json, so pin this test to the
+            // hash-derived branch explicitly: if that path ever gains a real marker with a
+            // portOverride, this fails HERE rather than as a baffling port mismatch below.
+            settings.Identity.PortIsOverridden.ShouldBeFalse();
 
             // Both halves of the identity agree with the v2 primitives...
             settings.ProjectPin.ShouldBe(ProjectIdentity.DerivePinV2(backslashRoot));
@@ -306,6 +311,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             var v2Pin = ProjectIdentity.DerivePinV2(backslashRoot);
             var v2Port = ProjectIdentity.DerivePortV2(backslashRoot);
             var settings = Settings(backslashRoot, host: "http://localhost/mcp");
+
+            // Same ambient-state pin as the test above: the derived-port branch, not a marker override.
+            settings.Identity.PortIsOverridden.ShouldBeFalse();
 
             var c = new ClaudeCodeConfigurator();
 
@@ -409,65 +417,43 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         // config point at a port nothing was listening on — the same class of failure as defect B, from
         // the opposite direction.
 
-        [Fact]
-        public void ExplicitHostPort_IsHonoured_NotOverwrittenByDerivedPort()
+        /// <summary>
+        /// Precedence levels 2 and 3, end-to-end. A <paramref name="typedPort"/> of <c>null</c> means the
+        /// host carries no explicit port, so the derived v2 port is expected instead.
+        ///
+        /// <para>The <c>:80</c> row is the case <c>Uri.Port</c> cannot express: it synthesises 80 for a
+        /// PORTLESS host too, so only the raw host string distinguishes "the user typed 80" (honour it)
+        /// from "no port at all" (derive one). Level 1 lives in
+        /// <c>MarkerPortOverride_PropagatesToWrittenPort_StdioAndHttp</c>, where it beats a typed port.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("http://localhost:50000/mcp", 50000)] // a typed port is honoured, not overwritten
+        [InlineData("http://localhost:80/mcp", 80)]       // an explicit scheme-DEFAULT port is still explicit
+        [InlineData("http://localhost/mcp", null)]        // no port at all -> derived v2 port
+        public void LoopbackHttpUrl_HonoursTypedPort_ElseDerivedV2Port(string host, int? typedPort)
         {
             var root = NewTempDir();
             try
             {
-                var settings = Settings(root, host: "http://localhost:50000/mcp");
+                var settings = Settings(root, host: host);
+                var expectedPort = typedPort ?? settings.ResolvedPort;
 
-                settings.Identity.PortIsOverridden.ShouldBeFalse();
-                settings.ExplicitHostPort.ShouldBe(50000);
-                settings.PinnedHttpPort.ShouldBe(50000);
+                settings.Identity.PortIsOverridden.ShouldBeFalse(); // no marker => levels 2/3 only
+                settings.ExplicitHostPort.ShouldBe(typedPort);
+                settings.PinnedHttpPort.ShouldBe(expectedPort);
 
-                // The derived port is a DIFFERENT value, so this genuinely distinguishes the two paths.
-                settings.ResolvedPort.ShouldNotBe(50000);
+                if (typedPort.HasValue)
+                    // The derived port is a DIFFERENT value, so the row genuinely distinguishes the paths
+                    // (the derived range is 20000-29999, which neither 50000 nor 80 can collide with).
+                    settings.ResolvedPort.ShouldNotBe(typedPort.Value);
+                else
+                    settings.PinnedHttpPort.ShouldBe(ProjectIdentity.DerivePortV2(root));
 
-                settings.PinnedHttpUrl.ShouldBe($"http://localhost:50000/mcp/p/{settings.ProjectPin}");
-                settings.PinnedHttpUrl.ShouldNotContain($"localhost:{settings.ResolvedPort}");
+                settings.PinnedHttpUrl.ShouldBe($"http://localhost:{expectedPort}/mcp/p/{settings.ProjectPin}");
 
                 // ...and it reaches the file the user actually gets.
                 new ClaudeCodeConfigurator().GetHttpConfig(settings).ExpectedFileContent
-                    .ShouldContain($"\"url\": \"http://localhost:50000/mcp/p/{settings.ProjectPin}\"");
-            }
-            finally { Directory.Delete(root, recursive: true); }
-        }
-
-        [Fact]
-        public void PortlessHost_FallsBackToDerivedV2Port()
-        {
-            var root = NewTempDir();
-            try
-            {
-                var settings = Settings(root, host: "http://localhost/mcp");
-
-                settings.ExplicitHostPort.ShouldBeNull();
-                settings.PinnedHttpPort.ShouldBe(settings.ResolvedPort);
-                settings.PinnedHttpPort.ShouldBe(ProjectIdentity.DerivePortV2(root));
-
-                settings.PinnedHttpUrl.ShouldBe($"http://localhost:{settings.ResolvedPort}/mcp/p/{settings.ProjectPin}");
-            }
-            finally { Directory.Delete(root, recursive: true); }
-        }
-
-        [Fact]
-        public void ExplicitDefaultPort_IsStillAnExplicitPort_AndIsHonoured()
-        {
-            // The distinction Uri.Port cannot express: "http://localhost/mcp" (no port — fall back to
-            // the derived port) vs "http://localhost:80/mcp" (the user typed 80 — honour it). Uri
-            // synthesises 80 for both, which is why the explicit port is read off the raw host string.
-            var root = NewTempDir();
-            try
-            {
-                var typed = Settings(root, host: "http://localhost:80/mcp");
-                typed.ExplicitHostPort.ShouldBe(80);
-                typed.PinnedHttpPort.ShouldBe(80);
-                typed.PinnedHttpUrl.ShouldBe($"http://localhost:80/mcp/p/{typed.ProjectPin}");
-
-                var portless = Settings(root, host: "http://localhost/mcp");
-                portless.ExplicitHostPort.ShouldBeNull();
-                portless.PinnedHttpPort.ShouldBe(portless.ResolvedPort);
+                    .ShouldContain($"\"url\": \"http://localhost:{expectedPort}/mcp/p/{settings.ProjectPin}\"");
             }
             finally { Directory.Delete(root, recursive: true); }
         }
@@ -506,14 +492,25 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         [InlineData("http://localhost:0/mcp", null)]
         [InlineData("http://localhost:65536/mcp", null)]
         [InlineData("http://localhost:99999999999999999999/mcp", null)]
+        // The authority ends at the first '/', '?' or '#' — a query/fragment with no path still terminates it.
+        [InlineData("http://localhost:8080?x=1", 8080)]
+        [InlineData("http://localhost:8080#frag", 8080)]
+        // Scheme-relative: no "://", so there is no authority to read and the answer is null. That
+        // AGREES with the writer and the binder, which both reject it at Uri.TryCreate(Absolute) and
+        // fall back to the derived port.
+        [InlineData("//localhost:8080/mcp", null)]
         // Colons that are NOT port separators.
         [InlineData("http://user:pass@localhost/mcp", null)]
         [InlineData("http://user:pass@localhost:8080/mcp", 8080)]
         [InlineData("http://[::1]/mcp", null)]
         [InlineData("http://[::1]:8080/mcp", 8080)]
-        // Malformed / empty.
+        // Malformed / empty. The non-ASCII-digit row (Arabic-Indic "34") pins that NumberStyles.None is
+        // the only validator needed — it is what lets the parser drop a hand-rolled digit scan.
         [InlineData("http://localhost:/mcp", null)]
         [InlineData("http://localhost:abc/mcp", null)]
+        [InlineData("http://localhost:٣٤/mcp", null)]
+        [InlineData("http://localhost:8 0/mcp", null)]
+        [InlineData("http://localhost:+80/mcp", null)]
         [InlineData("", null)]
         [InlineData(null, null)]
         public void TryGetExplicitPort_ReadsTheTypedPort_FromTheRawHost(string? host, int? expected)
