@@ -159,6 +159,69 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             Should.Throw<System.ArgumentNullException>(() => ProjectIdentity.DerivePortV2(null!));
             Should.Throw<System.ArgumentNullException>(() => ProjectIdentity.DeriveProjectPathHashV2(null!));
             Should.Throw<System.ArgumentNullException>(() => ProjectIdentity.NormalizeV2(null!));
+            Should.Throw<System.ArgumentNullException>(() => ProjectIdentity.DeriveV2(null!));
+        }
+
+        // ---- auth-fixes T1 / defect B: the whole-identity v2 factory. ----
+
+        /// <summary>
+        /// Every golden vector, resolved through the whole-identity <see cref="ProjectIdentity.DeriveV2"/>
+        /// factory: pin AND port must match the standalone v2 primitives, so an identity object can
+        /// never carry a pin and a port derived from different normalizations.
+        /// </summary>
+        [Theory]
+        [MemberData(nameof(GoldenVectors))]
+        public void DeriveV2_ProducesV2PinAndV2Port_ForEveryGoldenVector(string path, string expectedPin, int expectedPort)
+        {
+            var identity = ProjectIdentity.DeriveV2(path);
+
+            identity.Pin.ShouldBe(expectedPin);
+            identity.Port.ShouldBe(expectedPort);
+            identity.PortIsOverridden.ShouldBeFalse();
+        }
+
+        /// <summary>
+        /// The defect-B invariant at the identity level: a backslash root and its forward-slash form
+        /// yield the same pin AND the same port, and that port is NOT the v1 derivation.
+        /// </summary>
+        [Fact]
+        public void DeriveV2_BackslashAndForwardSlash_AgreeOnBothPinAndPort()
+        {
+            var backslash = "C:" + Bs + "tmp" + Bs + "mcpauth-test" + Bs + "test-project";
+            var forward = backslash.Replace(Bs, "/");
+
+            var fromBackslash = ProjectIdentity.DeriveV2(backslash);
+            var fromForward = ProjectIdentity.DeriveV2(forward);
+
+            fromBackslash.Pin.ShouldBe(fromForward.Pin);
+            fromBackslash.Port.ShouldBe(fromForward.Port);
+
+            // v1 would have split them: same object, two different pre-hash strings.
+            fromBackslash.Port.ShouldNotBe(ProjectIdentity.Derive(backslash).Port);
+            fromBackslash.Pin.ShouldNotBe(ProjectIdentity.Derive(backslash).Pin);
+        }
+
+        /// <summary>
+        /// The marker's <c>portOverride</c> keeps precedence under v2 (unchanged behaviour); the pin
+        /// stays hash-derived from the v2 normalization.
+        /// </summary>
+        [Fact]
+        public void DeriveV2_PortOverride_Wins_AndPinStaysHashDerived()
+        {
+            var backslash = "C:" + Bs + "tmp" + Bs + "mcpauth-test" + Bs + "test-project";
+
+            var overridden = ProjectIdentity.DeriveV2(backslash, portOverride: 27618);
+            overridden.Port.ShouldBe(27618);
+            overridden.PortIsOverridden.ShouldBeTrue();
+            overridden.Pin.ShouldBe(ProjectIdentity.DerivePinV2(backslash));
+
+            var viaMarker = ProjectIdentity.DeriveV2(backslash, new ProjectMarker { PortOverride = 27618 });
+            viaMarker.Port.ShouldBe(27618);
+            viaMarker.PortIsOverridden.ShouldBeTrue();
+
+            var noOverride = ProjectIdentity.DeriveV2(backslash, (ProjectMarker?)null);
+            noOverride.Port.ShouldBe(ProjectIdentity.DerivePortV2(backslash));
+            noOverride.PortIsOverridden.ShouldBeFalse();
         }
 
         private static string Bs => ((char)92).ToString();

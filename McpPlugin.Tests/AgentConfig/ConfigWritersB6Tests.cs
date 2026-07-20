@@ -35,6 +35,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         // A token value distinctive enough that a substring assertion cannot false-match.
         private const string PatValue = "S3CR3T-PAT-VALUE";
 
+        // A literal backslash, built from its char code so no escaping subtlety can alter it.
+        private static string Bs => ((char)92).ToString();
+
         private static AgentConfiguratorSettings Settings(
             string root,
             string? token = null,
@@ -148,20 +151,24 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             try
             {
                 var c = new ClaudeCodeConfigurator();
-                var settings = Settings(root);
+                var settings = Settings(root); // host "http://localhost:50000/mcp" — an EXPLICIT typed port
                 var pin = settings.ProjectPin;
-                var port = settings.ResolvedPort;
 
+                // stdio still carries the ProjectIdentity port (marker override, else derived v2).
                 var stdio = c.GetStdioConfig(settings).ExpectedFileContent;
-                stdio.ShouldContain($"\"{Consts.MCP.Server.Args.Port}={port}\"");
+                stdio.ShouldContain($"\"{Consts.MCP.Server.Args.Port}={settings.ResolvedPort}\"");
                 stdio.ShouldContain($"\"{Consts.MCP.Server.Args.PluginTimeout}=30000\"");
                 stdio.ShouldContain($"\"{Consts.MCP.Server.Args.ClientTransportMethod}=stdio\"");
                 stdio.ShouldContain($"\"{Consts.MCP.Server.Args.Project}={pin}\"");
                 stdio.ShouldNotContain("\"type\"");
                 stdio.ShouldNotContain("\"url\"");
 
+                // auth-fixes T1 / defect A (owner ruling 2026-07-19): the HTTP url keeps the port the
+                // user typed into Host (50000) instead of overwriting it with the derived port. The
+                // engine binds that same typed port (UnityMcpPluginEditor.Port -> uri.Port), so writer
+                // and binder now agree. This assertion previously named settings.ResolvedPort.
                 var http = c.GetHttpConfig(settings).ExpectedFileContent;
-                http.ShouldContain($"\"url\": \"http://localhost:{port}/mcp/p/{pin}\"");
+                http.ShouldContain($"\"url\": \"http://localhost:50000/mcp/p/{pin}\"");
                 http.ShouldContain("\"type\": \"http\"");
                 http.ShouldNotContain("\"headers\"");
             }
@@ -245,6 +252,80 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             c.GetStdioConfig(settings).ExpectedFileContent.ShouldContain($"{Consts.MCP.Server.Args.Project}={v2Pin}");
         }
 
+        // ---- auth-fixes T1 / defect B: the pin and the port come from ONE normalization. ----
+
+        /// <summary>
+        /// THE regression test for defect B. Before the fix, one settings object derived its pin from
+        /// <c>DerivePinV2</c> (separator-normalized) but its port from the v1 <c>ProjectIdentity.Derive</c>
+        /// (NOT normalized), so on a Windows backslash root the written config mixed a v1 port with a v2
+        /// pin — e.g. <c>http://localhost:29540/p/a8087ea6</c>, where 29540 is the v1 port of
+        /// <c>c:\tmp\mcpauth-test\test-project</c> and a8087ea6 is the v2 pin of
+        /// <c>c:/tmp/mcpauth-test/test-project</c>. The engine runtimes bind the v2 port (defect B10), so
+        /// the agent dialled a port nothing was listening on.
+        ///
+        /// <para>A hardcoded backslash literal keeps this deterministic on Linux CI, where
+        /// <c>Path.GetTempPath()</c> is forward-slash and v1 == v2 — the exact blind spot that let the
+        /// bug ship. The root is a HASH INPUT only; it is never created on disk.</para>
+        /// </summary>
+        [Fact]
+        public void PinAndPort_ComeFromTheSameNormalization_ForBackslashRoot()
+        {
+            var backslashRoot = "C:" + Bs + "tmp" + Bs + "mcpauth-test" + Bs + "test-project";
+            var forwardSlashRoot = backslashRoot.Replace(Bs, "/");
+            var settings = Settings(backslashRoot);
+
+            // Identity resolution reads <root>/.ai-game-dev/project.json, so pin this test to the
+            // hash-derived branch explicitly: if that path ever gains a real marker with a
+            // portOverride, this fails HERE rather than as a baffling port mismatch below.
+            settings.Identity.PortIsOverridden.ShouldBeFalse();
+
+            // Both halves of the identity agree with the v2 primitives...
+            settings.ProjectPin.ShouldBe(ProjectIdentity.DerivePinV2(backslashRoot));
+            settings.ResolvedPort.ShouldBe(ProjectIdentity.DerivePortV2(backslashRoot));
+
+            // ...and, the defining property, with the SAME (forward-slash) pre-hash string, so the
+            // separator form the engine happens to report can never split pin from port.
+            settings.ProjectPin.ShouldBe(ProjectIdentity.DerivePinV2(forwardSlashRoot));
+            settings.ResolvedPort.ShouldBe(ProjectIdentity.DerivePortV2(forwardSlashRoot));
+
+            // The bug itself: the port must NOT be the v1 (un-normalized) derivation, which on a
+            // backslash root is a different hash of a different string.
+            ProjectIdentity.DerivePortV2(backslashRoot).ShouldNotBe(ProjectIdentity.DerivePort(backslashRoot));
+            settings.ResolvedPort.ShouldNotBe(ProjectIdentity.DerivePort(backslashRoot));
+        }
+
+        /// <summary>
+        /// The same invariant observed end-to-end, through what Configure actually writes: the port in
+        /// the URL authority and the pin in the <c>/p/&lt;pin&gt;</c> segment of one written config must
+        /// both come from the v2 normalization. This is the user-visible shape from the bug report.
+        ///
+        /// <para>The host is deliberately PORTLESS so the URL exercises precedence level 3 (the derived
+        /// v2 port). With an explicit port in the host the URL would — correctly, per defect A's owner
+        /// ruling — carry that typed port instead, and this test would no longer be observing defect B.
+        /// The stdio half is unaffected by the host either way.</para>
+        /// </summary>
+        [Fact]
+        public void WrittenConfig_UrlPortAndPin_AreBothV2_ForBackslashRoot()
+        {
+            var backslashRoot = "C:" + Bs + "tmp" + Bs + "mcpauth-test" + Bs + "test-project";
+            var v2Pin = ProjectIdentity.DerivePinV2(backslashRoot);
+            var v2Port = ProjectIdentity.DerivePortV2(backslashRoot);
+            var settings = Settings(backslashRoot, host: "http://localhost/mcp");
+
+            // Same ambient-state pin as the test above: the derived-port branch, not a marker override.
+            settings.Identity.PortIsOverridden.ShouldBeFalse();
+
+            var c = new ClaudeCodeConfigurator();
+
+            var http = c.GetHttpConfig(settings).ExpectedFileContent;
+            http.ShouldContain($"\"url\": \"http://localhost:{v2Port}/mcp/p/{v2Pin}\"");
+            http.ShouldNotContain($"localhost:{ProjectIdentity.DerivePort(backslashRoot)}");
+
+            var stdio = c.GetStdioConfig(settings).ExpectedFileContent;
+            stdio.ShouldContain($"\"{Consts.MCP.Server.Args.Port}={v2Port}\"");
+            stdio.ShouldContain($"\"{Consts.MCP.Server.Args.Project}={v2Pin}\"");
+        }
+
         // ---- DoD 1: dedup / upsert regression on the new pinned shape. ----
 
         [Fact]
@@ -293,6 +374,12 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
 
         // ---- DoD 2: marker portOverride propagates into the written config port. ----
 
+        /// <summary>
+        /// DoD 2, and — since defect A's owner ruling — the ESSENTIAL precedence-level-1-beats-level-2
+        /// case: the marker's <c>portOverride</c> (27777) and an explicit port in the host
+        /// (<c>http://localhost:50000/mcp</c>) are BOTH present, and the override must win. A marker is
+        /// a deliberate per-project pin; a port in the host string is incidental by comparison.
+        /// </summary>
         [Fact]
         public void MarkerPortOverride_PropagatesToWrittenPort_StdioAndHttp()
         {
@@ -302,16 +389,132 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
                 const int overridePort = 27777;
                 new ProjectMarker { PortOverride = overridePort }.Write(root);
 
-                var settings = Settings(root);
+                var settings = Settings(root); // host carries an explicit :50000 the override must beat
+                settings.ExplicitHostPort.ShouldBe(50000);
                 settings.ResolvedPort.ShouldBe(overridePort);
                 settings.Identity.PortIsOverridden.ShouldBeTrue();
+                settings.PinnedHttpPort.ShouldBe(overridePort);
 
                 var c = new ClaudeCodeConfigurator();
                 c.GetStdioConfig(settings).ExpectedFileContent.ShouldContain($"{Consts.MCP.Server.Args.Port}={overridePort}");
-                c.GetHttpConfig(settings).ExpectedFileContent.ShouldContain($"localhost:{overridePort}/");
+
+                var http = c.GetHttpConfig(settings).ExpectedFileContent;
+                http.ShouldContain($"localhost:{overridePort}/");
+                http.ShouldNotContain("localhost:50000"); // the typed host port must NOT win over the marker
             }
             finally { Directory.Delete(root, recursive: true); }
         }
+
+        // ---- auth-fixes T1 / defect A (owner ruling 2026-07-19): the user's typed port is honoured. ----
+        //
+        // Precedence written into the config's loopback HTTP url:
+        //   1. project marker portOverride   (highest — MarkerPortOverride_PropagatesToWrittenPort_* above)
+        //   2. explicit port in the Host URL (the port the user typed)
+        //   3. deterministic derived v2 port (fallback when Host carries no explicit port)
+        //
+        // Level 2 is the fix: the engine ALREADY binds the typed port (UnityMcpPluginEditor.Port returns
+        // uri.Port when Host parses with an in-range port), so overwriting it in the writer made the
+        // config point at a port nothing was listening on — the same class of failure as defect B, from
+        // the opposite direction.
+
+        /// <summary>
+        /// Precedence levels 2 and 3, end-to-end. A <paramref name="typedPort"/> of <c>null</c> means the
+        /// host carries no explicit port, so the derived v2 port is expected instead.
+        ///
+        /// <para>The <c>:80</c> row is the case <c>Uri.Port</c> cannot express: it synthesises 80 for a
+        /// PORTLESS host too, so only the raw host string distinguishes "the user typed 80" (honour it)
+        /// from "no port at all" (derive one). Level 1 lives in
+        /// <c>MarkerPortOverride_PropagatesToWrittenPort_StdioAndHttp</c>, where it beats a typed port.</para>
+        /// </summary>
+        [Theory]
+        [InlineData("http://localhost:50000/mcp", 50000)] // a typed port is honoured, not overwritten
+        [InlineData("http://localhost:80/mcp", 80)]       // an explicit scheme-DEFAULT port is still explicit
+        [InlineData("http://localhost/mcp", null)]        // no port at all -> derived v2 port
+        public void LoopbackHttpUrl_HonoursTypedPort_ElseDerivedV2Port(string host, int? typedPort)
+        {
+            var root = NewTempDir();
+            try
+            {
+                var settings = Settings(root, host: host);
+                var expectedPort = typedPort ?? settings.ResolvedPort;
+
+                settings.Identity.PortIsOverridden.ShouldBeFalse(); // no marker => levels 2/3 only
+                settings.ExplicitHostPort.ShouldBe(typedPort);
+                settings.PinnedHttpPort.ShouldBe(expectedPort);
+
+                if (typedPort.HasValue)
+                    // The derived port is a DIFFERENT value, so the row genuinely distinguishes the paths
+                    // (the derived range is 20000-29999, which neither 50000 nor 80 can collide with).
+                    settings.ResolvedPort.ShouldNotBe(typedPort.Value);
+                else
+                    settings.PinnedHttpPort.ShouldBe(ProjectIdentity.DerivePortV2(root));
+
+                settings.PinnedHttpUrl.ShouldBe($"http://localhost:{expectedPort}/mcp/p/{settings.ProjectPin}");
+
+                // ...and it reaches the file the user actually gets.
+                new ClaudeCodeConfigurator().GetHttpConfig(settings).ExpectedFileContent
+                    .ShouldContain($"\"url\": \"http://localhost:{expectedPort}/mcp/p/{settings.ProjectPin}\"");
+            }
+            finally { Directory.Delete(root, recursive: true); }
+        }
+
+        [Fact]
+        public void ExplicitHostPort_IsIgnored_ForNonLoopbackAndCloud()
+        {
+            // The port rewrite only ever applied to a LOCAL loopback authority; a hosted target keeps
+            // its authority verbatim, which already preserved any typed port. Pinned so the defect-A
+            // change cannot leak into the cloud path.
+            var root = NewTempDir();
+            try
+            {
+                var cloud = Settings(root, connectionMode: ConnectionMode.Cloud, host: "https://ai-game.dev/mcp");
+                cloud.PinnedHttpUrl.ShouldBe($"https://ai-game.dev/mcp/p/{cloud.ProjectPin}");
+                cloud.PinnedHttpUrl.ShouldNotContain($":{cloud.ResolvedPort}");
+
+                var lan = Settings(root, host: "http://192.168.1.5:9000/mcp");
+                lan.PinnedHttpUrl.ShouldBe($"http://192.168.1.5:9000/mcp/p/{lan.ProjectPin}");
+            }
+            finally { Directory.Delete(root, recursive: true); }
+        }
+
+        [Theory]
+        // No port at all.
+        [InlineData("http://localhost/mcp", null)]
+        [InlineData("http://localhost", null)]
+        // Ordinary explicit ports, including a scheme-default one and the range bounds.
+        [InlineData("http://localhost:50000/mcp", 50000)]
+        [InlineData("http://localhost:80/mcp", 80)]
+        [InlineData("https://example.com:443", 443)]
+        [InlineData("http://localhost:1", 1)]
+        [InlineData("http://localhost:65535", 65535)]
+        // Out of range / unusable => null, mirroring the engine binder's guard, so BOTH sides fall back
+        // to the derived port rather than diverging.
+        [InlineData("http://localhost:0/mcp", null)]
+        [InlineData("http://localhost:65536/mcp", null)]
+        [InlineData("http://localhost:99999999999999999999/mcp", null)]
+        // The authority ends at the first '/', '?' or '#' — a query/fragment with no path still terminates it.
+        [InlineData("http://localhost:8080?x=1", 8080)]
+        [InlineData("http://localhost:8080#frag", 8080)]
+        // Scheme-relative: no "://", so there is no authority to read and the answer is null. That
+        // AGREES with the writer and the binder, which both reject it at Uri.TryCreate(Absolute) and
+        // fall back to the derived port.
+        [InlineData("//localhost:8080/mcp", null)]
+        // Colons that are NOT port separators.
+        [InlineData("http://user:pass@localhost/mcp", null)]
+        [InlineData("http://user:pass@localhost:8080/mcp", 8080)]
+        [InlineData("http://[::1]/mcp", null)]
+        [InlineData("http://[::1]:8080/mcp", 8080)]
+        // Malformed / empty. The non-ASCII-digit row (Arabic-Indic "34") pins that NumberStyles.None is
+        // the only validator needed — it is what lets the parser drop a hand-rolled digit scan.
+        [InlineData("http://localhost:/mcp", null)]
+        [InlineData("http://localhost:abc/mcp", null)]
+        [InlineData("http://localhost:٣٤/mcp", null)]
+        [InlineData("http://localhost:8 0/mcp", null)]
+        [InlineData("http://localhost:+80/mcp", null)]
+        [InlineData("", null)]
+        [InlineData(null, null)]
+        public void TryGetExplicitPort_ReadsTheTypedPort_FromTheRawHost(string? host, int? expected)
+            => AgentConfiguratorSettings.TryGetExplicitPort(host).ShouldBe(expected);
 
         [Fact]
         public void NoMarker_UsesDeterministicDerivedPort()
@@ -321,7 +524,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             {
                 var settings = Settings(root);
                 settings.Identity.PortIsOverridden.ShouldBeFalse();
-                settings.ResolvedPort.ShouldBe(ProjectIdentity.DerivePort(root));
+                // auth-fixes T1 / defect B: the derived port is the v2 (separator-normalized) port —
+                // the SAME normalization ProjectPin uses. This assertion previously named DerivePort
+                // (v1); on a forward-slash root the two agree, which is precisely why the suite could
+                // not see the Windows divergence. See PinAndPort_ComeFromTheSameNormalization_* below.
+                settings.ResolvedPort.ShouldBe(ProjectIdentity.DerivePortV2(root));
                 settings.ResolvedPort.ShouldBeInRange(ProjectIdentity.MinPort, ProjectIdentity.MaxPort);
             }
             finally { Directory.Delete(root, recursive: true); }
