@@ -10,6 +10,7 @@
 
 #nullable enable
 using System;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using com.IvanMurzak.McpPlugin.Common;
 
@@ -257,9 +258,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         /// <summary>
         /// The resolved per-project local port: the project marker's <c>portOverride</c> when set,
-        /// otherwise the deterministic hash-derived port. This is the port written into configs
-        /// (stdio <c>port=</c> arg and the loopback HTTP URL), NOT the raw engine-supplied
-        /// <see cref="Port"/> — b6 single-sources the local port from <see cref="ProjectIdentity"/>.
+        /// otherwise the deterministic hash-derived port. This is the port written into the stdio
+        /// <c>port=</c> arg, NOT the raw engine-supplied <see cref="Port"/> — b6 single-sources the
+        /// local port from <see cref="ProjectIdentity"/>. The loopback HTTP URL uses
+        /// <see cref="PinnedHttpPort"/>, which additionally honours a port the user typed into
+        /// <see cref="Host"/> (defect A) — a port that only exists on the HTTP path.
         ///
         /// <para>Shares <see cref="Identity"/> — and therefore the exact
         /// <see cref="ProjectIdentity.NormalizeV2"/> pre-hash string — with <see cref="ProjectPin"/>.
@@ -270,10 +273,42 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public int ResolvedPort => Identity.Port;
 
         /// <summary>
+        /// The port the user explicitly typed into <see cref="Host"/>, or <c>null</c> when
+        /// <see cref="Host"/> carries no explicit port. See <see cref="TryGetExplicitPort"/> for why
+        /// this is read off the RAW host string rather than <c>Uri.Port</c>.
+        /// </summary>
+        public int? ExplicitHostPort => TryGetExplicitPort(Host);
+
+        /// <summary>
+        /// The port written into the loopback HTTP <c>url</c> (<see cref="PinnedHttpUrl"/>), resolved by
+        /// a three-level precedence (auth-fixes T1 / defect A, owner ruling 2026-07-19):
+        /// <list type="number">
+        ///   <item>the project marker's <c>portOverride</c> — an explicit per-project pin, wins outright;</item>
+        ///   <item>an explicit port in the <see cref="Host"/> URL — the port the USER typed;</item>
+        ///   <item>the deterministic v2 hash-derived port (<see cref="ResolvedPort"/>) — the fallback
+        ///         when <see cref="Host"/> carries no explicit port.</item>
+        /// </list>
+        ///
+        /// <para>Level 2 exists because the engine runtime ALREADY binds the typed port: Unity's
+        /// <c>UnityMcpPluginEditor.Port</c> returns <c>uri.Port</c> whenever <c>Host</c> parses as an
+        /// absolute URI with an in-range port, and only falls back to the derived port otherwise. Before
+        /// this fix the writer overwrote that typed port with the derived one, so the server listened on
+        /// the port the user chose while the config told the agent to dial a different one. Honouring the
+        /// typed port makes the WRITER agree with the BINDER — that agreement is the whole point.</para>
+        ///
+        /// <para>Level 1 still outranks level 2: <c>portOverride</c> is a deliberate per-project marker
+        /// written to pin a project's port, so it beats an incidental port in the host string.</para>
+        /// </summary>
+        public int PinnedHttpPort =>
+            Identity.PortIsOverridden
+                ? ResolvedPort                      // 1. marker portOverride wins outright
+                : ExplicitHostPort ?? ResolvedPort; // 2. user-typed port, else 3. derived v2 port
+
+        /// <summary>
         /// The HTTP <c>url</c> written into configs on the default (credential-free) path: the base
         /// <see cref="Host"/> with the <c>/p/&lt;pin&gt;</c> routing path segment appended, and — for a
-        /// loopback URL in <see cref="ConnectionMode.Local"/> — the port rewritten to
-        /// <see cref="ResolvedPort"/>. The pin rides as a path segment (not a query param) so a lost
+        /// loopback URL in <see cref="ConnectionMode.Local"/> — the port set to
+        /// <see cref="PinnedHttpPort"/>. The pin rides as a path segment (not a query param) so a lost
         /// pin 404s loudly instead of silently degrading to unpinned routing (design 03 Flow F).
         /// </summary>
         public string PinnedHttpUrl => BuildPinnedHttpUrl();
@@ -283,16 +318,66 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             var pin = ProjectPin;
             if (Uri.TryCreate(Host, UriKind.Absolute, out var uri))
             {
-                // Only the per-project LOCAL loopback port is rewritten from ProjectIdentity; a hosted
-                // (or non-loopback) target keeps its authority verbatim (default ports stay implicit).
+                // Only the per-project LOCAL loopback port is resolved here; a hosted (or non-loopback)
+                // target keeps its authority verbatim (default ports stay implicit). The loopback port
+                // follows PinnedHttpPort's marker > typed > derived precedence, so a port the user typed
+                // into Host survives into the written config instead of being silently overwritten.
                 var authority = ConnectionMode == ConnectionMode.Local && uri.IsLoopback
-                    ? $"{uri.Scheme}://{uri.Host}:{ResolvedPort}"
+                    ? $"{uri.Scheme}://{uri.Host}:{PinnedHttpPort}"
                     : uri.GetLeftPart(UriPartial.Authority);
                 var basePath = uri.AbsolutePath.TrimEnd('/');
                 return $"{authority}{basePath}/p/{pin}{uri.Query}";
             }
             // Non-absolute host (defensive): append the pin segment without a port rewrite.
             return $"{Host.TrimEnd('/')}/p/{pin}";
+        }
+
+        /// <summary>
+        /// Reads an explicitly-typed port out of a host string, or returns <c>null</c> when there is
+        /// none. Returns <c>null</c> for an out-of-range port too, mirroring the engine binder's
+        /// <c>uri.Port &gt; 0 &amp;&amp; uri.Port &lt;= Consts.Hub.MaxPort</c> guard — an unusable port
+        /// falls back to the derived one on BOTH sides rather than diverging.
+        ///
+        /// <para><b>Why the raw string and not <c>Uri.Port</c>:</b> <see cref="Uri"/> synthesises the
+        /// scheme's default port, so <c>http://localhost/mcp</c> and <c>http://localhost:80/mcp</c> both
+        /// report <c>80</c> and become indistinguishable. The first has no user intent behind it and must
+        /// fall through to the derived port; the second is a port the user deliberately typed and must be
+        /// honoured. Only the raw authority preserves that distinction.</para>
+        /// </summary>
+        internal static int? TryGetExplicitPort(string? host)
+        {
+            if (string.IsNullOrWhiteSpace(host))
+                return null;
+
+            // Isolate the authority: after "scheme://" (if present), up to the first '/', '?' or '#'.
+            var schemeEnd = host!.IndexOf("://", StringComparison.Ordinal);
+            var start = schemeEnd >= 0 ? schemeEnd + 3 : 0;
+            var end = host.IndexOfAny(new[] { '/', '?', '#' }, start);
+            var authority = end >= 0 ? host.Substring(start, end - start) : host.Substring(start);
+
+            // Drop any userinfo ("user:pass@host:port") — its colon is not a port separator.
+            var at = authority.LastIndexOf('@');
+            if (at >= 0)
+                authority = authority.Substring(at + 1);
+
+            // For an IPv6 literal the port follows the closing bracket ("[::1]:8080"); the colons inside
+            // the brackets are part of the address. LastIndexOf returns -1 for a normal host, so the
+            // search then starts at 0 and finds a plain "host:port" colon.
+            var colon = authority.IndexOf(':', authority.LastIndexOf(']') + 1);
+            if (colon < 0 || colon == authority.Length - 1)
+                return null;
+
+            var portText = authority.Substring(colon + 1);
+            foreach (var ch in portText)
+            {
+                if (ch < '0' || ch > '9')
+                    return null;
+            }
+
+            if (!int.TryParse(portText, NumberStyles.None, CultureInfo.InvariantCulture, out var port))
+                return null; // overflows int — far beyond MaxPort anyway
+
+            return port > 0 && port <= Consts.Hub.MaxPort ? port : (int?)null;
         }
     }
 }
