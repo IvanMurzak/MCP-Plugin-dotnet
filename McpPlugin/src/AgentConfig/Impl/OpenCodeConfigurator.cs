@@ -34,16 +34,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
 
         protected override AiAgentConfig CreateStdioConfig(AgentConfiguratorSettings settings, ILogger? logger)
         {
-            // mcp-authorize b6: credential-free, pinned stdio command array — ProjectIdentity port
-            // (marker override wins) + project=<pin>, no auth args (spawns in `none` mode, Flow D).
-            var commandArray = new JsonArray
-            {
-                settings.ExecutableFullPath.Replace('\\', '/'),
-                $"{Args.Port}={settings.ResolvedPort}",
-                $"{Args.PluginTimeout}={settings.TimeoutMs}",
-                $"{Args.ClientTransportMethod}={TransportMethod.stdio}",
-                $"{Args.Project}={settings.ProjectPin}"
-            };
+            // mcp-authorize b6: credential-free stdio command array — no auth args, so the spawned server
+            // starts in `none` mode (Flow D). The args themselves come from the shared builder; OpenCode's
+            // only difference is that they follow the executable in ONE array instead of a separate `args`.
+            var commandArray = AgentConfigBuilders.StdioArgs(settings);
+            commandArray.Insert(0, JsonValue.Create(settings.ExecutableFullPath.Replace('\\', '/')));
 
             return new JsonAiAgentConfig(AgentName, LocalConfigPath(settings), bodyPath: "mcp", logger: logger)
                 .SetProperty("type", JsonValue.Create("local")!, requiredForConfiguration: true)

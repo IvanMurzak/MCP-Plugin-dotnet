@@ -41,6 +41,26 @@
 > legacy hash; the v2 vectors live alongside in `ProjectIdentity.GoldenVectors.v2.json` (the shared
 > cross-language artifact the engine-CLI ports reproduce). Configurators now emit the v2 pin.
 
+> **Written config port precedence (auth-fixes T1, defect A).** The port a configurator writes —
+> the stdio `port=` arg and the loopback HTTP `url` alike — is `AgentConfiguratorSettings.PinnedPort`,
+> resolved by three levels: **1.** the project marker's `portOverride`, **2.** an explicit port the
+> user typed into `Host`, **3.** the deterministic v2 derived port. Level 2 exists because **Unity's**
+> binder already binds the typed port (`UnityMcpPluginEditor.Port` returns `uri.Port` whenever `Host`
+> parses with an in-range port) for **both** transports; writing a different port there told the agent
+> to dial one nothing was listening on. `ResolvedPort` supplies levels 1 and 3 only and is **not** what
+> the writers emit. The per-transport difference is at the call site, not in the precedence: the HTTP
+> url applies the port only to a `Local` **loopback** authority (a hosted target keeps its authority —
+> and therefore any typed port — verbatim), while stdio has no authority to preserve and applies the
+> precedence directly, matching the ungated binder.
+>
+> ⚠ **Level 2 is not yet engine-neutral.** Godot's and Unreal's binders deliberately do the OPPOSITE on
+> a loopback host — they ignore a typed loopback port and bind the *derived* port, routing a loopback
+> override through the marker's `portOverride` instead. On a `Local` loopback `Host` carrying a typed
+> port this writer therefore disagrees with both, and each pins the old invariant in a test that fails
+> on their next McpPlugin bump. Reconciling that (a per-engine policy seam here vs. a binder change
+> there) is an owner call, tracked separately from this writer-side change — see
+> `AgentConfiguratorSettings.PinnedPort` § "Residual divergence from the binder".
+
 ## Overview
 
 The MCP Plugin Server is configured through **two independent axes**: **Transport** and **Auth**.

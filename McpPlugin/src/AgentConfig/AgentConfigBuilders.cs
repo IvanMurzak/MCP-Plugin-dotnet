@@ -24,18 +24,42 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
     internal static class AgentConfigBuilders
     {
         /// <summary>
-        /// The standard stdio arg array (mcp-authorize b6, design 06): the ProjectIdentity-derived
-        /// per-project <c>port=</c> (marker <c>portOverride</c> wins), plugin-timeout, client-transport,
-        /// and the <c>project=&lt;pin&gt;</c> routing arg. NO auth args — stdio spawns in <c>none</c> mode
-        /// on the default path (the credential-free / anonymous local flow).
+        /// THE single source of truth for the stdio arg values (mcp-authorize b6, design 06): the
+        /// per-project <c>port=</c> (<see cref="AgentConfiguratorSettings.PinnedPort"/> — marker
+        /// <c>portOverride</c>, else a port typed into <c>Host</c>, else the derived v2 port),
+        /// plugin-timeout, client-transport, and the <c>project=&lt;pin&gt;</c> routing arg. NO auth
+        /// args — stdio spawns in <c>none</c> mode on the default path (the credential-free /
+        /// anonymous local flow).
+        ///
+        /// <para>Returned as plain strings rather than a <see cref="JsonArray"/> because the emitters
+        /// need different containers: <see cref="StdioArgs"/> wraps them in a JSON <c>args</c> array,
+        /// <c>CodexConfigurator</c> passes them to a TOML array, and <c>OpenCodeConfigurator</c> prepends
+        /// its executable to that same array. Those three used to hand-roll this list independently,
+        /// which is exactly how the stdio half of defect A survived the HTTP half's fix — route every new
+        /// emitter through here instead.</para>
+        ///
+        /// <para>The <c>port=</c> arg names <see cref="AgentConfiguratorSettings.PinnedPort"/>, NOT
+        /// <see cref="AgentConfiguratorSettings.ResolvedPort"/> — see <c>PinnedPort</c> for the precedence
+        /// and for why the writer has to agree with the binder (auth-fixes T1 / defect A, stdio half).</para>
         /// </summary>
-        public static JsonArray StdioArgs(AgentConfiguratorSettings s) => new()
+        public static string[] StdioArgValues(AgentConfiguratorSettings s) => new[]
         {
-            $"{Args.Port}={s.ResolvedPort}",
+            $"{Args.Port}={s.PinnedPort}",
             $"{Args.PluginTimeout}={s.TimeoutMs}",
             $"{Args.ClientTransportMethod}={TransportMethod.stdio}",
             $"{Args.Project}={s.ProjectPin}"
         };
+
+        /// <summary>
+        /// <see cref="StdioArgValues"/> as the JSON <c>args</c> array most agents write.
+        /// </summary>
+        public static JsonArray StdioArgs(AgentConfiguratorSettings s)
+        {
+            var args = new JsonArray();
+            foreach (var arg in StdioArgValues(s))
+                args.Add(arg);
+            return args;
+        }
 
         /// <summary>
         /// Standard JSON stdio entry: <c>type=stdio</c>, <c>command</c> (path comparison),
