@@ -66,6 +66,29 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
     }
 
     /// <summary>
+    /// Which <see cref="ProjectIdentity"/> derivation backs the deterministic LOCAL port the config
+    /// writers emit (the stdio <c>port=</c> arg and the loopback HTTP url). This is the engine-scoped
+    /// policy seam design 02 § D21 (OQ3) codifies: the routing <b>pin</b> stays v2 for EVERY engine
+    /// regardless of this value — only the hash-derived port fallback differs.
+    ///
+    /// <list type="bullet">
+    ///   <item><see cref="V2"/> (default) — the separator-normalized derivation Unity and Godot bind.</item>
+    ///   <item><see cref="V1"/> — the legacy derivation the <b>Unreal</b> .NET sidecar binds (its
+    ///   <c>ProjectConnectionResolver</c> resolves the local port via v1 <see cref="ProjectIdentity.Derive"/>).
+    ///   Pinned for the Unreal local plane by owner ruling D21 so the written port matches what the sidecar
+    ///   actually binds; a later migration may realign it to <see cref="V2"/>.</item>
+    /// </list>
+    /// </summary>
+    public enum LocalPortDerivation
+    {
+        /// <summary>v2 separator-normalized derivation (<see cref="ProjectIdentity.DeriveV2"/>). Unity + Godot. The default.</summary>
+        V2,
+
+        /// <summary>v1 legacy derivation (<see cref="ProjectIdentity.Derive"/>). The Unreal local plane (design 02 § D21).</summary>
+        V1
+    }
+
+    /// <summary>
     /// All the engine-supplied values a configurator needs to build an MCP config entry.
     /// Replaces the Unity statics (<c>UnityMcpPluginEditor.Port</c>, <c>.Host</c>,
     /// <c>.Token</c>, …, and <c>McpServerManager.ExecutableFullPath</c>) the original
@@ -126,6 +149,15 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// </summary>
         public string DockerImage { get; }
 
+        /// <summary>
+        /// The <see cref="ProjectIdentity"/> derivation used for the deterministic LOCAL port the config
+        /// writers emit. Defaults to <see cref="LocalPortDerivation.V2"/> (Unity / Godot); the Unreal
+        /// sidecar consumer passes <see cref="LocalPortDerivation.V1"/> so the written port matches the v1
+        /// port its bridge binds (design 02 § D21). Never affects the routing <see cref="ProjectPin"/>,
+        /// which stays v2 for every engine.
+        /// </summary>
+        public LocalPortDerivation LocalPortDerivation { get; }
+
         public AgentConfiguratorSettings(
             OperatingSystemKind operatingSystem,
             string projectRootPath,
@@ -138,7 +170,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Consts.MCP.Server.AuthOption authOption = Consts.MCP.Server.AuthOption.none,
             string serverExecutableName = "gamedev-mcp-server",
             string serverVersion = "8.0.0",
-            string dockerImage = "aigamedeveloper/mcp-server")
+            string dockerImage = "aigamedeveloper/mcp-server",
+            LocalPortDerivation localPortDerivation = LocalPortDerivation.V2)
         {
             OperatingSystem = operatingSystem;
             ProjectRootPath = projectRootPath;
@@ -152,6 +185,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             ServerExecutableName = serverExecutableName;
             ServerVersion = serverVersion;
             DockerImage = dockerImage;
+            LocalPortDerivation = localPortDerivation;
         }
 
         /// <summary>
@@ -172,7 +206,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Consts.MCP.Server.AuthOption authOption = Consts.MCP.Server.AuthOption.none,
             string serverExecutableName = "gamedev-mcp-server",
             string serverVersion = "8.0.0",
-            string dockerImage = "aigamedeveloper/mcp-server")
+            string dockerImage = "aigamedeveloper/mcp-server",
+            LocalPortDerivation localPortDerivation = LocalPortDerivation.V2)
         {
             return new AgentConfiguratorSettings(
                 operatingSystem: HostOperatingSystem.Detect(),
@@ -186,7 +221,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 authOption: authOption,
                 serverExecutableName: serverExecutableName,
                 serverVersion: serverVersion,
-                dockerImage: dockerImage);
+                dockerImage: dockerImage,
+                localPortDerivation: localPortDerivation);
         }
 
         /// <summary>
@@ -235,18 +271,58 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         // terminal-written config. Resolved lazily and cached (a marker read is file I/O, and the
         // identity is stable for the settings' <see cref="ProjectRootPath"/>).
         private ProjectIdentity? _identity;
+        private ProjectIdentity? _portIdentity;
+        private ProjectMarker? _marker;
+        private bool _markerRead;
 
         /// <summary>
-        /// The project's <see cref="ProjectIdentity"/> — routing pin plus the resolved local port
-        /// (the project marker's <c>portOverride</c> wins, else the deterministic hash-derived port).
-        /// Read once from the marker at <see cref="ProjectRootPath"/> and cached.
-        ///
-        /// <para>Derived via <see cref="ProjectIdentity.DeriveV2"/>, so the pin and the port come from
-        /// ONE <see cref="ProjectIdentity.NormalizeV2"/> pre-hash string (auth-fixes T1 / defect B).
-        /// <see cref="ProjectPin"/> and <see cref="ResolvedPort"/> both read off this single object,
-        /// which is what makes a v1/v2 mix within one settings instance unrepresentable.</para>
+        /// The project marker at <see cref="ProjectRootPath"/>, read once (a marker read is file I/O) and
+        /// cached — <c>null</c> when the project has no marker. The pin identity and the engine-aware port
+        /// identity both read off this single result, so an override or target is read from disk exactly
+        /// once. The <see cref="_markerRead"/> flag distinguishes "not read yet" from "read, was null".
         /// </summary>
-        public ProjectIdentity Identity => _identity ??= ProjectIdentity.DeriveV2(ProjectRootPath, ProjectMarker.Read(ProjectRootPath));
+        private ProjectMarker? Marker
+        {
+            get
+            {
+                if (!_markerRead)
+                {
+                    _marker = ProjectMarker.Read(ProjectRootPath);
+                    _markerRead = true;
+                }
+                return _marker;
+            }
+        }
+
+        /// <summary>
+        /// The project's <b>v2</b> <see cref="ProjectIdentity"/> — the source of the routing
+        /// <see cref="ProjectPin"/> (the registration hash stays v2 for EVERY engine, design 02 § D21) and,
+        /// on the default <see cref="LocalPortDerivation.V2"/> path, of the emitted port too. Read once from
+        /// the marker at <see cref="ProjectRootPath"/> and cached.
+        ///
+        /// <para>Derived via <see cref="ProjectIdentity.DeriveV2"/>, so <see cref="ProjectPin"/> and — on
+        /// the v2 path — <see cref="ResolvedPort"/> come from ONE <see cref="ProjectIdentity.NormalizeV2"/>
+        /// pre-hash string (auth-fixes T1 / defect B). The single sanctioned exception is an engine on
+        /// <see cref="LocalPortDerivation.V1"/> (Unreal): its port comes from a separate v1
+        /// <see cref="PortIdentity"/> while the pin stays on this v2 object — the controlled v2-pin /
+        /// v1-port split D21 authorizes so the written port matches the Unreal v1 sidecar binder.</para>
+        /// </summary>
+        public ProjectIdentity Identity => _identity ??= ProjectIdentity.DeriveV2(ProjectRootPath, Marker);
+
+        /// <summary>
+        /// The <see cref="ProjectIdentity"/> whose hash-derived <see cref="ProjectIdentity.Port"/> backs
+        /// <see cref="ResolvedPort"/>. Engine-aware per <see cref="LocalPortDerivation"/> (design 02 § D21):
+        /// <see cref="LocalPortDerivation.V1"/> (Unreal) derives via the legacy v1
+        /// <see cref="ProjectIdentity.Derive"/> to match its sidecar binder; every other engine REUSES the
+        /// v2 <see cref="Identity"/> object, so the default path is byte-identical to before. The marker
+        /// <c>portOverride</c> wins on both derivations (it is not hash-dependent), so
+        /// <see cref="PinnedPort"/>'s three-level precedence is unchanged — only the derived fallback
+        /// (level 3) switches derivation version.
+        /// </summary>
+        private ProjectIdentity PortIdentity => _portIdentity ??=
+            LocalPortDerivation == LocalPortDerivation.V1
+                ? ProjectIdentity.Derive(ProjectRootPath, Marker)
+                : Identity;
 
         /// <summary>
         /// The routing pin written into every config (HTTP <c>/p/&lt;pin&gt;</c> segment and stdio
@@ -261,19 +337,24 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         /// <summary>
         /// The marker-resolved per-project local port: the project marker's <c>portOverride</c> when
-        /// set, otherwise the deterministic v2 hash-derived port — b6 single-sources the local port
-        /// from <see cref="ProjectIdentity"/> rather than the raw engine-supplied <see cref="Port"/>.
+        /// set, otherwise the deterministic hash-derived port — b6 single-sources the local port
+        /// from <see cref="ProjectIdentity"/> rather than the raw engine-supplied <see cref="Port"/>. The
+        /// derivation is engine-aware (<see cref="LocalPortDerivation"/>): v2 by default (Unity / Godot),
+        /// v1 for the Unreal local plane (design 02 § D21) so the emitted port matches the v1 port the
+        /// Unreal sidecar binds. The routing <see cref="ProjectPin"/> stays v2 regardless.
         ///
         /// <para>This is NOT what the config writers emit. Both transports write
         /// <see cref="PinnedPort"/>, which layers a port the user typed into <see cref="Host"/>
         /// BETWEEN this property's two cases (defect A). <see cref="ResolvedPort"/> therefore supplies
         /// precedence levels 1 and 3; see <see cref="PinnedPort"/> for the full ordering.</para>
         ///
-        /// <para>Shares the single cached <see cref="Identity"/> — and therefore the exact
-        /// <see cref="ProjectIdentity.NormalizeV2"/> pre-hash string — with <see cref="ProjectPin"/>
-        /// (auth-fixes T1 / defect B; see <see cref="ProjectIdentity.DeriveV2"/>).</para>
+        /// <para>Reads off <see cref="PortIdentity"/> (a v1 identity for Unreal, else the shared v2
+        /// <see cref="Identity"/>). On the default v2 path it and <see cref="ProjectPin"/> still share the
+        /// exact <see cref="ProjectIdentity.NormalizeV2"/> pre-hash string (auth-fixes T1 / defect B; see
+        /// <see cref="ProjectIdentity.DeriveV2"/>); on the Unreal v1 path only the port switches derivation,
+        /// the pin stays v2.</para>
         /// </summary>
-        public int ResolvedPort => Identity.Port;
+        public int ResolvedPort => PortIdentity.Port;
 
         /// <summary>
         /// The port the user explicitly typed into <see cref="Host"/>, or <c>null</c> when
@@ -289,8 +370,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// <list type="number">
         ///   <item>the project marker's <c>portOverride</c> — an explicit per-project pin, wins outright;</item>
         ///   <item>an explicit port in the <see cref="Host"/> URL — the port the USER typed;</item>
-        ///   <item>the deterministic v2 hash-derived port (<see cref="ResolvedPort"/>) — the fallback
-        ///         when <see cref="Host"/> carries no explicit port.</item>
+        ///   <item>the deterministic hash-derived port (<see cref="ResolvedPort"/>) — the fallback
+        ///         when <see cref="Host"/> carries no explicit port; v2 by default, v1 for the Unreal
+        ///         local plane (<see cref="LocalPortDerivation"/>, design 02 § D21).</item>
         /// </list>
         ///
         /// <para>Level 2 exists because the engine runtime ALREADY binds the typed port: Unity's
@@ -335,14 +417,19 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         ///   BOTH of those binders — the inverse of the Unity case it was introduced for. Each pins the
         ///   old invariant in a test that fails on their next McpPlugin bump
         ///   (<c>ResolveLocalServerBindPort_LoopbackExplicitPort_StillDerives_MatchingTheWriter</c>,
-        ///   <c>WrittenConfigPort_EqualsServerBindPort_OnDefaultLocalPath</c>). Whether the right
-        ///   resolution is a per-engine policy seam here or a binder change there is an OWNER call and
-        ///   deliberately out of scope for this writer-side change.</item>
+        ///   <c>WrittenConfigPort_EqualsServerBindPort_OnDefaultLocalPath</c>). D21 has since codified the
+        ///   per-engine policy seam HERE for a DIFFERENT axis — the level-3 derivation VERSION, v1 for the
+        ///   Unreal local plane via <see cref="LocalPortDerivation"/> — so the writer's derived fallback now
+        ///   matches the Unreal v1 binder. That is orthogonal to the level-2 typed-host divergence this
+        ///   bullet describes, whose cross-engine reconciliation stays an OWNER call out of scope for this
+        ///   writer-side change.</item>
         /// </list></para>
         /// </summary>
         public int PinnedPort =>
-            // marker override (1) else typed host port (2) else derived v2 port (3) — see the list above.
-            Identity.PortIsOverridden ? ResolvedPort : ExplicitHostPort ?? ResolvedPort;
+            // marker override (1) else typed host port (2) else derived port (3, v2 or v1 for Unreal) — see
+            // the list above. The override flag reads off PortIdentity so it agrees with ResolvedPort on the
+            // v1 (Unreal) path; on the v2 default PortIdentity IS Identity, so this is byte-identical.
+            PortIdentity.PortIsOverridden ? ResolvedPort : ExplicitHostPort ?? ResolvedPort;
 
         /// <summary>
         /// The HTTP <c>url</c> written into configs on the default (credential-free) path: the base
