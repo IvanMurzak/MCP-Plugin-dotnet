@@ -70,6 +70,11 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             // Setup direct tool call API (POST /api/tools/{name}, GET /api/tools)
             app.MapDirectToolCallApi(dataArguments);
+            // Setup project-pinned direct tool call API (POST /p/{pin}/api/tools/{name}, GET /p/{pin}/api/tools) —
+            // deterministic multi-project dispatch (design 06 / zero-config-engine-connect b1). Same handlers +
+            // auth gate as the unpinned group; the pin (captured by McpSessionTokenMiddleware) makes resolution
+            // strict-by-project. No pinned system-tools analog (design 06 D15) — the system-tools mapping below is untouched.
+            app.MapPinnedDirectToolCallApi(dataArguments);
             // Setup system tool API (POST /api/system-tools/{name}) — internal tools not exposed to MCP
             app.MapSystemToolApi(dataArguments);
 

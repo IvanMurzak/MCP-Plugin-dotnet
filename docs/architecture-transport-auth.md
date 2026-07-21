@@ -19,6 +19,19 @@
 > previously gated on the deleted `required` mode and were unintentionally never gated), and stay
 > open in `none` mode.
 
+> **Pinned REST tool routes (zero-config-engine-connect b1).** The direct-tool REST surface gained a
+> project-pinned variant registered ALONGSIDE the unpinned group:
+> `GET /p/{pin}/api/tools` + `POST /p/{pin}/api/tools/{name}`
+> (`DirectToolCallEndpoints.MapPinnedDirectToolCallApi`, mapped in `ExtensionsWebApplication`). With 2+
+> engine instances on one account the unpinned group resolves `sticky → single → MRU` and can bind an
+> agent to the wrong project; the pinned group resolves **strictly by pin** — a pin never falls through, so
+> an unmatched pin yields `NoMatchPinned`/`AccountEmpty` (never MRU). The pin is routing only: captured from
+> the request path by `McpSessionTokenMiddleware` and flowed to `AccountMcpStrategy.ResolveCurrentSession`,
+> so the pinned group shares the SAME handlers and the SAME auth gate as the unpinned one (identical
+> `oauth`/`token`/`required` gating; open only in `none`). There is deliberately **no pinned system-tools
+> route**. The public `/mcp/p/{pin}/…` form is served by these same routes after nginx strips the `/mcp`
+> prefix (mirroring the existing unpinned convention where nginx strips `/mcp` ahead of `/api/tools`).
+
 > **Offline token mode (mcp-authorize g6).** A third auth mode, **`token`**, is the OFFLINE
 > counterpart of `oauth`: a loopback single-project server gates BOTH the SignalR plugin connection
 > and the streamableHttp MCP endpoint on a single static bearer secret (`--token` /
