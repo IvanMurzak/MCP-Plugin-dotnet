@@ -29,16 +29,39 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
     /// Provides a direct HTTP API for calling MCP tools without going through the full MCP protocol.
     /// This enables AI agents and automation scripts to invoke tools using standard HTTP/JSON (e.g., curl).
     ///
-    /// Endpoints:
+    /// Endpoints (unpinned group):
     ///   GET  /api/tools           — list all available tools with schemas
     ///   POST /api/tools/{name}    — execute a named tool with JSON arguments
+    ///
+    /// Endpoints (project-pinned group — design 06 / zero-config-engine-connect b1):
+    ///   GET  /p/{pin}/api/tools        — list tools for the pinned project's engine instance
+    ///   POST /p/{pin}/api/tools/{name} — execute a named tool against the pinned project's instance
+    ///
+    /// The pinned group makes multi-project tool dispatch deterministic: with 2+ engine instances on one
+    /// account the unpinned group resolves via <c>sticky → single → MRU</c> (<c>AccountInstances.Resolve</c>)
+    /// and can bind the agent to the wrong project, while the pinned group resolves STRICTLY by pin (a pin
+    /// never falls through to another project — an unmatched pin yields <c>NoMatchPinned</c>/<c>AccountEmpty</c>,
+    /// never MRU). The pin is a route token only; its value is captured from the ORIGINAL request path by
+    /// <see cref="Auth.McpSessionTokenMiddleware"/> and flows through the ambient session context to
+    /// <c>AccountMcpStrategy.ResolveCurrentSession</c> — so the two groups share the SAME handlers and
+    /// resolution mechanism, differing only in whether a pin is present on the path. There is deliberately
+    /// NO pinned system-tools route (design 06 D15). The public <c>/mcp/p/{pin}/…</c> form is served by the
+    /// same routes after nginx strips the <c>/mcp</c> prefix (mirroring the existing unpinned convention,
+    /// where nginx strips <c>/mcp</c> ahead of <c>/api/tools</c>).
     /// </summary>
     public static class DirectToolCallEndpoints
     {
         const string RoutePrefix = "/api/tools";
 
+        // The project-pinned variant of RoutePrefix. {pin} is a route token only so the endpoint matches;
+        // the pin VALUE is captured from the original path by McpSessionTokenMiddleware, exactly like the
+        // pinned MCP routes (StreamableHttpTransportLayer.MapPinnedMcp). No route constraint on {pin} — the
+        // middleware validates it loosely (1–64 hex) and ignores a malformed segment, matching the MCP path.
+        const string PinnedRoutePrefix = "/p/{pin}" + RoutePrefix;
+
         /// <summary>
-        /// Maps the direct tool call API endpoints onto the given <see cref="WebApplication"/>.
+        /// Maps the UNPINNED direct tool call API endpoints (<c>/api/tools</c>) onto the given
+        /// <see cref="WebApplication"/>.
         /// Authorization is required in every credential-bearing mode — <see cref="Consts.MCP.Server.AuthOption.oauth"/>,
         /// the offline <see cref="Consts.MCP.Server.AuthOption.token"/> (mcp-authorize g6), and the deprecated
         /// <see cref="Consts.MCP.Server.AuthOption.required"/> alias — so the REST tool surface (which can EXECUTE
@@ -48,6 +71,35 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
         /// </summary>
         public static WebApplication MapDirectToolCallApi(this WebApplication app, IDataArguments dataArguments)
         {
+            MapToolCallGroup(app, dataArguments, RoutePrefix);
+            return app;
+        }
+
+        /// <summary>
+        /// Maps the PROJECT-PINNED direct tool call API endpoints (<c>/p/{pin}/api/tools</c>) onto the given
+        /// <see cref="WebApplication"/> (design 06 / zero-config-engine-connect b1). Registered alongside — and
+        /// byte-identical in behavior to — the unpinned group (both delegate to <see cref="MapToolCallGroup"/>
+        /// with the SAME handlers and the SAME auth gate); the ONLY difference is the route prefix carries a
+        /// <c>{pin}</c> segment, which <see cref="Auth.McpSessionTokenMiddleware"/> captures from the request path
+        /// so tool resolution is pinned STRICTLY to that project's engine instance (never MRU-routed to a sibling).
+        /// There is deliberately no pinned system-tools analog (design 06 D15).
+        /// </summary>
+        public static WebApplication MapPinnedDirectToolCallApi(this WebApplication app, IDataArguments dataArguments)
+        {
+            MapToolCallGroup(app, dataArguments, PinnedRoutePrefix);
+            return app;
+        }
+
+        /// <summary>
+        /// Shared registrar for a direct tool-call route group. Both the unpinned (<c>/api/tools</c>) and the
+        /// project-pinned (<c>/p/{pin}/api/tools</c>) groups route through this ONE method with the SAME list/call
+        /// handlers and the SAME <see cref="AuthGating"/> decision, so they are byte-identical in behavior by
+        /// construction — the pinned group differs only by the <c>{pin}</c> path token (captured by the middleware,
+        /// not read here). Keeping the auth gate in lockstep guarantees a credential-bearing mode can never leave
+        /// one group gated and the other open.
+        /// </summary>
+        static void MapToolCallGroup(WebApplication app, IDataArguments dataArguments, string routePrefix)
+        {
             if (app == null)
                 throw new ArgumentNullException(nameof(app));
 
@@ -55,12 +107,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
                 throw new ArgumentNullException(nameof(dataArguments));
 
             var requireAuth = AuthGating.RequiresAuthorization(dataArguments.Authorization);
-            var group = app.MapGroup(RoutePrefix);
+            var group = app.MapGroup(routePrefix);
 
-            // GET /api/tools — list all registered tools
+            // GET <prefix> — list all registered tools
             var listEndpoint = group.MapGet("/", ListToolsHandler);
 
-            // POST /api/tools/{name} — invoke a tool by name
+            // POST <prefix>/{name} — invoke a tool by name
             var callEndpoint = group.MapPost("/{name}", CallToolHandler);
 
             if (requireAuth)
@@ -68,8 +120,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
                 listEndpoint.RequireAuthorization();
                 callEndpoint.RequireAuthorization();
             }
-
-            return app;
         }
 
         /// <summary>
