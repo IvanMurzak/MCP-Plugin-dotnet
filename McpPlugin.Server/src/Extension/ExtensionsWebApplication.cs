@@ -73,10 +73,16 @@ namespace com.IvanMurzak.McpPlugin.Server
             // Setup project-pinned direct tool call API (POST /p/{pin}/api/tools/{name}, GET /p/{pin}/api/tools) —
             // deterministic multi-project dispatch (design 06 / zero-config-engine-connect b1). Same handlers +
             // auth gate as the unpinned group; the pin (captured by McpSessionTokenMiddleware) makes resolution
-            // strict-by-project. No pinned system-tools analog (design 06 D15) — the system-tools mapping below is untouched.
+            // strict-by-project.
             app.MapPinnedDirectToolCallApi(dataArguments);
             // Setup system tool API (POST /api/system-tools/{name}) — internal tools not exposed to MCP
             app.MapSystemToolApi(dataArguments);
+            // Setup project-pinned system tool API (POST /p/{pin}/api/system-tools/{name}, GET /p/{pin}/api/system-tools).
+            // Same pinned/unpinned pairing as the tool routes above. This REVERSES design 06 D15 (owner ruling
+            // 2026-07-25): D15's premise "no engine registers a system ping tool" was false (Unity's `ping` is
+            // ToolType = McpToolType.System), and the cloud golden path is pinned — so without this group a client
+            // cannot probe engine liveness over the system-tools surface on the cloud path at all.
+            app.MapPinnedSystemToolApi(dataArguments);
 
             return app;
         }

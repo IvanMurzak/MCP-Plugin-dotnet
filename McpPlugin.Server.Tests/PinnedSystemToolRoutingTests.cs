@@ -35,19 +35,25 @@ using Xunit;
 namespace com.IvanMurzak.McpPlugin.Server.Tests
 {
     /// <summary>
-    /// 📌 Pinned REST tool routes (design 06 / zero-config-engine-connect b1). The pinned group
-    /// <c>GET /p/{pin}/api/tools</c> + <c>POST /p/{pin}/api/tools/{name}</c> resolves the (account, pin)
-    /// bucket STRICTLY by pin: a pin never falls through — a wrong pin returns <c>NoMatchPinned</c> even
-    /// when the account HAS sibling instances (never MRU-routed), and an empty account returns
-    /// <c>AccountEmpty</c>. The UNPINNED group is byte-identical wiring but still falls to MRU (the
-    /// contrast that proves the pinned group is strict). The system-tools surface has the SAME pinned
-    /// pairing since the owner ruling of 2026-07-25 reversed design 06 D15 (see
-    /// <see cref="PinnedSystemToolRoutingTests"/>). These drive a REAL loopback host through the production
-    /// <see cref="McpSessionTokenMiddleware"/> so the pin is captured live from the pinned request path
-    /// exactly as in prod; the tool hub reports the outcome of the real <see cref="AccountInstances.Resolve"/>.
+    /// 📌 Pinned REST SYSTEM-tool routes (owner ruling 2026-07-25 — REVERSES design 06 D15). The pinned group
+    /// <c>GET /p/{pin}/api/system-tools</c> + <c>POST /p/{pin}/api/system-tools/{name}</c> is the system-tool
+    /// twin of the pinned <c>/api/tools</c> group: both prefixes register through ONE shared registrar
+    /// (<c>SystemToolEndpoints.MapSystemToolGroup</c>), so they share handlers and the auth gate, and the pin
+    /// is captured live from the request path by <see cref="McpSessionTokenMiddleware"/> and resolved STRICTLY
+    /// (a wrong pin yields <c>NoMatchPinned</c> even with sibling instances present — never MRU; an empty
+    /// account yields <c>AccountEmpty</c>).
+    ///
+    /// <para><b>Why this exists.</b> D15 declined a pinned system-tools route on the premise that "no engine
+    /// registers a system <c>ping</c> tool" — false: Unity declares <c>ping</c> as
+    /// <c>ToolType = McpToolType.System</c>. The cloud golden path is pinned (<c>/mcp/p/&lt;pin&gt;/…</c>), so
+    /// without this group an engine-liveness probe over the system-tools surface was impossible there. Every
+    /// route assertion below 404s without the pinned mapping — these are the tests that fail without the change.</para>
+    ///
+    /// Mirrors <see cref="PinnedDirectToolRoutingTests"/>, driving a REAL loopback host through the production
+    /// middleware; the system-tool hub reports the outcome of the real <see cref="AccountInstances.Resolve"/>.
     /// </summary>
     [Collection("McpPlugin.Server")]
-    public sealed class PinnedDirectToolRoutingTests
+    public sealed class PinnedSystemToolRoutingTests
     {
         // pin = leading hex prefix of the project-path SHA-256 (McpSessionTokenMiddleware validates 1–64 hex).
         const string HashA = "aabbccdd11223344556677889900aabbccddeeff00112233445566778899aabb";
@@ -55,81 +61,97 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         const string HashB = "11223344aabbccdd556677889900aabbccddeeff00112233445566778899aabb";
         const string PinB = "11223344";
         const string WrongPin = "deadbeef";
-        const string Account = "acc-pinned";
+        const string Account = "acc-pinned-system";
         const string InstanceA = "instance-A";
         const string InstanceB = "instance-B";
 
-        // ─────────────────── GET list path — strict pin → the pinned project's instance ───────────────────
+        static string PinnedSystemTools(string pin) => $"/p/{pin}/api/system-tools";
+        const string UnpinnedSystemTools = "/api/system-tools";
+
+        // ─────────── Route existence — the D15 reversal (these 404 without the pinned mapping) ───────────
+
+        [Fact]
+        public async Task PinnedSystemToolsRoutes_AreMapped()
+        {
+            await using var host = await StartHostAsync(TwoInstanceRegistry());
+            using var client = NewClient(host);
+
+            // Control: the unpinned group is (and stays) mapped.
+            (await client.GetAsync(UnpinnedSystemTools)).StatusCode.ShouldNotBe(HttpStatusCode.NotFound);
+
+            // The pinned analog now exists — list AND call reach a handler instead of the route table's 404.
+            (await client.GetAsync(PinnedSystemTools(PinA))).StatusCode.ShouldBe(HttpStatusCode.OK);
+            using var post = await CallAsync(client, $"{PinnedSystemTools(PinA)}/ping");
+            post.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        // ─────────────── GET list path — strict pin → the pinned project's instance ───────────────
 
         [Fact]
         public async Task PinnedList_ResolvesStrictlyToTheMatchingInstance()
         {
-            var instances = TwoInstanceRegistry();
-            await using var host = await StartHostAsync(instances);
+            await using var host = await StartHostAsync(TwoInstanceRegistry());
             using var client = NewClient(host);
 
             // Each pin resolves ONLY to its own project's instance — never the sibling.
-            (await ListOutcomeAsync(client, $"/p/{PinA}/api/tools")).ShouldBe(InstanceA);
-            (await ListOutcomeAsync(client, $"/p/{PinB}/api/tools")).ShouldBe(InstanceB);
+            (await ListOutcomeAsync(client, PinnedSystemTools(PinA))).ShouldBe(InstanceA);
+            (await ListOutcomeAsync(client, PinnedSystemTools(PinB))).ShouldBe(InstanceB);
         }
 
         [Fact]
         public async Task PinnedList_WrongPinWithSiblingsPresent_NoMatchPinned_NeverMru()
         {
-            // The account HAS two live instances, but neither matches the pin. A pin NEVER falls through to
-            // a sibling (never MRU): the strict outcome is NoMatchPinned, not a routed instance id.
-            var instances = TwoInstanceRegistry();
-            await using var host = await StartHostAsync(instances);
+            // The account HAS two live instances, but neither matches the pin. A pin NEVER falls through to a
+            // sibling (never MRU): the strict outcome is NoMatchPinned, not a routed instance id.
+            await using var host = await StartHostAsync(TwoInstanceRegistry());
             using var client = NewClient(host);
 
-            (await ListOutcomeAsync(client, $"/p/{WrongPin}/api/tools")).ShouldBe("NoMatchPinned");
+            (await ListOutcomeAsync(client, PinnedSystemTools(WrongPin))).ShouldBe("NoMatchPinned");
         }
 
         [Fact]
         public async Task PinnedList_EmptyAccount_AccountEmpty()
         {
-            var instances = new AccountInstances(); // account has NO live instances at all
-            await using var host = await StartHostAsync(instances);
+            await using var host = await StartHostAsync(new AccountInstances()); // no live instances at all
             using var client = NewClient(host);
 
-            (await ListOutcomeAsync(client, $"/p/{PinA}/api/tools")).ShouldBe("AccountEmpty");
+            (await ListOutcomeAsync(client, PinnedSystemTools(PinA))).ShouldBe("AccountEmpty");
         }
 
         [Fact]
         public async Task UnpinnedList_MultipleInstances_FallsToMru_ProvesPinnedStrictnessContrast()
         {
-            // Regression / contrast: the UNPINNED group carries no pin, so it resolves to MRU (one of the
-            // live instances) — NEVER NoMatchPinned/AccountEmpty. This is exactly the ambiguity the pinned
-            // group removes; the pinned tests above prove the pinned group does NOT do this.
-            var instances = TwoInstanceRegistry();
-            await using var host = await StartHostAsync(instances);
+            // Contrast: the UNPINNED system-tools group carries no pin, so it resolves to MRU (one of the live
+            // instances) — never NoMatchPinned/AccountEmpty. That ambiguity is exactly what the pinned group
+            // removes, and it is why a cloud (pinned-path) client needs the pinned group to probe a KNOWN project.
+            await using var host = await StartHostAsync(TwoInstanceRegistry());
             using var client = NewClient(host);
 
-            var outcome = await ListOutcomeAsync(client, "/api/tools");
+            var outcome = await ListOutcomeAsync(client, UnpinnedSystemTools);
             new[] { InstanceA, InstanceB }.ShouldContain(outcome);
         }
 
-        // ─────────────────── POST call path — outcome → deterministic HTTP status ───────────────────
+        // ─────────────── POST call path — outcome → deterministic HTTP status ───────────────
 
         [Fact]
         public async Task PinnedCall_MatchingPin_Resolves_200()
         {
-            var instances = TwoInstanceRegistry();
-            await using var host = await StartHostAsync(instances);
+            await using var host = await StartHostAsync(TwoInstanceRegistry());
             using var client = NewClient(host);
 
-            using var resp = await CallAsync(client, $"/p/{PinA}/api/tools/ping");
+            // The motivating case: a liveness probe of a KNOWN project over the pinned cloud path.
+            using var resp = await CallAsync(client, $"{PinnedSystemTools(PinA)}/ping");
             resp.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await resp.Content.ReadAsStringAsync()).ShouldContain(InstanceA);
         }
 
         [Fact]
         public async Task PinnedCall_WrongPinWithSiblingsPresent_NoMatchPinned_404_NeverMru()
         {
-            var instances = TwoInstanceRegistry();
-            await using var host = await StartHostAsync(instances);
+            await using var host = await StartHostAsync(TwoInstanceRegistry());
             using var client = NewClient(host);
 
-            using var resp = await CallAsync(client, $"/p/{WrongPin}/api/tools/ping");
+            using var resp = await CallAsync(client, $"{PinnedSystemTools(WrongPin)}/ping");
             resp.StatusCode.ShouldBe(HttpStatusCode.NotFound);
             (await resp.Content.ReadAsStringAsync()).ShouldContain("NoMatchPinned");
         }
@@ -137,39 +159,59 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public async Task PinnedCall_EmptyAccount_AccountEmpty_503()
         {
-            var instances = new AccountInstances();
-            await using var host = await StartHostAsync(instances);
+            await using var host = await StartHostAsync(new AccountInstances());
             using var client = NewClient(host);
 
-            using var resp = await CallAsync(client, $"/p/{PinA}/api/tools/ping");
+            using var resp = await CallAsync(client, $"{PinnedSystemTools(PinA)}/ping");
             resp.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
             (await resp.Content.ReadAsStringAsync()).ShouldContain("AccountEmpty");
         }
 
-        // ────────────── Route set — the pinned system-tools analog EXISTS (D15 reversed) ──────────────
+        // ─────────────── Handler parity: pinned and unpinned run the SAME handlers ───────────────
 
         [Fact]
-        public async Task PinnedSystemToolsRoute_IsMapped_AlongsideThePinnedToolRoutes()
+        public async Task MalformedJsonBody_PinnedAndUnpinned_Both400()
         {
-            // Design 06 D15 declined a pinned system-tools route on the false premise that no engine
-            // registers a system `ping` tool (Unity does). The owner ruling of 2026-07-25 reversed it, so the
-            // pinned surface now carries BOTH groups. This asserts the two coexist on one host; the strict-pin
-            // behavior of the system-tools group itself is covered by PinnedSystemToolRoutingTests.
-            var instances = TwoInstanceRegistry();
+            // Body handling lives in the shared CallSystemToolHandler; identical outcomes on both prefixes is
+            // the observable proof the pinned group did not fork the logic.
+            await using var host = await StartHostAsync(TwoInstanceRegistry());
+            using var client = NewClient(host);
+
+            using var pinned = await PostRawAsync(client, $"{PinnedSystemTools(PinA)}/ping", "{ not json");
+            using var unpinned = await PostRawAsync(client, $"{UnpinnedSystemTools}/ping", "{ not json");
+
+            pinned.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+            unpinned.StatusCode.ShouldBe(pinned.StatusCode);
+        }
+
+        [Fact]
+        public async Task NonObjectJsonBody_PinnedAndUnpinned_Both400()
+        {
+            await using var host = await StartHostAsync(TwoInstanceRegistry());
+            using var client = NewClient(host);
+
+            using var pinned = await PostRawAsync(client, $"{PinnedSystemTools(PinA)}/ping", "[1,2,3]");
+            using var unpinned = await PostRawAsync(client, $"{UnpinnedSystemTools}/ping", "[1,2,3]");
+
+            pinned.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+            unpinned.StatusCode.ShouldBe(pinned.StatusCode);
+        }
+
+        [Fact]
+        public async Task ListPayloadShape_PinnedAndUnpinned_AreIdenticalForOneInstance()
+        {
+            // A single-instance account resolves identically with or without a pin, so the two groups must
+            // return byte-identical list payloads — they are the same handler over the same hub.
+            var instances = new AccountInstances();
+            instances.Register(Account, new PluginInstanceMetadata(InstanceA, "unity", "GameA", HashA, "PC-1"), "conn-A");
+
             await using var host = await StartHostAsync(instances);
             using var client = NewClient(host);
 
-            // Control: the UNPINNED system-tools route IS mapped (reachable, not 404, in none mode).
-            (await client.GetAsync("/api/system-tools")).StatusCode.ShouldNotBe(HttpStatusCode.NotFound);
+            var pinned = await client.GetStringAsync(PinnedSystemTools(PinA));
+            var unpinned = await client.GetStringAsync(UnpinnedSystemTools);
 
-            // The pinned system-tools analog is mapped too — both list and call resolve to a handler.
-            (await client.GetAsync($"/p/{PinA}/api/system-tools")).StatusCode.ShouldBe(HttpStatusCode.OK);
-            using var post = await CallAsync(client, $"/p/{PinA}/api/system-tools/ping");
-            post.StatusCode.ShouldBe(HttpStatusCode.OK);
-
-            // …and the pinned TOOL routes still work on the same host (no route-table shadowing between the
-            // two pinned groups, which share the same /p/{pin} prefix).
-            (await ListOutcomeAsync(client, $"/p/{PinA}/api/tools")).ShouldBe(InstanceA);
+            pinned.ShouldBe(unpinned);
         }
 
         // ───────────────────────────────── helpers ─────────────────────────────────
@@ -197,19 +239,21 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         static Task<HttpResponseMessage> CallAsync(HttpClient client, string route)
             => client.PostAsync(route, new StringContent("{}", Encoding.UTF8, "application/json"));
 
-        // ── Minimal in-memory host: pin-capture middleware + both tool-call groups + both system-tool groups. ──
+        static Task<HttpResponseMessage> PostRawAsync(HttpClient client, string route, string body)
+            => client.PostAsync(route, new StringContent(body, Encoding.UTF8, "application/json"));
+
+        // ── Minimal in-memory host: the pin-capture middleware + both system-tool groups. ──
 
         static async Task<RunningHost> StartHostAsync(AccountInstances instances)
         {
             var builder = WebApplication.CreateBuilder();
             builder.Logging.ClearProviders();
 
-            // none mode: no auth gate — this suite isolates the ROUTING/RESOLUTION behavior (auth parity
-            // is covered by PinnedDirectToolAuthGatingTests).
+            // none mode: no auth gate — this suite isolates the ROUTING/RESOLUTION behavior (auth parity is
+            // covered by PinnedSystemToolAuthGatingTests).
             var dataArguments = Mock.Of<IDataArguments>(d => d.Authorization == Consts.MCP.Server.AuthOption.none);
             builder.Services.AddSingleton(dataArguments);
-            builder.Services.AddSingleton<IClientToolHub>(new ResolutionReportingToolHub(instances, Account));
-            builder.Services.AddSingleton<IClientSystemToolHub>(new StubSystemToolHub());
+            builder.Services.AddSingleton<IClientSystemToolHub>(new ResolutionReportingSystemToolHub(instances, Account));
             builder.Services.AddSingleton(Mock.Of<IAuthorizationWebhookService>());
 
             var app = builder.Build();
@@ -217,10 +261,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // Production pin-capture middleware: parses /p/<pin> out of the request path into the ambient
             // McpSessionTokenContext, exactly as UseMcpPluginServer wires it in prod.
             app.UseMiddleware<McpSessionTokenMiddleware>();
-            app.MapDirectToolCallApi(dataArguments);       // unpinned group
-            app.MapPinnedDirectToolCallApi(dataArguments); // pinned group (under test)
-            app.MapSystemToolApi(dataArguments);           // unpinned system-tools (control)
-            app.MapPinnedSystemToolApi(dataArguments);     // pinned system-tools analog (D15 reversed)
+            app.MapSystemToolApi(dataArguments);       // unpinned group
+            app.MapPinnedSystemToolApi(dataArguments); // pinned group (under test)
 
             await app.StartAsync();
             return new RunningHost(app, app.Urls.First());
@@ -245,19 +287,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         /// <summary>
-        /// A tool hub that, instead of invoking a live plugin over SignalR, resolves the CURRENT request
-        /// against the real <see cref="AccountInstances"/> using the pin the middleware captured from the
-        /// path, and reports the resolution outcome (resolved instance id, or <c>NoMatchPinned</c>/
-        /// <c>AccountEmpty</c>) as the tool result. This exercises the exact production seam the pinned
-        /// routes wire up: pinned URL → <see cref="McpSessionTokenMiddleware"/> → ambient
+        /// A SYSTEM tool hub that, instead of invoking a live plugin over SignalR, resolves the CURRENT request
+        /// against the real <see cref="AccountInstances"/> using the pin the middleware captured from the path,
+        /// and reports the resolution outcome (resolved instance id, or <c>NoMatchPinned</c>/<c>AccountEmpty</c>)
+        /// as the tool result. This exercises the exact production seam the pinned system-tools routes wire up:
+        /// pinned URL → <see cref="McpSessionTokenMiddleware"/> → ambient
         /// <see cref="McpSessionTokenContext.CurrentProjectPin"/> → strict <see cref="AccountInstances.Resolve"/>.
         /// </summary>
-        sealed class ResolutionReportingToolHub : IClientToolHub
+        sealed class ResolutionReportingSystemToolHub : IClientSystemToolHub
         {
             readonly AccountInstances _instances;
             readonly string _account;
 
-            public ResolutionReportingToolHub(AccountInstances instances, string account)
+            public ResolutionReportingSystemToolHub(AccountInstances instances, string account)
             {
                 _instances = instances;
                 _account = account;
@@ -275,7 +317,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 _ => "AccountEmpty"
             };
 
-            public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request, CancellationToken cancellationToken = default)
+            public Task<ResponseData<ResponseListTool[]>> RunListSystemTool(RequestListTool request, CancellationToken cancellationToken = default)
                 => Task.FromResult(new ResponseData<ResponseListTool[]>(request.RequestID, ResponseStatus.Success)
                 {
                     Value = new[]
@@ -289,7 +331,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                     }
                 });
 
-            public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request)
+            public Task<ResponseData<ResponseCallTool>> RunSystemTool(RequestCallTool request, CancellationToken cancellationToken = default)
             {
                 var resolution = Resolve();
                 return Task.FromResult(resolution.Kind switch
@@ -305,18 +347,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                             .SetData(ResponseCallTool.Error("AccountEmpty", ResponseErrorKind.Unavailable)),
                 });
             }
-        }
-
-        sealed class StubSystemToolHub : IClientSystemToolHub
-        {
-            public Task<ResponseData<ResponseCallTool>> RunSystemTool(RequestCallTool request, CancellationToken cancellationToken = default)
-                => Task.FromResult(ResponseData<ResponseCallTool>.Success(request.RequestID));
-
-            public Task<ResponseData<ResponseListTool[]>> RunListSystemTool(RequestListTool request, CancellationToken cancellationToken = default)
-                => Task.FromResult(new ResponseData<ResponseListTool[]>(request.RequestID, ResponseStatus.Success)
-                {
-                    Value = Array.Empty<ResponseListTool>()
-                });
         }
     }
 }
