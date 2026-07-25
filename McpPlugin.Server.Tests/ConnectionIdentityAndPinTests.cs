@@ -70,15 +70,45 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [InlineData("/mcp/p/aabbccdd", "aabbccdd")]
         [InlineData("/p/aabbccdd", "aabbccdd")]
         [InlineData("/mcp/p/AABBCCDD", "aabbccdd")]              // lowercased
-        [InlineData("/mcp", null)]                                // no /p/ segment
-        [InlineData("/mcp/p/", null)]                             // empty pin
-        [InlineData("/mcp/p/not-a-pin!", null)]                   // non-hex ignored
+        [InlineData("/p/aabbccdd/api/tools", "aabbccdd")]        // pinned REST tool route
+        [InlineData("/p/aabbccdd/api/system-tools/ping", "aabbccdd")]
+        // Routing matches the literal "p" segment case-insensitively, so an upper-case marker REACHES the
+        // pinned endpoints; parsing it as unpinned would re-open the very downgrade this gate closes.
+        [InlineData("/P/aabbccdd/api/tools", "aabbccdd")]
+        [InlineData("/mcp/P/AABBCCDD", "aabbccdd")]
         [InlineData("/p/11112222/p/33334444", "33334444")]        // last wins (config URL suffix)
-        [InlineData(null, null)]
-        [InlineData("", null)]
-        public void TryExtractProjectPin_ParsesTrailingPinSegment(string? path, string? expected)
+        public void TryExtractProjectPin_WellFormedPin_IsCaptured(string path, string expected)
         {
-            McpSessionTokenMiddleware.TryExtractProjectPin(path).ShouldBe(expected);
+            McpSessionTokenMiddleware.TryExtractProjectPin(path, out var pin).ShouldBe(ProjectPinParse.Valid);
+            pin.ShouldBe(expected);
+        }
+
+        [Theory]
+        [InlineData("/mcp")]                                      // no /p/ marker
+        [InlineData("/api/tools")]                                // the genuinely-unpinned REST surface
+        [InlineData("/api/tools/p")]                              // trailing "p" is not a marker (nothing follows)
+        [InlineData(null)]
+        [InlineData("")]
+        public void TryExtractProjectPin_NoMarker_IsAbsentNotMalformed(string? path)
+        {
+            // ABSENT ≠ MALFORMED: an unpinned request is a supported mode and must NOT be rejected.
+            McpSessionTokenMiddleware.TryExtractProjectPin(path, out var pin).ShouldBe(ProjectPinParse.Absent);
+            pin.ShouldBeNull();
+        }
+
+        [Theory]
+        [InlineData("/mcp/p/not-a-pin!")]                         // non-hex
+        [InlineData("/p/zzzz/api/tools")]                         // non-hex on a pinned REST route
+        [InlineData("/mcp/p/")]                                   // marker with an empty value
+        [InlineData("/p/aabbccdd0011223344556677889900aabbccdd0011223344556677889900aabbc")] // 65 hex chars (over the 64 cap)
+        [InlineData("/p/11112222/p/nothex")]                      // a later bad marker never inherits an earlier good pin
+        [InlineData("/P/not-a-pin/api/tools")]                    // upper-case marker: routed as pinned ⇒ parsed as pinned
+        public void TryExtractProjectPin_PresentButUnparseable_IsMalformed(string path)
+        {
+            // Previously these all returned null — indistinguishable from "unpinned" — which silently
+            // re-enabled MRU fallthrough. They must now be reported as malformed so the caller rejects.
+            McpSessionTokenMiddleware.TryExtractProjectPin(path, out var pin).ShouldBe(ProjectPinParse.Malformed);
+            pin.ShouldBeNull();
         }
 
         // ─────────────────────────── stdio project=<pin> arg ───────────────────────────

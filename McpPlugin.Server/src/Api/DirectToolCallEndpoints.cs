@@ -57,7 +57,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
         // The project-pinned variant of RoutePrefix. {pin} is a route token only so the endpoint matches;
         // the pin VALUE is captured from the original path by McpSessionTokenMiddleware, exactly like the
         // pinned MCP routes (StreamableHttpTransportLayer.MapPinnedMcp). No route constraint on {pin} — the
-        // middleware validates it loosely (1–64 hex) and ignores a malformed segment, matching the MCP path.
+        // middleware validates it (1–64 hex) and REJECTS a malformed segment with 400 invalid_project_pin
+        // before this group's handlers run, matching the MCP path. It is never downgraded to "unpinned":
+        // that downgrade re-enabled MRU fallthrough and executed the call against a sibling project.
         const string PinnedRoutePrefix = "/p/{pin}" + RoutePrefix;
 
         /// <summary>

@@ -203,6 +203,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
         /// request path by the middleware (route-parameter matching preserves the path, unlike a
         /// pre-routing rewrite, which would strip the pin before capture). Served in BOTH auth modes so
         /// the pinned URL behaves exactly like <c>/mcp</c> (401 in oauth, anonymous session in none).
+        ///
+        /// <para>Because <c>{pin}</c> carries no route constraint, a MALFORMED segment still matches these
+        /// routes; <see cref="Auth.McpSessionTokenMiddleware"/> rejects it with <c>400 invalid_project_pin</c>
+        /// so no MCP session is ever established for it — it is never downgraded to an unpinned session,
+        /// which would resolve <c>sticky → single → MRU</c> onto an arbitrary sibling project.</para>
         /// </summary>
         static void MapPinnedMcp(WebApplication app, bool requireAuthorization)
         {

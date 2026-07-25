@@ -30,7 +30,29 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Security
         [InlineData("/help", false)]
         [InlineData("/.well-known/oauth-protected-resource", false)]
         [InlineData("/oauth/token", false)]
-        [InlineData("/api/tools", false)]
+        // ── The tool-EXECUTING REST surfaces (2026-07-25). `/api/tools` asserted FALSE here until this
+        //    change: `OriginValidationMiddleware` never ran on it, so a hostile page could drive the local
+        //    server's tool routes from the victim's browser (DNS rebinding). Tightened, never loosened.
+        [InlineData("/api/tools", true)]
+        [InlineData("/api/tools/ping", true)]
+        [InlineData("/api/system-tools", true)]
+        [InlineData("/api/system-tools/ping", true)]
+        // The pinned family — including the bare nginx-stripped pinned MCP endpoint, whose /mcp/p/{pin}
+        // twin was already guarded by the /mcp/ prefix.
+        [InlineData("/p/3fa9c1e2", true)]
+        [InlineData("/p/3fa9c1e2/api/tools", true)]
+        [InlineData("/p/3fa9c1e2/api/tools/ping", true)]
+        [InlineData("/p/3fa9c1e2/api/system-tools", true)]
+        [InlineData("/p/3fa9c1e2/api/system-tools/ping", true)]
+        // Routing accepts an upper-case marker, so the guard must too (matches the pin parser).
+        [InlineData("/P/3fa9c1e2/api/tools/ping", true)]
+        // Segment-boundary precision: a path that merely SHARES a prefix is not a tool surface.
+        [InlineData("/mcpx", false)]
+        [InlineData("/api/toolsets", false)]
+        [InlineData("/api/system-toolsets", false)]
+        [InlineData("/api", false)]
+        [InlineData("/api/other", false)]
+        [InlineData("/pricing", false)]
         public void IsGuardedPath(string path, bool expected)
             => OriginPolicy.IsGuardedPath(new PathString(path), Hub).ShouldBe(expected);
 
