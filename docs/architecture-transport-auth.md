@@ -28,9 +28,28 @@
 > an unmatched pin yields `NoMatchPinned`/`AccountEmpty` (never MRU). The pin is routing only: captured from
 > the request path by `McpSessionTokenMiddleware` and flowed to `AccountMcpStrategy.ResolveCurrentSession`,
 > so the pinned group shares the SAME handlers and the SAME auth gate as the unpinned one (identical
-> `oauth`/`token`/`required` gating; open only in `none`). There is deliberately **no pinned system-tools
-> route**. The public `/mcp/p/{pin}/…` form is served by these same routes after nginx strips the `/mcp`
-> prefix (mirroring the existing unpinned convention where nginx strips `/mcp` ahead of `/api/tools`).
+> `oauth`/`token`/`required` gating; open only in `none`). The public `/mcp/p/{pin}/…` form is served by these
+> same routes after nginx strips the `/mcp` prefix (mirroring the existing unpinned convention where nginx
+> strips `/mcp` ahead of `/api/tools`).
+
+> **Pinned REST system-tool routes (owner ruling 2026-07-25 — REVERSES design 06 D15).** The system-tool
+> surface now has the same pinned/unpinned pairing:
+> `GET /p/{pin}/api/system-tools` + `POST /p/{pin}/api/system-tools/{name}`
+> (`SystemToolEndpoints.MapPinnedSystemToolApi`, mapped in `ExtensionsWebApplication`). Both prefixes register
+> through one shared registrar, so the pinned group is byte-identical to the unpinned one
+> by construction — same handlers, same `AuthGating` decision, same `McpSessionTokenMiddleware` pin capture and
+> strict-by-pin resolution (an unmatched **well-formed** pin yields `NoMatchPinned`/`AccountEmpty`, never MRU)
+> — differing only by the `{pin}` path token. As on the pinned tool routes and the pinned MCP path, `{pin}`
+> carries no route constraint, so a segment the route accepts but `McpSessionTokenMiddleware` rejects as
+> malformed (non-hex, or longer than 64 chars) is treated as **absent** and falls back to `sticky → single →
+> MRU`.
+>
+> Design 06 **D15** had deliberately declined this route on the premise that *"no engine registers a system
+> `ping` tool"*. **That premise was false**: the 2026-07-20 review surveyed Godot/Unreal (where the defect was
+> filed) and missed Unity, which declares `ping` as `ToolType = McpToolType.System`. Because the cloud golden
+> path is pinned (`/mcp/p/<pin>/…`), the absence of this group made an engine-liveness probe over the
+> system-tools surface **impossible on the cloud path**; the local/self-host path was unaffected (unpinned
+> `/api/system-tools` already existed). D15 is therefore reversed deliberately, with the owner ruling behind it.
 
 > **Offline token mode (mcp-authorize g6).** A third auth mode, **`token`**, is the OFFLINE
 > counterpart of `oauth`: a loopback single-project server gates BOTH the SignalR plugin connection

@@ -40,8 +40,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
     /// bucket STRICTLY by pin: a pin never falls through — a wrong pin returns <c>NoMatchPinned</c> even
     /// when the account HAS sibling instances (never MRU-routed), and an empty account returns
     /// <c>AccountEmpty</c>. The UNPINNED group is byte-identical wiring but still falls to MRU (the
-    /// contrast that proves the pinned group is strict). There is deliberately NO pinned system-tools
-    /// route (design 06 D15). These drive a REAL loopback host through the production
+    /// contrast that proves the pinned group is strict). The system-tools surface has the SAME pinned
+    /// pairing since the owner ruling of 2026-07-25 reversed design 06 D15 (see
+    /// <see cref="PinnedSystemToolRoutingTests"/>). These drive a REAL loopback host through the production
     /// <see cref="McpSessionTokenMiddleware"/> so the pin is captured live from the pinned request path
     /// exactly as in prod; the tool hub reports the outcome of the real <see cref="AccountInstances.Resolve"/>.
     /// </summary>
@@ -145,11 +146,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             (await resp.Content.ReadAsStringAsync()).ShouldContain("AccountEmpty");
         }
 
-        // ─────────────────── Route set (design 06 D15) — no pinned system-tools analog ───────────────────
+        // ────────────── Route set — the pinned system-tools analog EXISTS (D15 reversed) ──────────────
 
         [Fact]
-        public async Task NoPinnedSystemToolsRoute_Exists()
+        public async Task PinnedSystemToolsRoute_IsMapped_AlongsideThePinnedToolRoutes()
         {
+            // Design 06 D15 declined a pinned system-tools route on the false premise that no engine
+            // registers a system `ping` tool (Unity does). The owner ruling of 2026-07-25 reversed it, so the
+            // pinned surface now carries BOTH groups. This asserts the two coexist on one host; the strict-pin
+            // behavior of the system-tools group itself is covered by PinnedSystemToolRoutingTests.
             var instances = TwoInstanceRegistry();
             await using var host = await StartHostAsync(instances);
             using var client = NewClient(host);
@@ -157,10 +162,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // Control: the UNPINNED system-tools route IS mapped (reachable, not 404, in none mode).
             (await client.GetAsync("/api/system-tools")).StatusCode.ShouldNotBe(HttpStatusCode.NotFound);
 
-            // The pinned surface has NO system-tools analog — both list and call 404 (the route is not mapped).
-            (await client.GetAsync($"/p/{PinA}/api/system-tools")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+            // The pinned system-tools analog is mapped too — both list and call resolve to a handler.
+            (await client.GetAsync($"/p/{PinA}/api/system-tools")).StatusCode.ShouldBe(HttpStatusCode.OK);
             using var post = await CallAsync(client, $"/p/{PinA}/api/system-tools/ping");
-            post.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+            post.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+            // …and the pinned TOOL routes still work on the same host (no route-table shadowing between the
+            // two pinned groups, which share the same /p/{pin} prefix).
+            (await ListOutcomeAsync(client, $"/p/{PinA}/api/tools")).ShouldBe(InstanceA);
         }
 
         // ───────────────────────────────── helpers ─────────────────────────────────
@@ -188,7 +197,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         static Task<HttpResponseMessage> CallAsync(HttpClient client, string route)
             => client.PostAsync(route, new StringContent("{}", Encoding.UTF8, "application/json"));
 
-        // ── Minimal in-memory host: the pin-capture middleware + both tool-call groups + system-tools. ──
+        // ── Minimal in-memory host: pin-capture middleware + both tool-call groups + both system-tool groups. ──
 
         static async Task<RunningHost> StartHostAsync(AccountInstances instances)
         {
@@ -210,7 +219,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             app.UseMiddleware<McpSessionTokenMiddleware>();
             app.MapDirectToolCallApi(dataArguments);       // unpinned group
             app.MapPinnedDirectToolCallApi(dataArguments); // pinned group (under test)
-            app.MapSystemToolApi(dataArguments);           // to prove there is NO pinned system-tools analog
+            app.MapSystemToolApi(dataArguments);           // unpinned system-tools (control)
+            app.MapPinnedSystemToolApi(dataArguments);     // pinned system-tools analog (D15 reversed)
 
             await app.StartAsync();
             return new RunningHost(app, app.Urls.First());

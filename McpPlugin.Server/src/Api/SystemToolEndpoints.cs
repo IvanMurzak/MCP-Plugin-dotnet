@@ -30,16 +30,50 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
     /// Provides HTTP API endpoints for system tools — internal tools that are NOT exposed
     /// to MCP clients or AI agents. These are only accessible via direct HTTP calls.
     ///
-    /// Endpoints:
+    /// Endpoints (unpinned group):
     ///   GET  /api/system-tools        — list all available system tools with schemas
     ///   POST /api/system-tools/{name} — execute a named system tool with JSON arguments
+    ///
+    /// Endpoints (project-pinned group — owner ruling 2026-07-25, REVERSES design 06 D15):
+    ///   GET  /p/{pin}/api/system-tools        — list system tools for the pinned project's engine instance
+    ///   POST /p/{pin}/api/system-tools/{name} — execute a system tool against the pinned project's instance
+    ///
+    /// The pinned group mirrors <see cref="DirectToolCallEndpoints"/> exactly: both prefixes register through
+    /// the SAME <see cref="MapSystemToolGroup"/> registrar (same handlers, same <see cref="AuthGating"/>
+    /// decision), and the pin is a route token only — its value is captured from the ORIGINAL request path by
+    /// <see cref="Auth.McpSessionTokenMiddleware"/> and flows through the ambient session context to
+    /// <c>AccountMcpStrategy.ResolveCurrentSession</c>, making resolution STRICT by project (an unmatched
+    /// WELL-FORMED pin yields <c>NoMatchPinned</c>/<c>AccountEmpty</c>, never MRU). Note the <c>{pin}</c> token
+    /// carries no route constraint, so a segment the route accepts but the middleware rejects as malformed
+    /// (non-hex, or longer than 64 chars) is treated as ABSENT and falls back to <c>sticky → single → MRU</c> —
+    /// the same pre-existing behavior as the pinned tool routes and the pinned MCP path.
+    ///
+    /// <para><b>Why the pinned group exists (D15 reversed).</b> Design 06 D15 declined a pinned system-tools
+    /// route on the premise that "no engine registers a system <c>ping</c> tool". That premise was FALSE: the
+    /// 2026-07-20 review surveyed Godot/Unreal (where the defect was filed) and missed Unity, which declares
+    /// <c>ping</c> as <c>ToolType = McpToolType.System</c>. Since the cloud golden path is pinned
+    /// (<c>/mcp/p/&lt;pin&gt;/…</c>), without this group a client cannot probe engine liveness over the
+    /// system-tools surface on the cloud path at all. The owner ruling of 2026-07-25 ("<c>ping</c> MUST be a
+    /// system tool on every engine") therefore reverses D15 deliberately.</para>
+    ///
+    /// The public <c>/mcp/p/{pin}/…</c> form is served by the same routes after nginx strips the <c>/mcp</c>
+    /// prefix (mirroring the existing unpinned convention, where nginx strips <c>/mcp</c> ahead of
+    /// <c>/api/system-tools</c>).
     /// </summary>
     public static class SystemToolEndpoints
     {
         const string RoutePrefix = "/api/system-tools";
 
+        // The project-pinned variant of RoutePrefix. {pin} is a route token only so the endpoint matches;
+        // the pin VALUE is captured from the original path by McpSessionTokenMiddleware, exactly like the
+        // pinned tool routes (DirectToolCallEndpoints.PinnedRoutePrefix) and the pinned MCP routes
+        // (StreamableHttpTransportLayer.MapPinnedMcp). No route constraint on {pin} — the middleware
+        // validates it loosely (1–64 hex) and ignores a malformed segment, matching the MCP path.
+        const string PinnedRoutePrefix = "/p/{pin}" + RoutePrefix;
+
         /// <summary>
-        /// Maps the system tool API endpoints onto the given <see cref="WebApplication"/>.
+        /// Maps the UNPINNED system tool API endpoints (<c>/api/system-tools</c>) onto the given
+        /// <see cref="WebApplication"/>.
         /// Authorization follows the same rules as the direct tool call endpoints: required in every
         /// credential-bearing mode — <see cref="Consts.MCP.Server.AuthOption.oauth"/>, the offline
         /// <see cref="Consts.MCP.Server.AuthOption.token"/> (mcp-authorize g6), and the deprecated
@@ -49,6 +83,35 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
         /// </summary>
         public static WebApplication MapSystemToolApi(this WebApplication app, IDataArguments dataArguments)
         {
+            MapSystemToolGroup(app, dataArguments, RoutePrefix);
+            return app;
+        }
+
+        /// <summary>
+        /// Maps the PROJECT-PINNED system tool API endpoints (<c>/p/{pin}/api/system-tools</c>) onto the given
+        /// <see cref="WebApplication"/> (owner ruling 2026-07-25, reversing design 06 D15 — see the type
+        /// docblock). Registered alongside — and byte-identical in behavior to — the unpinned group (both
+        /// delegate to <see cref="MapSystemToolGroup"/> with the SAME handlers and the SAME auth gate); the
+        /// ONLY difference is the route prefix carries a <c>{pin}</c> segment, which
+        /// <see cref="Auth.McpSessionTokenMiddleware"/> captures from the request path so system-tool
+        /// resolution is pinned STRICTLY to that project's engine instance (never MRU-routed to a sibling).
+        /// </summary>
+        public static WebApplication MapPinnedSystemToolApi(this WebApplication app, IDataArguments dataArguments)
+        {
+            MapSystemToolGroup(app, dataArguments, PinnedRoutePrefix);
+            return app;
+        }
+
+        /// <summary>
+        /// Shared registrar for a system-tool route group. Both the unpinned (<c>/api/system-tools</c>) and the
+        /// project-pinned (<c>/p/{pin}/api/system-tools</c>) groups route through this ONE method with the SAME
+        /// list/call handlers and the SAME <see cref="AuthGating"/> decision, so they are byte-identical in
+        /// behavior by construction — the pinned group differs only by the <c>{pin}</c> path token (captured by
+        /// the middleware, not read here). Keeping the auth gate in lockstep guarantees a credential-bearing
+        /// mode can never leave one group gated and the other open.
+        /// </summary>
+        static void MapSystemToolGroup(WebApplication app, IDataArguments dataArguments, string routePrefix)
+        {
             if (app == null)
                 throw new ArgumentNullException(nameof(app));
 
@@ -56,12 +119,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
                 throw new ArgumentNullException(nameof(dataArguments));
 
             var requireAuth = AuthGating.RequiresAuthorization(dataArguments.Authorization);
-            var group = app.MapGroup(RoutePrefix);
+            var group = app.MapGroup(routePrefix);
 
-            // GET /api/system-tools — list all registered system tools
+            // GET <prefix> — list all registered system tools
             var listEndpoint = group.MapGet("/", ListSystemToolsHandler);
 
-            // POST /api/system-tools/{name} — invoke a system tool by name
+            // POST <prefix>/{name} — invoke a system tool by name
             var callEndpoint = group.MapPost("/{name}", CallSystemToolHandler);
 
             if (requireAuth)
@@ -69,8 +132,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
                 listEndpoint.RequireAuthorization();
                 callEndpoint.RequireAuthorization();
             }
-
-            return app;
         }
 
         /// <summary>

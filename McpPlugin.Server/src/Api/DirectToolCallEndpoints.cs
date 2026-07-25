@@ -44,8 +44,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
     /// never MRU). The pin is a route token only; its value is captured from the ORIGINAL request path by
     /// <see cref="Auth.McpSessionTokenMiddleware"/> and flows through the ambient session context to
     /// <c>AccountMcpStrategy.ResolveCurrentSession</c> — so the two groups share the SAME handlers and
-    /// resolution mechanism, differing only in whether a pin is present on the path. There is deliberately
-    /// NO pinned system-tools route (design 06 D15). The public <c>/mcp/p/{pin}/…</c> form is served by the
+    /// resolution mechanism, differing only in whether a pin is present on the path. The system-tools surface
+    /// now has the SAME pinned/unpinned pairing — see <see cref="SystemToolEndpoints"/>, whose docblock carries
+    /// the design 06 D15 reversal and its rationale. The public <c>/mcp/p/{pin}/…</c> form is served by the
     /// same routes after nginx strips the <c>/mcp</c> prefix (mirroring the existing unpinned convention,
     /// where nginx strips <c>/mcp</c> ahead of <c>/api/tools</c>).
     /// </summary>
@@ -82,7 +83,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
         /// with the SAME handlers and the SAME auth gate); the ONLY difference is the route prefix carries a
         /// <c>{pin}</c> segment, which <see cref="Auth.McpSessionTokenMiddleware"/> captures from the request path
         /// so tool resolution is pinned STRICTLY to that project's engine instance (never MRU-routed to a sibling).
-        /// There is deliberately no pinned system-tools analog (design 06 D15).
+        /// The system-tools surface has the matching pinned analog
+        /// (<see cref="SystemToolEndpoints.MapPinnedSystemToolApi"/>) — see that type for the design 06 D15 reversal.
         /// </summary>
         public static WebApplication MapPinnedDirectToolCallApi(this WebApplication app, IDataArguments dataArguments)
         {
