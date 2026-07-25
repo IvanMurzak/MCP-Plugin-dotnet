@@ -72,6 +72,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [InlineData("/mcp/p/AABBCCDD", "aabbccdd")]              // lowercased
         [InlineData("/p/aabbccdd/api/tools", "aabbccdd")]        // pinned REST tool route
         [InlineData("/p/aabbccdd/api/system-tools/ping", "aabbccdd")]
+        // Routing matches the literal "p" segment case-insensitively, so an upper-case marker REACHES the
+        // pinned endpoints; parsing it as unpinned would re-open the very downgrade this gate closes.
+        [InlineData("/P/aabbccdd/api/tools", "aabbccdd")]
+        [InlineData("/mcp/P/AABBCCDD", "aabbccdd")]
         [InlineData("/p/11112222/p/33334444", "33334444")]        // last wins (config URL suffix)
         public void TryExtractProjectPin_WellFormedPin_IsCaptured(string path, string expected)
         {
@@ -98,6 +102,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [InlineData("/mcp/p/")]                                   // marker with an empty value
         [InlineData("/p/aabbccdd0011223344556677889900aabbccdd0011223344556677889900aabbc")] // 65 hex chars (over the 64 cap)
         [InlineData("/p/11112222/p/nothex")]                      // a later bad marker never inherits an earlier good pin
+        [InlineData("/P/not-a-pin/api/tools")]                    // upper-case marker: routed as pinned ⇒ parsed as pinned
         public void TryExtractProjectPin_PresentButUnparseable_IsMalformed(string path)
         {
             // Previously these all returned null — indistinguishable from "unpinned" — which silently

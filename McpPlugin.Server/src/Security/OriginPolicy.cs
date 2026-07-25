@@ -21,6 +21,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Security
     /// </summary>
     public static class OriginPolicy
     {
+        /// <summary>The MCP endpoint root — <c>/mcp</c> and everything beneath it (incl. <c>/mcp/p/{pin}</c>).</summary>
+        const string McpRoot = "/mcp";
+
         /// <summary>The project-pinned route family root — <c>/p/{pin}</c> and everything beneath it.</summary>
         const string PinnedRoot = "/p";
 
@@ -60,9 +63,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Security
 
             if (string.Equals(value, "/", StringComparison.Ordinal))
                 return true;
-            if (string.Equals(value, "/mcp", StringComparison.OrdinalIgnoreCase))
-                return true;
-            if (value.StartsWith("/mcp/", StringComparison.OrdinalIgnoreCase))
+            // MCP endpoint family: /mcp, /mcp/…, /mcp/p/{pin}/… — the same segment-boundary rule the
+            // families below use, so "/mcpx" is still NOT the MCP endpoint.
+            if (IsSegmentPrefix(value, McpRoot))
                 return true;
 
             // Project-pinned family: /p, /p/{pin}, /p/{pin}/api/tools[/…], /p/{pin}/api/system-tools[/…].

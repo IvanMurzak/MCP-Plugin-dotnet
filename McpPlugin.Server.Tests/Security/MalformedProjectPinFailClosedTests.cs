@@ -142,6 +142,48 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Security
             host.SystemToolHub.Invocations.ShouldBeEmpty();
         }
 
+        // ───────── The same hole via an UPPER-CASE marker (routing is case-insensitive) ─────────
+
+        [Theory]
+        [MemberData(nameof(MalformedPins))]
+        public async Task UpperCaseMarker_MalformedPin_Rejected_AndNeverReachesAnyProject(string malformed)
+        {
+            // ASP.NET Core matches the literal "p" segment of "/p/{pin}/api/tools/{name}" case-INSENSITIVELY,
+            // so "/P/<malformed>/…" reaches the PINNED endpoint. If the pin parser matched the marker
+            // ordinally it would see no marker, report ABSENT, and hand the request to the unpinned
+            // sticky → single → MRU path — i.e. the whole fail-closed gate bypassed by one capital letter.
+            await using var host = await StartHostAsync(TwoInstanceRegistry());
+            using var client = NewClient(host);
+
+            using var resp = await CallAsync(client, $"/P/{malformed}/api/tools/ping");
+
+            resp.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+            (await resp.Content.ReadAsStringAsync()).ShouldContain(McpSessionTokenMiddleware.InvalidProjectPinError);
+            host.ToolHub.Invocations.ShouldBeEmpty("an upper-case marker must not bypass the pin gate");
+        }
+
+        [Fact]
+        public async Task UpperCaseMarker_WrongButHexPin_StillFailsClosed_NeverMru()
+        {
+            // The dangerous shape: a WELL-FORMED pin behind an upper-case marker. Ordinal marker matching
+            // made this resolve as unpinned and execute against a SIBLING project (observed: instance-B).
+            await using var host = await StartHostAsync(TwoInstanceRegistry());
+            using var client = NewClient(host);
+
+            (await ListOutcomeAsync(client, $"/P/{WrongButHexPin}/api/tools")).ShouldBe("NoMatchPinned");
+            (await ListOutcomeAsync(client, $"/P/{WrongButHexPin}/api/system-tools")).ShouldBe("NoMatchPinned");
+        }
+
+        [Fact]
+        public async Task UpperCaseMarker_MatchingPin_ResolvesStrictlyToItsOwnProject()
+        {
+            await using var host = await StartHostAsync(TwoInstanceRegistry());
+            using var client = NewClient(host);
+
+            (await ListOutcomeAsync(client, $"/P/{PinA}/api/tools")).ShouldBe(InstanceA);
+            (await ListOutcomeAsync(client, $"/P/{PinB}/api/system-tools")).ShouldBe(InstanceB);
+        }
+
         // ───────── Guarding the behaviour that was ALREADY correct (must not regress) ─────────
 
         [Fact]

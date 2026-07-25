@@ -61,7 +61,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         /// <summary>The MCP Streamable-HTTP session header (case-insensitive lookup).</summary>
         public const string SessionIdHeader = "Mcp-Session-Id";
 
-        /// <summary>The path segment that marks the following segment as a project pin (<c>/p/&lt;pin&gt;</c>).</summary>
+        /// <summary>
+        /// The path segment that marks the following segment as a project pin (<c>/p/&lt;pin&gt;</c>).
+        /// Matched CASE-INSENSITIVELY, because ASP.NET Core matches the literal <c>p</c> segment of the
+        /// pinned route templates case-insensitively too: an Ordinal match here would let <c>/P/&lt;pin&gt;</c>
+        /// route as PINNED while parsing as unpinned — the exact downgrade this gate exists to stop.
+        /// </summary>
         const string PinMarkerSegment = "p";
 
         /// <summary>Machine-readable error code returned when a present pin cannot be parsed.</summary>
@@ -154,6 +159,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         /// Parses the project pin out of a request path whose config URL ends in a <c>/p/&lt;pin&gt;</c>
         /// segment (design 04 D14). The pin is the leading hex prefix of the project SHA-256, validated as
         /// 1–64 hex chars; when several well-formed markers appear the LAST one wins (the config URL suffix).
+        /// The <c>p</c> marker is matched CASE-INSENSITIVELY to stay in lockstep with routing (see
+        /// <see cref="PinMarkerSegment"/>); the pin VALUE may be upper- or lower-case hex and is lower-cased.
         ///
         /// <para><b>Tri-state on purpose — fail closed.</b> This used to return <c>null</c> for BOTH "no
         /// <c>/p/</c> marker" and "marker present, value unparseable", which made the two indistinguishable
@@ -179,7 +186,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             var sawMarker = false;
             for (var i = 0; i + 1 < segments.Length; i++)
             {
-                if (!string.Equals(segments[i], PinMarkerSegment, StringComparison.Ordinal))
+                // Case-INSENSITIVE: routing matches the literal "p" segment that way, so "/P/<pin>" reaches
+                // the pinned endpoints and must be parsed as pinned (see PinMarkerSegment).
+                if (!string.Equals(segments[i], PinMarkerSegment, StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 sawMarker = true;
@@ -205,12 +214,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         static Task WriteInvalidProjectPinAsync(HttpContext context)
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
-            context.Response.ContentType = "application/json";
             return context.Response.WriteAsJsonAsync(new
             {
                 error = InvalidProjectPinError,
                 message = "The project pin path segment is malformed; expected 1-64 hexadecimal characters."
-            });
+            }, context.RequestAborted);
         }
 
         static bool IsHex(string? s)

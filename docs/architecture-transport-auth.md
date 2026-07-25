@@ -66,6 +66,13 @@
 > isolation is exactly the control that stops cross-project mis-routing (design 04 D14 / design 06), so a
 > silent downgrade defeated it.
 >
+> The `/p/` **marker** is matched **case-insensitively**, in lockstep with routing: ASP.NET Core matches the
+> literal `p` segment of `/p/{pin}/…` case-insensitively, so `/P/<pin>/…` reaches the pinned endpoints. An
+> ordinal marker match would parse those requests as *unpinned* and hand them straight back to
+> `sticky → single → MRU` — the same downgrade, bypassable with one capital letter. (The pin VALUE may be
+> upper- or lower-case hex; it is lower-cased before resolution.) `OriginPolicy` matches the same family
+> case-insensitively for the same reason.
+>
 > `TryExtractProjectPin` is therefore **tri-state** (`ProjectPinParse.Absent` / `Valid` / `Malformed`) rather
 > than "pin or null" — a signature change on `McpPlugin.Server`'s public surface, because the two `null`
 > meanings had to become distinguishable at the call site. **Absent ≠ malformed:** a request carrying no `/p/`

@@ -44,7 +44,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Security
         [InlineData("/p/3fa9c1e2/api/tools/ping", true)]
         [InlineData("/p/3fa9c1e2/api/system-tools", true)]
         [InlineData("/p/3fa9c1e2/api/system-tools/ping", true)]
+        // Routing accepts an upper-case marker, so the guard must too (matches the pin parser).
+        [InlineData("/P/3fa9c1e2/api/tools/ping", true)]
         // Segment-boundary precision: a path that merely SHARES a prefix is not a tool surface.
+        [InlineData("/mcpx", false)]
         [InlineData("/api/toolsets", false)]
         [InlineData("/api/system-toolsets", false)]
         [InlineData("/api", false)]
