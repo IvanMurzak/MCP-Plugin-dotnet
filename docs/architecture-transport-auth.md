@@ -36,10 +36,13 @@
 > surface now has the same pinned/unpinned pairing:
 > `GET /p/{pin}/api/system-tools` + `POST /p/{pin}/api/system-tools/{name}`
 > (`SystemToolEndpoints.MapPinnedSystemToolApi`, mapped in `ExtensionsWebApplication`). Both prefixes register
-> through one shared `MapSystemToolGroup` registrar, so the pinned group is byte-identical to the unpinned one
+> through one shared registrar, so the pinned group is byte-identical to the unpinned one
 > by construction — same handlers, same `AuthGating` decision, same `McpSessionTokenMiddleware` pin capture and
-> strict-by-pin resolution (`NoMatchPinned`/`AccountEmpty`, never MRU) — differing only by the `{pin}` path
-> token.
+> strict-by-pin resolution (an unmatched **well-formed** pin yields `NoMatchPinned`/`AccountEmpty`, never MRU)
+> — differing only by the `{pin}` path token. As on the pinned tool routes and the pinned MCP path, `{pin}`
+> carries no route constraint, so a segment the route accepts but `McpSessionTokenMiddleware` rejects as
+> malformed (non-hex, or longer than 64 chars) is treated as **absent** and falls back to `sticky → single →
+> MRU`.
 >
 > Design 06 **D15** had deliberately declined this route on the premise that *"no engine registers a system
 > `ping` tool"*. **That premise was false**: the 2026-07-20 review surveyed Godot/Unreal (where the defect was

@@ -13,6 +13,7 @@ using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
@@ -221,7 +222,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             using var req = new HttpRequestMessage(HttpMethod.Post, route)
             {
-                Content = new System.Net.Http.StringContent("{}", System.Text.Encoding.UTF8, "application/json")
+                Content = new StringContent("{}", Encoding.UTF8, "application/json")
             };
             if (bearer != null)
                 req.Headers.TryAddWithoutValidation("Authorization", $"Bearer {bearer}");

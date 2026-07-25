@@ -42,8 +42,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
     /// the SAME <see cref="MapSystemToolGroup"/> registrar (same handlers, same <see cref="AuthGating"/>
     /// decision), and the pin is a route token only — its value is captured from the ORIGINAL request path by
     /// <see cref="Auth.McpSessionTokenMiddleware"/> and flows through the ambient session context to
-    /// <c>AccountMcpStrategy.ResolveCurrentSession</c>, making resolution STRICT by project (an unmatched pin
-    /// yields <c>NoMatchPinned</c>/<c>AccountEmpty</c>, never MRU).
+    /// <c>AccountMcpStrategy.ResolveCurrentSession</c>, making resolution STRICT by project (an unmatched
+    /// WELL-FORMED pin yields <c>NoMatchPinned</c>/<c>AccountEmpty</c>, never MRU). Note the <c>{pin}</c> token
+    /// carries no route constraint, so a segment the route accepts but the middleware rejects as malformed
+    /// (non-hex, or longer than 64 chars) is treated as ABSENT and falls back to <c>sticky → single → MRU</c> —
+    /// the same pre-existing behavior as the pinned tool routes and the pinned MCP path.
     ///
     /// <para><b>Why the pinned group exists (D15 reversed).</b> Design 06 D15 declined a pinned system-tools
     /// route on the premise that "no engine registers a system <c>ping</c> tool". That premise was FALSE: the

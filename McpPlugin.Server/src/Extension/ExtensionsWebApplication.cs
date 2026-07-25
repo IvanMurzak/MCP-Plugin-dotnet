@@ -77,11 +77,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             app.MapPinnedDirectToolCallApi(dataArguments);
             // Setup system tool API (POST /api/system-tools/{name}) — internal tools not exposed to MCP
             app.MapSystemToolApi(dataArguments);
-            // Setup project-pinned system tool API (POST /p/{pin}/api/system-tools/{name}, GET /p/{pin}/api/system-tools).
-            // Same pinned/unpinned pairing as the tool routes above. This REVERSES design 06 D15 (owner ruling
-            // 2026-07-25): D15's premise "no engine registers a system ping tool" was false (Unity's `ping` is
-            // ToolType = McpToolType.System), and the cloud golden path is pinned — so without this group a client
-            // cannot probe engine liveness over the system-tools surface on the cloud path at all.
+            // Setup project-pinned system tool API (POST /p/{pin}/api/system-tools/{name}, GET /p/{pin}/api/system-tools) —
+            // same pinned/unpinned pairing as the tool routes above; reverses design 06 D15 (see SystemToolEndpoints).
             app.MapPinnedSystemToolApi(dataArguments);
 
             return app;
