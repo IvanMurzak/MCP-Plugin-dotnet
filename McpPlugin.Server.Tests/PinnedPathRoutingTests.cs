@@ -84,6 +84,26 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             unmapped.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         }
 
+        // ───────────────── a malformed pin on the MCP plane fails closed ─────────────────
+
+        [Theory]
+        [InlineData("/p/not-a-pin")]
+        [InlineData("/mcp/p/not-a-pin")]
+        public async Task NoneMode_MalformedPin_FailsClosed_NoSessionEstablished(string path)
+        {
+            // The pinned MCP routes carry no constraint on {pin}, so a malformed segment still MATCHES the
+            // endpoint. Before the fix the middleware silently nulled the pin and the request established a
+            // normal (unpinned) MCP session that resolves sticky → single → MRU — i.e. a caller that believed
+            // it was pinned got a session bound to an arbitrary sibling project. It must be rejected instead.
+            await using var host = await StartHostAsync(Consts.MCP.Server.AuthOption.none);
+            using var client = NewClient(host);
+
+            using var resp = await client.SendAsync(InitializeRequest(path), HttpCompletionOption.ResponseHeadersRead);
+
+            resp.StatusCode.ShouldBe(HttpStatusCode.BadRequest, $"{path} carries a malformed pin and must fail closed");
+            resp.Headers.Contains("Mcp-Session-Id").ShouldBeFalse($"{path} must not establish an MCP session");
+        }
+
         // ───────────────── pin capture is live during the request on the pinned paths ─────────────────
 
         [Theory]

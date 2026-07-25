@@ -21,10 +21,33 @@ namespace com.IvanMurzak.McpPlugin.Server.Security
     /// </summary>
     public static class OriginPolicy
     {
+        /// <summary>The project-pinned route family root — <c>/p/{pin}</c> and everything beneath it.</summary>
+        const string PinnedRoot = "/p";
+
         /// <summary>
-        /// True when the request path is one the transport MUST guard: the MCP endpoints
-        /// (<c>/</c>, <c>/mcp</c>, <c>/mcp/*</c>) and the SignalR hub (incl. <c>/negotiate</c>).
+        /// The UNPINNED REST tool surfaces. They can EXECUTE tools, so they need exactly the same
+        /// rebinding defense as the MCP endpoint (their pinned twins are covered by <see cref="PinnedRoot"/>).
+        /// </summary>
+        static readonly string[] RestToolSurfaces = { "/api/tools", "/api/system-tools" };
+
+        /// <summary>
+        /// True when the request path is one the transport MUST guard:
+        /// <list type="bullet">
+        ///   <item>the MCP endpoints (<c>/</c>, <c>/mcp</c>, <c>/mcp/*</c>) and the SignalR hub (incl. <c>/negotiate</c>);</item>
+        ///   <item>every project-pinned route (<c>/p</c>, <c>/p/{pin}</c>, <c>/p/{pin}/…</c>) — that family covers the
+        ///   nginx-stripped pinned MCP endpoint <b>and</b> both pinned REST tool groups;</item>
+        ///   <item>the unpinned REST tool surfaces <c>/api/tools[/…]</c> and <c>/api/system-tools[/…]</c>.</item>
+        /// </list>
         /// Discovery paths (<c>/.well-known/*</c>, <c>/oauth/*</c>) are intentionally NOT guarded.
+        ///
+        /// <para><b>Why the REST/pinned families are guarded (2026-07-25).</b> Guarding only <c>/mcp*</c> left every
+        /// tool-EXECUTING REST route outside the DNS-rebinding defense: a hostile page could drive
+        /// <c>POST /api/tools/{name}</c>, <c>POST /api/system-tools/{name}</c> or their <c>/p/{pin}/…</c> variants from
+        /// the victim's own browser — unauthenticated in <c>none</c> mode. The bare pinned MCP endpoint <c>/p/{pin}</c>
+        /// (what the server receives after nginx strips <c>/mcp</c>) was unguarded for the same reason, while its
+        /// <c>/mcp/p/{pin}</c> twin was guarded by the <c>/mcp/</c> prefix — an incoherence this closes. Only
+        /// <c>/api/tools</c> and <c>/api/system-tools</c> are added from <c>/api/*</c>: guarding <c>/api/*</c>
+        /// wholesale would capture a hosting application's own unrelated endpoints.</para>
         /// </summary>
         public static bool IsGuardedPath(PathString path, string hubPath)
         {
@@ -42,7 +65,30 @@ namespace com.IvanMurzak.McpPlugin.Server.Security
             if (value.StartsWith("/mcp/", StringComparison.OrdinalIgnoreCase))
                 return true;
 
+            // Project-pinned family: /p, /p/{pin}, /p/{pin}/api/tools[/…], /p/{pin}/api/system-tools[/…].
+            // Guarded as a whole so a future pinned route is covered by construction, never by a later edit.
+            if (IsSegmentPrefix(value, PinnedRoot))
+                return true;
+
+            foreach (var surface in RestToolSurfaces)
+            {
+                if (IsSegmentPrefix(value, surface))
+                    return true;
+            }
+
             return false;
+        }
+
+        /// <summary>
+        /// True when <paramref name="value"/> equals <paramref name="prefix"/> exactly, or extends it at a
+        /// SEGMENT boundary (<c>/api/tools</c> and <c>/api/tools/x</c> match; <c>/api/toolsX</c> does not).
+        /// </summary>
+        static bool IsSegmentPrefix(string value, string prefix)
+        {
+            if (!value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return value.Length == prefix.Length || value[prefix.Length] == '/';
         }
 
         /// <summary>

@@ -95,5 +95,51 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Security
             var result = await Run(OAuthMode(), "/.well-known/oauth-protected-resource", "https://evil.example");
             result.nextCalled.ShouldBeTrue();
         }
+
+        // ── REST tool surfaces + the pinned family (2026-07-25) ──────────────────────────────────────
+        //
+        // These routes can EXECUTE tools, and before this change IsGuardedPath excluded them, so
+        // OriginValidationMiddleware never ran its check there: a page on a hostile origin could drive
+        // the local server's tool routes straight from the victim's browser (DNS rebinding), and in
+        // `none` mode without any credential at all. Every assertion below fails without the fix.
+
+        const string Pin = "3fa9c1e2";
+
+        public static TheoryData<string> RestToolPaths() => new TheoryData<string>
+        {
+            "/api/tools",
+            "/api/tools/ping",
+            "/api/system-tools",
+            "/api/system-tools/ping",
+            $"/p/{Pin}",                            // bare pinned MCP endpoint (nginx-stripped form)
+            $"/p/{Pin}/api/tools",
+            $"/p/{Pin}/api/tools/ping",
+            $"/p/{Pin}/api/system-tools",
+            $"/p/{Pin}/api/system-tools/ping",
+        };
+
+        [Theory]
+        [MemberData(nameof(RestToolPaths))]
+        public async Task RebindingShapedOrigin_OnRestToolPaths_Returns403_InBothModes(string path)
+        {
+            // A rebinding attack arrives from a page the user is visiting, so it carries that page's Origin.
+            var none = await Run(NoneMode(), path, "https://evil.example");
+            none.status.ShouldBe(403, $"{path} must reject a hostile Origin");
+            none.nextCalled.ShouldBeFalse($"{path} must never reach the tool handler");
+
+            var oauth = await Run(OAuthMode(), path, "https://evil.example");
+            oauth.status.ShouldBe(403, $"{path} must reject a hostile Origin");
+            oauth.nextCalled.ShouldBeFalse($"{path} must never reach the tool handler");
+        }
+
+        [Theory]
+        [MemberData(nameof(RestToolPaths))]
+        public async Task NativeAndLoopbackCallers_OnRestToolPaths_StillPass(string path)
+        {
+            // No collateral damage: curl / the CLI / the desktop app send no Origin at all, and a local
+            // browser tool UI sends a loopback one. Both must keep working on every guarded REST path.
+            (await Run(NoneMode(), path, null)).nextCalled.ShouldBeTrue($"{path} must stay open to native clients");
+            (await Run(NoneMode(), path, "http://localhost:6123")).nextCalled.ShouldBeTrue($"{path} must stay open to loopback");
+        }
     }
 }

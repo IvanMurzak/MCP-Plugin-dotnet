@@ -44,9 +44,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
     /// <see cref="Auth.McpSessionTokenMiddleware"/> and flows through the ambient session context to
     /// <c>AccountMcpStrategy.ResolveCurrentSession</c>, making resolution STRICT by project (an unmatched
     /// WELL-FORMED pin yields <c>NoMatchPinned</c>/<c>AccountEmpty</c>, never MRU). Note the <c>{pin}</c> token
-    /// carries no route constraint, so a segment the route accepts but the middleware rejects as malformed
-    /// (non-hex, or longer than 64 chars) is treated as ABSENT and falls back to <c>sticky → single → MRU</c> —
-    /// the same pre-existing behavior as the pinned tool routes and the pinned MCP path.
+    /// carries no route constraint, so a segment the route accepts may still be malformed (non-hex, over 64
+    /// chars, or empty) — the middleware then REJECTS the request with <c>400 invalid_project_pin</c> before any
+    /// handler runs, rather than treating it as ABSENT and falling back to <c>sticky → single → MRU</c>. That
+    /// downgrade was a cross-project execution hole; the same fail-closed rule now covers the pinned tool
+    /// routes and the pinned MCP path.
     ///
     /// <para><b>Why the pinned group exists (D15 reversed).</b> Design 06 D15 declined a pinned system-tools
     /// route on the premise that "no engine registers a system <c>ping</c> tool". That premise was FALSE: the
@@ -68,7 +70,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
         // the pin VALUE is captured from the original path by McpSessionTokenMiddleware, exactly like the
         // pinned tool routes (DirectToolCallEndpoints.PinnedRoutePrefix) and the pinned MCP routes
         // (StreamableHttpTransportLayer.MapPinnedMcp). No route constraint on {pin} — the middleware
-        // validates it loosely (1–64 hex) and ignores a malformed segment, matching the MCP path.
+        // validates it (1–64 hex) and REJECTS a malformed segment with 400 invalid_project_pin before
+        // this group's handlers run, matching the MCP path. Never downgraded to "unpinned".
         const string PinnedRoutePrefix = "/p/{pin}" + RoutePrefix;
 
         /// <summary>
