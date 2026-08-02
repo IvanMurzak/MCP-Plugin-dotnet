@@ -11,7 +11,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using ModelContextProtocol.Protocol;
 using Shouldly;
 using Xunit;
@@ -33,12 +32,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
     [Collection("McpPlugin.Server")]
     public class ListSetErrorDegradationTests
     {
-        // What these two cases establish, precisely: SetError does NOT throw (the defect-2 regression
-        // guard) and returns the SAME instance with a non-null catalog. They do NOT establish that the
-        // catalog was emptied — a freshly-constructed List*Result already exposes a non-null EMPTY list,
-        // so the count assertion below holds even for a SetError that clears nothing. The emptying is
-        // pinned by the two *_ClearsAnyAlreadyCollectedEntries cases, which start from a POPULATED
-        // catalog and are the only ones that can observe it.
+        // What the *_ReturnsEmptyCatalog_DoesNotThrow cases establish, precisely: SetError does NOT
+        // throw (the defect-2 regression guard) and returns the SAME instance with a non-null catalog.
+        // They do NOT establish that the catalog was emptied — a freshly-constructed List*Result
+        // already exposes a non-null EMPTY list, so the count assertion below holds even for a SetError
+        // that clears nothing. The emptying is pinned by the *_ClearsAnyAlreadyCollectedEntries cases,
+        // which start from a POPULATED catalog and are the only ones that can observe it.
 
         [Fact]
         public void ListResources_SetError_ReturnsEmptyCatalog_DoesNotThrow()
@@ -101,12 +100,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             result.ResourceTemplates.Count.ShouldBe(0);
         }
 
-        /// <summary>
-        /// The prompt overload no longer fabricates a client-visible entry. A freshly-constructed
-        /// <see cref="ListPromptsResult"/> already exposes an empty list, so this case is deliberately
-        /// paired with <see cref="ListPrompts_SetError_ClearsAnyAlreadyCollectedEntries"/> below —
-        /// that one starts from a POPULATED catalog and is the only one that can observe the emptying.
-        /// </summary>
+        /// <summary>The prompt overload no longer fabricates a client-visible entry.</summary>
         [Fact]
         public void ListPrompts_SetError_ReturnsEmptyCatalog_DoesNotThrow()
         {
@@ -123,8 +117,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         /// The defect this pins: <c>SetError</c> used to REPLACE the catalog with a single synthetic
         /// <c>Prompt { Name = "Error", Description = message }</c>. Starting from a populated catalog
         /// makes both halves observable at once — the stale entry must go, and no fabricated entry
-        /// may take its place. The name set is asserted as EMPTY rather than "does not contain Error",
-        /// so a differently-named fabrication cannot satisfy it either.
+        /// may take its place. Emptiness is asserted rather than "contains nothing named Error", so a
+        /// fabrication under ANY name fails this case.
         /// </summary>
         [Fact]
         public void ListPrompts_SetError_ClearsAnyAlreadyCollectedEntries()
@@ -140,7 +134,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             result.SetError("Invoke 'RunListPrompts': Failed to invoke 'RequestListPrompts' after 10 retries.");
 
             result.Prompts.Count.ShouldBe(0);
-            result.Prompts.Select(p => p.Name).ShouldBeEmpty();
         }
 
         [Fact]

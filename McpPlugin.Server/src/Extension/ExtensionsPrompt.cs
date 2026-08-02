@@ -38,6 +38,10 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// <see cref="PromptRouter.List"/>, "the plugin has not connected yet". The failure
         /// message is not dropped: the router logs it as a warning before degrading.
         /// </summary>
+        /// <param name="message">
+        /// INTENTIONALLY UNUSED, exactly as in the three sibling list overloads — putting it back
+        /// into the result is the defect this method was changed to remove.
+        /// </param>
         public static ListPromptsResult SetError(this ListPromptsResult target, string message)
         {
             if (target == null)

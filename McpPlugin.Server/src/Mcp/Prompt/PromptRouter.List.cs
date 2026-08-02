@@ -79,13 +79,13 @@ namespace com.IvanMurzak.McpPlugin.Server
                 }
 
                 logger.Warn("List error (plugin may not be connected yet): {0}. Returning an empty prompt list.", response.Message);
-                return new ListPromptsResult().SetError(response.Message ?? "[Error] Got an error during reading resources");
+                return new ListPromptsResult().SetError(response.Message ?? "[Error] Got an error during listing prompts");
             }
 
             if (response.Value == null)
             {
                 logger.Warn("List response value is null (plugin may not be connected yet). Returning an empty prompt list.");
-                return new ListPromptsResult().SetError("[Error] Resource value is null");
+                return new ListPromptsResult().SetError("[Error] Prompt value is null");
             }
 
             // Trusted internal clients receive the unfiltered catalog — see ToolRouter.ListAll.
