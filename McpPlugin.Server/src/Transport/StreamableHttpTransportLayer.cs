@@ -69,6 +69,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                     if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                         McpSessionTokenContext.CurrentToken = authHeader.Substring("Bearer ".Length).Trim();
 
+                    // Publish the MCP session id on the SESSION's ambient context, exactly like the
+                    // bearer token above. This is the only place that can: PerSessionExecutionContext
+                    // is true, so every request handler of this session runs on the ExecutionContext
+                    // captured here, NOT on the ExecutionContext of the request that carried it. The
+                    // per-request AsyncLocal write in McpSessionTokenMiddleware therefore never reaches
+                    // a handler — and it could not anyway, because this handler runs during
+                    // `initialize`, which per the MCP spec carries no Mcp-Session-Id header (the id is
+                    // MINTED in that response). Without this, SelectionToolContext.FromCurrent() always
+                    // saw SessionId == null and select_engine_instance failed 100% of the time.
+                    McpSessionTokenContext.CurrentSessionId = mcpClientSessionId;
+
                     try
                     {
                         var services = server.Services ?? throw new InvalidOperationException("MCP Server services are not available.");

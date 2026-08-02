@@ -8,6 +8,7 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
@@ -24,6 +25,9 @@ namespace com.IvanMurzak.McpPlugin.Server
 {
     public static partial class PromptRouter
     {
+        // See ResourceRouter._listResourcesTimeout — same bound, same reason.
+        static readonly TimeSpan _listPromptsTimeout = TimeSpan.FromSeconds(15);
+
         public static async ValueTask<ListPromptsResult> List(RequestContext<ListPromptsRequestParams> request, CancellationToken cancellationToken)
         {
             var logger = LogManager.GetCurrentClassLogger();
@@ -39,15 +43,38 @@ namespace com.IvanMurzak.McpPlugin.Server
             logger.Trace("Using PromptRunner: {0}", promptRunner.GetType().GetTypeShortName());
 
             var requestData = new RequestListPrompts();
-            var response = await promptRunner.RunListPrompts(requestData);
+
+            using var timeoutCts = new CancellationTokenSource(_listPromptsTimeout);
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+
+            ResponseData<ResponseListPrompts>? response;
+            try
+            {
+                response = await promptRunner.RunListPrompts(requestData, linkedCts.Token);
+            }
+            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            {
+                logger.Warn("List timed out after {0}s: MCP Plugin not yet connected. Returning a degraded prompt list.", _listPromptsTimeout.TotalSeconds);
+                return new ListPromptsResult().SetError("[Error] Timed out listing prompts");
+            }
+
             if (response == null)
+            {
+                logger.Warn("List response is null (plugin may not be connected yet). Returning a degraded prompt list.");
                 return new ListPromptsResult().SetError($"[Error] '{nameof(response)}' is null");
+            }
 
             if (response.Status == ResponseStatus.Error)
+            {
+                logger.Warn("List error (plugin may not be connected yet): {0}. Returning a degraded prompt list.", response.Message);
                 return new ListPromptsResult().SetError(response.Message ?? "[Error] Got an error during reading resources");
+            }
 
             if (response.Value == null)
+            {
+                logger.Warn("List response value is null (plugin may not be connected yet). Returning a degraded prompt list.");
                 return new ListPromptsResult().SetError("[Error] Resource value is null");
+            }
 
             // Trusted internal clients receive the unfiltered catalog — see ToolRouter.ListAll.
             var result = new ListPromptsResult()

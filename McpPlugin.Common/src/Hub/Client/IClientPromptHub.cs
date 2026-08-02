@@ -8,6 +8,7 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 
@@ -16,6 +17,9 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
     public interface IClientPromptHub
     {
         Task<ResponseData<ResponseGetPrompt>> RunGetPrompt(RequestGetPrompt request);
-        Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request);
+
+        // Takes a CancellationToken (defaulted, so existing token-less call sites keep compiling) for
+        // the same reason IClientToolHub.RunListTool does — see IClientResourceHub.
+        Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request, CancellationToken cancellationToken = default);
     }
 }
