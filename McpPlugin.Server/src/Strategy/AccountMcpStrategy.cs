@@ -15,6 +15,7 @@ using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
+using com.IvanMurzak.McpPlugin.Server.Tools;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server.Strategy
@@ -39,17 +40,30 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
     public sealed class AccountMcpStrategy : IMcpConnectionStrategy
     {
         readonly AccountInstances _instances;
+        readonly ISessionSelectionStore _selections;
 
         public AccountMcpStrategy() : this(new AccountInstances()) { }
 
         /// <summary>Testable ctor — inject a registry (e.g. with a deterministic clock).</summary>
-        public AccountMcpStrategy(AccountInstances instances)
+        public AccountMcpStrategy(AccountInstances instances) : this(instances, new SessionSelectionStore()) { }
+
+        /// <summary>Testable ctor — inject both the registry and the sticky-selection store.</summary>
+        public AccountMcpStrategy(AccountInstances instances, ISessionSelectionStore selections)
         {
             _instances = instances ?? throw new ArgumentNullException(nameof(instances));
+            _selections = selections ?? throw new ArgumentNullException(nameof(selections));
         }
 
         /// <summary>The account+instance registry backing this strategy.</summary>
         public AccountInstances Instances => _instances;
+
+        /// <summary>
+        /// The per-session sticky-selection store backing this strategy. Owned here — exactly like
+        /// <see cref="Instances"/> — so the selection tool and the router provably share ONE store:
+        /// <c>ExtensionsMcpServerBuilder</c> registers THIS instance as the
+        /// <see cref="ISessionSelectionStore"/> singleton rather than constructing a second one.
+        /// </summary>
+        public ISessionSelectionStore Selections => _selections;
 
         public Consts.MCP.Server.AuthOption AuthOption => Consts.MCP.Server.AuthOption.oauth;
 
@@ -117,8 +131,32 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             return _instances.Resolve(
                 identity.AccountId,
                 McpSessionTokenContext.CurrentProjectPin,
-                McpSessionTokenContext.CurrentSelectedInstanceId);
+                CurrentSelectedInstanceId());
         }
+
+        /// <summary>
+        /// The sticky instance selected by <c>select_engine_instance</c> for the in-flight session
+        /// (issue #195), or null when the session has made no selection.
+        ///
+        /// <para>TWO sources, and BOTH are required. The ambient
+        /// <see cref="McpSessionTokenContext.CurrentSelectedInstanceId"/> is authoritative when set —
+        /// <see cref="McpSessionTokenMiddleware"/> loads it per request for the direct-tool REST
+        /// surfaces, and <c>select_engine_instance</c> sets it inline so its own request routes to the
+        /// instance it just picked. On the streamable-HTTP MCP path that ambient value is ALWAYS null:
+        /// <c>PerSessionExecutionContext</c> is <c>true</c>, so handlers run on the
+        /// <see cref="System.Threading.ExecutionContext"/> captured once in
+        /// <c>StreamableHttpTransportLayer.RunSessionHandler</c> and the middleware's per-request
+        /// <c>AsyncLocal</c> write never reaches them. Falling back to a store lookup keyed by
+        /// <see cref="McpSessionTokenContext.CurrentSessionId"/> — which IS published on that captured
+        /// context — is what makes a selection survive past the request that made it.</para>
+        ///
+        /// <para>This only ever supplies the <c>sticky</c> term of
+        /// <see cref="AccountInstances.Resolve"/>: a project pin is still applied first and strictly, so
+        /// a selection can narrow a pin but can never route across projects.</para>
+        /// </summary>
+        string? CurrentSelectedInstanceId()
+            => McpSessionTokenContext.CurrentSelectedInstanceId
+                ?? _selections.Get(McpSessionTokenContext.CurrentSessionId);
 
         public string? ResolveConnectionId(string? token, int retryOffset)
         {

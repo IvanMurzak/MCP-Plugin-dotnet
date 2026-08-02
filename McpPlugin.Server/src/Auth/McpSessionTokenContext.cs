@@ -62,8 +62,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         /// <see cref="Tools.ISessionSelectionStore"/>) and by <c>select_engine_instance</c> inside its own
         /// request. On the streamable-HTTP MCP path that per-request reload does NOT reach a request
         /// handler, for the same <c>PerSessionExecutionContext</c> reason documented on
-        /// <see cref="CurrentSessionId"/> — so a handler observes the selection only within the request
-        /// that set it, and cross-request sticky routing there is not yet wired.</para>
+        /// <see cref="CurrentSessionId"/> — so a handler observes this value only within the request
+        /// that set it. It is therefore NOT the authority on "what did this session select":
+        /// <see cref="Strategy.AccountMcpStrategy"/> treats a null here as "ask the store" and looks the
+        /// selection up by <see cref="CurrentSessionId"/>, which is what makes sticky routing work
+        /// across requests on that path (issue #195).</para>
         /// </summary>
         public static string? CurrentSelectedInstanceId
         {

@@ -19,13 +19,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
     /// Keyed by the MCP session id (the <c>Mcp-Session-Id</c> header). <c>select_engine_instance</c>
     /// writes here; <see cref="Auth.McpSessionTokenMiddleware"/> reloads the value into
     /// <see cref="Auth.McpSessionTokenContext.CurrentSelectedInstanceId"/> on each subsequent request,
-    /// which is what the direct-tool REST surfaces observe. On the streamable-HTTP MCP path that
-    /// per-request reload does NOT reach a request handler (<c>PerSessionExecutionContext</c> — see
-    /// <see cref="Auth.McpSessionTokenContext.CurrentSessionId"/>), so routing there honors the
-    /// selection only within the request that set it. Selection is per-SESSION, NOT per-account — two agent
-    /// sessions of the same account may independently select different instances (design 04
-    /// multi-tenancy semantics). A selection may narrow a pin but never override it to another
-    /// project (enforced by <c>select_engine_instance</c> before writing here).
+    /// which is what the direct-tool REST surfaces observe.
+    /// <para>On the streamable-HTTP MCP path that per-request reload does NOT reach a request handler
+    /// (<c>PerSessionExecutionContext</c> — see <see cref="Auth.McpSessionTokenContext.CurrentSessionId"/>),
+    /// so <see cref="Strategy.AccountMcpStrategy"/> reads this store DIRECTLY, keyed by the ambient
+    /// session id, when the ambient selection is absent (issue #195). Routing therefore honors a
+    /// selection on every subsequent request of the session, not just the one that set it. The strategy
+    /// OWNS the instance registered as this interface's singleton, so the writer and the reader cannot
+    /// drift onto two different maps.</para>
+    /// <para>Selection is per-SESSION, NOT per-account — two agent sessions of the same account may
+    /// independently select different instances (design 04 multi-tenancy semantics). A selection may
+    /// narrow a pin but never override it to another project (enforced by <c>select_engine_instance</c>
+    /// before writing here, and again by <see cref="Strategy.AccountInstances.Resolve"/>, which applies
+    /// the pin before the sticky term).</para>
     /// </summary>
     public interface ISessionSelectionStore
     {
