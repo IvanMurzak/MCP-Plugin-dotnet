@@ -8,6 +8,7 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 
@@ -16,7 +17,12 @@ namespace com.IvanMurzak.McpPlugin.Common.Hub.Client
     public interface IClientResourceHub
     {
         Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(RequestResourceContent request);
-        Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources request);
-        Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(RequestListResourceTemplates request);
+
+        // The list methods take a CancellationToken (defaulted, so existing token-less call sites keep
+        // compiling) for the same reason IClientToolHub.RunListTool does: without it the CALLER cannot
+        // bound the runner's retry ladder at all. Omitting it forwards `default`, so the only token
+        // reaching the hub invoke is the runner's own disposal token, which no caller controls.
+        Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources request, CancellationToken cancellationToken = default);
+        Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(RequestListResourceTemplates request, CancellationToken cancellationToken = default);
     }
 }

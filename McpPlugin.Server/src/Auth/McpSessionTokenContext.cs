@@ -58,6 +58,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         /// <summary>
         /// The session's sticky-selected instance id (set by <c>select_engine_instance</c> in b4).
         /// Honored while alive; narrows a pin but never overrides it to a different project. Null in b3.
+        /// <para>Written by <see cref="McpSessionTokenMiddleware"/> per request (reloaded from
+        /// <see cref="Tools.ISessionSelectionStore"/>) and by <c>select_engine_instance</c> inside its own
+        /// request. On the streamable-HTTP MCP path that per-request reload does NOT reach a request
+        /// handler, for the same <c>PerSessionExecutionContext</c> reason documented on
+        /// <see cref="CurrentSessionId"/> — so a handler observes the selection only within the request
+        /// that set it, and cross-request sticky routing there is not yet wired.</para>
         /// </summary>
         public static string? CurrentSelectedInstanceId
         {
@@ -66,11 +72,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         }
 
         /// <summary>
-        /// The MCP session id (the <c>Mcp-Session-Id</c> header value) for the in-flight request
-        /// (mcp-authorize b4). Captured by <see cref="McpSessionTokenMiddleware"/> and used as the
-        /// sticky-selection key by <c>select_engine_instance</c> (see
-        /// <see cref="Tools.ISessionSelectionStore"/>). Null on the initialize request (no id yet)
-        /// and for stdio (no HTTP context).
+        /// The MCP session id (mcp-authorize b4) — the sticky-selection key used by
+        /// <c>select_engine_instance</c> (see <see cref="Tools.ISessionSelectionStore"/>).
+        /// <para>TWO writers, by surface. On the streamable-HTTP MCP path the value a request HANDLER
+        /// observes is published once per session by <c>StreamableHttpTransportLayer.RunSessionHandler</c>
+        /// from <c>IMcpServer.SessionId</c>: <c>PerSessionExecutionContext</c> is <c>true</c>, so handlers
+        /// run on the ExecutionContext captured there and the per-request write below never reaches them.
+        /// <see cref="McpSessionTokenMiddleware"/> still captures the <c>Mcp-Session-Id</c> header per
+        /// request; that is what the direct-tool REST endpoints observe.</para>
+        /// <para>Null for stdio (no HTTP context).</para>
         /// </summary>
         public static string? CurrentSessionId
         {
