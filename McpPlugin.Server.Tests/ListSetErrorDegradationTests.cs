@@ -11,6 +11,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ModelContextProtocol.Protocol;
 using Shouldly;
 using Xunit;
@@ -19,13 +20,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 {
     /// <summary>
     /// Every list-shaped <c>SetError</c> overload in the server DEGRADES rather than throwing, so the
-    /// MCP call still succeeds. The two resource overloads return an EMPTY catalog, mirroring
-    /// <see cref="ExtensionsTool.SetError(ListToolsResult, string)"/>; the prompt overload
-    /// (<see cref="ExtensionsPrompt.SetError(ListPromptsResult, string)"/>) is the deliberate odd one
-    /// out and returns a single synthetic <c>Error</c> prompt carrying the message. The resource pair
-    /// used to be the only list-shaped overloads that did NOT degrade: they were implemented as
-    /// <c>throw new Exception(message)</c>, which surfaced to the client as a hard JSON-RPC
-    /// <c>-32603</c> whenever the engine plugin had not attached yet (issue #193, defect 2).
+    /// MCP call still succeeds, and every one of them now returns an EMPTY catalog, mirroring
+    /// <see cref="ExtensionsTool.SetError(ListToolsResult, string)"/>. Two earlier deviations are
+    /// both closed: the resource pair used to <c>throw new Exception(message)</c>, surfacing to the
+    /// client as a hard JSON-RPC <c>-32603</c> whenever the engine plugin had not attached yet
+    /// (issue #193, defect 2); and the prompt overload
+    /// (<see cref="ExtensionsPrompt.SetError(ListPromptsResult, string)"/>) used to fabricate a
+    /// single synthetic prompt named <c>"Error"</c> carrying the internal message, which MCP clients
+    /// rendered as a real, selectable prompt. In every case the message is not lost — the router
+    /// logs it at Warn before degrading.
     /// </summary>
     [Collection("McpPlugin.Server")]
     public class ListSetErrorDegradationTests
@@ -96,6 +99,56 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             result.SetError("[Error] plugin not connected");
 
             result.ResourceTemplates.Count.ShouldBe(0);
+        }
+
+        /// <summary>
+        /// The prompt overload no longer fabricates a client-visible entry. A freshly-constructed
+        /// <see cref="ListPromptsResult"/> already exposes an empty list, so this case is deliberately
+        /// paired with <see cref="ListPrompts_SetError_ClearsAnyAlreadyCollectedEntries"/> below —
+        /// that one starts from a POPULATED catalog and is the only one that can observe the emptying.
+        /// </summary>
+        [Fact]
+        public void ListPrompts_SetError_ReturnsEmptyCatalog_DoesNotThrow()
+        {
+            var result = new ListPromptsResult();
+
+            var returned = Should.NotThrow(() => result.SetError("[Error] plugin not connected"));
+
+            returned.ShouldBeSameAs(result);
+            returned.Prompts.ShouldNotBeNull();
+            returned.Prompts.Count.ShouldBe(0);
+        }
+
+        /// <summary>
+        /// The defect this pins: <c>SetError</c> used to REPLACE the catalog with a single synthetic
+        /// <c>Prompt { Name = "Error", Description = message }</c>. Starting from a populated catalog
+        /// makes both halves observable at once — the stale entry must go, and no fabricated entry
+        /// may take its place. The name set is asserted as EMPTY rather than "does not contain Error",
+        /// so a differently-named fabrication cannot satisfy it either.
+        /// </summary>
+        [Fact]
+        public void ListPrompts_SetError_ClearsAnyAlreadyCollectedEntries()
+        {
+            var result = new ListPromptsResult
+            {
+                Prompts = new List<Prompt>
+                {
+                    new Prompt { Name = "stale", Description = "collected before the failure" }
+                }
+            };
+
+            result.SetError("Invoke 'RunListPrompts': Failed to invoke 'RequestListPrompts' after 10 retries.");
+
+            result.Prompts.Count.ShouldBe(0);
+            result.Prompts.Select(p => p.Name).ShouldBeEmpty();
+        }
+
+        [Fact]
+        public void ListPrompts_SetError_OnNullTarget_ThrowsArgumentNullException()
+        {
+            ListPromptsResult? target = null;
+
+            Should.Throw<ArgumentNullException>(() => target!.SetError("boom"));
         }
 
         [Fact]

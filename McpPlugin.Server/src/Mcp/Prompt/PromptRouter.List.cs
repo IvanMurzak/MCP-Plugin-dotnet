@@ -35,7 +35,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             if (request.Services == null)
             {
-                logger.Warn("List: 'Services' is null - the server is misconfigured. Returning a degraded prompt list.");
+                logger.Warn("List: 'Services' is null - the server is misconfigured. Returning an empty prompt list.");
                 return new ListPromptsResult().SetError("[Error] 'Services' is null");
             }
 
@@ -60,13 +60,13 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 // Defensive only - see ResourceRouter.List: the runner converts every failure, including
                 // cancellation, into an error ResponseData, so a timeout lands on the Error branch below.
-                logger.Warn("List timed out after {0}s: MCP Plugin not yet connected. Returning a degraded prompt list.", _listPromptsTimeout.TotalSeconds);
+                logger.Warn("List timed out after {0}s: MCP Plugin not yet connected. Returning an empty prompt list.", _listPromptsTimeout.TotalSeconds);
                 return new ListPromptsResult().SetError("[Error] Timed out listing prompts");
             }
 
             if (response == null)
             {
-                logger.Warn("List response is null (plugin may not be connected yet). Returning a degraded prompt list.");
+                logger.Warn("List response is null (plugin may not be connected yet). Returning an empty prompt list.");
                 return new ListPromptsResult().SetError($"[Error] '{nameof(response)}' is null");
             }
 
@@ -74,17 +74,17 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 if (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
                 {
-                    logger.Warn("List timed out after {0}s: MCP Plugin not yet connected. Returning a degraded prompt list.", _listPromptsTimeout.TotalSeconds);
+                    logger.Warn("List timed out after {0}s: MCP Plugin not yet connected. Returning an empty prompt list.", _listPromptsTimeout.TotalSeconds);
                     return new ListPromptsResult().SetError("[Error] Timed out listing prompts");
                 }
 
-                logger.Warn("List error (plugin may not be connected yet): {0}. Returning a degraded prompt list.", response.Message);
+                logger.Warn("List error (plugin may not be connected yet): {0}. Returning an empty prompt list.", response.Message);
                 return new ListPromptsResult().SetError(response.Message ?? "[Error] Got an error during reading resources");
             }
 
             if (response.Value == null)
             {
-                logger.Warn("List response value is null (plugin may not be connected yet). Returning a degraded prompt list.");
+                logger.Warn("List response value is null (plugin may not be connected yet). Returning an empty prompt list.");
                 return new ListPromptsResult().SetError("[Error] Resource value is null");
             }
 
