@@ -183,10 +183,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         static async Task<OAuthHost> StartOAuthHostAsync()
         {
             var port = FreeLoopbackPort();
-            var issuer = $"http://127.0.0.1:{FreeLoopbackPort()}";   // never fetched: the JWKS provider is replaced below
+            const string issuer = "https://as.example";              // never fetched: the JWKS provider is replaced below
             var publicUrl = $"http://127.0.0.1:{port}/mcp";
 
-            var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+            var key = TestJwt.CreateKey();
 
             var dataArguments = new DataArguments(new[]
             {
@@ -212,14 +212,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             app.UseMcpPluginServer(dataArguments);
             await app.StartAsync();
 
-            var token = SignEs256(key, Kid, new Dictionary<string, object>
-            {
-                ["iss"] = issuer,
-                ["aud"] = publicUrl,
-                ["sub"] = Account,
-                ["scope"] = ConnectionIdentity.ScopeAgent,
-                ["exp"] = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds(),
-            });
+            var token = TestJwt.SignEs256(key, Kid, TestJwt.Claims(
+                issuer, publicUrl, DateTimeOffset.UtcNow.AddHours(1),
+                sub: Account, scope: ConnectionIdentity.ScopeAgent));
 
             return new OAuthHost(app, $"http://127.0.0.1:{port}", token, key);
         }
@@ -266,7 +261,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
                 using var response = await client.SendAsync(request);
                 var body = await response.Content.ReadAsStringAsync();
-                response.StatusCode.ShouldNotBe(HttpStatusCode.Unauthorized, $"the agent token must be accepted; body: {body}");
+                // Assert SUCCESS, not merely "not 401": a routing or wiring regression that answers 404 /
+                // 405 / 500 would otherwise pass here and resurface as a JsonDocument.Parse failure in
+                // ReadToolResult, which reads as a broken harness rather than as the regression it is.
+                // (notifications/initialized answers 202, so this cannot be pinned to 200.)
+                response.IsSuccessStatusCode.ShouldBeTrue(
+                    $"POST /mcp must succeed with the agent token; status {(int)response.StatusCode} {response.StatusCode}, body: {body}");
                 var issued = response.Headers.TryGetValues("Mcp-Session-Id", out var values) ? values.FirstOrDefault() : null;
                 return (body, issued);
             }
@@ -327,19 +327,5 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             return (isError, string.Join("\n", texts));
         }
 
-        static string B64Url(byte[] bytes)
-            => Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-
-        static string B64Url(string text) => B64Url(Encoding.UTF8.GetBytes(text));
-
-        static string SignEs256(ECDsa key, string kid, IDictionary<string, object> claims)
-        {
-            var header = new Dictionary<string, object> { ["alg"] = "ES256", ["typ"] = "JWT", ["kid"] = kid };
-            var headerB64 = B64Url(JsonSerializer.Serialize(header));
-            var payloadB64 = B64Url(JsonSerializer.Serialize(claims));
-            var signingInput = Encoding.ASCII.GetBytes(headerB64 + "." + payloadB64);
-            var signature = key.SignData(signingInput, HashAlgorithmName.SHA256, DSASignatureFormat.IeeeP1363FixedFieldConcatenation);
-            return headerB64 + "." + payloadB64 + "." + B64Url(signature);
-        }
     }
 }

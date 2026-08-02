@@ -30,11 +30,17 @@ namespace com.IvanMurzak.McpPlugin.Server
             var logger = LogManager.GetCurrentClassLogger();
 
             if (request.Services == null)
+            {
+                logger.Warn("ListTemplates: 'Services' is null - the server is misconfigured. Returning an empty template list.");
                 return new ListResourceTemplatesResult().SetError("[Error] 'Services' is null");
+            }
 
             var resourceRunner = request.Services.GetService<IClientResourceHub>();
             if (resourceRunner == null)
+            {
+                logger.Warn("ListTemplates: no '{0}' is registered - the server is misconfigured. Returning an empty template list.", nameof(IClientResourceHub));
                 return new ListResourceTemplatesResult().SetError($"[Error] '{nameof(resourceRunner)}' is null");
+            }
 
             var requestData = new RequestListResourceTemplates();
 
@@ -48,6 +54,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
             catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
             {
+                // Defensive only - see ResourceRouter.List: the runner converts every failure, including
+                // cancellation, into an error ResponseData, so a timeout lands on the Error branch below.
                 logger.Warn("ListTemplates timed out after {0}s: MCP Plugin not yet connected. Returning an empty template list.", _listResourceTemplatesTimeout.TotalSeconds);
                 return new ListResourceTemplatesResult().SetError("[Error] Timed out listing resource templates");
             }
@@ -60,7 +68,16 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             if (response.Status == ResponseStatus.Error)
             {
-                logger.Warn("ListTemplates error (plugin may not be connected yet): {0}. Returning an empty template list.", response.Message);
+                // Both cases degrade identically - see ResourceRouter.List - so only the warning differs.
+                if (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                {
+                    logger.Warn("ListTemplates timed out after {0}s: MCP Plugin not yet connected. Returning an empty template list.", _listResourceTemplatesTimeout.TotalSeconds);
+                }
+                else
+                {
+                    logger.Warn("ListTemplates error (plugin may not be connected yet): {0}. Returning an empty template list.", response.Message);
+                }
+
                 return new ListResourceTemplatesResult().SetError(response.Message ?? "[Error] Got an error during getting resource templates");
             }
 
@@ -75,30 +92,6 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 ResourceTemplates = response.Value.SelectVisible(x => x.Enabled, x => x.ToResourceTemplate())
             };
-
-            // -------------------------------------------------------------------------------------
-            // -------------------------- STATIC ---------------------------------------------------
-            // -------------------------------------------------------------------------------------
-            // return Task.FromResult(new ListResourceTemplatesResult()
-            // {
-            //     ResourceTemplates = new List<ResourceTemplate>()
-            //     {
-            //         new ResourceTemplate()
-            //         {
-            //             UriTemplate = Consts.Route.GameObject_CurrentScene,
-            //             Name = "GameObject",
-            //             Description = "GameObject template",
-            //             MimeType = Consts.MimeType.TextPlain
-            //         },
-            //         new ResourceTemplate()
-            //         {
-            //             UriTemplate = "component://{name}",
-            //             Name = "Component",
-            //             Description = "Component is attachable to GameObject C# class",
-            //             MimeType = Consts.MimeType.TextPlain
-            //         }
-            //     }
-            // });
         }
     }
 }

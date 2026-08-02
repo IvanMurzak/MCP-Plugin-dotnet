@@ -131,6 +131,36 @@
 > there) is an owner call, tracked separately from this writer-side change — see
 > `AgentConfiguratorSettings.PinnedPort` § "Residual divergence from the binder".
 
+> **Ambient MCP session id, and bounded list paths (issue #193).** Two streamable-HTTP behaviours changed.
+>
+> **1. The session id reaches handlers per SESSION, not per request.** `PerSessionExecutionContext` is
+> `true`, so every MCP request handler of a session runs on the `ExecutionContext` captured inside
+> `StreamableHttpTransportLayer.RunSessionHandler` — which executes during `initialize`, a request that
+> per the MCP spec carries no `Mcp-Session-Id` header (the server MINTS the id in that response). So
+> `McpSessionTokenMiddleware`'s per-request `AsyncLocal` write could never reach an MCP handler, and
+> `SelectionToolContext.FromCurrent()` always saw `SessionId == null` — `select_engine_instance` failed
+> 100% of the time. `RunSessionHandler` now publishes `IMcpServer.SessionId` into
+> `McpSessionTokenContext.CurrentSessionId`, beside the bearer token it already published there. The
+> middleware capture is unchanged and still serves the direct-tool REST surfaces, which run in the
+> request's own execution context.
+>
+> ⚠ The same `PerSessionExecutionContext` reasoning applies to `CurrentSelectedInstanceId`, which the
+> middleware also reloads per request: on the MCP path a sticky selection is therefore observed only
+> within the request that set it, so cross-request sticky routing is **not** yet wired there.
+> `AccountMcpStrategy.ResolveCurrentSession` reads only the ambient value and holds no
+> `ISessionSelectionStore`. Tracked separately from the fix above.
+>
+> **2. The catalog list paths degrade instead of failing, and are bounded at 15 s.** The two resource
+> `SetError` overloads used to `throw`, which the SDK surfaced as `-32603 "An error occurred."` during
+> the routine "the plugin has not attached yet" window; they now return an EMPTY catalog, mirroring
+> `ExtensionsTool.SetError(ListToolsResult, …)`, and every failure branch logs a warning first.
+> `resources/list`, `resources/templates/list` and `prompts/list` additionally pass a linked
+> `CancellationToken` into the runner with a 15 s bound, matching `ToolRouter.ListAll`; previously they
+> called the token-less runner overload, so `ClientUtils.InvokeAsync` ran its full 10-attempt ladder
+> under a token no caller controlled — ~110 s at the default 10 s `plugin-timeout`. Note the prompt
+> degradation is **not** empty: `ExtensionsPrompt.SetError(ListPromptsResult, …)` returns a single
+> synthetic prompt named `Error` carrying the message.
+
 ## Overview
 
 The MCP Plugin Server is configured through **two independent axes**: **Transport** and **Auth**.

@@ -33,11 +33,17 @@ namespace com.IvanMurzak.McpPlugin.Server
             var logger = LogManager.GetCurrentClassLogger();
 
             if (request.Services == null)
+            {
+                logger.Warn("List: 'Services' is null - the server is misconfigured. Returning an empty resource list.");
                 return new ListResourcesResult().SetError("[Error] 'Services' is null");
+            }
 
             var resourceRunner = request.Services.GetService<IClientResourceHub>();
             if (resourceRunner == null)
+            {
+                logger.Warn("List: no '{0}' is registered - the server is misconfigured. Returning an empty resource list.", nameof(IClientResourceHub));
                 return new ListResourcesResult().SetError($"[Error] '{nameof(resourceRunner)}' is null");
+            }
 
             var requestData = new RequestListResources(cursor: request?.Params?.Cursor);
 
@@ -51,6 +57,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
             catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
             {
+                // Defensive only: RemoteResourceRunner never lets this escape, because
+                // ClientUtils.InvokeAsync wraps its whole retry ladder in catch(Exception) and converts
+                // every failure - cancellation included - into an error ResponseData. A timeout therefore
+                // arrives on the ResponseStatus.Error branch below, which is where it is attributed.
                 logger.Warn("List timed out after {0}s: MCP Plugin not yet connected. Returning an empty resource list.", _listResourcesTimeout.TotalSeconds);
                 return new ListResourcesResult().SetError("[Error] Timed out listing resources");
             }
@@ -63,7 +73,18 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             if (response.Status == ResponseStatus.Error)
             {
-                logger.Warn("List error (plugin may not be connected yet): {0}. Returning an empty resource list.", response.Message);
+                // Both cases degrade identically - SetError discards the message and returns an empty
+                // catalog - so only the operator-facing warning differs. Attributing the timeout here is
+                // what makes the 15s bound visible in a log at all (see the catch above).
+                if (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                {
+                    logger.Warn("List timed out after {0}s: MCP Plugin not yet connected. Returning an empty resource list.", _listResourcesTimeout.TotalSeconds);
+                }
+                else
+                {
+                    logger.Warn("List error (plugin may not be connected yet): {0}. Returning an empty resource list.", response.Message);
+                }
+
                 return new ListResourcesResult().SetError(response.Message ?? "[Error] Got an error during getting resources");
             }
 
