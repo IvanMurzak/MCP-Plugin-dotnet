@@ -131,30 +131,33 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             return _instances.Resolve(
                 identity.AccountId,
                 McpSessionTokenContext.CurrentProjectPin,
-                CurrentSelectedInstanceId());
+                ResolveStickySelection());
         }
 
         /// <summary>
         /// The sticky instance selected by <c>select_engine_instance</c> for the in-flight session
         /// (issue #195), or null when the session has made no selection.
         ///
-        /// <para>TWO sources, and BOTH are required. The ambient
-        /// <see cref="McpSessionTokenContext.CurrentSelectedInstanceId"/> is authoritative when set —
-        /// <see cref="McpSessionTokenMiddleware"/> loads it per request for the direct-tool REST
-        /// surfaces, and <c>select_engine_instance</c> sets it inline so its own request routes to the
-        /// instance it just picked. On the streamable-HTTP MCP path that ambient value is ALWAYS null:
-        /// <c>PerSessionExecutionContext</c> is <c>true</c>, so handlers run on the
-        /// <see cref="System.Threading.ExecutionContext"/> captured once in
-        /// <c>StreamableHttpTransportLayer.RunSessionHandler</c> and the middleware's per-request
-        /// <c>AsyncLocal</c> write never reaches them. Falling back to a store lookup keyed by
-        /// <see cref="McpSessionTokenContext.CurrentSessionId"/> — which IS published on that captured
-        /// context — is what makes a selection survive past the request that made it.</para>
+        /// <para>TWO sources, read ambient-first. <see cref="McpSessionTokenMiddleware"/> loads the
+        /// ambient <see cref="McpSessionTokenContext.CurrentSelectedInstanceId"/> per request for the
+        /// direct-tool REST surfaces, and <c>select_engine_instance</c> sets it inline so its own
+        /// request routes to the instance it just picked. On the streamable-HTTP MCP path the ambient is
+        /// null on every request EXCEPT that one, for the <c>PerSessionExecutionContext</c> reason
+        /// documented on <see cref="McpSessionTokenContext.CurrentSessionId"/> — with one extra step
+        /// specific to the selection: the value frozen into the captured context at <c>initialize</c> is
+        /// a store lookup at a NULL key, that request carrying no <c>Mcp-Session-Id</c> yet. Falling
+        /// back to the store, keyed by the session id (which IS published on that captured context), is
+        /// what makes a selection survive past the request that made it.</para>
+        ///
+        /// <para>The two cannot DISAGREE: the middleware loads the ambient FROM this same store, and
+        /// <c>select_engine_instance</c> writes both. The ambient is a fast path, not an independent
+        /// input.</para>
         ///
         /// <para>This only ever supplies the <c>sticky</c> term of
         /// <see cref="AccountInstances.Resolve"/>: a project pin is still applied first and strictly, so
         /// a selection can narrow a pin but can never route across projects.</para>
         /// </summary>
-        string? CurrentSelectedInstanceId()
+        string? ResolveStickySelection()
             => McpSessionTokenContext.CurrentSelectedInstanceId
                 ?? _selections.Get(McpSessionTokenContext.CurrentSessionId);
 

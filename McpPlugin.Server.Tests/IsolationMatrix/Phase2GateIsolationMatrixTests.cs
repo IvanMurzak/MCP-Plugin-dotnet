@@ -83,8 +83,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.IsolationMatrix
         public Phase2GateIsolationMatrixTests()
         {
             _registry = new AccountInstances();
-            _strategy = new AccountMcpStrategy(_registry);
             _selections = new SessionSelectionStore();
+            // Hand the SAME store to both sides, exactly as production wiring does (issue #195):
+            // ExtensionsMcpServerBuilder registers strategy.Selections as the ISessionSelectionStore
+            // singleton, so the selection tool writes the map the router reads. Constructing the
+            // strategy without it would give it a private second store and reproduce here the very
+            // writer/reader split that made select_engine_instance a silent no-op.
+            _strategy = new AccountMcpStrategy(_registry, _selections);
             _tools = new ServerNativeTools(_registry, _selections, new NoOpEnrollment());
 
             // Register the 2 accounts × their plugin instances — the "two fake plugin instances" per

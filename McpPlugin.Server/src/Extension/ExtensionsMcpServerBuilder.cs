@@ -161,7 +161,6 @@ namespace com.IvanMurzak.McpPlugin.Server
                 // AccountMcpStrategy consults it to honor a session's sticky selection when routing, so
                 // a separately-registered store would leave select_engine_instance writing to one map
                 // while the router read another — the tool would answer "Selected …" and change nothing.
-                // Same shape as strategy.Instances below.
                 mcpServerBuilder.Services.AddSingleton<ISessionSelectionStore>(sp =>
                 {
                     var strategy = sp.GetRequiredService<IMcpConnectionStrategy>() as AccountMcpStrategy

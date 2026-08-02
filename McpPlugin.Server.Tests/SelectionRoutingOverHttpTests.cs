@@ -48,18 +48,25 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
     ///
     /// <para><b>The defect.</b> <c>HttpServerTransportOptions.PerSessionExecutionContext</c> is
     /// <c>true</c>, so a session's request handlers run on the <see cref="System.Threading.ExecutionContext"/>
-    /// captured once inside <c>RunSessionHandler</c>. <c>McpSessionTokenMiddleware</c> reloads the
-    /// sticky selection into <c>McpSessionTokenContext.CurrentSelectedInstanceId</c> per REQUEST, so
-    /// that write never reaches an MCP handler: the sticky term of
-    /// <see cref="AccountInstances.Resolve"/> was permanently null on this path and routing silently
-    /// fell through to <c>single → MRU</c>. <c>select_engine_instance</c> answered "Selected …" and
-    /// changed nothing.</para>
+    /// captured once inside <c>RunSessionHandler</c> — during <c>initialize</c>, a request that carries
+    /// no <c>Mcp-Session-Id</c> (the server mints it in that response). <c>McpSessionTokenMiddleware</c>
+    /// reloads the sticky selection into <c>McpSessionTokenContext.CurrentSelectedInstanceId</c> per
+    /// REQUEST, so the value frozen into that context was a store lookup at a null key, and every later
+    /// per-request write landed on a context no handler runs on. The sticky term of
+    /// <see cref="AccountInstances.Resolve"/> was therefore permanently null on this path and routing
+    /// silently fell through to <c>single → MRU</c>. <c>select_engine_instance</c> answered "Selected …"
+    /// and changed nothing.</para>
     ///
     /// <para><b>Why TWO instances.</b> With a single registered instance the <c>single</c> auto-pair
     /// rung of <see cref="AccountInstances.Resolve"/> routes to it regardless of the selection, so a
     /// one-instance test cannot tell honoured-selection from accidental-routing. Both tests below
     /// therefore register two instances and deliberately select the one that is NOT most-recently
-    /// active, which is the only arrangement in which the sticky rung and the MRU rung disagree.</para>
+    /// active, which is the only arrangement in which the sticky rung and the MRU rung disagree.
+    /// <b>Hence the <c>Task.Delay(50)</c> between the two registrations</b>: <c>Resolve</c> breaks a
+    /// <c>LastActiveAt</c> tie by enumeration order rather than by registration order, and the Windows
+    /// clock granularity is ~15.6 ms — so back-to-back registrations could share a timestamp and leave
+    /// both tests nondeterministically unable to discriminate. Each test asserts the resulting MRU
+    /// order explicitly rather than trusting it.</para>
     /// </summary>
     [Collection("McpPlugin.Server")]
     public sealed class SelectionRoutingOverHttpTests
@@ -69,11 +76,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
         const string InstanceA = "instance-alpha";
         const string ProjectA = "AlphaProject";
-        const string HashA = "aaaaaaaa1111222233334444555566667777888899990000aaaabbbbccccdddd0";
+        const string HashA = "aaaaaaaa1111222233334444555566667777888899990000aaaabbbbccccdddd";
 
         const string InstanceB = "instance-beta";
         const string ProjectB = "BetaProject";
-        const string HashB = "bbbbbbbb1111222233334444555566667777888899990000aaaabbbbccccdddd0";
+        const string HashB = "bbbbbbbb1111222233334444555566667777888899990000aaaabbbbccccdddd";
 
         /// <summary>
         /// The regression: after <c>select_engine_instance</c> picks A, the NEXT tool call on the same
@@ -115,8 +122,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // The call cannot succeed (no live SignalR plugin backs the registered connection ids), but
             // it MUST have got past resolution — an unresolved session short-circuits in ToolRouter.Call
-            // with the agent-actionable text below and never reaches ResolveConnectionId at all.
-            proxied.Text.ShouldNotContain("No engine instances are connected",
+            // with AgentActionableErrors.ForResolution(...) and never reaches ResolveConnectionId at all.
+            // Assert the CONSTANT, never a hand-copied literal: that short-circuit can only emit
+            // AccountEmpty or PinnedNoMatch, and list_engine_instances' own "No engine instances are
+            // connected" wording appears in NEITHER — so a literal here would be unfalsifiable.
+            proxied.Text.ShouldNotContain(AgentActionableErrors.AccountEmpty,
                 Case.Sensitive, "the account has two live instances, so resolution must not fail");
 
             var afterA = host.LastActiveAt(InstanceA);
@@ -144,6 +154,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             await Task.Delay(50);
             host.RegisterInstance(InstanceB, "unity", ProjectB, HashB, "MACHINE-B");
 
+            // Self-validating setup, exactly as in the test above: BOTH rounds below are only
+            // discriminating while the instance being selected is NOT the one MRU would pick, so pin
+            // that arrangement rather than inheriting it from registration order.
+            host.ResolveWithoutSelection().ShouldBe(InstanceB,
+                "round 1 precondition: B must be the most-recently-active instance, so that routing to " +
+                "A can only be explained by the selection being honoured");
+
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
             var sessionId = await host.InitializeAsync(client);
 
@@ -157,7 +174,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             host.LastActiveAt(InstanceA).ShouldBeGreaterThan(beforeA,
                 $"round 1: the call after selecting {InstanceA} must route to {InstanceA}");
 
-            // Round 2 — switch the selection to B on the SAME session.
+            // Round 2 — switch the selection to B on the SAME session. Round 1's routed call moved A to
+            // the front of the MRU order, so B is once again the instance MRU would NOT pick; assert
+            // that before selecting it, or round 2 could pass with the sticky term ignored entirely.
+            // (ResolveWithoutSelection passes selectedInstanceId: null, so it reports the MRU rung and
+            // is unaffected by the selection already sitting in the store.)
+            host.ResolveWithoutSelection().ShouldBe(InstanceA,
+                "round 2 precondition: round 1's routed call made A most-recently-active, so selecting " +
+                "B is again the non-MRU choice");
+
             var selectB = await host.CallToolAsync(client, sessionId, ServerNativeTools.SelectInstance,
                 new { instance_id = InstanceB });
             selectB.IsError.ShouldBeFalse($"select_engine_instance(B) must succeed; got: {selectB.Text}");
@@ -177,8 +202,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         /// <summary>
         /// Builds the REAL oauth server wiring on a loopback port. Hermetic: the JWKS provider is
         /// replaced with an in-memory key, so no authorization server is contacted. Modelled on
-        /// <see cref="AmbientSessionIdOverHttpTests"/>, whose harness the target profile's
-        /// <c>test.md</c> § Suite 4 nominates as the cheapest real-session harness to copy.
+        /// <see cref="AmbientSessionIdOverHttpTests"/>, the cheapest real-session harness in this suite.
         /// </summary>
         static async Task<OAuthHost> StartOAuthHostAsync()
         {
@@ -195,9 +219,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 "auth=oauth",
                 $"auth-issuer={issuer}",
                 $"public-url={publicUrl}",
-                // The proxied probe call cannot be answered (no live plugin behind the registered
-                // connection ids), so keep ClientUtils' per-attempt wait short. Routing — the thing
-                // under test — has already happened on the first attempt.
+                // Defensive only — it is NOT what bounds these tests. The proxied probe call cannot be
+                // answered (no live plugin behind the registered connection ids), but the invoke fails
+                // immediately rather than pending, so ClientUtils' per-attempt wait is never entered.
+                // Do not reach for this value to speed the suite up; it will not move.
+                // Routing — the thing under test — has already happened on the first attempt.
                 "plugin-timeout=200",
             });
 
@@ -237,8 +263,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 _token = token;
                 _key = key;
             }
-
-            public IServiceProvider Services => _app.Services;
 
             AccountMcpStrategy Strategy
             {

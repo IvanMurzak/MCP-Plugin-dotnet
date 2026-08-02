@@ -1,7 +1,7 @@
 # Migrating to 8.0.0
 
-`8.0.0` is a **major** release: three public `McpPlugin.Common` hub interfaces gained a
-`CancellationToken` parameter. Callers keep compiling (the parameter is defaulted), but
+`8.0.0` is a **major** release: three methods across two public `McpPlugin.Common` hub interfaces
+gained a `CancellationToken` parameter. Callers keep compiling (the parameter is defaulted), but
 **implementers do not**, and the change is binary-breaking either way — which is why this is
 `8.0.0` rather than a patch.
 
@@ -40,9 +40,15 @@ Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(
 
 ## Who has to change
 
-**Implementers of these interfaces** — the engine plugins (Unity-MCP, Godot-MCP, Unreal-MCP) and any
-downstream host that supplies its own prompt/resource hub. An existing implementation no longer
-satisfies the interface and fails to compile with `CS0535` ("does not implement interface member").
+**Implementers of these interfaces** — any downstream host that supplies its OWN `IClientPromptHub` /
+`IClientResourceHub` implementation. Such an implementation no longer satisfies the interface and
+fails to compile with `CS0535` ("does not implement interface member").
+
+**The engine plugins (Unity-MCP, Godot-MCP, Unreal-MCP) are NOT implementers** and will not see a
+`CS0535`. They CONSUME `IPromptManager` / `IResourceManager` from the `McpPlugin` package, and the
+concrete managers behind those already carried the token overload — which is why #194 was able to
+change both interfaces without touching a single implementation in this repository. For the engine
+plugins 8.0.0 is a pin bump plus a recompile (next paragraph), not a source change.
 
 **Callers need no source change.** The parameter is defaulted, so existing call sites still compile.
 They must still be **recompiled** against 8.0.0: a defaulted parameter is baked into the caller at
@@ -51,6 +57,10 @@ compile time, so a binary built against 7.x will `MissingMethodException` at run
 
 ## How to migrate
 
+`CancellationToken` lives in `System.Threading`, and `ImplicitUsings` is **disabled** in every
+project here — so add `using System.Threading;` to any file that does not already have it, or the
+new parameter will not resolve.
+
 Add the parameter to each override and honour it:
 
 ```diff
@@ -58,24 +68,35 @@ Add the parameter to each override and honour it:
 +public Task<ResponseData<ResponseListPrompts>> RunListPrompts(
 +    RequestListPrompts request, CancellationToken cancellationToken = default)
  {
--    return _promptManager.ListAsync(request);
-+    return _promptManager.ListAsync(request, cancellationToken);
+-    return _promptManager.RunListPrompts(request);
++    return _promptManager.RunListPrompts(request, cancellationToken);
  }
 ```
 
 If the underlying work genuinely cannot be cancelled, accept the parameter and ignore it rather than
 omitting it — the signature must match. Pass the token down wherever the call chain already accepts
-one; the repo convention is that every async path threads its `CancellationToken` (see
-`docs/claude/style.md`).
+one.
+
+**Keeping the 1-argument form as an overload is fine, and is what this repo does.** Every in-repo
+implementer declares the 2-argument member plus a 1-argument overload delegating to it, so any
+concrete-typed caller keeps compiling unchanged (`McpPlugin.Server/src/Client/RemotePromptRunner.cs`):
+
+```csharp
+public Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request)
+    => RunListPrompts(request, default);
+
+public async Task<ResponseData<ResponseListPrompts>> RunListPrompts(
+    RequestListPrompts request, CancellationToken cancellationToken = default) { /* … */ }
+```
 
 ## Also in 8.0.0
 
 - `select_engine_instance` now actually takes effect. Its per-session selection is honoured by
   routing on every **subsequent** request of that MCP session, not just the request that set it
-  ([#195](https://github.com/IvanMurzak/MCP-Plugin-dotnet/issues/195)). No API change; behaviour
-  only. A session that relied on the previous (broken) behaviour was in practice being routed to the
-  most-recently-active instance, so after upgrading, an agent that called `select_engine_instance`
-  will start reaching the instance it asked for.
+  ([#195](https://github.com/IvanMurzak/MCP-Plugin-dotnet/issues/195)). Additive API only
+  (`AccountMcpStrategy.Selections`, plus a two-argument constructor); no existing signature changed,
+  so this part is neither source- nor binary-breaking. A session that relied on the previous (broken)
+  behaviour was in practice being routed to the most-recently-active instance.
 - `resources/list` and `resources/templates/list` degrade to an empty catalog instead of raising a
   JSON-RPC error when no engine plugin is connected (#194).
 

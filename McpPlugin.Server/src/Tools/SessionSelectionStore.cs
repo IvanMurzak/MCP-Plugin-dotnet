@@ -47,8 +47,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
 
     /// <summary>
     /// In-memory <see cref="ISessionSelectionStore"/>. Registered as a singleton only in <c>oauth</c>
-    /// mode (the account+instance pairing plane); the map is small (one entry per live agent session)
-    /// and entries are dropped on <see cref="Clear"/>.
+    /// mode (the account+instance pairing plane); the map holds one small entry per agent session that
+    /// has called <c>select_engine_instance</c>.
+    /// <para><see cref="ISessionSelectionStore.Clear"/> has no production caller yet, so entries are
+    /// reclaimed only at process exit. Harmless — session ids are unique, so a stale entry is
+    /// unreachable, and <see cref="Strategy.AccountInstances.Resolve"/> ignores a sticky id that is no
+    /// longer a live candidate — but unbounded.</para>
     /// </summary>
     public sealed class SessionSelectionStore : ISessionSelectionStore
     {
