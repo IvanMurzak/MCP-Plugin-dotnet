@@ -144,11 +144,21 @@
 > middleware capture is unchanged and still serves the direct-tool REST surfaces, which run in the
 > request's own execution context.
 >
-> ⚠ The same `PerSessionExecutionContext` reasoning applies to `CurrentSelectedInstanceId`, which the
-> middleware also reloads per request: on the MCP path a sticky selection is therefore observed only
-> within the request that set it, so cross-request sticky routing is **not** yet wired there.
-> `AccountMcpStrategy.ResolveCurrentSession` reads only the ambient value and holds no
-> `ISessionSelectionStore`. Tracked separately from the fix above.
+> The same capture applies to `CurrentSelectedInstanceId`, which the middleware also reloads per
+> request — with one difference. Identity and pin are session-CONSTANT, so freezing them at `initialize`
+> is correct. The selection is session-MUTABLE, and the value frozen for it is a store lookup at the
+> **null** key described above. So on the MCP path a sticky selection used to be observed only within
+> the request that set it, and `select_engine_instance` was a silent no-op across requests.
+>
+> **Fixed in [#195](https://github.com/IvanMurzak/MCP-Plugin-dotnet/issues/195).**
+> `AccountMcpStrategy` now OWNS an `ISessionSelectionStore`, and `ResolveCurrentSession`'s sticky term
+> falls back to `store.Get(CurrentSessionId)` when the ambient value is null — `CurrentSessionId` being
+> the one selection-relevant ambient that IS published on the captured context, by `RunSessionHandler`
+> itself. A selection is therefore honoured on every subsequent request of the session.
+> `ExtensionsMcpServerBuilder` registers `strategy.Selections` as the `ISessionSelectionStore`
+> singleton rather than constructing a second one, so the selection tool and the router provably share
+> one map. The project pin is still applied strictly BEFORE the sticky term
+> (`AccountInstances.Resolve`), so a selection can narrow a pin but can never route across projects.
 >
 > **2. The catalog list paths degrade instead of failing, and are bounded at 15 s.** The two resource
 > `SetError` overloads used to `throw`, which the SDK surfaced as `-32603 "An error occurred."` during

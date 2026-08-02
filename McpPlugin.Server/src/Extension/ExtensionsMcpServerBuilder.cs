@@ -156,7 +156,17 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                 // Server-native tools (mcp-authorize b4) — the account+instance selection + enrollment
                 // surface. Only meaningful in oauth mode (the pairing plane), so registered here.
-                mcpServerBuilder.Services.AddSingleton<ISessionSelectionStore, SessionSelectionStore>();
+                //
+                // Resolve the store OFF the strategy rather than constructing a second one (issue #195):
+                // AccountMcpStrategy consults it to honor a session's sticky selection when routing, so
+                // a separately-registered store would leave select_engine_instance writing to one map
+                // while the router read another — the tool would answer "Selected …" and change nothing.
+                mcpServerBuilder.Services.AddSingleton<ISessionSelectionStore>(sp =>
+                {
+                    var strategy = sp.GetRequiredService<IMcpConnectionStrategy>() as AccountMcpStrategy
+                        ?? throw new InvalidOperationException("ISessionSelectionStore requires the oauth AccountMcpStrategy.");
+                    return strategy.Selections;
+                });
 
                 mcpServerBuilder.Services.AddSingleton<IEnrollmentClient>(sp =>
                 {

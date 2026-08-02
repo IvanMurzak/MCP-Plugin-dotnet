@@ -15,6 +15,7 @@ using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
+using com.IvanMurzak.McpPlugin.Server.Tools;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server.Strategy
@@ -39,17 +40,30 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
     public sealed class AccountMcpStrategy : IMcpConnectionStrategy
     {
         readonly AccountInstances _instances;
+        readonly ISessionSelectionStore _selections;
 
         public AccountMcpStrategy() : this(new AccountInstances()) { }
 
         /// <summary>Testable ctor — inject a registry (e.g. with a deterministic clock).</summary>
-        public AccountMcpStrategy(AccountInstances instances)
+        public AccountMcpStrategy(AccountInstances instances) : this(instances, new SessionSelectionStore()) { }
+
+        /// <summary>Testable ctor — inject both the registry and the sticky-selection store.</summary>
+        public AccountMcpStrategy(AccountInstances instances, ISessionSelectionStore selections)
         {
             _instances = instances ?? throw new ArgumentNullException(nameof(instances));
+            _selections = selections ?? throw new ArgumentNullException(nameof(selections));
         }
 
         /// <summary>The account+instance registry backing this strategy.</summary>
         public AccountInstances Instances => _instances;
+
+        /// <summary>
+        /// The per-session sticky-selection store backing this strategy. Owned here — exactly like
+        /// <see cref="Instances"/> — so the selection tool and the router provably share ONE store:
+        /// <c>ExtensionsMcpServerBuilder</c> registers THIS instance as the
+        /// <see cref="ISessionSelectionStore"/> singleton rather than constructing a second one.
+        /// </summary>
+        public ISessionSelectionStore Selections => _selections;
 
         public Consts.MCP.Server.AuthOption AuthOption => Consts.MCP.Server.AuthOption.oauth;
 
@@ -117,8 +131,35 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             return _instances.Resolve(
                 identity.AccountId,
                 McpSessionTokenContext.CurrentProjectPin,
-                McpSessionTokenContext.CurrentSelectedInstanceId);
+                ResolveStickySelection());
         }
+
+        /// <summary>
+        /// The sticky instance selected by <c>select_engine_instance</c> for the in-flight session
+        /// (issue #195), or null when the session has made no selection.
+        ///
+        /// <para>TWO sources, read ambient-first. <see cref="McpSessionTokenMiddleware"/> loads the
+        /// ambient <see cref="McpSessionTokenContext.CurrentSelectedInstanceId"/> per request for the
+        /// direct-tool REST surfaces, and <c>select_engine_instance</c> sets it inline so its own
+        /// request routes to the instance it just picked. On the streamable-HTTP MCP path the ambient is
+        /// null on every request EXCEPT that one, for the <c>PerSessionExecutionContext</c> reason
+        /// documented on <see cref="McpSessionTokenContext.CurrentSessionId"/> — with one extra step
+        /// specific to the selection: the value frozen into the captured context at <c>initialize</c> is
+        /// a store lookup at a NULL key, that request carrying no <c>Mcp-Session-Id</c> yet. Falling
+        /// back to the store, keyed by the session id (which IS published on that captured context), is
+        /// what makes a selection survive past the request that made it.</para>
+        ///
+        /// <para>The two cannot DISAGREE: the middleware loads the ambient FROM this same store, and
+        /// <c>select_engine_instance</c> writes both. The ambient is a fast path, not an independent
+        /// input.</para>
+        ///
+        /// <para>This only ever supplies the <c>sticky</c> term of
+        /// <see cref="AccountInstances.Resolve"/>: a project pin is still applied first and strictly, so
+        /// a selection can narrow a pin but can never route across projects.</para>
+        /// </summary>
+        string? ResolveStickySelection()
+            => McpSessionTokenContext.CurrentSelectedInstanceId
+                ?? _selections.Get(McpSessionTokenContext.CurrentSessionId);
 
         public string? ResolveConnectionId(string? token, int retryOffset)
         {

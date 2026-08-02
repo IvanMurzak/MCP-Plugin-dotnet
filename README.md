@@ -423,6 +423,14 @@ docker run -p 8080:8080 mcp-bridge port=8080 client-transport=streamableHttp
 - **`DemoConsoleApp`**: A sample client application demonstrating how to expose tools.
 - **`DemoWebApp`**: A sample server application demonstrating how to host the MCP bridge.
 
+## Migration guides
+
+- **[Migrating to 8.0.0](docs/migration-8.0.0.md)** — three methods on `IClientPromptHub` /
+  `IClientResourceHub` gained a `CancellationToken` parameter. Callers keep compiling but MUST be
+  recompiled (the change is binary-breaking); anyone supplying their own implementation of those
+  interfaces has a source change to make. All three packages share one version and must be pinned to
+  `8.0.0` together.
+
 ## License
 
 This project is licensed under the Apache-2.0 License. Copyright - Ivan Murzak.
