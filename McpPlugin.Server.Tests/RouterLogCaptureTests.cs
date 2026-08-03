@@ -49,6 +49,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             "Invoke 'RunListResources': Failed to invoke " +
             "'com.IvanMurzak.McpPlugin.Common.Model.RequestListResources' after 10 retries.";
 
+        /// <summary>The client name this fixture family handshakes with.</summary>
+        const string ClientName = "resource-list-log-test";
+
+        /// <summary>
+        /// Asks the gate without waiting: <c>null</c> means another capture still holds it. The zero
+        /// timeout is what keeps the gate cases deterministic — no sleeps, no threads, no timing
+        /// window — so it is spelled once here rather than at each call site.
+        /// </summary>
+        static CapturedRouterLogs? TryInstallWithoutWaiting(Type routerType)
+            => CapturedRouterLogs.TryInstallFor(routerType, NLogLevel.Warn, TimeSpan.Zero);
+
         // ─────────────────── a SECOND router, through the shared helper ───────────────────
 
         /// <summary>
@@ -71,7 +82,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             await using var host = await NoneAuthMcpHost.StartAsync(services => services.AddSingleton<IClientResourceHub>(hub));
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
 
-            var sessionId = await host.HandshakeAsync(client, "resource-list-log-test");
+            var sessionId = await host.HandshakeAsync(client, ClientName);
             var body = await host.CallAsync(client, sessionId, "resources/list");
 
             hub.ListCallCount.ShouldBe(1, "the router must have called the plugin hub exactly once");
@@ -98,7 +109,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             await using var host = await NoneAuthMcpHost.StartAsync(services => services.AddSingleton<IClientResourceHub>(hub));
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
 
-            var sessionId = await host.HandshakeAsync(client, "resource-list-log-test");
+            var sessionId = await host.HandshakeAsync(client, ClientName);
             var body = await host.CallAsync(client, sessionId, "resources/list");
 
             using var doc = JsonDocument.Parse(body);
@@ -112,7 +123,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 $"the plugin's resources must reach the client verbatim and in order; got: {body}");
 
             logs.Lines.ShouldBeEmpty(
-                "a successful resources/list must not warn the operator about anything");
+                "a successful resources/list must not warn the operator from ResourceRouter");
         }
 
         // ─────────────────── the helper's own guarantees ───────────────────
@@ -176,12 +187,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             try
             {
+                // This sentinel install and its restore in the finally below are the only writes to
+                // LogManager.Configuration outside the helper, and neither holds the helper's gate —
+                // they cannot, since the point is to plant a known instance for the capture to find.
+                // Safe because both capture-installing classes carry [Collection("McpPlugin.Server")],
+                // so nothing can be mid-capture here. A third writer, or a capture-installing class
+                // without that attribute, breaks that assumption — move these under the gate then.
                 LogManager.Configuration = sentinel;
 
                 using (CapturedRouterLogs.InstallFor(typeof(PromptRouter)))
                 {
-                    // Positive artifact: the capture really did take over. Without it, "restored"
-                    // below would hold just as well for a helper that installed nothing at all.
+                    // Positive artifact: a helper that installed nothing at all would leave `sentinel`
+                    // in place and fail here. That the replacement also ROUTES the router's logger
+                    // into the capture is a separate claim, pinned by
+                    // Capture_IsScopedToTheRequestedRouter.
                     LogManager.Configuration.ShouldNotBeSameAs(sentinel,
                         "installing a capture must replace the active NLog configuration");
                 }
@@ -211,7 +230,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             using (CapturedRouterLogs.InstallFor(typeof(PromptRouter)))
             {
-                var refused = CapturedRouterLogs.TryInstallFor(typeof(ResourceRouter), NLogLevel.Warn, TimeSpan.Zero);
+                var refused = TryInstallWithoutWaiting(typeof(ResourceRouter));
                 try
                 {
                     refused.ShouldBeNull(
@@ -223,9 +242,35 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 }
             }
 
-            using var admitted = CapturedRouterLogs.TryInstallFor(typeof(ResourceRouter), NLogLevel.Warn, TimeSpan.Zero);
+            using var admitted = TryInstallWithoutWaiting(typeof(ResourceRouter));
             admitted.ShouldNotBeNull(
                 "the gate must open again once the previous capture is disposed, or every later capture would time out");
+        }
+
+        /// <summary>
+        /// Disposal is idempotent — a guarantee <see cref="CapturedRouterLogs"/> folds into its
+        /// exact-restore mechanism, and the one thing nothing else in this assembly exercises: no
+        /// consumer disposes a capture twice, so without this case the guard could be deleted and
+        /// every test would stay green.
+        ///
+        /// <para>Two claims, and each needs the other. A second <c>Dispose</c> must not throw: the
+        /// gate is a <c>SemaphoreSlim(1, 1)</c>, so releasing it twice raises
+        /// <c>SemaphoreFullException</c> — out of a <c>using</c> block's implicit disposal, where it
+        /// masks whatever the test was really asserting. And the gate must still ADMIT a capture
+        /// afterwards, which is what stops the first claim being satisfied by a <c>Dispose</c> that
+        /// does nothing at all (that one never releases the gate, so the admission below fails).</para>
+        /// </summary>
+        [Fact]
+        public void Dispose_IsIdempotent_AndLeavesTheGateOpen()
+        {
+            var logs = CapturedRouterLogs.InstallFor(typeof(PromptRouter));
+            logs.Dispose();
+
+            Should.NotThrow(() => logs.Dispose());
+
+            using var admitted = TryInstallWithoutWaiting(typeof(PromptRouter));
+            admitted.ShouldNotBeNull(
+                "a double Dispose must leave the gate exactly as one Dispose does — still open for the next capture");
         }
 
         // ───────────────────────────── fake plugin hub ─────────────────────────────

@@ -61,6 +61,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             "Invoke 'RunListPrompts': Failed to invoke " +
             "'com.IvanMurzak.McpPlugin.Common.Model.RequestListPrompts' after 10 retries.";
 
+        /// <summary>The client name this fixture family handshakes with.</summary>
+        const string ClientName = "prompt-list-degradation-test";
+
         /// <summary>
         /// The regression. With the plugin call failing, <c>prompts/list</c> answers with an empty
         /// catalog and NO synthetic entry — in particular nothing named <c>"Error"</c>.
@@ -73,7 +76,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             await using var host = await NoneAuthMcpHost.StartAsync(services => services.AddSingleton<IClientPromptHub>(hub));
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
 
-            var sessionId = await host.HandshakeAsync(client, "prompt-list-degradation-test");
+            var sessionId = await host.HandshakeAsync(client, ClientName);
             var body = await host.CallAsync(client, sessionId, "prompts/list");
 
             using var doc = JsonDocument.Parse(body);
@@ -114,7 +117,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             await using var host = await NoneAuthMcpHost.StartAsync(services => services.AddSingleton<IClientPromptHub>(hub));
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
 
-            var sessionId = await host.HandshakeAsync(client, "prompt-list-degradation-test");
+            var sessionId = await host.HandshakeAsync(client, ClientName);
             var body = await host.CallAsync(client, sessionId, "prompts/list");
 
             using var doc = JsonDocument.Parse(body);
@@ -150,7 +153,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             await using var host = await NoneAuthMcpHost.StartAsync(services => services.AddSingleton<IClientPromptHub>(hub));
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
 
-            var sessionId = await host.HandshakeAsync(client, "prompt-list-degradation-test");
+            var sessionId = await host.HandshakeAsync(client, ClientName);
             await host.CallAsync(client, sessionId, "prompts/list");
 
             logs.Text.ShouldContain(PluginFailureText, Case.Sensitive,

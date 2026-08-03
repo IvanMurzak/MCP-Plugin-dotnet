@@ -52,8 +52,8 @@ logs.Text.ShouldContain(expectedFailureText, Case.Sensitive);
   assembly-wide gate and restores the exact previous configuration on `Dispose` — always use
   `using var`, and prefer `[Collection("McpPlugin.Server")]` on the calling class so log-asserting
   tests do not queue on that gate.
-- Its own guarantees (scoping, level floor, restore, mutual exclusion) are pinned by
-  `McpPlugin.Server.Tests/RouterLogCaptureTests.cs`.
+- Its own guarantees (scoping, level floor, exact restore, mutual exclusion, idempotent disposal) are
+  pinned by `McpPlugin.Server.Tests/RouterLogCaptureTests.cs`.
 - Assert **presence** of the expected text rather than the absence of something else: an absence
   assertion is satisfied for free by a capture that recorded nothing at all, which is the exact
   failure mode this helper exists to rule out.

@@ -50,8 +50,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
             _baseUrl = baseUrl;
         }
 
-        public IServiceProvider Services => _app.Services;
-
         /// <summary>
         /// Starts the host. <paramref name="registerFakes"/> runs AFTER the production wiring, so a
         /// singleton it registers is the one the routers resolve (same pattern as
@@ -151,7 +149,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
             await _app.DisposeAsync();
         }
 
-        /// <summary>The streamable-HTTP reply is an SSE frame; pull the JSON out of its data: lines.</summary>
+        /// <summary>
+        /// The streamable-HTTP reply is an SSE frame; pull the JSON out of its <c>data:</c> lines.
+        ///
+        /// <para>This assumes ONE JSON document per reply: the <c>data:</c> payloads are concatenated
+        /// with no separator, so a reply carrying a second event — a notification alongside the
+        /// response, or a multi-line data payload — comes back as two documents run together and
+        /// fails to parse. Every caller today sends one request and reads one response. A caller that
+        /// needs more should split the frames here rather than work around the concatenation.</para>
+        /// </summary>
         static string Unwrap(string body)
         {
             if (!body.Contains("data:", StringComparison.Ordinal))
