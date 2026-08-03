@@ -28,19 +28,26 @@ namespace com.IvanMurzak.McpPlugin.Server
             return target;
         }
 
+        /// <summary>
+        /// Degrades a failed <c>prompts/list</c> to an EMPTY catalog, mirroring the tool path
+        /// (<see cref="ExtensionsTool.SetError(ListToolsResult, string)"/>) and the two resource
+        /// list paths. This used to fabricate a single synthetic <c>Prompt</c> named
+        /// <c>"Error"</c> carrying the failure message, which every MCP client rendered as a real,
+        /// selectable prompt whose description leaked internal .NET type names to end users —
+        /// an outcome worse than an empty list on the most common failure branch of
+        /// <see cref="PromptRouter.List"/>, "the plugin has not connected yet". The failure
+        /// message is not dropped: the router logs it as a warning before degrading.
+        /// </summary>
+        /// <param name="message">
+        /// INTENTIONALLY UNUSED, exactly as in the three sibling list overloads — putting it back
+        /// into the result is the defect this method was changed to remove.
+        /// </param>
         public static ListPromptsResult SetError(this ListPromptsResult target, string message)
         {
             if (target == null)
                 throw new ArgumentNullException(nameof(target));
 
-            target.Prompts = new List<Prompt>()
-            {
-                new Prompt()
-                {
-                    Name = "Error",
-                    Description = message
-                }
-            };
+            target.Prompts = new List<Prompt>();
 
             return target;
         }

@@ -167,9 +167,15 @@
 > `resources/list`, `resources/templates/list` and `prompts/list` additionally pass a linked
 > `CancellationToken` into the runner with a 15 s bound, matching `ToolRouter.ListAll`; previously they
 > called the token-less runner overload, so `ClientUtils.InvokeAsync` ran its full 10-attempt ladder
-> under a token no caller controlled — ~110 s at the default 10 s `plugin-timeout`. Note the prompt
-> degradation is **not** empty: `ExtensionsPrompt.SetError(ListPromptsResult, …)` returns a single
-> synthetic prompt named `Error` carrying the message.
+> under a token no caller controlled — ~110 s at the default 10 s `plugin-timeout`.
+>
+> **Fixed in [#197](https://github.com/IvanMurzak/MCP-Plugin-dotnet/issues/197).** `prompts/list` was
+> the last list path that did not degrade to an empty catalog:
+> `ExtensionsPrompt.SetError(ListPromptsResult, …)` used to return a single synthetic prompt named
+> `Error` carrying the internal message, which every MCP client rendered as a real, selectable prompt.
+> It now empties the catalog like the other three, so `resources/list`,
+> `resources/templates/list`, `prompts/list` and `tools/list` all behave identically. The internal
+> message reaches operators through the router's `Warn` log, which is now its only carrier.
 
 ## Overview
 
