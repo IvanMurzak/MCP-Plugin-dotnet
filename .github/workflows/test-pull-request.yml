@@ -7,7 +7,14 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Cross-platform matrix (design 04 §5): the machine credential store's at-rest protection and
+    # atomic-write behaviour are OS-specific — DPAPI + rename/handle timing on Windows, 0600/0700
+    # permission asserts on the POSIX legs — so the suite runs on all three.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     permissions:
       checks: write
       pull-requests: write
@@ -36,8 +43,10 @@ jobs:
         run: dotnet test --no-build --verbosity normal --configuration Release --logger "trx;LogFileName=test-results.trx" --results-directory ./TestResults
 
       - name: Publish Test Results
+        # The docker-based action only runs on Linux; the Windows/macOS legs upload their .trx
+        # artifacts below and gate on the test step itself.
         uses: EnricoMi/publish-unit-test-result-action@v2
-        if: always()
+        if: always() && runner.os == 'Linux'
         with:
           files: 'TestResults/**/*.trx'
 
@@ -45,7 +54,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: test-results
+          name: test-results-${{ matrix.os }}
           path: TestResults/**/*.trx
 
   # mcp-authorize Phase-2 gate (design 04/07, task b8): the cross-language golden-vector parity
