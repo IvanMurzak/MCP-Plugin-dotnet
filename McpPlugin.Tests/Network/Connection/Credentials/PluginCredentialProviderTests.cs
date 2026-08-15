@@ -163,13 +163,35 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             NewStore().Read()!.RefreshToken.ShouldBe(SeededRefreshToken);
         }
 
-        // ── DoD: refresh failure surfaces "sign in again". ──
+        // ── Failure-state split (review B2, 03 F3.5/F9): SignInRequired is DEAD-FAMILY-only.
+        //    A transient failure (AS unreachable, 5xx, timeout) keeps the machine signed in and
+        //    retries later — offline self-heals silently (F9), no sign-in prompt. ──
 
         [Fact]
-        public async Task RefreshAsync_Failure_SurfacesSignInRequired()
+        public async Task RefreshAsync_TransientFailure_StaysSignedIn_DoesNotSurfaceSignInRequired()
         {
             NewStore().Write(Seed(expiresAt: DateTimeOffset.UtcNow.AddHours(1)));
-            var refresher = new FakeTokenRefresher(TokenRefreshResult.Failure("refresh token expired"));
+            var refresher = new FakeTokenRefresher(TokenRefreshResult.Failure("as unreachable")); // Transient by default
+
+            using var provider = new PluginCredentialProvider(NewStore(), refresher);
+
+            var signInRequiredFired = false;
+            using var _ = provider.OnSignInRequired.Subscribe(__ => { signInRequiredFired = true; });
+
+            (await provider.RefreshAsync()).ShouldBeFalse(); // this attempt failed — retry-later semantics
+            provider.State.CurrentValue.ShouldBe(AuthState.SignedIn);
+            signInRequiredFired.ShouldBeFalse();
+            (await provider.GetAccessTokenAsync()).ShouldBe(SeededAccessToken); // existing credential kept
+        }
+
+        [Fact]
+        public async Task RefreshAsync_InvalidGrant_SurfacesSignInRequired()
+        {
+            // The one failure kind that reaches SignInRequired: invalid_grant, confirmed dead by
+            // the post-failure re-read (nobody else rotated the family).
+            NewStore().Write(Seed(expiresAt: DateTimeOffset.UtcNow.AddHours(1)));
+            var refresher = new FakeTokenRefresher(
+                TokenRefreshResult.Failure("refresh token expired", TokenRefreshFailureKind.InvalidGrant));
 
             using var provider = new PluginCredentialProvider(NewStore(), refresher);
 
@@ -182,15 +204,19 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         }
 
         [Fact]
-        public async Task RefreshAsync_ThrowingRefresher_SurfacesSignInRequired_WithoutLeaking()
+        public async Task RefreshAsync_ThrowingRefresher_StaysSignedIn_WithoutLeaking()
         {
             NewStore().Write(Seed(expiresAt: DateTimeOffset.UtcNow.AddHours(1)));
             var refresher = new FakeTokenRefresher(_ => throw new InvalidOperationException("network down"));
 
             using var provider = new PluginCredentialProvider(NewStore(), refresher);
 
+            var signInRequiredFired = false;
+            using var _ = provider.OnSignInRequired.Subscribe(__ => { signInRequiredFired = true; });
+
             (await provider.RefreshAsync()).ShouldBeFalse();
-            provider.State.CurrentValue.ShouldBe(AuthState.SignInRequired);
+            provider.State.CurrentValue.ShouldBe(AuthState.SignedIn); // an exception is transient — retry later
+            signInRequiredFired.ShouldBeFalse();
         }
 
         [Fact]

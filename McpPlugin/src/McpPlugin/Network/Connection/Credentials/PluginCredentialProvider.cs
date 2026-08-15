@@ -43,12 +43,14 @@ namespace com.IvanMurzak.McpPlugin
     ///   read-modify-<see cref="MachineCredentialStore.Write"/> under the lock — never through
     ///   <see cref="MachineCredentialStore.Rotate"/> (b1 review A3: its plugin/legacy fallback is
     ///   not family-explicit and its unreadable-refusal throw is the wrong shape mid-lock).</item>
-    ///   <item><b>Dead family (04 §3.5, 03 F3.5):</b> <c>invalid_grant</c> followed by a
-    ///   post-failure re-read that shows nobody else rotated the family ⇒ the family is dead:
-    ///   <see cref="AuthState.SignInRequired"/> is surfaced, ONE structured telemetry event is
-    ///   emitted (per family death, not per retry), other families are never deleted, and the
-    ///   provider never loops — one network attempt per call, rate-bounded across calls by the
-    ///   refresher (04 §3.6).</item>
+    ///   <item><b>Failure-state split (04 §3.5, 03 F3.5/F9):</b> <see cref="AuthState.SignInRequired"/>
+    ///   is the DEAD-FAMILY verdict only — <c>invalid_grant</c> followed by a post-failure re-read
+    ///   that shows nobody else rotated the family. Then ONE structured telemetry event is emitted
+    ///   (per family death, not per retry), other families are never deleted, and the provider
+    ///   never loops — one network attempt per call, rate-bounded across calls by the refresher
+    ///   (04 §3.6). Every OTHER failure — AS unreachable, 5xx, timeout, a thrown refresher — is
+    ///   <b>transient</b>: the provider stays <see cref="AuthState.SignedIn"/> on its current
+    ///   credential and retries later (F9: offline self-heals silently, no sign-in prompt).</item>
     /// </list>
     /// The actual token-endpoint HTTP exchange is delegated to an injected <see cref="ITokenRefresher"/>
     /// (the shared <see cref="HttpTokenRefresher"/> in production); this class never talks to the
@@ -168,8 +170,11 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// Refresh the access token now (driven by the connection layer's <c>_authorizationRejected</c>
         /// signal). Returns true when a fresh token was persisted (or adopted from a peer's refresh);
-        /// false when refresh failed, is impossible (in which case <see cref="AuthState.SignInRequired"/>
-        /// has been surfaced), or the machine-wide lock was busy (transient — no state change).
+        /// false when this attempt did not produce one. A false return surfaces
+        /// <see cref="AuthState.SignInRequired"/> ONLY for a dead family (<c>invalid_grant</c>
+        /// confirmed by the post-failure re-read) or when refresh is impossible (no refresh token /
+        /// no refresher); transient failures and a busy machine-wide lock leave the state untouched
+        /// (retry-later semantics — review B2).
         /// </summary>
         public async Task<bool> RefreshAsync(CancellationToken cancellationToken = default)
         {
@@ -337,8 +342,9 @@ namespace com.IvanMurzak.McpPlugin
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogWarning("Token refresh threw: {message}", ex.Message); // never log token material
-                    SurfaceSignInRequired("refresh error");
+                    // A thrown refresh (network down, DNS, TLS) is TRANSIENT (review B2): keep the
+                    // current credential and state, retry later — offline self-heals silently (F9).
+                    _logger?.LogWarning("Token refresh threw ({message}); staying signed in, will retry.", ex.Message); // never log token material
                     return false;
                 }
 
@@ -412,7 +418,12 @@ namespace com.IvanMurzak.McpPlugin
                 return false;
             }
 
-            SurfaceSignInRequired(result?.FailureReason);
+            // TRANSIENT failure (review B2): SignInRequired is the dead-family verdict ONLY
+            // (03 F3.5); everything else — AS unreachable, 5xx, timeout, other OAuth errors —
+            // keeps the current credential and state and retries later (F9: offline self-heals
+            // silently; rate discipline in the refresher bounds the retries).
+            _logger?.LogWarning("Token refresh failed transiently ({reason}); staying signed in, will retry.",
+                result?.FailureReason ?? "unknown");
             return false;
         }
 

@@ -153,9 +153,13 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
                 TokenRefreshResult.Failure("invalid_grant: revoked", TokenRefreshFailureKind.InvalidGrant));
             using var provider = new PluginCredentialProvider(NewStore(), refresher);
 
+            var signInRequiredFired = false;
+            using var _ = provider.OnSignInRequired.Subscribe(__ => { signInRequiredFired = true; });
+
             (await provider.RefreshAsync()).ShouldBeFalse();
 
             provider.State.CurrentValue.ShouldBe(AuthState.SignInRequired);
+            signInRequiredFired.ShouldBeTrue(); // the dead-family verdict IS the sign-in prompt (B2: the only path to it)
             refresher.Requests.Count.ShouldBe(1); // never loops
 
             // Never delete other families, never delete the store (03 F3.5).
