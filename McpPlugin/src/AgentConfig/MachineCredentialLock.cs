@@ -61,18 +61,22 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
     ///         compare-and-delete rules (deliberately unserialized — the residual needs the rare
     ///         crashed-intent precondition ON TOP of the tight race window; accepted by design in
     ///         both languages).</item>
-    ///   <item><b>Staleness bars</b> — well-formed document with a case-insensitively local
-    ///         <c>hostId</c>: <see cref="LOCK_STALE_MS"/> (60 s). Well-formed but foreign,
-    ///         empty, or missing <c>hostId</c> (network home / unknown writer):
-    ///         <see cref="FOREIGN_HOST_STALE_MS"/> (24 h). <b>Unparseable or zero-byte document
-    ///         (owner-adopted amendment, review B2): <see cref="LOCK_STALE_MS"/> (60 s)</b> — a
-    ///         torn document's writer provably never completed its acquire write, which precedes
-    ///         handle-return, which precedes the critical section, so taking it over can never
-    ///         collide with an in-flight refresh; the 24 h bar would only convert every
-    ///         crash-in-the-create-window artifact into a day-long machine-wide auth freeze. One
-    ///         diagnostic warning is emitted when an unparseable lock is taken over. The same
-    ///         classification applies to the intent file (same writer-never-proceeded
-    ///         argument).</item>
+    ///   <item><b>Staleness classes</b> — one shared classifier (mirror of the TS twin's
+    ///         <c>classifyLockDocument</c>), applied to the lock AND the intent file:
+    ///         <c>local</c> (JSON object whose <c>hostId</c> equals ours,
+    ///         <see cref="StringComparison.OrdinalIgnoreCase"/> — the pinned cross-language
+    ///         semantic; TS folds via <c>toLowerCase()</c>, diverging only on non-ASCII
+    ///         hostnames in the conservative direction) → <see cref="LOCK_STALE_MS"/> (60 s);
+    ///         <c>foreign</c> (JSON object with a missing, empty, or different <c>hostId</c> —
+    ///         network home / unknown writer) → <see cref="FOREIGN_HOST_STALE_MS"/> (24 h);
+    ///         <c>unparseable</c> (zero-byte, corrupted, or any non-object JSON — owner-adopted
+    ///         amendment, review B2) → <see cref="LOCK_STALE_MS"/> (60 s), because such an
+    ///         artifact's writer provably never completed its acquire write, which precedes
+    ///         handle-return, which precedes the critical section — taking it over can never
+    ///         collide with an in-flight refresh, and the 24 h bar would only convert every
+    ///         crash-in-the-create-window artifact into a day-long machine-wide auth freeze.
+    ///         One diagnostic warning is emitted after an unparseable LOCK artifact is removed;
+    ///         intent recovery is intentionally silent (mirrored asymmetry).</item>
     ///   <item><b>Release</b> — delete the lock file, guarded: the on-disk bytes are compared to
     ///         our own first, so a peer's lock is never deleted
     ///         (<see cref="MachineCredentialLockHandle.Dispose"/>).</item>
@@ -104,8 +108,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
     ///
     /// <para><b>hostId</b> defaults to <see cref="System.Net.Dns.GetHostName"/> — the same
     /// <c>gethostname</c> source as Node's <c>os.hostname()</c>, so C# and TS processes on one
-    /// machine recognise each other as local. Comparison is case-insensitive
-    /// (invariant-culture); an empty or missing <c>hostId</c> always compares as foreign.</para>
+    /// machine recognise each other as local. Comparison is ordinal case-insensitive; an empty
+    /// or missing <c>hostId</c> always compares as foreign.</para>
     ///
     /// <para><b>Clock caveats (spec-inherent, shared with the TS twin):</b> a backward clock jump
     /// only delays takeover (safe direction); a forward step &gt; ~45 s can declare a live holder
@@ -201,6 +205,22 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// in production.
         /// </summary>
         internal Action? WriteFaultInjection;
+
+        /// <summary>
+        /// Test seam: invoked between the intent file's successful exclusive-create and its
+        /// read-back verification — lets a test displace the intent there, deterministically
+        /// pinning the read-back control (whose deletion is otherwise invisible: the pre-removal
+        /// re-verify downstream masks it). Never set in production.
+        /// </summary>
+        internal Action? AfterIntentCreateInjection;
+
+        /// <summary>
+        /// Test seam: invoked right after intent acquisition succeeds, before the candidate
+        /// re-validation and the pre-removal intent re-verify — lets a test displace (or restore)
+        /// the intent there, deterministically pinning the pre-removal re-verify control. Never
+        /// set in production.
+        /// </summary>
+        internal Action? AfterIntentAcquiredInjection;
 
         /// <summary>
         /// Create a lock rooted at <paramref name="baseDirectory"/>, or at <c>~/.ai-game-dev</c>
@@ -404,8 +424,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             if (content1 == null)
                 return false; // vanished or unreadable right now — retry later
 
-            var thresholdMs = StalenessThresholdMs(content1, out var unparseable);
-            if ((DateTime.UtcNow - mtime1).TotalMilliseconds < thresholdMs)
+            var documentClass = ClassifyLockDocument(content1);
+            if ((DateTime.UtcNow - mtime1).TotalMilliseconds < StalenessThresholdMs(documentClass))
                 return false; // a live (or not-provably-dead) holder — keep waiting
 
             // Serialize claimants: only the winner of the intent file's exclusive-create may
@@ -418,6 +438,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
             try
             {
+                AfterIntentAcquiredInjection?.Invoke(); // test seam; no-op in production
+
                 // Re-validate under the intent: remove only the exact artifact we judged stale
                 // (mtime + size + byte-identical content — a live replacement always differs, its
                 // startedAt/nonce are newer than the dead holder's).
@@ -447,13 +469,6 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 if (intentNow == null || !BytesEqual(intentNow, intentContent))
                     return false;
 
-                if (unparseable)
-                {
-                    Warn("machine credential lock: taking over an unparseable/zero-byte lock document at "
-                        + _lockPath + " (age past LOCK_STALE_MS; its writer never completed an acquire — "
-                        + "likely a process killed in the create window or a cleaned-up write failure)");
-                }
-
                 try
                 {
                     File.Delete(_lockPath);
@@ -461,6 +476,18 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
                 {
                     return false; // somebody else's delete won — retry
+                }
+
+                if (documentClass == LockDocumentClass.Unparseable)
+                {
+                    // One diagnostic per takeover of a corrupt artifact (fix-round amendment,
+                    // AFTER the successful removal — mirroring the TS twin): its writer never
+                    // entered the critical section, but its existence usually means a crashed or
+                    // interrupted acquisition worth surfacing. Lock documents carry no token
+                    // material. Intent recovery is intentionally silent (mirrored asymmetry).
+                    Warn("credential lock takeover: removed an unparseable (zero-byte or corrupted) lock artifact at "
+                        + _lockPath + "; treated as stale at LOCK_STALE_MS because its writer can never have "
+                        + "entered the critical section");
                 }
                 return true;
             }
@@ -487,11 +514,13 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             {
                 if (TryExclusiveCreateWithContent(_intentPath, content))
                 {
+                    AfterIntentCreateInjection?.Invoke(); // test seam; no-op in production
+
                     // Read back and verify the intent is OURS (owner-adopted narrowing): a racing
                     // crashed-intent recovery could have deleted and replaced it already.
                     var readBack = TryReadAllBytes(_intentPath);
                     if (readBack == null || !BytesEqual(readBack, content))
-                        return null;
+                        return null; // displaced — the removal authority is not ours; never delete theirs
                     return content;
                 }
 
@@ -514,7 +543,10 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 if (icontent1 == null)
                     continue; // vanished — retry the exclusive-create once
 
-                var ithresholdMs = StalenessThresholdMs(icontent1, out _);
+                // Same classification rules as the lock itself: an unparseable/zero-byte intent's
+                // writer never completed intent acquisition, so it gets the short threshold too
+                // (a killed creator must not wedge takeover for 24 h). Recovery is silent.
+                var ithresholdMs = StalenessThresholdMs(ClassifyLockDocument(icontent1));
                 if ((DateTime.UtcNow - imtime1).TotalMilliseconds < ithresholdMs)
                     return null; // a live claimant is mid-takeover — back off
 
@@ -600,41 +632,48 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         }
 
         /// <summary>
-        /// Classify a lock/intent document into its staleness bar (04 §2 + B2 amendment):
-        /// unparseable/zero-byte → <see cref="LOCK_STALE_MS"/> (writer provably never completed an
-        /// acquire; <paramref name="unparseable"/> true); well-formed with a local hostId →
-        /// <see cref="LOCK_STALE_MS"/>; well-formed but foreign/empty/missing hostId (or valid
-        /// JSON of the wrong shape — its writer DID complete a write, so the torn-write argument
-        /// does not apply) → <see cref="FOREIGN_HOST_STALE_MS"/>. Unknown extra fields are
-        /// tolerated.
+        /// Staleness class of a lock/intent document (mirror of the TS twin's
+        /// <c>classifyLockDocument</c>): <c>Local</c>/<c>Unparseable</c> take the short bar,
+        /// <c>Foreign</c> the 24 h bar — see <see cref="StalenessThresholdMs"/>.
         /// </summary>
-        private long StalenessThresholdMs(byte[] content, out bool unparseable)
+        internal enum LockDocumentClass
         {
-            unparseable = false;
+            Local,
+            Foreign,
+            Unparseable,
+        }
 
+        /// <summary>
+        /// Classify a lock/intent document (one shared classifier for BOTH files, mirroring the
+        /// TS twin's <c>classifyLockDocument</c>): invalid JSON, zero bytes, or any non-object
+        /// JSON → <see cref="LockDocumentClass.Unparseable"/> (a torn or alien artifact — its
+        /// writer never completed a protocol acquire); JSON object with a missing, empty, or
+        /// non-string <c>hostId</c> → <see cref="LockDocumentClass.Foreign"/> (a completed write
+        /// proving nothing about which machine wrote it); otherwise the ordinal case-insensitive
+        /// <c>hostId</c> comparison decides Local vs Foreign (the pinned cross-language semantic —
+        /// TS folds via <c>toLowerCase()</c>, diverging only on non-ASCII hostnames, in the
+        /// conservative direction). Unknown extra fields are tolerated.
+        /// </summary>
+        internal LockDocumentClass ClassifyLockDocument(byte[] content)
+        {
             if (content.Length == 0)
-            {
-                unparseable = true;
-                return _staleMs;
-            }
+                return LockDocumentClass.Unparseable;
 
-            string? hostId = null;
-            var wellFormed = false;
             try
             {
                 using (var document = JsonDocument.Parse(content))
                 {
                     var root = document.RootElement;
-                    // Same shape requirements as the TS twin's parseLockContent: pid number,
-                    // startedAt string, hostId string; unknown fields tolerated.
-                    if (root.ValueKind == JsonValueKind.Object
-                        && root.TryGetProperty("pid", out var pid) && pid.ValueKind == JsonValueKind.Number
-                        && root.TryGetProperty("startedAt", out var startedAt) && startedAt.ValueKind == JsonValueKind.String
-                        && root.TryGetProperty("hostId", out var host) && host.ValueKind == JsonValueKind.String)
-                    {
-                        wellFormed = true;
-                        hostId = host.GetString();
-                    }
+                    if (root.ValueKind != JsonValueKind.Object)
+                        return LockDocumentClass.Unparseable;
+                    if (!root.TryGetProperty("hostId", out var host) || host.ValueKind != JsonValueKind.String)
+                        return LockDocumentClass.Foreign;
+                    var hostId = host.GetString();
+                    if (string.IsNullOrEmpty(hostId))
+                        return LockDocumentClass.Foreign;
+                    return string.Equals(hostId, _hostId, StringComparison.OrdinalIgnoreCase)
+                        ? LockDocumentClass.Local
+                        : LockDocumentClass.Foreign;
                 }
             }
             catch (JsonException)
@@ -642,23 +681,13 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 // Torn/partial write: the writer was killed between create and write (or the
                 // artifact is a cleaned-up write failure). It provably never entered the critical
                 // section — short bar (B2, owner-adopted).
-                unparseable = true;
-                return _staleMs;
+                return LockDocumentClass.Unparseable;
             }
-
-            if (!wellFormed)
-                return _foreignStaleMs; // valid JSON, wrong shape: a completed write by an unknown writer
-
-            return IsLocalHostId(hostId) ? _staleMs : _foreignStaleMs;
         }
 
-        /// <summary>
-        /// Case-insensitive (invariant-culture) hostId comparison; empty or missing hostId always
-        /// compares as foreign.
-        /// </summary>
-        private bool IsLocalHostId(string? hostId)
-            => !string.IsNullOrEmpty(hostId)
-               && string.Equals(hostId, _hostId, StringComparison.InvariantCultureIgnoreCase);
+        /// <summary>The staleness bar for a document class (B2 amendment: unparseable = short bar).</summary>
+        private long StalenessThresholdMs(LockDocumentClass documentClass)
+            => documentClass == LockDocumentClass.Foreign ? _foreignStaleMs : _staleMs;
 
         private static string ResolveLocalHostId()
         {

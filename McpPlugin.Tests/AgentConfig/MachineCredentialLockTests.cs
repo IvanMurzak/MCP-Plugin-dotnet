@@ -109,6 +109,18 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             root.GetProperty("lockStaleMs").GetInt32().ShouldBe(MachineCredentialLock.LOCK_STALE_MS);
             root.GetProperty("acquireBudgetMs").GetInt32().ShouldBe(MachineCredentialLock.ACQUIRE_BUDGET);
             root.GetProperty("foreignLockStaleMs").GetInt64().ShouldBe(MachineCredentialLock.FOREIGN_HOST_STALE_MS);
+            root.GetProperty("hostIdCompare").GetString().ShouldBe("case-insensitive");
+
+            // The vector's field list must match what an acquisition ACTUALLY writes, in order.
+            var vectorFields = root.GetProperty("lockDocumentFields").EnumerateArray()
+                .Select(e => e.GetString()).ToArray();
+            var mutex = NewLock();
+            using (var handle = mutex.TryAcquire())
+            {
+                handle.ShouldNotBeNull();
+                using var lockDoc = JsonDocument.Parse(File.ReadAllText(LockPath));
+                lockDoc.RootElement.EnumerateObject().Select(p => p.Name).ToArray().ShouldBe(vectorFields);
+            }
         }
 
         [Fact]
@@ -344,6 +356,59 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             File.ReadAllText(LockPath).ShouldBe("not json at all");
         }
 
+        [Fact]
+        public void Classifier_MirrorsTheTsTwin()
+        {
+            // One shared classifier for lock AND intent documents, byte-for-byte semantics with
+            // the TS twin's classifyLockDocument: JSON-object-ness is the parseability criterion
+            // and hostId ALONE drives local-vs-foreign.
+            var mutex = NewLock();
+            var cls = new Func<string, MachineCredentialLock.LockDocumentClass>(
+                json => mutex.ClassifyLockDocument(Encoding.UTF8.GetBytes(json)));
+
+            cls("").ShouldBe(MachineCredentialLock.LockDocumentClass.Unparseable);              // zero-byte
+            cls("not json").ShouldBe(MachineCredentialLock.LockDocumentClass.Unparseable);      // corrupted
+            cls("42").ShouldBe(MachineCredentialLock.LockDocumentClass.Unparseable);            // valid JSON, non-object
+            cls("[1,2]").ShouldBe(MachineCredentialLock.LockDocumentClass.Unparseable);         // valid JSON, array
+            cls("{\"pid\":1}").ShouldBe(MachineCredentialLock.LockDocumentClass.Foreign);       // object, no hostId
+            cls("{\"hostId\":\"\"}").ShouldBe(MachineCredentialLock.LockDocumentClass.Foreign); // empty hostId
+            cls("{\"hostId\":42}").ShouldBe(MachineCredentialLock.LockDocumentClass.Foreign);   // non-string hostId
+            cls("{\"hostId\":\"another-host\"}").ShouldBe(MachineCredentialLock.LockDocumentClass.Foreign);
+            // hostId alone decides — no pid/startedAt shape requirement (mirror), ordinal
+            // case-insensitive comparison (the pinned cross-language semantic).
+            cls("{\"hostId\":" + JsonSerializer.Serialize(mutex.HostId.ToUpperInvariant()) + "}")
+                .ShouldBe(MachineCredentialLock.LockDocumentClass.Local);
+        }
+
+        [Fact]
+        public void ValidJsonNonObjectLock_ClassifiesUnparseable_AndIsStaleEligibleAtTheLocalBar()
+        {
+            // End-to-end for the classifier mirror: an alien-but-valid-JSON artifact (an array)
+            // is Unparseable → 60 s bar, not 24 h.
+            PlantFile(LockPath, "[1,2,3]", TimeSpan.FromMinutes(5));
+
+            using var handle = NewLock(budgetMs: 10_000).TryAcquire();
+            handle.ShouldNotBeNull();
+        }
+
+        [Fact]
+        public void ZeroByteIntent_DoesNotWedgeTakeoverFor24Hours()
+        {
+            // The intent-side half of the B2 amendment: a zero-byte intent from a killed creator
+            // is recovered at the 60 s bar (silently — the diagnostic asymmetry is deliberate:
+            // only unparseable LOCK takeover warns), so takeover proceeds.
+            var warnings = new List<string>();
+            var mutex = NewLock(budgetMs: 10_000, diagnostics: warnings.Add);
+            PlantLock(mutex.HostId, StalePastLocalBar);
+            PlantFile(IntentPath, "", StalePastLocalBar); // killed intent creator
+
+            using var handle = mutex.TryAcquire();
+
+            handle.ShouldNotBeNull();          // recovered + taken over within the budget
+            File.Exists(IntentPath).ShouldBeFalse();
+            warnings.ShouldBeEmpty();          // intent recovery is silent; the LOCK was parseable
+        }
+
         // ── The takeover-intent arbiter ─────────────────────────────────────────────────────────
 
         [Fact]
@@ -363,6 +428,57 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
 
             File.ReadAllBytes(LockPath).ShouldBe(lockBytes);     // stale lock untouched
             File.ReadAllBytes(IntentPath).ShouldBe(intentBytes); // live intent untouched
+        }
+
+        [Fact]
+        public void IntentReadBack_DetectsADisplacedIntent_BeforeRelyingOnIt()
+        {
+            // Deterministic pin for the intent READ-BACK control (its deletion is otherwise
+            // invisible: the pre-removal re-verify downstream masks it). Choreography: displace
+            // the intent between create and read-back, and RESTORE our bytes at the later seam —
+            // so ONLY the read-back can catch the displacement. With the control present the
+            // claimant walks away busy; with it deleted, the restored intent sails through the
+            // pre-removal re-verify and the takeover completes — RED.
+            var mutex = NewLock(budgetMs: 1_500);
+            PlantLock(mutex.HostId, StalePastLocalBar);
+            var peerBytes = Encoding.UTF8.GetBytes(WellFormedDocument(mutex.HostId, pid: "999999"));
+            byte[]? ourIntentBytes = null;
+            mutex.AfterIntentCreateInjection = () =>
+            {
+                ourIntentBytes = File.ReadAllBytes(IntentPath); // capture OUR intent…
+                File.WriteAllBytes(IntentPath, peerBytes);      // …then a racing recovery displaces it
+            };
+            mutex.AfterIntentAcquiredInjection = () => File.WriteAllBytes(IntentPath, ourIntentBytes!);
+
+            mutex.TryAcquire().ShouldBeNull(); // the displaced arbiter is not ours — back off, busy
+
+            ourIntentBytes.ShouldNotBeNull();       // anti-vacuity: the create path actually ran
+            File.Exists(LockPath).ShouldBeTrue();   // the stale lock was never removed
+        }
+
+        [Fact]
+        public void PreRemovalIntentReVerify_AbortsWhenTheArbiterIsDisplaced_AfterAcquisition()
+        {
+            // Deterministic pin for the PRE-REMOVAL ownership re-verify: a crashed-intent
+            // recovery displaces our intent after acquisition but before the removal — the
+            // removal authority is no longer ours, so the claimant must abort without touching
+            // the stale lock or the displaced intent. With the control deleted, the takeover
+            // proceeds under a stolen arbiter and acquires — RED.
+            var mutex = NewLock(budgetMs: 1_500);
+            PlantLock(mutex.HostId, StalePastLocalBar);
+            var peerBytes = Encoding.UTF8.GetBytes(WellFormedDocument(mutex.HostId, pid: "999999"));
+            var fired = 0;
+            mutex.AfterIntentAcquiredInjection = () =>
+            {
+                fired++;
+                File.WriteAllBytes(IntentPath, peerBytes);
+            };
+
+            mutex.TryAcquire().ShouldBeNull(); // busy — never act under a stolen arbiter
+
+            fired.ShouldBeGreaterThanOrEqualTo(1);        // anti-vacuity: acquisition happened
+            File.Exists(LockPath).ShouldBeTrue();         // stale lock untouched
+            File.ReadAllBytes(IntentPath).ShouldBe(peerBytes); // the displaced intent was respected
         }
 
         [Fact]
