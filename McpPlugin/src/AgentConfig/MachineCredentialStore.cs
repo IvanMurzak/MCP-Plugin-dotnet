@@ -313,6 +313,15 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// <summary>Unprotect raw on-disk bytes (no-op on POSIX). Test seam for concurrency probes.</summary>
         internal static byte[] UnprotectBytes(byte[] data) => IsWindows ? Unprotect(data) : data;
 
+        /// <summary>
+        /// Protect raw bytes with the store's real DPAPI codec (no-op on POSIX). Test seam
+        /// (InternalsVisibleTo: McpPlugin.Tests) for the cross-implementation DPAPI parity suite
+        /// (unified-machine-auth 04 §1, task x1): exercises the EXACT <c>CryptProtectData</c>
+        /// P/Invoke call the store uses on Windows, so a TS-side decrypt of the result is a genuine
+        /// interop proof, not a re-implementation of DPAPI.
+        /// </summary>
+        internal static byte[] ProtectBytes(byte[] data) => IsWindows ? Protect(data) : data;
+
         // ── Atomic write (design 04 §1) ──────────────────────────────────────────────────────────
 
         private void WriteProtected(string json)

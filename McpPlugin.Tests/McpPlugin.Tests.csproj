@@ -32,6 +32,10 @@
     <None Include="../McpPlugin/src/AgentConfig/ProjectIdentity.GoldenVectors.json" Link="ProjectIdentity.GoldenVectors.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../McpPlugin/src/AgentConfig/ProjectIdentity.GoldenVectors.v2.json" Link="ProjectIdentity.GoldenVectors.v2.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../McpPlugin/src/AgentConfig/LockProtocol.GoldenVectors.json" Link="LockProtocol.GoldenVectors.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Committed cross-language golden vectors for the machine credential store schema v2
+         (unified-machine-auth 04 §1, task x1) — byte-identical copy of
+         cli-core/test/golden-vectors/MachineCredentials.GoldenVectors.json. -->
+    <None Include="../McpPlugin/src/AgentConfig/MachineCredentials.GoldenVectors.json" Link="MachineCredentials.GoldenVectors.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
