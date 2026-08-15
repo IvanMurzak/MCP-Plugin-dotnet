@@ -55,11 +55,18 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                 _logger, _testVersion, _testEndpoint, _mockProvider.Object
             );
 
-            // Act
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            // Act: the loop terminates ON ITS OWN via the rejection cap; the CTS is a pure hang
+            // guard that must NEVER fire. It needs generous headroom: the happy path already
+            // spends real time (ConnectionManager's 1s post-create stabilization delay plus one
+            // RejectionThreshold window per rejection), and on a loaded CI runner every timer
+            // resumption can stretch by seconds — a tight budget turns runner load into a
+            // truncated loop and a bogus AttemptCount failure (the documented CI flake).
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             var result = await cm.Connect(cts.Token);
 
             // Assert
+            cts.Token.IsCancellationRequested.ShouldBeFalse(
+                "The loop must stop via the rejection cap, not the hang-guard CTS");
             result.ShouldBeFalse("Connection should fail after repeated rejections");
             cm.KeepConnected.CurrentValue.ShouldBeFalse("KeepConnected should be disabled after rejection threshold");
             cm.AttemptCount.ShouldBe(3, "Should have attempted exactly MaxConsecutiveRejections times");
@@ -80,12 +87,20 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                 attemptResults: sequence
             );
 
-            // Act
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            // Act: the loop terminates ON ITS OWN when the sequence is exhausted (the manager
+            // flips _continueToReconnect off); the CTS is a pure hang guard that must NEVER
+            // fire. It needs generous headroom: the happy path already spends real time
+            // (ConnectionManager's 1s post-create stabilization delay plus one
+            // RejectionThreshold window per rejection), and on a loaded CI runner every timer
+            // resumption can stretch by seconds — the old 5s budget let runner load truncate
+            // the loop mid-sequence, producing the documented "AttemptCount not > 3" CI flake.
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             var result = await cm.Connect(cts.Token);
 
             // Assert: more than 3 attempts must have been consumed.
             // If rejection counter weren't being reset by failures, it would stop at 3.
+            cts.Token.IsCancellationRequested.ShouldBeFalse(
+                "The loop must stop via sequence exhaustion, not the hang-guard CTS");
             result.ShouldBeFalse("Connection should eventually fail");
             cm.AttemptCount.ShouldBeGreaterThan(3,
                 "More than MaxConsecutiveRejections attempts should run — counter was reset by interleaved failures");
