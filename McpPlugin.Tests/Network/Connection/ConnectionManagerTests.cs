@@ -439,7 +439,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var firstConnect = connectionManager.Connect(firstCts.Token);
 
             await EnsureConnectionStartedAsync(firstProviderCallEntered.Task);
-            secondConnect.ShouldNotBeNull("the in-window second Connect must have been issued");
+            // ShouldNotBeNull RETURNS the task it validated; discard it explicitly — the task is
+            // deliberately not awaited here (it is awaited below, after the leader completes).
+            _ = secondConnect.ShouldNotBeNull("the in-window second Connect must have been issued");
             providerCallCount.ShouldBe(1, "while the first attempt is in flight only one connection may be created");
 
             // Complete the first attempt as a FAILURE: cancel first, then let the provider return —

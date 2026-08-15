@@ -64,7 +64,11 @@ jobs:
 
       - name: Test
         working-directory: ./
-        run: dotnet test --no-build --verbosity normal --configuration Release --logger "trx;LogFileName=test-results.trx" --results-directory ./TestResults
+        # LogFilePrefix (not LogFileName): 2 test projects x 2 TFMs = 4 test runs; a fixed
+        # LogFileName makes each run overwrite the previous .trx ("WARNING: Overwriting results
+        # file") so only the last leg's results survived. One uniquely-named .trx per run instead;
+        # all still match the TestResults/**/*.trx globs below.
+        run: dotnet test --no-build --verbosity normal --configuration Release --logger "trx;LogFilePrefix=test-results" --results-directory ./TestResults
 
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v2

@@ -16,12 +16,12 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
 {
     public partial class ResponseCallValueTool<T> : ResponseCallTool
     {
-        public static new ResponseCallValueTool<T> Error(Exception exception)
+        public static ResponseCallValueTool<T> Error(Exception exception)
         {
             return Error($"[Error] {exception?.Message}\n{exception?.StackTrace}");
         }
 
-        public static new ResponseCallValueTool<T> Error(string? message = null)
+        public static ResponseCallValueTool<T> Error(string? message = null)
         {
             return new ResponseCallValueTool<T>(
                 status: ResponseStatus.Error,
@@ -58,7 +58,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
                 status: ResponseStatus.Success);
         }
 
-        public static new ResponseCallValueTool<T> ErrorStructured(JsonNode? structuredContent)
+        public static ResponseCallValueTool<T> ErrorStructured(JsonNode? structuredContent)
         {
             return new ResponseCallValueTool<T>(
                 structuredContent: structuredContent,
