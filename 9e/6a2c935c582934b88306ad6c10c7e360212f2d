@@ -1,0 +1,29 @@
+McpPlugin.Server/src/Webhooks/Services/NoOpWebhookDispatcher.cs
+  c4b16020a12398ca 1-17
+McpPlugin.Server/src/Webhooks/Extensions/WebhookServiceExtensions.cs
+  c4b16020a12398ca 33,38
+McpPlugin.Server/src/Extension/ExtensionsMcpServer.cs
+  c4b16020a12398ca 40-41,57-61,63,67,69-72,83,97,99-102,106,121,123-126,130,166,168,170
+McpPlugin.Server.Tests/Webhooks/WebhookDispatcherTests.cs
+  c4b16020a12398ca 53,57,73,90,94,109-111,125,128-129,131,146-148
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "9e6a2c935c582934b88306ad6c10c7e360212f2d",
+  "prompts": {
+    "c4b16020a12398ca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "37e79690-ac18-4555-844b-554dfe033c08",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 460,
+      "total_deletions": 421,
+      "accepted_lines": 135,
+      "overriden_lines": 0
+    }
+  }
+}

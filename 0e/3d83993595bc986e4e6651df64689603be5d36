@@ -1,0 +1,59 @@
+McpPlugin.Tests/AgentConfig/AgentConfiguratorTroubleshootingTests.cs
+  s_94cae3b80679a2::t_c72c24a5b5af39 1-217
+McpPlugin/src/AgentConfig/Impl/OpenCodeConfigurator.cs
+  s_94cae3b80679a2::t_9fb847a8cc054f 74-80
+McpPlugin/src/AgentConfig/Impl/AntigravityConfigurator.cs
+  s_94cae3b80679a2::t_a2daa43b4936f4 59-64
+McpPlugin/src/AgentConfig/AiAgentConfigurator.cs
+  s_94cae3b80679a2::t_a9d90f95e14f59 193-203,236
+  s_94cae3b80679a2::t_a90c0cad28c0c5 237-260
+McpPlugin/src/AgentConfig/Impl/CursorConfigurator.cs
+  s_94cae3b80679a2::t_010f170597065d 40-45
+McpPlugin/src/AgentConfig/Impl/ZooCodeConfigurator.cs
+  s_94cae3b80679a2::t_92f32b16ea3a54 39-46
+McpPlugin/src/AgentConfig/Impl/VisualStudioCodeCopilotConfigurator.cs
+  s_94cae3b80679a2::t_ce299371cf478d 40-45
+McpPlugin/src/AgentConfig/Impl/ClineConfigurator.cs
+  s_94cae3b80679a2::t_47d0fb4a02c342 66-73
+McpPlugin/src/AgentConfig/Impl/UnityAiConfigurator.cs
+  s_94cae3b80679a2::t_84c0ff5d88b30f 38-43
+McpPlugin/src/AgentConfig/Impl/CustomConfigurator.cs
+  s_94cae3b80679a2::t_dbf588a4b54714 79-88,91-94
+McpPlugin/src/AgentConfig/Impl/GeminiConfigurator.cs
+  s_94cae3b80679a2::t_1e6a822683f06d 39-53
+McpPlugin/src/AgentConfig/Impl/ClaudeCodeConfigurator.cs
+  s_94cae3b80679a2::t_725d124bb460fe 93-101
+McpPlugin/src/AgentConfig/Impl/CodexConfigurator.cs
+  s_94cae3b80679a2::t_cfee0859491a0b 135-140
+McpPlugin/src/AgentConfig/Impl/KiloCodeConfigurator.cs
+  s_94cae3b80679a2::t_d318dcd50b1dc6 39-55
+McpPlugin/src/AgentConfig/Impl/ClaudeDesktopConfigurator.cs
+  s_94cae3b80679a2::t_33cef6eebf1459 44-55
+McpPlugin/src/AgentConfig/Impl/RiderConfigurator.cs
+  s_94cae3b80679a2::t_a9aaff14487693 101-111
+McpPlugin/src/AgentConfig/Impl/GitHubCopilotCliConfigurator.cs
+  s_94cae3b80679a2::t_848f5264250b09 46-53
+McpPlugin/src/AgentConfig/Impl/VisualStudioCopilotConfigurator.cs
+  s_94cae3b80679a2::t_e15465593288b1 40-46
+McpPlugin/src/AgentConfig/DockerCommands.cs
+  s_94cae3b80679a2::t_83963e2495b308 1-65
+McpPlugin/src/AgentConfig/AgentConfiguratorSettings.cs
+  s_94cae3b80679a2::t_e3a9a581c7dd51 102-121,131-134,145-147
+  s_94cae3b80679a2::t_39178a3ec3406c 165-168,179-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "0e3d83993595bc986e4e6651df64689603be5d36",
+  "prompts": {},
+  "sessions": {
+    "s_94cae3b80679a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d15dc434-a705-4009-9c19-05eae0bfc388",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

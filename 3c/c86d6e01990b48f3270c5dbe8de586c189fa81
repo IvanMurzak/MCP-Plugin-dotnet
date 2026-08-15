@@ -1,0 +1,23 @@
+.claude/settings.json
+  f295deac57c3fc5a 3-12,22-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "3cc86d6e01990b48f3270c5dbe8de586c189fa81",
+  "prompts": {
+    "f295deac57c3fc5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c35310d1-09ec-4615-a0f5-8b7942bb8150",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 21,
+      "total_deletions": 3,
+      "accepted_lines": 20,
+      "overriden_lines": 0
+    }
+  }
+}

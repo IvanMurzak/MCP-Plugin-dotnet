@@ -1,0 +1,23 @@
+README.md
+  041b1243a82600dc 340
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "ed1e87184381081891d627ff538b15ea2beff916",
+  "prompts": {
+    "041b1243a82600dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8558537-2e08-4df9-be25-3d8e981714ae",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 388,
+      "total_deletions": 388,
+      "accepted_lines": 247,
+      "overriden_lines": 0
+    }
+  }
+}
