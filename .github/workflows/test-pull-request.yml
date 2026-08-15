@@ -40,7 +40,11 @@ jobs:
 
       - name: Test
         working-directory: ./
-        run: dotnet test --no-build --verbosity normal --configuration Release --logger "trx;LogFileName=test-results.trx" --results-directory ./TestResults
+        # LogFilePrefix (not LogFileName): the solution has 2 test projects x 2 TFMs = 4 test runs;
+        # a fixed LogFileName makes each run overwrite the previous .trx ("WARNING: Overwriting
+        # results file") so only the last leg's results survived to upload/publish. The prefix form
+        # yields one uniquely-named .trx per run, all still matching TestResults/**/*.trx below.
+        run: dotnet test --no-build --verbosity normal --configuration Release --logger "trx;LogFilePrefix=test-results" --results-directory ./TestResults
 
       - name: Publish Test Results
         # The docker-based action only runs on Linux; the Windows/macOS legs upload their .trx
