@@ -11,10 +11,12 @@
 #nullable enable
 using System;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin;
 using com.IvanMurzak.McpPlugin.AgentConfig;
+using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Tests.RefreshHarness
 {
@@ -68,6 +70,35 @@ namespace com.IvanMurzak.McpPlugin.Tests.RefreshHarness
         {
             Console.Out.WriteLine(line);
             Console.Out.Flush(); // the parent driver reacts to lines in real time — never buffer
+        }
+
+        /// <summary>
+        /// Minimal <see cref="ILogger"/> surfacing the provider's warnings as machine-parseable
+        /// stdout lines: <c>WARN t=&lt;unixMs&gt; m=&lt;base64 rendered message&gt;</c>. These are the
+        /// C# side's client-visible LOSS records — "Persisting refreshed credential failed" /
+        /// "Credential lock was taken over mid-refresh" mean a received rotation was NOT persisted
+        /// (the store still holds the AS-revoked predecessor); "Token refresh threw/failed
+        /// transiently" records a failed attempt that may have committed at the AS. The x2 driver
+        /// correlates them against the fake AS's grant-decision log to ATTRIBUTE every green-run
+        /// D10 grace hit; a grace hit no worker can account for is a serialization finding.
+        /// </summary>
+        private sealed class StdoutWarningLogger : ILogger
+        {
+            public static readonly StdoutWarningLogger Instance = new StdoutWarningLogger();
+
+            public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+            public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Warning;
+
+            public void Log<TState>(
+                LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+                Func<TState, Exception?, string> formatter)
+            {
+                if (!IsEnabled(logLevel))
+                    return;
+                var message = formatter(state, exception);
+                Report("WARN t=" + NowUnixMs + " m=" + Convert.ToBase64String(Encoding.UTF8.GetBytes(message)));
+            }
         }
 
         private static async Task<int> Main(string[] args)
@@ -170,7 +201,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.RefreshHarness
                 using var provider = new PluginCredentialProvider(
                     store,
                     counting,
-                    logger: null,
+                    logger: StdoutWarningLogger.Instance,
                     refreshSkew: TimeSpan.FromMilliseconds(skewMs),
                     clock: null,
                     credentialLock: new MachineCredentialLock(baseDir));
@@ -292,7 +323,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.RefreshHarness
 
             var counting = new CountingRefresher(httpRefresher);
             using var provider = new PluginCredentialProvider(
-                store, counting, logger: null, refreshSkew: null, clock: null, credentialLock: credentialLock);
+                store, counting, logger: StdoutWarningLogger.Instance,
+                refreshSkew: null, clock: null, credentialLock: credentialLock);
 
             Report("READY t=" + NowUnixMs + " pid=" + Environment.ProcessId + " mode=once" + (scaled != null ? "-scaled" : ""));
 
