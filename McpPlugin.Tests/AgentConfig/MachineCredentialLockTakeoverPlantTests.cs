@@ -23,6 +23,17 @@ using Xunit;
 namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
 {
     /// <summary>
+    /// Serialises the lock takeover plants against the WHOLE test suite
+    /// (<c>DisableParallelization</c>): their real-subprocess spawns must not share the runner's
+    /// cores with timing-sensitive tests in other collections.
+    /// </summary>
+    [CollectionDefinition(Name, DisableParallelization = true)]
+    public sealed class MachineCredentialLockTakeoverPlantCollection
+    {
+        public const string Name = "MachineCredentialLock takeover plants (real subprocesses)";
+    }
+
+    /// <summary>
     /// The three mandated stale-takeover plants (design 04 §5), run with REAL OS subprocesses —
     /// not threads — and the REAL contract constants (public constructor; no timing overrides):
     /// <list type="number">
@@ -38,7 +49,14 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
     /// tests are wall-clock slow BY DESIGN (the first waits through the real 60 s staleness
     /// threshold): scaling the constants down would test a different protocol than the one that
     /// ships.
+    ///
+    /// <para>The class runs in its own <b>non-parallel</b> collection: each subprocess spawn is a
+    /// CPU burst (dotnet host + JIT) that, interleaved with the rest of the suite on a 2-core CI
+    /// runner, starves other timing-sensitive tests — observed as
+    /// <c>MachineCredentialStoreAtomicityTests.Write_RetriesUntilDestinationHandleReleased_Windows</c>
+    /// exhausting its rename-retry window because the 600 ms holder-release task woke late.</para>
     /// </summary>
+    [Collection(MachineCredentialLockTakeoverPlantCollection.Name)]
     public sealed class MachineCredentialLockTakeoverPlantTests : IDisposable
     {
         private readonly string _baseDir;
