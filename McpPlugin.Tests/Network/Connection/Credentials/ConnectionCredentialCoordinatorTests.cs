@@ -65,6 +65,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             refresher
                 .Setup(r => r.RefreshAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(result);
+            // The provider invokes the family-aware overload (unified-machine-auth b3); the proxy
+            // intercepts the interface's default implementation, so it needs its own setup.
+            refresher
+                .Setup(r => r.RefreshAsync(It.IsAny<TokenRefreshRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(result);
             return refresher;
         }
 
