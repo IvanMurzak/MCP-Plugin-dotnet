@@ -31,6 +31,7 @@
          assembly so ProjectIdentityGoldenVectorTests can load them at runtime. -->
     <None Include="../McpPlugin/src/AgentConfig/ProjectIdentity.GoldenVectors.json" Link="ProjectIdentity.GoldenVectors.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../McpPlugin/src/AgentConfig/ProjectIdentity.GoldenVectors.v2.json" Link="ProjectIdentity.GoldenVectors.v2.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../McpPlugin/src/AgentConfig/LockProtocol.GoldenVectors.json" Link="LockProtocol.GoldenVectors.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

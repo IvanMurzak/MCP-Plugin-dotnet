@@ -8,10 +8,13 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using com.IvanMurzak.McpPlugin.AgentConfig;
 using Shouldly;
 using Xunit;
@@ -19,10 +22,14 @@ using Xunit;
 namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
 {
     /// <summary>
-    /// The cross-process lock protocol (design 04 §2) — in-process halves: the shared
-    /// cross-language constant contract, acquire/release document semantics, the busy path
-    /// (never lock-free, D9 REVISED), the local-vs-foreign staleness bar, guarded release, and
-    /// the F6 logout delete path. The three mandated takeover plants run as REAL subprocesses in
+    /// The cross-process lock protocol (design 04 §2 + the owner-adopted b2/c2 review amendments)
+    /// — in-process halves: the shared cross-language constant contract (pinned against
+    /// <c>LockProtocol.GoldenVectors.json</c>), acquire/release document semantics (incl. the
+    /// per-acquisition nonce), the busy path (never lock-free, D9 REVISED), the staleness bars
+    /// (local 60 s / foreign 24 h / unparseable 60 s per the B2 amendment), the takeover-intent
+    /// arbiter (deterministic live-intent backoff + crashed-intent recovery), the B1
+    /// own-artifact cleanup, guarded release, and the F6 logout delete path. The three mandated
+    /// takeover plants run as REAL subprocesses in
     /// <see cref="MachineCredentialLockTakeoverPlantTests"/>.
     /// Tests that exercise waiting paths use the internal timing-override constructor so they do
     /// not consume the real 75 s budget; the contract constants themselves are pinned below.
@@ -44,24 +51,33 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         }
 
         private string LockPath => Path.Combine(_baseDir, MachineCredentialLock.LockFileName);
+        private string IntentPath => Path.Combine(_baseDir, MachineCredentialLock.TakeoverIntentFileName);
 
-        private MachineCredentialLock NewLock() => new(_baseDir);
+        private MachineCredentialLock NewLock(Action<string>? diagnostics = null) => new(_baseDir, null, diagnostics);
 
-        private MachineCredentialLock NewLock(int budgetMs, string? hostId = null) =>
+        private MachineCredentialLock NewLock(int budgetMs, string? hostId = null, Action<string>? diagnostics = null) =>
             new(_baseDir, hostId,
                 acquireBudgetMs: budgetMs,
                 staleMs: MachineCredentialLock.LOCK_STALE_MS,
-                foreignStaleMs: MachineCredentialLock.FOREIGN_HOST_STALE_MS);
+                foreignStaleMs: MachineCredentialLock.FOREIGN_HOST_STALE_MS,
+                diagnostics: diagnostics);
 
-        /// <summary>Plant a lock file with the given hostId, aged by <paramref name="age"/>.</summary>
-        private void PlantLock(string hostId, TimeSpan age, string pid = "424242")
+        /// <summary>Well-formed lock document JSON with the given hostId (no nonce — shape only needs pid/startedAt/hostId).</summary>
+        private static string WellFormedDocument(string hostId, string pid = "424242") =>
+            "{\"pid\":" + pid + ",\"startedAt\":\"2026-01-01T00:00:00.0000000+00:00\",\"hostId\":" +
+            JsonSerializer.Serialize(hostId) + "}";
+
+        /// <summary>Plant a protocol file with the given content, aged by <paramref name="age"/>.</summary>
+        private void PlantFile(string path, string content, TimeSpan age)
         {
             Directory.CreateDirectory(_baseDir);
-            File.WriteAllText(LockPath,
-                "{\"pid\":" + pid + ",\"startedAt\":\"2026-01-01T00:00:00.0000000+00:00\",\"hostId\":" +
-                JsonSerializer.Serialize(hostId) + "}");
-            File.SetLastWriteTimeUtc(LockPath, DateTime.UtcNow - age);
+            File.WriteAllText(path, content);
+            File.SetLastWriteTimeUtc(path, DateTime.UtcNow - age);
         }
+
+        private void PlantLock(string hostId, TimeSpan age) => PlantFile(LockPath, WellFormedDocument(hostId), age);
+
+        private static readonly TimeSpan StalePastLocalBar = TimeSpan.FromMilliseconds(MachineCredentialLock.LOCK_STALE_MS * 2);
 
         // ── Shared cross-language constant contract (04 §2; asserted against TS by x1) ──────────
 
@@ -74,6 +90,25 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             MachineCredentialLock.ACQUIRE_BUDGET.ShouldBe(75_000);
             MachineCredentialLock.FOREIGN_HOST_STALE_MS.ShouldBe(86_400_000L);
             MachineCredentialLock.LockFileName.ShouldBe("credentials.lock");
+            MachineCredentialLock.TakeoverIntentFileName.ShouldBe("credentials.lock.takeover");
+        }
+
+        [Fact]
+        public void Constants_MatchTheCommittedGoldenVector()
+        {
+            // The same document the TS twin pins (test/golden-vectors/LockProtocol.GoldenVectors.json
+            // in cli-core) — x1 asserts both sides against it, parsed-value comparison (04 §5).
+            var path = Path.Combine(AppContext.BaseDirectory, "LockProtocol.GoldenVectors.json");
+            File.Exists(path).ShouldBeTrue("golden vector missing from test output: " + path);
+
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            var root = document.RootElement;
+            root.GetProperty("lockFileName").GetString().ShouldBe(MachineCredentialLock.LockFileName);
+            root.GetProperty("takeoverIntentFileName").GetString().ShouldBe(MachineCredentialLock.TakeoverIntentFileName);
+            root.GetProperty("refreshHttpTimeoutMs").GetInt32().ShouldBe(MachineCredentialLock.REFRESH_HTTP_TIMEOUT);
+            root.GetProperty("lockStaleMs").GetInt32().ShouldBe(MachineCredentialLock.LOCK_STALE_MS);
+            root.GetProperty("acquireBudgetMs").GetInt32().ShouldBe(MachineCredentialLock.ACQUIRE_BUDGET);
+            root.GetProperty("foreignLockStaleMs").GetInt64().ShouldBe(MachineCredentialLock.FOREIGN_HOST_STALE_MS);
         }
 
         [Fact]
@@ -88,19 +123,22 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         }
 
         [Fact]
-        public void LockFile_IsASiblingOfTheCredentialFile_NeverTheDataFileItself()
+        public void LockAndIntent_AreSiblingsOfTheCredentialFile_NeverTheDataFileItself()
         {
             var mutex = NewLock();
             var store = new MachineCredentialStore(_baseDir);
 
             Path.GetDirectoryName(mutex.LockPath).ShouldBe(Path.GetDirectoryName(store.CredentialsPath));
+            Path.GetDirectoryName(mutex.TakeoverIntentPath).ShouldBe(Path.GetDirectoryName(store.CredentialsPath));
             mutex.LockPath.ShouldNotBe(store.CredentialsPath);
+            mutex.TakeoverIntentPath.ShouldNotBe(store.CredentialsPath);
+            mutex.TakeoverIntentPath.ShouldNotBe(mutex.LockPath);
         }
 
         // ── Acquire / release document semantics ────────────────────────────────────────────────
 
         [Fact]
-        public void Acquire_WritesPidStartedAtHostId_AndReleaseDeletesTheLock()
+        public void Acquire_WritesExactlyPidStartedAtHostIdNonce_AndReleaseDeletesTheLock()
         {
             var mutex = NewLock();
 
@@ -110,14 +148,45 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
                 File.Exists(LockPath).ShouldBeTrue();
 
                 using var document = JsonDocument.Parse(File.ReadAllText(LockPath));
-                document.RootElement.GetProperty("pid").GetInt64()
-                    .ShouldBe(Environment.ProcessId);
+                var names = document.RootElement.EnumerateObject().Select(p => p.Name).OrderBy(n => n).ToArray();
+                names.ShouldBe(new[] { "hostId", "nonce", "pid", "startedAt" }); // the shared doc shape (x1)
+
+                document.RootElement.GetProperty("pid").GetInt64().ShouldBe(Environment.ProcessId);
                 document.RootElement.GetProperty("hostId").GetString().ShouldBe(mutex.HostId);
                 DateTimeOffset.Parse(document.RootElement.GetProperty("startedAt").GetString()!)
                     .ShouldBeGreaterThan(DateTimeOffset.UtcNow.AddMinutes(-1));
+                // Nonce: fresh random 128-bit hex per acquisition attempt.
+                Regex.IsMatch(document.RootElement.GetProperty("nonce").GetString()!, "^[0-9a-f]{32}$").ShouldBeTrue();
             }
 
             File.Exists(LockPath).ShouldBeFalse(); // release = delete the lock file (04 §2)
+        }
+
+        [Fact]
+        public void Acquire_UsesAFreshNoncePerAcquisition()
+        {
+            var mutex = NewLock();
+
+            string NonceOfCurrentLock()
+            {
+                using var document = JsonDocument.Parse(File.ReadAllText(LockPath));
+                return document.RootElement.GetProperty("nonce").GetString()!;
+            }
+
+            string first;
+            using (var handle = mutex.TryAcquire())
+            {
+                handle.ShouldNotBeNull();
+                first = NonceOfCurrentLock();
+            }
+            using (var handle = mutex.TryAcquire())
+            {
+                handle.ShouldNotBeNull();
+                // Same process, same instance, possibly the same clock tick — the nonce is what
+                // keeps the two documents distinct (review A2: byte-identical verify-own must
+                // never confuse two attempts).
+                NonceOfCurrentLock().ShouldNotBe(first);
+            }
         }
 
         [Fact]
@@ -132,6 +201,20 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             // handle at all.
             var bytes = File.ReadAllBytes(LockPath);
             bytes.Length.ShouldBeGreaterThan(0);
+        }
+
+        [Fact]
+        public void Parser_ToleratesUnknownFields_InTheLockDocument()
+        {
+            // A future twin may extend the document; extra fields must not demote a local doc to
+            // the foreign bar. Planted: well-formed + local hostId + unknown fields, stale.
+            PlantFile(LockPath,
+                "{\"pid\":1,\"startedAt\":\"2026-01-01T00:00:00Z\",\"hostId\":" +
+                JsonSerializer.Serialize(NewLock().HostId) + ",\"nonce\":\"aa\",\"futureField\":123}",
+                StalePastLocalBar);
+
+            using var handle = NewLock(budgetMs: 10_000).TryAcquire();
+            handle.ShouldNotBeNull(); // local bar applied despite unknown fields
         }
 
         // ── Busy: budget exhaustion is a failure, never lock-free (04 §2, D9 REVISED) ───────────
@@ -157,27 +240,39 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             File.GetLastWriteTimeUtc(LockPath).ShouldBe(originalMtime); // …and untouched
         }
 
-        // ── Staleness: local 60 s bar, foreign/unparseable 24 h bar (04 §2) ─────────────────────
+        // ── Staleness bars: local 60 s / foreign 24 h / unparseable 60 s (B2 amendment) ─────────
 
         [Fact]
-        public void StaleLocalLock_IsTakenOver_AndTheNewLockIsOurOwn()
+        public void StaleLocalLock_IsTakenOver_AndTheIntentIsCleanedUp()
         {
             var mutex = NewLock(budgetMs: 10_000);
-            PlantLock(mutex.HostId, age: TimeSpan.FromMilliseconds(MachineCredentialLock.LOCK_STALE_MS * 2));
+            PlantLock(mutex.HostId, StalePastLocalBar);
 
             using var handle = mutex.TryAcquire();
 
-            handle.ShouldNotBeNull(); // stale local candidate → compare-and-delete takeover
+            handle.ShouldNotBeNull(); // stale local candidate → intent-serialized takeover
             handle.IsStillOwned().ShouldBeTrue(); // the on-disk lock is OUR document now
             using var document = JsonDocument.Parse(File.ReadAllText(LockPath));
             document.RootElement.GetProperty("pid").GetInt64().ShouldBe(Environment.ProcessId);
+            File.Exists(IntentPath).ShouldBeFalse(); // the arbiter releases its intent on every path
+        }
+
+        [Fact]
+        public void HostIdComparison_IsCaseInsensitive()
+        {
+            var mutex = NewLock(budgetMs: 10_000);
+            // A TS peer's os.hostname() may differ from ours only by case — still LOCAL.
+            PlantLock(mutex.HostId.ToUpperInvariant(), StalePastLocalBar);
+
+            using var handle = mutex.TryAcquire();
+            handle.ShouldNotBeNull();
         }
 
         [Fact]
         public void ForeignHostLock_PastTheLocalStaleBar_IsNotTakenOver()
         {
             var mutex = NewLock(budgetMs: 1_200);
-            PlantLock("some-other-host.example", age: TimeSpan.FromMilliseconds(MachineCredentialLock.LOCK_STALE_MS * 2));
+            PlantLock("some-other-host.example", StalePastLocalBar);
             var originalBytes = File.ReadAllBytes(LockPath);
 
             mutex.TryAcquire().ShouldBeNull(); // foreign hostId (network home) → 24 h bar → busy
@@ -188,7 +283,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         public void ForeignHostLock_OlderThan24Hours_IsTakenOver()
         {
             var mutex = NewLock(budgetMs: 10_000);
-            PlantLock("some-other-host.example", age: TimeSpan.FromHours(25));
+            PlantLock("some-other-host.example", TimeSpan.FromHours(25));
 
             using var handle = mutex.TryAcquire();
 
@@ -197,17 +292,143 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         }
 
         [Fact]
-        public void UnparseableLock_IsTreatedAsForeign_NotTakenOverAtTheLocalBar()
+        public void EmptyOrMissingHostId_InAWellFormedDocument_ComparesAsForeign()
         {
-            // A writer killed between create and write leaves an empty/garbage document with no
-            // provable local owner — conservative 24 h bar, never the 60 s local bar.
-            Directory.CreateDirectory(_baseDir);
-            File.WriteAllText(LockPath, "not json at all");
-            File.SetLastWriteTimeUtc(LockPath, DateTime.UtcNow - TimeSpan.FromMinutes(5));
+            // Its writer COMPLETED a write (valid JSON), so the torn-write argument does not
+            // apply — apply the conservative 24 h bar (contract item 7).
+            PlantFile(LockPath, WellFormedDocument(hostId: ""), StalePastLocalBar);
+            NewLock(budgetMs: 1_200).TryAcquire().ShouldBeNull();
 
-            var mutex = NewLock(budgetMs: 1_200);
-            mutex.TryAcquire().ShouldBeNull();
+            // Valid JSON of the wrong shape (missing hostId entirely): same class.
+            PlantFile(LockPath, "{\"pid\":1}", StalePastLocalBar);
+            NewLock(budgetMs: 1_200).TryAcquire().ShouldBeNull();
+            File.ReadAllText(LockPath).ShouldBe("{\"pid\":1}");
+        }
+
+        [Fact]
+        public void UnparseableLock_IsStaleEligibleAtTheLocalBar_AndEmitsOneDiagnostic()
+        {
+            // OWNER-ADOPTED AMENDMENT (review B2, flipping the original 24 h pin): a torn
+            // document's writer provably never completed its acquire write, which precedes
+            // entering the critical section — so taking it over can never collide with an
+            // in-flight refresh, and the 24 h bar would only turn every crash-in-the-create-window
+            // artifact into a day-long machine-wide auth freeze.
+            var warnings = new List<string>();
+            PlantFile(LockPath, "not json at all", TimeSpan.FromMinutes(5));
+
+            using var handle = NewLock(budgetMs: 10_000, diagnostics: warnings.Add).TryAcquire();
+
+            handle.ShouldNotBeNull(); // 60 s bar, not 24 h
+            handle.IsStillOwned().ShouldBeTrue();
+            warnings.Count(w => w.Contains("unparseable")).ShouldBe(1); // exactly one diagnostic
+        }
+
+        [Fact]
+        public void ZeroByteLock_IsStaleEligibleAtTheLocalBar()
+        {
+            // The B1 crash shape itself: a writer killed between create and write.
+            PlantFile(LockPath, "", TimeSpan.FromMinutes(5));
+
+            using var handle = NewLock(budgetMs: 10_000).TryAcquire();
+            handle.ShouldNotBeNull();
+        }
+
+        [Fact]
+        public void FreshUnparseableLock_IsNotTakenOverBeforeTheLocalBar()
+        {
+            // The amendment moves the bar to 60 s — NOT to zero: a fresh torn artifact still
+            // waits out LOCK_STALE_MS (its writer may be frozen mid-create, the accepted residual).
+            PlantFile(LockPath, "not json at all", TimeSpan.FromSeconds(1));
+
+            NewLock(budgetMs: 1_200).TryAcquire().ShouldBeNull();
             File.ReadAllText(LockPath).ShouldBe("not json at all");
+        }
+
+        // ── The takeover-intent arbiter ─────────────────────────────────────────────────────────
+
+        [Fact]
+        public void StaleTakeover_BacksOff_WhileALiveTakeoverIntentExists()
+        {
+            // DETERMINISTIC arbiter test (mandated): a stale lock is takeover-eligible, but a
+            // LIVE intent file proves another claimant is mid-takeover — this waiter must back
+            // off and fail busy, touching neither artifact. REDs when the arbiter is bypassed
+            // (a waiter that ignores the intent takes the stale lock and acquires).
+            var mutex = NewLock(budgetMs: 1_500);
+            PlantLock(mutex.HostId, StalePastLocalBar);
+            PlantFile(IntentPath, WellFormedDocument(mutex.HostId, pid: "999999"), TimeSpan.Zero); // live claimant
+            var lockBytes = File.ReadAllBytes(LockPath);
+            var intentBytes = File.ReadAllBytes(IntentPath);
+
+            mutex.TryAcquire().ShouldBeNull(); // backed off — busy, never a bypass
+
+            File.ReadAllBytes(LockPath).ShouldBe(lockBytes);     // stale lock untouched
+            File.ReadAllBytes(IntentPath).ShouldBe(intentBytes); // live intent untouched
+        }
+
+        [Fact]
+        public void CrashedIntent_IsRecovered_ByTheSameStalenessRules()
+        {
+            // A claimant that died between intent-create and intent-release leaves its intent
+            // behind; it is recovered by the same staleness + compare-and-delete rules, after
+            // which the stale lock itself is taken over.
+            var mutex = NewLock(budgetMs: 10_000);
+            PlantLock(mutex.HostId, StalePastLocalBar);
+            PlantFile(IntentPath, WellFormedDocument(mutex.HostId, pid: "999999"), StalePastLocalBar); // crashed claimant
+
+            using var handle = mutex.TryAcquire();
+
+            handle.ShouldNotBeNull();
+            handle.IsStillOwned().ShouldBeTrue();
+            File.Exists(IntentPath).ShouldBeFalse(); // recovered, used, and released
+        }
+
+        // ── B1: own-artifact cleanup on write failure after a successful exclusive-create ───────
+
+        [Fact]
+        public void CreateWriteFailure_NeverLeavesAPoisonedLockArtifact()
+        {
+            // Review B1: CreateNew succeeded ⇒ this process provably owns the file; a write
+            // failure (disk full, AV) must best-effort delete it. Without the cleanup, the empty
+            // file survives as a poisoned artifact every peer must wait out.
+            var mutex = NewLock(budgetMs: 800);
+            mutex.WriteFaultInjection = () => throw new IOException("disk full (injected)");
+
+            mutex.TryAcquire().ShouldBeNull(); // every attempt faults → busy
+            File.Exists(LockPath).ShouldBeFalse(); // no zero-byte lock survives (RED without B1)
+        }
+
+        [Fact]
+        public void CreateWriteFailure_IsTransient_TheNextAttemptAcquires()
+        {
+            // One-shot fault: the first create's write fails and is cleaned up; the retry inside
+            // the same budget succeeds with a complete document.
+            var mutex = NewLock(budgetMs: 10_000);
+            var faults = 0;
+            mutex.WriteFaultInjection = () =>
+            {
+                if (faults++ == 0)
+                    throw new IOException("transient (injected)");
+            };
+
+            using var handle = mutex.TryAcquire();
+
+            handle.ShouldNotBeNull();
+            faults.ShouldBeGreaterThanOrEqualTo(2); // the fault DID fire on attempt 1 (anti-vacuity)
+            handle.IsStillOwned().ShouldBeTrue();   // final document is complete and ours
+        }
+
+        [Fact]
+        public void IntentWriteFailure_NeverLeavesAPoisonedIntentArtifact()
+        {
+            // Same B1 control at the second create site: a poisoned empty intent would block all
+            // stale takeovers until it ages out.
+            var mutex = NewLock(budgetMs: 1_000);
+            PlantLock(mutex.HostId, StalePastLocalBar); // forces the takeover path (lock create fails first)
+            mutex.WriteFaultInjection = () => throw new IOException("disk full (injected)");
+
+            mutex.TryAcquire().ShouldBeNull(); // intent creation faults every time → busy
+            File.Exists(IntentPath).ShouldBeFalse(); // no zero-byte intent survives (RED without B1)
+            File.Exists(LockPath).ShouldBeTrue();    // and the stale lock was never deleted without an intent
         }
 
         // ── Guarded release ─────────────────────────────────────────────────────────────────────
@@ -303,7 +524,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
                     Plugin = new MachineCredentialFamily { AccessToken = "AT", RefreshToken = "RT" },
                 },
             });
-            PlantLock("some-other-host.example", age: TimeSpan.Zero); // live foreign holder
+            PlantLock("some-other-host.example", TimeSpan.Zero); // live foreign holder
 
             NewLock(budgetMs: 800).TryDeleteStore(store).ShouldBeFalse();
 
