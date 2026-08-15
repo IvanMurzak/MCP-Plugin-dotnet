@@ -1,0 +1,153 @@
+McpPlugin.Tests/Mcp/McpPluginSkillContentTests.cs
+  s_c4ba4f2232a1f2::t_8ae42f7d6ed78f 143
+McpPlugin/src/McpPlugin/Attribute/Prompt/McpPluginPromptAttribute.cs
+  s_c4ba4f2232a1f2::t_6b0102f5bfe1b4 15-20,22
+McpPlugin/src/McpPlugin/Builder/IMcpPluginBuilder.cs
+  s_c4ba4f2232a1f2::t_8dab01cac2adc3 27
+McpPlugin/src/McpPlugin/Attribute/Resources/McpPluginResourceAttribute.cs
+  s_c4ba4f2232a1f2::t_de550f01c01b51 15-20,22
+docs/claude/patterns.md
+  s_c4ba4f2232a1f2::t_8083d147abfb78 19,22,26-27
+McpPlugin/src/Mcp/Prompt/RunPrompt.cs
+  s_c4ba4f2232a1f2::t_7446384cb77c24 77,83,89
+  s_c4ba4f2232a1f2::t_e464e6746ba027 216
+McpPlugin.Tests/Data/Annotations/AnnotatedSkillClass.cs
+  s_c4ba4f2232a1f2::t_9589df5861c70b 16,25,33,41,48
+  s_c4ba4f2232a1f2::t_69f6ce39a4d290 13
+DemoConsoleApp/src/McpToolConsole.cs
+  s_c4ba4f2232a1f2::t_8ed1b531b2bd15 13,16
+McpPlugin/src/McpPlugin/Attribute/Skill/McpPluginSkillTypeAttribute.cs
+  s_c4ba4f2232a1f2::t_8aa667f643869e 15-20,22
+McpPlugin.Tests/Data/Annotations/MixedAliasAttributeClass.cs
+  s_c4ba4f2232a1f2::t_9fd3ceac29b9cb 1-76
+McpPlugin/src/McpPlugin/Attribute/Resources/AiResourceTypeAttribute.cs
+  s_c4ba4f2232a1f2::t_e55e6221b3a120 1-22
+McpPlugin.Tests/Data/Annotations/MixedToolTypeClass.cs
+  s_c4ba4f2232a1f2::t_1e3b7fa727ad5a 13
+  s_c4ba4f2232a1f2::t_d90ff62fc396d0 16,19,22,25,28
+McpPlugin/src/McpPlugin/Attribute/Tool/McpPluginToolTypeAttribute.cs
+  s_c4ba4f2232a1f2::t_f33a7451f5a963 15-20,22
+McpPlugin.Tests/Mcp/McpBuilderTests_SystemTools.cs
+  s_c4ba4f2232a1f2::t_520b6e4ebe52ac 53,60
+McpPlugin.Tests/Mcp/AttributeAliasDiscoveryTests.cs
+  s_c4ba4f2232a1f2::t_9b2cdb62b82ef4 1-191
+McpPlugin/src/McpPlugin/Attribute/Tool/AiToolAttribute.cs
+  s_c4ba4f2232a1f2::t_94e6650e8651ab 1-116
+McpPlugin/src/McpPlugin/Skills/SkillFileGenerator.cs
+  s_c4ba4f2232a1f2::t_31ece60db428d3 1177-1178
+McpPlugin/src/McpPlugin/Attribute/Prompt/AiPromptTypeAttribute.cs
+  s_c4ba4f2232a1f2::t_f9a55bc08b387a 1-22
+McpPlugin.Tests/Data/Annotations/AnnotatedPromptClass.cs
+  s_c4ba4f2232a1f2::t_1b9ff1244b12f6 16,19,22
+  s_c4ba4f2232a1f2::t_3eb4e420254e22 13
+McpPlugin/src/McpPlugin/Attribute/Tool/AiToolTypeAttribute.cs
+  s_c4ba4f2232a1f2::t_479178ec8f3d9c 1-22
+McpPlugin.Tests/Mcp/McpBuilderTests_EnabledAttribute.cs
+  s_c4ba4f2232a1f2::t_12604473f6ffab 214
+  s_c4ba4f2232a1f2::t_3e5e948d8afffb 221
+  s_c4ba4f2232a1f2::t_7e4695a1bac542 179,186,193
+  s_c4ba4f2232a1f2::t_807334b35fcfe8 207
+  s_c4ba4f2232a1f2::t_d302eaace60773 200
+McpPlugin/src/McpPlugin/Attribute/Skill/McpPluginSkillAttribute.cs
+  s_c4ba4f2232a1f2::t_94b4874ef451ad 15-20,22,25
+McpPlugin/src/McpPlugin/Attribute/Tool/AiSkillDescriptionAttribute.cs
+  s_c4ba4f2232a1f2::t_8ae71b8c263c70 7
+  s_c4ba4f2232a1f2::t_b87f497992ec0b 1-6,8-35
+McpPlugin/src/McpPlugin/Builder/Data/PromptMethodData.cs
+  s_c4ba4f2232a1f2::t_e6114e218abdda 21,23
+README.md
+  s_c4ba4f2232a1f2::t_895125c54d6d16 154-155
+  s_c4ba4f2232a1f2::t_a517e7434e61b4 139,143,148,152
+  s_c4ba4f2232a1f2::t_8146e0ecbe30f7 61
+  s_c4ba4f2232a1f2::t_4c2ff5f934cf0a 200
+  s_c4ba4f2232a1f2::t_9da3707df20f1f 178
+McpPlugin/src/McpPlugin/Builder/Data/SystemToolRunnerCollection.cs
+  s_c4ba4f2232a1f2::t_ac94525729c730 21
+McpPlugin/src/McpPlugin/Attribute/Prompt/McpPluginPromptTypeAttribute.cs
+  s_c4ba4f2232a1f2::t_da587da4b18654 15-20,22
+McpPlugin/src/McpPlugin/Builder/Data/ToolMethodData.cs
+  s_c4ba4f2232a1f2::t_e68ad7b402e831 21,23
+McpPlugin/src/McpPlugin/Attribute/Skill/AiSkillAttribute.cs
+  s_c4ba4f2232a1f2::t_cfefd7ad07faae 1-50
+McpPlugin/src/McpPlugin/Attribute/Prompt/AiPromptAttribute.cs
+  s_c4ba4f2232a1f2::t_429f22e601bc74 1-43
+McpPlugin/src/McpPlugin/Attribute/Tool/AiSkillBodyAttribute.cs
+  s_c4ba4f2232a1f2::t_fc6392e738512d 1-6,8-35
+  s_c4ba4f2232a1f2::t_ac50222918ad50 7
+McpPlugin/src/McpPlugin/Attribute/Tool/McpPluginToolAttribute.cs
+  s_c4ba4f2232a1f2::t_f65da793f3c4ed 15-20,22,25
+McpPlugin/src/Mcp/Tool/IRunTool.cs
+  s_c4ba4f2232a1f2::t_70f62677dcca15 30
+  s_c4ba4f2232a1f2::t_9e6c72f0217f90 38
+McpPlugin.Tests/Data/Annotations/AnnotatedToolClass.cs
+  s_c4ba4f2232a1f2::t_394231bad229e3 16,19,22,25,28,31,38,41,44
+  s_c4ba4f2232a1f2::t_9f2edae86eefb6 13
+McpPlugin.Tests/Data/IgnoreTests/IgnoreTestToolClass.cs
+  s_c4ba4f2232a1f2::t_b4d80a6030378c 23
+  s_c4ba4f2232a1f2::t_fdc011573c0e36 20
+  s_c4ba4f2232a1f2::t_df62f92b49b760 13
+  s_c4ba4f2232a1f2::t_d40236d2a4509d 16
+McpPlugin/src/McpPlugin/Builder/McpPluginBuilder.AttributeScanner.cs
+  s_c4ba4f2232a1f2::t_5e679f54500ecf 148,154,160
+  s_c4ba4f2232a1f2::t_13c244520821ef 173,179
+  s_c4ba4f2232a1f2::t_f0ed545531b547 62-65
+  s_c4ba4f2232a1f2::t_5a58128824b113 204,210,216
+McpPlugin/src/McpPlugin/Attribute/Tool/McpPluginSkillBodyAttribute.cs
+  s_c4ba4f2232a1f2::t_25a38a8e77f5b3 16-18,20,22,25
+.specify/memory/constitution.md
+  s_c4ba4f2232a1f2::t_37332b83e4faaf 74-77
+CLAUDE.md
+  s_c4ba4f2232a1f2::t_65a759f407c4a7 25
+McpPlugin/src/McpPlugin/Attribute/Resources/McpPluginResourceTypeAttribute.cs
+  s_c4ba4f2232a1f2::t_c0b1981ea7963d 15-20,22
+McpPlugin.Tests/Data/Annotations/AnnotatedResourceClass.cs
+  s_c4ba4f2232a1f2::t_5476c0c3bd0748 15
+  s_c4ba4f2232a1f2::t_64248a9c4ca6b6 18,25,32
+McpPlugin/src/Mcp/Tool/RunTool.cs
+  s_c4ba4f2232a1f2::t_81935341444f1a 40,45,48,53
+McpPlugin/src/McpPlugin/Builder/Data/ResourceMethodData.cs
+  s_c4ba4f2232a1f2::t_6024db5ef7dcad 21,23
+McpPlugin/src/McpPlugin/Attribute/Skill/AiSkillTypeAttribute.cs
+  s_c4ba4f2232a1f2::t_bc76d61ce0aaec 7
+  s_c4ba4f2232a1f2::t_96973069580c6e 1-6,8-20
+McpPlugin/src/McpPlugin/Builder/Data/SkillMemberData.cs
+  s_c4ba4f2232a1f2::t_a48d396521387d 21,24
+McpPlugin/src/McpPlugin/Attribute/Resources/AiResourceAttribute.cs
+  s_c4ba4f2232a1f2::t_6d5e29d303574e 1-42
+McpPlugin/src/Mcp/McpSystemToolManager.cs
+  s_c4ba4f2232a1f2::t_71c0173ccf02f3 31-32
+McpPlugin/src/McpPlugin/Attribute/Tool/McpPluginSkillDescriptionAttribute.cs
+  s_c4ba4f2232a1f2::t_d2504e8bab5927 16-18,20,22,25
+McpPlugin/src/McpPlugin/Builder/McpPluginBuilder.cs
+  s_c4ba4f2232a1f2::t_1cb83c2cdfcf06 190,193
+  s_c4ba4f2232a1f2::t_c35a171bb67cf5 107,114,117,123
+  s_c4ba4f2232a1f2::t_6a1124b71295d3 155,158
+McpPlugin.Tests/Data/IgnoreTests/SubNamespaceToolClass.cs
+  s_c4ba4f2232a1f2::t_0c5aa2d77d99cf 16
+  s_c4ba4f2232a1f2::t_59eba48057ad1f 13
+  s_c4ba4f2232a1f2::t_23400634b5c3a8 20
+  s_c4ba4f2232a1f2::t_2ed2ccdba66bfe 23
+McpPlugin.Tests/Data/IgnoreTests/IncludeTestToolClass.cs
+  s_c4ba4f2232a1f2::t_e87c4e47f961a0 16
+  s_c4ba4f2232a1f2::t_f65d851bff75ba 13
+  s_c4ba4f2232a1f2::t_c5be35c0a451b0 23
+  s_c4ba4f2232a1f2::t_b962bd8ca2c7df 20
+McpPlugin.Tests/Mcp/McpBuilderTests_PromptEnumDefaultValue.cs
+  s_c4ba4f2232a1f2::t_3c29c6bb69b731 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "a679660bda401890ce58cf4d33d11a10e6bf709f",
+  "prompts": {},
+  "sessions": {
+    "s_c4ba4f2232a1f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "edabced4-fdfb-411e-9881-8f7d605edc3b",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,76 @@
+McpPlugin/src/AgentConfig/AiAgentConfigurator.cs
+  s_50edd0e0346255::t_b0b9670767ecde 12
+  s_50edd0e0346255::t_dbf6d6a115a03d 27-33,81-90,145,151,161,167
+  s_50edd0e0346255::t_603698a00ba6f9 19-26
+  s_50edd0e0346255::t_7b2c2d88b2e523 142-144
+  s_50edd0e0346255::t_70affaa5f2ba58 146-150
+  s_50edd0e0346255::t_4b5e2a97cae2c3 152-154,158-160
+  s_50edd0e0346255::t_0522fc3263d24a 162-166
+  s_50edd0e0346255::t_63ace89b63d95e 168-170
+  s_18e0f321565245::t_92b5dc54fb88f6 104-106,116-121,123-126,129-130,135-138,155-157,171-185,189-191,193,195-202
+McpPlugin.Tests/AgentConfig/ConfigWritersB6Tests.cs
+  s_50edd0e0346255::t_d12932ac6e7cf7 249
+  s_50edd0e0346255::t_eee85ca8e4a4b1 265
+  s_50edd0e0346255::t_b41fe2c33f2eae 1-86,89-229,232-248,250-264,266-395
+  s_50edd0e0346255::t_d767c093054671 87-88
+  s_50edd0e0346255::t_58214d953523fb 230-231
+McpPlugin/src/AgentConfig/AgentConfiguratorSettings.cs
+  s_50edd0e0346255::t_568b83a79b2c33 12
+  s_18e0f321565245::t_648d76edbd91c9 196-246
+McpPlugin.Tests/AgentConfig/AiAgentConfiguratorTests.cs
+  s_9bb276d7183c60::t_5b97eed0c729d2 84,96-105
+McpPlugin/src/AgentConfig/Impl/AntigravityConfigurator.cs
+  s_cb41aadbde3305::t_00775f747e5ac5 50
+McpPlugin/src/AgentConfig/AgentConfigBuilders.cs
+  s_18e0f321565245::t_bb8ab446672b0a 26-31,34,37,80
+McpPlugin/src/AgentConfig/Impl/ClineConfigurator.cs
+  s_18e0f321565245::t_ac3d5520e4c87a 59
+McpPlugin/src/AgentConfig/Impl/CodexConfigurator.cs
+  s_18e0f321565245::t_148714ab53f828 43,46,56,63,65,70-73
+McpPlugin/src/AgentConfig/Impl/CustomConfigurator.cs
+  s_18e0f321565245::t_6abc6350fc2e94 89,91
+McpPlugin/src/AgentConfig/Impl/OpenCodeConfigurator.cs
+  s_18e0f321565245::t_16e63e10394278 37-38,42,45,60,64-66,69
+McpPlugin/src/AgentConfig/Impl/RiderConfigurator.cs
+  s_18e0f321565245::t_aab2c9b08ef7ac 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "9558c08fe9d870a94b5df86c6128d1ee5090e006",
+  "prompts": {},
+  "sessions": {
+    "s_18e0f321565245": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a0b9ec427af44ce5b",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_50edd0e0346255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2164075-e554-49e6-8a57-fdc35f7f7e9d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_9bb276d7183c60": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f551e-4ca8-7e60-be86-dea13e2ffad8",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_cb41aadbde3305": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e52f295f-a887-4d28-a18e-567076052857",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
