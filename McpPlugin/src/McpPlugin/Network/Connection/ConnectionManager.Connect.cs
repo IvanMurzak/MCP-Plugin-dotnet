@@ -39,14 +39,77 @@ namespace com.IvanMurzak.McpPlugin
                 return false;
             }
 
-            // Check if there's already an ongoing connection attempt
+            // SINGLE-FLIGHT: atomically either JOIN the in-flight attempt or INSTALL ourselves
+            // as its leader. The check and the publication happen under ONE
+            // _ongoingConnectionGate hold. Previously the check and the publication were
+            // separated by the _gate acquisition (check-then-act race): a caller that read
+            // null here before the leader published would queue on _gate — which the leader
+            // holds for the WHOLE attempt — wake only after that attempt completed and the
+            // field was cleared, and then start a second, duplicate connection attempt.
+            // A TaskCompletionSource proxy (instead of the real attempt task) is published
+            // because the real task can only be created while holding _gate, and _gate must
+            // NOT be acquired under _ongoingConnectionGate (Disconnect acquires them in the
+            // opposite order: _gate → _ongoingConnectionGate).
+            Task<bool>? ongoingTask;
+            TaskCompletionSource<bool>? connectionAttempt = null;
             await _ongoingConnectionGate.WaitAsync(cancellationToken);
-            var ongoingTask = _ongoingConnectionTask;
-            _ongoingConnectionGate.Release();
+            try
+            {
+                ongoingTask = _ongoingConnectionTask;
+                if (ongoingTask == null)
+                {
+                    connectionAttempt = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    _ongoingConnectionTask = connectionAttempt.Task;
+                }
+            }
+            finally
+            {
+                _ongoingConnectionGate.Release();
+            }
 
             if (ongoingTask != null)
                 return await WaitForConnectionCompletion(ongoingTask, cancellationToken);
 
+            var result = false;
+            try
+            {
+                result = await ConnectCore(cancellationToken);
+                return result;
+            }
+            finally
+            {
+                try
+                {
+                    // Use CancellationToken.None: cleanup must run even when cancellationToken
+                    // has already been cancelled by DisconnectImmediate.
+                    await _ongoingConnectionGate.WaitAsync(CancellationToken.None);
+                    // DisconnectImmediate may have detached this attempt (nulled the field) and a
+                    // successor Connect may already have installed itself — never clobber it.
+                    if (ReferenceEquals(_ongoingConnectionTask, connectionAttempt!.Task))
+                        _ongoingConnectionTask = null;
+                    _ongoingConnectionGate.Release();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // Disposed mid-attempt: the field no longer matters, but the proxy below MUST
+                    // still complete so joined callers are never orphaned.
+                }
+                finally
+                {
+                    // Complete the proxy only AFTER the field is cleared, so a caller arriving
+                    // after completion starts a fresh attempt instead of adopting a stale result.
+                    connectionAttempt!.TrySetResult(result);
+                }
+            }
+        }
+
+        /// <summary>
+        /// The single-flight leader's connection flow: serializes on <see cref="_gate"/> and runs
+        /// the actual connection attempt. Only ever entered by the caller that installed itself in
+        /// <see cref="_ongoingConnectionTask"/>; everyone else joins that task instead.
+        /// </summary>
+        private async Task<bool> ConnectCore(CancellationToken cancellationToken)
+        {
             try
             {
                 _logger.LogDebug("{class}[{guid}] {method} acquiring gate.",
@@ -80,19 +143,6 @@ namespace com.IvanMurzak.McpPlugin
                     return false; // already disposed
                 }
 
-                // Double-check for ongoing task after acquiring gate
-                await _ongoingConnectionGate.WaitAsync(cancellationToken);
-                ongoingTask = _ongoingConnectionTask;
-                _ongoingConnectionGate.Release();
-
-                if (ongoingTask != null)
-                {
-                    _logger.LogDebug("{class}[{guid}] {method} Connection already in progress after acquiring gate, releasing gate and waiting.",
-                        nameof(ConnectionManager), _guid, nameof(Connect));
-                    _gate.Release();
-                    return await WaitForConnectionCompletion(ongoingTask, cancellationToken);
-                }
-
                 if (_hubConnection.CurrentValue?.State is HubConnectionState.Connected or HubConnectionState.Connecting)
                 {
                     _logger.LogDebug("{class}[{guid}] {method} Already connected. Ignoring.",
@@ -108,23 +158,7 @@ namespace com.IvanMurzak.McpPlugin
 
                 _continueToReconnect.Value = true;
 
-                Task<bool> connectionTask;
-                await _ongoingConnectionGate.WaitAsync(cancellationToken);
-                connectionTask = InternalConnect(cancellationToken); // local ref first — never null
-                _ongoingConnectionTask = connectionTask;             // publish to shared field under gate
-                _ongoingConnectionGate.Release();
-                try
-                {
-                    return await connectionTask; // safe: local ref was captured before the gate was released
-                }
-                finally
-                {
-                    // Use CancellationToken.None: cleanup must run even when cancellationToken
-                    // (the internal CTS token) has already been cancelled by DisconnectImmediate.
-                    await _ongoingConnectionGate.WaitAsync(CancellationToken.None);
-                    _ongoingConnectionTask = null;
-                    _ongoingConnectionGate.Release();
-                }
+                return await InternalConnect(cancellationToken);
             }
             finally
             {

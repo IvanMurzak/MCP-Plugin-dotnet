@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
 using Moq;
+using R3;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -384,6 +385,85 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             tasks.Length.ShouldBe(20);
             // Due to concurrency control, only one connection should be created
             callCount.ShouldBe(1, "concurrent calls should reuse the same connection attempt");
+        }
+
+        [Fact]
+        public async Task Connect_CallerInPrePublicationWindow_JoinsInFlightAttempt()
+        {
+            // Deterministically pins the interleaving behind the CI flake "callCount 1 vs 2":
+            // a caller whose single-flight check runs BEFORE the leader publishes its attempt
+            // parks on the connection gate; when the leader's (failed) attempt completes it
+            // must ADOPT that outcome — never begin a second, duplicate attempt of its own.
+            //
+            // The KeepConnected subscription below fires SYNCHRONOUSLY on the leader's thread
+            // when Connect enables reconnection — i.e. exactly inside the window between the
+            // leader's single-flight check and the publication of its attempt task — so the
+            // second Connect is issued deterministically inside the window: no sleeps, no
+            // timing assumptions.
+            var providerCallCount = 0;
+            var firstProviderCallEntered = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var allowProviderToReturn = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var secondProviderCallSeen = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .Returns(async () =>
+                {
+                    var count = Interlocked.Increment(ref providerCallCount);
+                    if (count == 1)
+                        firstProviderCallEntered.TrySetResult(true);
+                    else
+                        secondProviderCallSeen.TrySetResult(true);
+                    await allowProviderToReturn.Task;
+                    return CreateMockHubConnection();
+                });
+
+            await using var connectionManager = new ConnectionManager(
+                _logger, _testVersion, _testEndpoint, _mockHubConnectionProvider.Object);
+
+            // Hang guards only — the test is driven purely by explicit signals; these must never fire.
+            using var firstCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            using var secondCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+
+            Task<bool>? secondConnect = null;
+            var windowHooked = 0;
+            using var subscription = connectionManager.KeepConnected
+                .Subscribe(keep =>
+                {
+                    if (keep && Interlocked.Exchange(ref windowHooked, 1) == 0)
+                        secondConnect = connectionManager.Connect(secondCts.Token);
+                });
+
+            // Leader: its synchronous prefix (on this thread) runs through the subscriber above
+            // and then suspends inside the provider callback.
+            var firstConnect = connectionManager.Connect(firstCts.Token);
+
+            await EnsureConnectionStartedAsync(firstProviderCallEntered.Task);
+            secondConnect.ShouldNotBeNull("the in-window second Connect must have been issued");
+            providerCallCount.ShouldBe(1, "while the first attempt is in flight only one connection may be created");
+
+            // Complete the first attempt as a FAILURE: cancel first, then let the provider return —
+            // the canceled token makes the leader discard the connection and return false quickly,
+            // with no real-time waits.
+            firstCts.Cancel();
+            allowProviderToReturn.TrySetResult(true);
+
+            var firstResult = await firstConnect;
+            firstResult.ShouldBeFalse("the leader's attempt was canceled");
+
+            // On the buggy interleaving the second caller now acquires the gate and calls the
+            // provider AGAIN; detect that and cancel so the test fails fast instead of sitting
+            // out the doomed duplicate attempt.
+            var completed = await Task.WhenAny(secondConnect!, secondProviderCallSeen.Task);
+            if (completed == secondProviderCallSeen.Task)
+                secondCts.Cancel();
+
+            var secondResult = await secondConnect!;
+            secondResult.ShouldBeFalse("the adopted attempt failed");
+
+            providerCallCount.ShouldBe(1,
+                "a Connect call issued while another attempt is in flight must join that attempt — " +
+                "a second CreateConnectionAsync call is the single-flight race");
         }
 
         #endregion
