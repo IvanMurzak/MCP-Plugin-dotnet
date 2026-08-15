@@ -130,6 +130,61 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             raw.RootElement.GetProperty("accessToken").GetString().ShouldNotBe(agentExpected.GetProperty("accessToken").GetString());
         }
 
+        // ── Per-family clientId fidelity (review B1, x1 fix round 1) ────────────────────────────────
+        //
+        // families.agent.clientId and families.plugin.clientId used to be identical
+        // ("unity-mcp-plugin" on both), so ANY assertion that only checks "does the family have A
+        // clientId" — or that round-trips vectors.v2Document through Write()/Read() and compares the
+        // result back to the SAME parsed vector (as V2Document_WrittenThenRead... above does) —
+        // passes under a cross-family clientId swap, because both the written input and the expected
+        // value move together (verified locally: swapping the vector's two clientId strings left
+        // every existing vector-driven test green, TS and C# alike — the swap is invisible to a
+        // write-then-read echo by construction, since clientId has no independent derivation to check
+        // against, unlike ProjectIdentity.DerivePin).
+        //
+        // The two literals below are therefore deliberately HARDCODED, redundantly with the vector,
+        // so a future accidental re-symmetrization (or an authoring mistake that swaps which family
+        // gets which id) reddens THIS file even though it would not redden the round-trip test above.
+
+        private const string ExpectedAgentClientId = "agd-app-8f3a1c2e";
+        private const string ExpectedPluginClientId = "unity-mcp-plugin";
+
+        [Fact]
+        public void Vector_PinsTheExpectedLiteralClientId_UnderEachFamily_SanityFailsLoudlyIfTheVectorDrifts()
+        {
+            using var vectors = LoadVectors();
+            var families = vectors.RootElement.GetProperty("v2Document").GetProperty("families");
+            families.GetProperty("agent").GetProperty("clientId").GetString().ShouldBe(ExpectedAgentClientId);
+            families.GetProperty("plugin").GetProperty("clientId").GetString().ShouldBe(ExpectedPluginClientId);
+            ExpectedAgentClientId.ShouldNotBe(ExpectedPluginClientId);
+        }
+
+        [Fact]
+        public void PerFamilyWrite_KeepsEachFamilysClientId_UnderItsOwnFamilyKey_NeverTheOthers()
+        {
+            // Exercises the real object-model write path (not a bulk write(vectors.v2Document)) so a
+            // hypothetical per-family assignment bug (family A's data landing under family B's key)
+            // is also caught, not just a vector-authoring mistake.
+            var credentials = new MachineCredentials
+            {
+                Families = new MachineCredentialFamilies
+                {
+                    Agent = new MachineCredentialFamily { AccessToken = "a", RefreshToken = "r", ClientId = ExpectedAgentClientId, Scope = "mcp:agent" },
+                    Plugin = new MachineCredentialFamily { AccessToken = "a2", RefreshToken = "r2", ClientId = ExpectedPluginClientId, Scope = "mcp:plugin" },
+                },
+            };
+            NewStore().Write(credentials);
+
+            var read = NewStore().Read();
+            read.ShouldNotBeNull();
+            read!.Families!.Agent!.ClientId.ShouldBe(ExpectedAgentClientId);
+            read.Families.Plugin!.ClientId.ShouldBe(ExpectedPluginClientId);
+            // The discriminating check: NOT merely "the two differ" (a swap keeps them differing from
+            // each other too) — each is pinned to ITS OWN hardcoded literal, so a swap mismatches here.
+            read.Families.Agent.ClientId.ShouldNotBe(ExpectedPluginClientId);
+            read.Families.Plugin.ClientId.ShouldNotBe(ExpectedAgentClientId);
+        }
+
         // ── v1 read-compat and adoption (04 §1 / F11.1, golden vector) ──────────────────────────────
 
         [Fact]
