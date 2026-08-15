@@ -20,6 +20,10 @@
 
   <ItemGroup>
     <ProjectReference Include="../McpPlugin/McpPlugin.csproj" />
+    <!-- Real-subprocess harness for the lock takeover plants (design 04 §5): the reference copies
+         the harness executable next to the test assembly, where
+         MachineCredentialLockTakeoverPlantTests spawns it via `dotnet`. -->
+    <ProjectReference Include="../McpPlugin.Tests.LockHarness/McpPlugin.Tests.LockHarness.csproj" />
   </ItemGroup>
 
   <ItemGroup>

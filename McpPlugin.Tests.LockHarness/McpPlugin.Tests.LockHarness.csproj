@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Real-subprocess harness for the machine credential lock takeover plants (design 04 §5:
+       "Concurrency - real processes, not threads"). Referenced by McpPlugin.Tests, which spawns
+       it as an actual OS process to exercise kill -9 recovery, holder liveness, and the
+       two-waiter compare-and-delete race. Test infrastructure only - never packed. -->
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>11.0</LangVersion>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>com.IvanMurzak.McpPlugin.Tests.LockHarness</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../McpPlugin/McpPlugin.csproj" />
+  </ItemGroup>
+
+</Project>
