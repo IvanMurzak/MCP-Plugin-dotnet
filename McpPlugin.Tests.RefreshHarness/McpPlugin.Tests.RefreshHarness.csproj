@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Real-subprocess harness for the mixed-language refresh concurrency suite
+       (unified-machine-auth 04 §5 "Concurrency - real processes, not threads", task x2).
+       Exposes the REAL McpPlugin credential stack - MachineCredentialStore,
+       MachineCredentialLock, HttpTokenRefresher, PluginCredentialProvider - as a console
+       process so the cross-language suite in AI-Game-Dev-CLI-Core
+       (test/concurrency-suite.subprocess.test.ts) can spawn C# workers next to Node workers
+       against one shared store and a local fake authorization server.
+       Test infrastructure only - never packed. -->
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>11.0</LangVersion>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>com.IvanMurzak.McpPlugin.Tests.RefreshHarness</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../McpPlugin/McpPlugin.csproj" />
+  </ItemGroup>
+
+</Project>

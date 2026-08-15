@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="McpPlugin.Tests" />
+    <InternalsVisibleTo Include="McpPlugin.Tests.RefreshHarness" />
   </ItemGroup>
 
   <PropertyGroup>

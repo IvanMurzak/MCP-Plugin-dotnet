@@ -91,6 +91,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         };
 
         private readonly string _baseDirectory;
+        private readonly bool _plaintextForTesting;
 
         /// <summary>
         /// Create a store rooted at <paramref name="baseDirectory"/>, or at <c>~/.ai-game-dev</c> when
@@ -98,10 +99,26 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// callers use the default machine store.
         /// </summary>
         public MachineCredentialStore(string? baseDirectory = null)
+            : this(baseDirectory, plaintextForTesting: false)
+        {
+        }
+
+        /// <summary>
+        /// Test seam (InternalsVisibleTo: McpPlugin.Tests / McpPlugin.Tests.RefreshHarness):
+        /// <paramref name="plaintextForTesting"/> true skips the Windows DPAPI codec so the on-disk
+        /// document is plaintext JSON on every OS — the same escape the TypeScript twin exposes
+        /// publicly as <c>identityCredentialCodec</c> (cli-core <c>machine-credentials.ts</c>). The
+        /// mixed-language concurrency suite (unified-machine-auth 04 §5, task x2) shares one store
+        /// between C# and Node worker processes, which is only practical with a common at-rest
+        /// format; DPAPI cross-implementation parity is proven separately (task x1). Never used in
+        /// production: the public constructor pins the platform codec.
+        /// </summary>
+        internal MachineCredentialStore(string? baseDirectory, bool plaintextForTesting)
         {
             _baseDirectory = baseDirectory ?? Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
                 DirectoryName);
+            _plaintextForTesting = plaintextForTesting;
         }
 
         /// <summary>Absolute path of the store directory.</summary>
@@ -164,7 +181,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 return MachineCredentialReadResult.Unreadable("credential file is empty");
 
             byte[] plaintext;
-            if (IsWindows)
+            if (IsWindows && !_plaintextForTesting)
             {
                 try
                 {
@@ -295,7 +312,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 return null;
 
             var raw = File.ReadAllBytes(CredentialsPath);
-            var plaintext = IsWindows ? Unprotect(raw) : raw;
+            var plaintext = IsWindows && !_plaintextForTesting ? Unprotect(raw) : raw;
             return Encoding.UTF8.GetString(plaintext);
         }
 
@@ -327,7 +344,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         private void WriteProtected(string json)
         {
             var plaintext = Encoding.UTF8.GetBytes(json);
-            var bytes = IsWindows ? Protect(plaintext) : plaintext;
+            var bytes = IsWindows && !_plaintextForTesting ? Protect(plaintext) : plaintext;
             WriteFileAtomic(CredentialsPath, bytes);
             SetPosixPermissions(CredentialsPath, PosixFilePermissions);
         }
