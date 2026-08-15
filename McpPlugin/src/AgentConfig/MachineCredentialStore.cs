@@ -16,13 +16,15 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 
 namespace com.IvanMurzak.McpPlugin.AgentConfig
 {
     /// <summary>
     /// The shared machine credential store at <c>~/.ai-game-dev/</c> — a single per-machine home for
-    /// the ai-game.dev account credential (<c>credentials.json</c>) and the co-located public JWKS
-    /// cache (<c>jwks-cache.json</c>). Engines, CLIs, and the local server all read this store, so
+    /// the ai-game.dev account credential (<c>credentials.json</c>, schema v2 — see
+    /// <see cref="MachineCredentials"/>) and the co-located public JWKS cache
+    /// (<c>jwks-cache.json</c>). Engines, CLIs, and the local server all read this store, so
     /// sign-in happens once per machine.
     ///
     /// <para><b>At-rest protection (security-critical):</b></para>
@@ -33,6 +35,22 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
     ///         user's key (<c>CryptProtectData</c>, <c>CRYPTPROTECT_UI_FORBIDDEN</c>) so the on-disk
     ///         bytes are never plaintext.</item>
     /// </list>
+    ///
+    /// <para><b>Write durability (design 04 §1):</b> credential writes are whole-file and atomic — a
+    /// temp sibling in the same directory is written, fsynced, then renamed over the destination
+    /// (<see cref="File.Replace(string, string, string)"/>, which preserves the destination's DACL on
+    /// Windows, with a move fallback for the create case). The rename retries
+    /// <see cref="RenameRetryAttempts"/> times with <see cref="RenameRetryDelayMs"/> ms backoff to
+    /// survive transient holders (AV scanners, indexers, concurrent readers). A reader therefore
+    /// never observes a truncated document.</para>
+    ///
+    /// <para><b>Unreadable ≠ empty (design 04 §1):</b> a store that exists but cannot be decoded
+    /// (DPAPI unprotect failure after a password reset / roaming profile / service account, or a
+    /// corrupted document) is a distinct <see cref="MachineCredentialStoreStatus.Unreadable"/> state
+    /// surfaced by <see cref="TryRead"/> — never a crash, and never a reason to delete or overwrite
+    /// the file until the user explicitly re-authorizes (an automated
+    /// <see cref="Rotate(string, string, DateTimeOffset?)"/> refuses; an explicit re-auth
+    /// <see cref="Write"/> replaces it).</para>
     ///
     /// <para>The JWKS cache holds only public signing keys, so it is stored plaintext (still inside the
     /// user-only directory). Credentials are NEVER written to a project file / VCS.</para>
@@ -47,6 +65,17 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         /// <summary>File name of the co-located public JWKS cache.</summary>
         public const string JwksCacheFileName = "jwks-cache.json";
+
+        /// <summary>
+        /// Attempts made to rename the fsynced temp sibling over the destination before giving up.
+        /// Contract (design 04 §1): at least 4.
+        /// </summary>
+        public const int RenameRetryAttempts = 5;
+
+        /// <summary>
+        /// Backoff between rename attempts, in milliseconds. Contract (design 04 §1): at least 250.
+        /// </summary>
+        public const int RenameRetryDelayMs = 250;
 
         // 0600 (owner rw) and 0700 (owner rwx) as binary bit-patterns — C# has no octal literals.
         private const uint PosixFilePermissions = 0b110_000_000;      // rw- --- ---
@@ -84,32 +113,103 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// <summary>Absolute path of the public JWKS cache file.</summary>
         public string JwksCachePath => Path.Combine(_baseDirectory, JwksCacheFileName);
 
-        /// <summary>True when a credential file exists in the store.</summary>
+        /// <summary>
+        /// True when a credential file exists in the store. <b>Never a signed-in signal</b> (design
+        /// 04 §1): an existing file may be unreadable — use <see cref="TryRead"/> and check for
+        /// <see cref="MachineCredentialStoreStatus.Ok"/> instead.
+        /// </summary>
         public bool Exists => File.Exists(CredentialsPath);
 
         /// <summary>
         /// Read and decrypt the stored credentials, or <c>null</c> when none are present.
+        /// <para>Compatibility surface: an <b>unreadable</b> store also yields <c>null</c> here (it
+        /// never throws for one) — call <see cref="TryRead"/> to distinguish
+        /// <see cref="MachineCredentialStoreStatus.Missing"/> from
+        /// <see cref="MachineCredentialStoreStatus.Unreadable"/>.</para>
         /// </summary>
-        public MachineCredentials? Read()
+        public MachineCredentials? Read() => TryRead().Credentials;
+
+        /// <summary>
+        /// Read the store with a structured outcome (design 04 §1): <see cref="MachineCredentialStoreStatus.Missing"/>
+        /// when no file exists, <see cref="MachineCredentialStoreStatus.Ok"/> with the decoded
+        /// credentials (a <c>{version: 1}</c> document is adopted in-memory as
+        /// <c>families.legacy</c>), or <see cref="MachineCredentialStoreStatus.Unreadable"/> when the
+        /// file exists but cannot be decoded — which is <b>not</b> signed-out: never crash, never
+        /// delete, never overwrite until the user explicitly re-authorizes.
+        /// </summary>
+        public MachineCredentialReadResult TryRead()
         {
             if (!File.Exists(CredentialsPath))
-                return null;
+                return MachineCredentialReadResult.Missing();
 
-            var raw = File.ReadAllBytes(CredentialsPath);
+            byte[] raw;
+            try
+            {
+                raw = ReadAllBytesWithRetry(CredentialsPath);
+            }
+            catch (FileNotFoundException)
+            {
+                return MachineCredentialReadResult.Missing(); // deleted between the existence check and the open
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return MachineCredentialReadResult.Missing();
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+            {
+                return MachineCredentialReadResult.Unreadable("credential file could not be opened: " + ex.Message);
+            }
+
             if (raw.Length == 0)
-                return null;
+                return MachineCredentialReadResult.Unreadable("credential file is empty");
 
-            var plaintext = IsWindows ? Unprotect(raw) : raw;
+            byte[] plaintext;
+            if (IsWindows)
+            {
+                try
+                {
+                    plaintext = Unprotect(raw);
+                }
+                catch (CryptographicException ex)
+                {
+                    // Password reset / roaming profile / service account — the DPAPI user key can no
+                    // longer decrypt the blob. Structured state, never a crash (design 04 §1).
+                    return MachineCredentialReadResult.Unreadable("DPAPI unprotect failed: " + ex.Message);
+                }
+            }
+            else
+            {
+                plaintext = raw;
+            }
+
             var json = Encoding.UTF8.GetString(plaintext);
             if (string.IsNullOrWhiteSpace(json))
-                return null;
+                return MachineCredentialReadResult.Unreadable("credential document is blank");
 
-            return JsonSerializer.Deserialize<MachineCredentials>(json, SerializerOptions);
+            MachineCredentials? credentials;
+            try
+            {
+                credentials = JsonSerializer.Deserialize<MachineCredentials>(json, SerializerOptions);
+            }
+            catch (JsonException ex)
+            {
+                return MachineCredentialReadResult.Unreadable("credential document is not valid JSON: " + ex.Message);
+            }
+
+            if (credentials == null)
+                return MachineCredentialReadResult.Unreadable("credential document decodes to null");
+
+            // v1 read-compat: interpret top-level token material as families.legacy (design 04 §1).
+            credentials.AdoptLegacyTokens();
+            return MachineCredentialReadResult.Ok(credentials);
         }
 
         /// <summary>
         /// Encrypt (Windows) / restrict (POSIX) and write <paramref name="credentials"/> to the store,
-        /// creating the store directory with owner-only permissions if needed.
+        /// creating the store directory with owner-only permissions if needed. The document is
+        /// normalized to the v2 write contract first (v1 adoption, version upgrade, and the top-level
+        /// v1 compat mirror of the plugin family — see <see cref="MachineCredentials"/>), then written
+        /// atomically (temp sibling → fsync → rename-with-retry).
         /// </summary>
         public void Write(MachineCredentials credentials)
         {
@@ -118,30 +218,48 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
             EnsureBaseDirectory();
 
+            credentials.NormalizeForWrite();
             var json = JsonSerializer.Serialize(credentials, SerializerOptions);
-            var plaintext = Encoding.UTF8.GetBytes(json);
-            var bytes = IsWindows ? Protect(plaintext) : plaintext;
-
-            File.WriteAllBytes(CredentialsPath, bytes);
-            SetPosixPermissions(CredentialsPath, PosixFilePermissions);
+            WriteProtected(json);
         }
 
         /// <summary>
-        /// Replace the token material (access + refresh + expiry) while preserving the stored identity
-        /// fields (<see cref="MachineCredentials.ServerTarget"/> / <see cref="MachineCredentials.Subject"/>),
-        /// then persist. Returns the written credentials.
+        /// Replace the plugin-plane token material (access + refresh + expiry) while preserving every
+        /// other stored field, then persist. In a v2 document this rotates the <c>plugin</c> family
+        /// (falling back to <c>legacy</c>, creating it when the store is empty); the top-level v1
+        /// mirror follows on write. Refuses (throws <see cref="InvalidOperationException"/>) when the
+        /// store exists but is unreadable — an automated rotation must never destroy a store the user
+        /// has not explicitly re-authorized to overwrite (design 04 §1). Returns the written credentials.
         /// </summary>
         public MachineCredentials Rotate(string accessToken, string refreshToken, DateTimeOffset? expiresAt = null)
         {
-            var current = Read() ?? new MachineCredentials();
-            current.AccessToken = accessToken;
-            current.RefreshToken = refreshToken;
-            current.ExpiresAt = expiresAt;
+            var result = TryRead();
+            if (result.Status == MachineCredentialStoreStatus.Unreadable)
+                throw new InvalidOperationException(
+                    "The machine credential store exists but cannot be read (" + result.Error +
+                    "); sign-in is required. Refusing to overwrite it from an automated rotation.");
+
+            var current = result.Credentials ?? new MachineCredentials();
+            var families = current.Families ?? (current.Families = new MachineCredentialFamilies());
+            var family = families.Plugin ?? families.Legacy;
+            if (family == null)
+            {
+                family = new MachineCredentialFamily();
+                families.Legacy = family;
+            }
+
+            family.AccessToken = accessToken;
+            family.RefreshToken = refreshToken;
+            family.ExpiresAt = expiresAt;
+
             Write(current);
             return current;
         }
 
-        /// <summary>Delete the stored credentials (sign-out). No-op when none exist.</summary>
+        /// <summary>
+        /// Delete the stored credentials — explicit sign-out only, never an error-recovery path
+        /// (an unreadable store must be preserved for the user). No-op when none exist.
+        /// </summary>
         public void Delete()
         {
             if (File.Exists(CredentialsPath))
@@ -162,6 +280,147 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
             EnsureBaseDirectory();
             File.WriteAllText(JwksCachePath, jwksJson);
+        }
+
+        // ── Test / diagnostic seams (InternalsVisibleTo: McpPlugin.Tests) ────────────────────────
+
+        /// <summary>
+        /// The decrypted credential document text, or <c>null</c> when missing. Test/diagnostic seam —
+        /// lets raw-document assertions (mirror emission, unknown-field preservation, golden vectors)
+        /// run on Windows, where the on-disk bytes are DPAPI-encrypted. Throws on an unreadable store.
+        /// </summary>
+        internal string? ReadPlaintextJson()
+        {
+            if (!File.Exists(CredentialsPath))
+                return null;
+
+            var raw = File.ReadAllBytes(CredentialsPath);
+            var plaintext = IsWindows ? Unprotect(raw) : raw;
+            return Encoding.UTF8.GetString(plaintext);
+        }
+
+        /// <summary>
+        /// Write a raw credential document (protect + atomic write), bypassing the
+        /// <see cref="MachineCredentials"/> model. Test seam for planting v1 / corrupted / newer-schema
+        /// fixtures on every OS.
+        /// </summary>
+        internal void WritePlaintextJson(string json)
+        {
+            EnsureBaseDirectory();
+            WriteProtected(json);
+        }
+
+        /// <summary>Unprotect raw on-disk bytes (no-op on POSIX). Test seam for concurrency probes.</summary>
+        internal static byte[] UnprotectBytes(byte[] data) => IsWindows ? Unprotect(data) : data;
+
+        // ── Atomic write (design 04 §1) ──────────────────────────────────────────────────────────
+
+        private void WriteProtected(string json)
+        {
+            var plaintext = Encoding.UTF8.GetBytes(json);
+            var bytes = IsWindows ? Protect(plaintext) : plaintext;
+            WriteFileAtomic(CredentialsPath, bytes);
+            SetPosixPermissions(CredentialsPath, PosixFilePermissions);
+        }
+
+        /// <summary>
+        /// Whole-file atomic write: a temp sibling <b>in the same directory</b> (same volume — a
+        /// cross-volume temp would turn the rename into a copy) is created with owner-only
+        /// permissions, written, fsynced, then renamed over the destination with retry. A reader can
+        /// observe the old document or the new document, never a truncated one; a writer killed
+        /// before the rename leaves the destination untouched (plus a stray <c>*.tmp</c> sibling the
+        /// reader ignores).
+        /// </summary>
+        private void WriteFileAtomic(string destinationPath, byte[] bytes)
+        {
+            var directory = Path.GetDirectoryName(destinationPath);
+            if (string.IsNullOrEmpty(directory))
+                throw new ArgumentException("Destination path has no directory: " + destinationPath, nameof(destinationPath));
+
+            var tempPath = Path.Combine(directory, Path.GetFileName(destinationPath) + "." + Guid.NewGuid().ToString("N") + ".tmp");
+            try
+            {
+                using (var stream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                {
+                    // Restrict before any secret byte lands (the file is still empty here).
+                    SetPosixPermissions(tempPath, PosixFilePermissions);
+                    stream.Write(bytes, 0, bytes.Length);
+                    stream.Flush(flushToDisk: true); // fsync: the temp is durable before it replaces the destination
+                }
+
+                ReplaceWithRetry(tempPath, destinationPath);
+            }
+            catch
+            {
+                TryDeleteFile(tempPath);
+                throw;
+            }
+
+            TryFsyncDirectory(directory); // advisory (POSIX): make the rename itself power-loss durable
+        }
+
+        /// <summary>
+        /// Rename the fsynced temp sibling over the destination. Prefers
+        /// <see cref="File.Replace(string, string, string)"/> (atomic; preserves the destination's
+        /// DACL on Windows), falling back to a move for the create case. Retries
+        /// <see cref="RenameRetryAttempts"/> times with <see cref="RenameRetryDelayMs"/> ms backoff on
+        /// EBUSY / EPERM / EACCES-alike failures (AV scanners, indexers, concurrent readers holding
+        /// the destination) — the retry policy is part of the store contract (design 04 §1).
+        /// </summary>
+        private static void ReplaceWithRetry(string tempPath, string destinationPath)
+        {
+            for (var attempt = 1; attempt <= RenameRetryAttempts; attempt++)
+            {
+                try
+                {
+                    if (File.Exists(destinationPath))
+                        File.Replace(tempPath, destinationPath, destinationBackupFileName: null);
+                    else
+                        File.Move(tempPath, destinationPath);
+                    return;
+                }
+                catch (Exception ex) when (attempt < RenameRetryAttempts && (ex is IOException || ex is UnauthorizedAccessException))
+                {
+                    // Transient holder (or the destination appeared/vanished between the existence
+                    // check and the rename — FileNotFoundException is an IOException, and the next
+                    // attempt re-evaluates which path to take). Back off and retry.
+                    Thread.Sleep(RenameRetryDelayMs);
+                }
+            }
+
+            // Unreachable: the final attempt either returned or threw (its exception filter is false).
+            throw new IOException("Atomic rename retry loop exited unexpectedly for: " + destinationPath);
+        }
+
+        private static byte[] ReadAllBytesWithRetry(string path)
+        {
+            const int readAttempts = 3;
+            for (var attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    return File.ReadAllBytes(path);
+                }
+                catch (Exception ex) when (attempt < readAttempts && ex is IOException
+                    && !(ex is FileNotFoundException) && !(ex is DirectoryNotFoundException))
+                {
+                    // Transient sharing violation with a concurrent atomic rename — brief backoff.
+                    Thread.Sleep(50);
+                }
+            }
+        }
+
+        private static void TryDeleteFile(string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+            catch
+            {
+                // Best-effort cleanup of the temp sibling; never mask the original failure.
+            }
         }
 
         private void EnsureBaseDirectory()
@@ -192,9 +451,48 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         private static extern int chmod(string path, uint mode);
 #endif
 
+        // ── POSIX directory fsync (advisory durability for the rename; design 04 §1) ─────────────
+
+        private const int O_RDONLY = 0;
+
+        private static void TryFsyncDirectory(string directory)
+        {
+            if (IsWindows)
+                return;
+
+            try
+            {
+                var fd = open(directory, O_RDONLY);
+                if (fd < 0)
+                    return;
+                try
+                {
+                    _ = fsync(fd);
+                }
+                finally
+                {
+                    _ = close(fd);
+                }
+            }
+            catch
+            {
+                // Advisory only (design 04 §1): power-loss durability parity, never a failure path.
+            }
+        }
+
+        [DllImport("libc", EntryPoint = "open", SetLastError = true)]
+        private static extern int open(string path, int flags);
+
+        [DllImport("libc", EntryPoint = "fsync", SetLastError = true)]
+        private static extern int fsync(int fd);
+
+        [DllImport("libc", EntryPoint = "close", SetLastError = true)]
+        private static extern int close(int fd);
+
         // ── Windows DPAPI (CryptProtectData / CryptUnprotectData) via P/Invoke ───────────────────
         // Self-contained (no NuGet dependency added to this Unity-consumed library). Only invoked on
-        // Windows; the DllImports compile on every TFM but are never called on POSIX.
+        // Windows; the DllImports compile on every TFM but are never called on POSIX. DPAPI use is
+        // pinned by design D2: CurrentUser scope, null entropy, CRYPTPROTECT_UI_FORBIDDEN.
 
         private static byte[] Protect(byte[] data)
         {

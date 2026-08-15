@@ -73,7 +73,13 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             read.ExpiresAt.ShouldBe(new DateTimeOffset(2030, 1, 2, 3, 4, 5, TimeSpan.Zero));
             read.ServerTarget.ShouldBe("https://ai-game.dev");
             read.Subject.ShouldBe("account-uuid-123");
-            read.Version.ShouldBe(1);
+            read.Version.ShouldBe(2); // a top-level-style write is upgraded to the v2 schema on write
+
+            // The old-style top-level token material was adopted as families.legacy (design 04 §1),
+            // and the top-level fields above are its v1 compat mirror.
+            read.Families.ShouldNotBeNull();
+            read.Families!.Legacy!.AccessToken.ShouldBe(SecretAccessToken);
+            read.Families.Legacy.RefreshToken.ShouldBe(SecretRefreshToken);
         }
 
         [Fact]
