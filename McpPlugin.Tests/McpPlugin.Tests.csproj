@@ -20,6 +20,10 @@
 
   <ItemGroup>
     <ProjectReference Include="../McpPlugin/McpPlugin.csproj" />
+    <!-- Real-subprocess harness for the lock takeover plants (design 04 §5): the reference copies
+         the harness executable next to the test assembly, where
+         MachineCredentialLockTakeoverPlantTests spawns it via `dotnet`. -->
+    <ProjectReference Include="../McpPlugin.Tests.LockHarness/McpPlugin.Tests.LockHarness.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,6 +31,7 @@
          assembly so ProjectIdentityGoldenVectorTests can load them at runtime. -->
     <None Include="../McpPlugin/src/AgentConfig/ProjectIdentity.GoldenVectors.json" Link="ProjectIdentity.GoldenVectors.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../McpPlugin/src/AgentConfig/ProjectIdentity.GoldenVectors.v2.json" Link="ProjectIdentity.GoldenVectors.v2.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../McpPlugin/src/AgentConfig/LockProtocol.GoldenVectors.json" Link="LockProtocol.GoldenVectors.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

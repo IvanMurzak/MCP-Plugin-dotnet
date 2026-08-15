@@ -1,0 +1,11 @@
+{
+  "comment": "Cross-language lock-protocol constants (unified-machine-auth 04 §2). The C# (MCP-Plugin-dotnet, b2) and TS (cli-core, c2) implementations MUST agree on every value here; the x1 parity suite asserts both sides against this document. Values are integer milliseconds. Ordering invariant: refreshHttpTimeoutMs < lockStaleMs < acquireBudgetMs.",
+  "lockFileName": "credentials.lock",
+  "takeoverIntentFileName": "credentials.lock.takeover",
+  "lockDocumentFields": ["pid", "startedAt", "hostId", "nonce"],
+  "hostIdCompare": "case-insensitive",
+  "refreshHttpTimeoutMs": 15000,
+  "lockStaleMs": 60000,
+  "acquireBudgetMs": 75000,
+  "foreignLockStaleMs": 86400000
+}

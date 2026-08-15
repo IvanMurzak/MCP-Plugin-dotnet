@@ -91,7 +91,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         /// The elapsed floor proves a retry actually happened (the first attempt fails at ~0 ms).
         /// </summary>
         [Fact]
-        public async Task Write_RetriesUntilDestinationHandleReleased_Windows()
+        public void Write_RetriesUntilDestinationHandleReleased_Windows()
         {
             if (!OperatingSystem.IsWindows())
                 return; // FileShare semantics are only enforced by Windows; POSIX rename ignores holders.
@@ -101,17 +101,22 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
 
             // Hold the destination WITHOUT FileShare.Delete: File.Replace needs delete access on the
             // destination, so every rename attempt fails with a sharing violation until release.
+            // The release runs on a DEDICATED thread, not Task.Run: on a saturated 2-core CI
+            // runner the thread pool can delay a queued work item far past the 600 ms sleep
+            // (observed >1 s: the write exhausted its full retry window AND teardown still found
+            // the handle open), which fails the test for a reason the store does not have.
             var holder = new FileStream(store.CredentialsPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            var release = Task.Run(() =>
+            var release = new Thread(() =>
             {
                 Thread.Sleep(600);
                 holder.Dispose();
             });
+            release.Start();
 
             var stopwatch = Stopwatch.StartNew();
             store.Write(Credentials("NEW-AT", "NEW-RT")); // must survive the holder via retries
             stopwatch.Stop();
-            await release;
+            release.Join();
 
             stopwatch.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(400); // ≥1 backoff happened
             store.Read()!.Families!.Plugin!.AccessToken.ShouldBe("NEW-AT");
