@@ -65,6 +65,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             refresher
                 .Setup(r => r.RefreshAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(result);
+            // The provider invokes the family-aware overload (unified-machine-auth b3); the proxy
+            // intercepts the interface's default implementation, so it needs its own setup.
+            refresher
+                .Setup(r => r.RefreshAsync(It.IsAny<TokenRefreshRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(result);
             return refresher;
         }
 
@@ -89,7 +94,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         [Fact]
         public async Task HandleRejection_RefreshFails_DoesNotReconnect_SurfacesSignInRequired()
         {
-            var refresher = RefresherReturning(TokenRefreshResult.Failure("refresh token expired"));
+            // "refresh token expired" IS an invalid_grant — the dead-family kind, the ONLY kind
+            // that reaches SignInRequired (review B2; a transient failure stays signed in).
+            var refresher = RefresherReturning(TokenRefreshResult.Failure("refresh token expired", TokenRefreshFailureKind.InvalidGrant));
             using var provider = SeededProvider(refresher.Object);
             using var connection = new FakeConnection();
             using var coordinator = new ConnectionCredentialCoordinator(connection, provider);

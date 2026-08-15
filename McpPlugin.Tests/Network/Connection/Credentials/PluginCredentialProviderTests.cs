@@ -9,10 +9,9 @@
 */
 using System;
 using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.AgentConfig;
-using Moq;
+using com.IvanMurzak.McpPlugin.Tests.Infrastructure;
 using R3;
 using Shouldly;
 using Xunit;
@@ -22,7 +21,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
     /// <summary>
     /// Coverage for the mcp-authorize b7 account credential provider: machine-store auto-adopt (the
     /// zero-button rule), proactive refresh before expiry, reactive refresh, and the sign-in-again state
-    /// surfaced on refresh failure.
+    /// surfaced on refresh failure. The unified-machine-auth b3 behaviours (family/lock/double-checked
+    /// refresh) are covered in <see cref="PluginCredentialProviderFamilyRefreshTests"/>.
     /// </summary>
     public sealed class PluginCredentialProviderTests : IDisposable
     {
@@ -62,9 +62,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         public async Task AutoAdopt_SeededStore_IsSignedInWithoutRefresherInteraction()
         {
             NewStore().Write(Seed(expiresAt: DateTimeOffset.UtcNow.AddHours(1)));
-            var refresher = new Mock<ITokenRefresher>(MockBehavior.Strict);
+            var refresher = new FakeTokenRefresher(TokenRefreshResult.Failure("must never be called"));
 
-            using var provider = new PluginCredentialProvider(NewStore(), refresher.Object);
+            using var provider = new PluginCredentialProvider(NewStore(), refresher);
 
             // Signed in purely from the store read — no device flow, no network, no refresh.
             provider.State.CurrentValue.ShouldBe(AuthState.SignedIn);
@@ -75,9 +75,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             var token = await provider.GetAccessTokenAsync();
             token.ShouldBe(SeededAccessToken);
 
-            // The zero-button rule: nothing but the store was touched (a strict mock proves the refresher
-            // was never invoked during boot + token fetch of a still-valid credential).
-            refresher.VerifyNoOtherCalls();
+            // The zero-button rule: nothing but the store was touched.
+            refresher.Requests.ShouldBeEmpty();
+            refresher.LegacyCalls.ShouldBe(0);
         }
 
         [Fact]
@@ -102,17 +102,18 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         public async Task GetAccessToken_TokenNearExpiry_ProactivelyRefreshes()
         {
             NewStore().Write(Seed(expiresAt: DateTimeOffset.UtcNow.AddSeconds(10))); // within the 60s skew
-            var refresher = new Mock<ITokenRefresher>();
-            refresher
-                .Setup(r => r.RefreshAsync(SeededRefreshToken, "https://ai-game.dev", It.IsAny<CancellationToken>()))
-                .ReturnsAsync(TokenRefreshResult.Success(RefreshedAccessToken, RefreshedRefreshToken, DateTimeOffset.UtcNow.AddHours(1)));
+            var refresher = new FakeTokenRefresher(
+                TokenRefreshResult.Success(RefreshedAccessToken, RefreshedRefreshToken, DateTimeOffset.UtcNow.AddHours(1)));
 
-            using var provider = new PluginCredentialProvider(NewStore(), refresher.Object);
+            using var provider = new PluginCredentialProvider(NewStore(), refresher);
 
             var token = await provider.GetAccessTokenAsync();
 
             token.ShouldBe(RefreshedAccessToken);
-            refresher.Verify(r => r.RefreshAsync(SeededRefreshToken, "https://ai-game.dev", It.IsAny<CancellationToken>()), Times.Once);
+            var request = refresher.Requests.ShouldHaveSingleItem();
+            request.RefreshToken.ShouldBe(SeededRefreshToken);
+            request.ServerTarget.ShouldBe("https://ai-game.dev");
+            refresher.LegacyCalls.ShouldBe(0); // the provider uses the family-aware API
 
             // The rotated token was persisted (a fresh store instance re-reads it) with identity preserved.
             var reread = NewStore().Read();
@@ -125,12 +126,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         public async Task GetAccessToken_TokenFarFromExpiry_DoesNotRefresh()
         {
             NewStore().Write(Seed(expiresAt: DateTimeOffset.UtcNow.AddHours(2)));
-            var refresher = new Mock<ITokenRefresher>();
+            var refresher = new FakeTokenRefresher(TokenRefreshResult.Failure("must never be called"));
 
-            using var provider = new PluginCredentialProvider(NewStore(), refresher.Object);
+            using var provider = new PluginCredentialProvider(NewStore(), refresher);
 
             (await provider.GetAccessTokenAsync()).ShouldBe(SeededAccessToken);
-            refresher.Verify(r => r.RefreshAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+            refresher.Requests.ShouldBeEmpty();
         }
 
         // ── DoD: refresh-on-reject — RefreshAsync mints + persists a new token. ──
@@ -139,12 +140,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         public async Task RefreshAsync_Success_RotatesTokenAndStaysSignedIn()
         {
             NewStore().Write(Seed(expiresAt: DateTimeOffset.UtcNow.AddHours(1)));
-            var refresher = new Mock<ITokenRefresher>();
-            refresher
-                .Setup(r => r.RefreshAsync(SeededRefreshToken, It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(TokenRefreshResult.Success(RefreshedAccessToken, RefreshedRefreshToken, DateTimeOffset.UtcNow.AddHours(1)));
+            var refresher = new FakeTokenRefresher(
+                TokenRefreshResult.Success(RefreshedAccessToken, RefreshedRefreshToken, DateTimeOffset.UtcNow.AddHours(1)));
 
-            using var provider = new PluginCredentialProvider(NewStore(), refresher.Object);
+            using var provider = new PluginCredentialProvider(NewStore(), refresher);
 
             (await provider.RefreshAsync()).ShouldBeTrue();
             provider.State.CurrentValue.ShouldBe(AuthState.SignedIn);
@@ -155,29 +154,46 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         public async Task RefreshAsync_Success_WithoutRotatedRefreshToken_KeepsExistingRefreshToken()
         {
             NewStore().Write(Seed(expiresAt: DateTimeOffset.UtcNow.AddHours(1)));
-            var refresher = new Mock<ITokenRefresher>();
-            refresher
-                .Setup(r => r.RefreshAsync(SeededRefreshToken, It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(TokenRefreshResult.Success(RefreshedAccessToken)); // AS did not rotate the refresh token
+            var refresher = new FakeTokenRefresher(
+                TokenRefreshResult.Success(RefreshedAccessToken)); // AS did not rotate the refresh token
 
-            using var provider = new PluginCredentialProvider(NewStore(), refresher.Object);
+            using var provider = new PluginCredentialProvider(NewStore(), refresher);
 
             (await provider.RefreshAsync()).ShouldBeTrue();
             NewStore().Read()!.RefreshToken.ShouldBe(SeededRefreshToken);
         }
 
-        // ── DoD: refresh failure surfaces "sign in again". ──
+        // ── Failure-state split (review B2, 03 F3.5/F9): SignInRequired is DEAD-FAMILY-only.
+        //    A transient failure (AS unreachable, 5xx, timeout) keeps the machine signed in and
+        //    retries later — offline self-heals silently (F9), no sign-in prompt. ──
 
         [Fact]
-        public async Task RefreshAsync_Failure_SurfacesSignInRequired()
+        public async Task RefreshAsync_TransientFailure_StaysSignedIn_DoesNotSurfaceSignInRequired()
         {
             NewStore().Write(Seed(expiresAt: DateTimeOffset.UtcNow.AddHours(1)));
-            var refresher = new Mock<ITokenRefresher>();
-            refresher
-                .Setup(r => r.RefreshAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(TokenRefreshResult.Failure("refresh token expired"));
+            var refresher = new FakeTokenRefresher(TokenRefreshResult.Failure("as unreachable")); // Transient by default
 
-            using var provider = new PluginCredentialProvider(NewStore(), refresher.Object);
+            using var provider = new PluginCredentialProvider(NewStore(), refresher);
+
+            var signInRequiredFired = false;
+            using var _ = provider.OnSignInRequired.Subscribe(__ => { signInRequiredFired = true; });
+
+            (await provider.RefreshAsync()).ShouldBeFalse(); // this attempt failed — retry-later semantics
+            provider.State.CurrentValue.ShouldBe(AuthState.SignedIn);
+            signInRequiredFired.ShouldBeFalse();
+            (await provider.GetAccessTokenAsync()).ShouldBe(SeededAccessToken); // existing credential kept
+        }
+
+        [Fact]
+        public async Task RefreshAsync_InvalidGrant_SurfacesSignInRequired()
+        {
+            // The one failure kind that reaches SignInRequired: invalid_grant, confirmed dead by
+            // the post-failure re-read (nobody else rotated the family).
+            NewStore().Write(Seed(expiresAt: DateTimeOffset.UtcNow.AddHours(1)));
+            var refresher = new FakeTokenRefresher(
+                TokenRefreshResult.Failure("refresh token expired", TokenRefreshFailureKind.InvalidGrant));
+
+            using var provider = new PluginCredentialProvider(NewStore(), refresher);
 
             var signInRequiredFired = false;
             using var _ = provider.OnSignInRequired.Subscribe(__ => { signInRequiredFired = true; });
@@ -188,18 +204,19 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         }
 
         [Fact]
-        public async Task RefreshAsync_ThrowingRefresher_SurfacesSignInRequired_WithoutLeaking()
+        public async Task RefreshAsync_ThrowingRefresher_StaysSignedIn_WithoutLeaking()
         {
             NewStore().Write(Seed(expiresAt: DateTimeOffset.UtcNow.AddHours(1)));
-            var refresher = new Mock<ITokenRefresher>();
-            refresher
-                .Setup(r => r.RefreshAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ThrowsAsync(new InvalidOperationException("network down"));
+            var refresher = new FakeTokenRefresher(_ => throw new InvalidOperationException("network down"));
 
-            using var provider = new PluginCredentialProvider(NewStore(), refresher.Object);
+            using var provider = new PluginCredentialProvider(NewStore(), refresher);
+
+            var signInRequiredFired = false;
+            using var _ = provider.OnSignInRequired.Subscribe(__ => { signInRequiredFired = true; });
 
             (await provider.RefreshAsync()).ShouldBeFalse();
-            provider.State.CurrentValue.ShouldBe(AuthState.SignInRequired);
+            provider.State.CurrentValue.ShouldBe(AuthState.SignedIn); // an exception is transient — retry later
+            signInRequiredFired.ShouldBeFalse();
         }
 
         [Fact]
@@ -243,6 +260,34 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
 
             provider.State.CurrentValue.ShouldBe(AuthState.SignedIn);
             NewStore().Read()!.AccessToken.ShouldBe(RefreshedAccessToken);
+        }
+
+        // ── The Adopt/Write in-place-mutation seam (unified-machine-auth b1 review A1, pinned). ──
+
+        [Fact]
+        public void Adopt_ReliesOnWriteMutatingItsArgumentIntoFamilyShape()
+        {
+            // MachineCredentialStore.Write() normalizes its ARGUMENT in place (v1 adoption →
+            // families.legacy, version upgrade, mirror stamp) and Adopt() keeps that same mutated
+            // instance as the provider's current credential. The provider's family-aware refresh
+            // path depends on this — so the seam is pinned here instead of being refactored away
+            // silently (b1 review A1). If Write() ever stops mutating its argument, this test goes
+            // red and the provider must clone-and-adopt explicitly.
+            var adopted = new MachineCredentials
+            {
+                AccessToken = RefreshedAccessToken,
+                RefreshToken = RefreshedRefreshToken,
+                ExpiresAt = DateTimeOffset.UtcNow.AddHours(1),
+            };
+
+            using var provider = new PluginCredentialProvider(NewStore());
+            provider.Adopt(adopted);
+
+            // The caller's own instance became family-shaped (v2) during the write.
+            adopted.Families.ShouldNotBeNull();
+            adopted.Families!.Legacy.ShouldNotBeNull();
+            adopted.Families.Legacy!.AccessToken.ShouldBe(RefreshedAccessToken);
+            adopted.Version.ShouldBe(MachineCredentials.CurrentVersion);
         }
     }
 }
