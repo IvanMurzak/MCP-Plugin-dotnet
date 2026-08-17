@@ -91,6 +91,21 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 return;
             }
 
+            // ── Instance-identity gate (design 07 §2.3, D10.2) — same fail-closed shape as the pin. ──
+            // ABSENT is a supported state and is NOT touched here: every currently released client sends
+            // no AI-Game-Dev-Instance-Id header, and those requests must behave exactly as they do today.
+            // A header that is PRESENT but not a well-formed opaque token is REJECTED rather than ignored,
+            // for the same reason a malformed pin is: ignoring it would leave a client that believes it is
+            // participating in the replace rule silently stacking sessions instead — and the only symptom
+            // would be the six-hour pile-up this rule was written to end. Validating here, before the value
+            // is used or stored anywhere, is also what makes every downstream use injection-proof by
+            // construction rather than by remembering to escape.
+            if (InstanceIdentityHeader.TryRead(context.Request.Headers, out _) == InstanceIdentityParse.Malformed)
+            {
+                await WriteInvalidInstanceIdAsync(context).ConfigureAwait(false);
+                return;
+            }
+
             var tokenClaim = context.User?.FindFirst(TokenAuthenticationHandler.TokenClaimType);
             if (tokenClaim != null)
             {
@@ -218,6 +233,27 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             {
                 error = InvalidProjectPinError,
                 message = "The project pin path segment is malformed; expected 1-64 hexadecimal characters."
+            }, context.RequestAborted);
+        }
+
+        /// <summary>
+        /// Rejects a request whose <c>AI-Game-Dev-Instance-Id</c> header is present but not a well-formed
+        /// opaque token. Terminal, exactly like the pin rejection — the pipeline is NOT continued, so no
+        /// handler, hub, session tracker or log formatter ever observes the offending value.
+        ///
+        /// <para><b>The rejected value is deliberately not echoed.</b> Reflecting an unvalidated,
+        /// arbitrary-length client string back into a response body is how a log-injection or a
+        /// response-splitting payload gets a second chance; the caller already knows what it sent, and the
+        /// error code plus the expected shape is everything a client needs to fix itself.</para>
+        /// </summary>
+        static Task WriteInvalidInstanceIdAsync(HttpContext context)
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return context.Response.WriteAsJsonAsync(new
+            {
+                error = InstanceIdentityHeader.InvalidInstanceIdError,
+                message = $"The {InstanceIdentityHeader.HeaderName} header is malformed; expected exactly " +
+                          $"{InstanceIdentityHeader.ExpectedLength} hexadecimal characters, sent at most once."
             }, context.RequestAborted);
         }
 

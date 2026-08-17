@@ -227,6 +227,17 @@ namespace com.IvanMurzak.McpPlugin.Server
             mcpServerBuilder.Services.AddSingleton<HubEventResourcesChange>();
             mcpServerBuilder.Services.AddSingleton<IRequestTrackingService, RequestTrackingService>();
             mcpServerBuilder.Services.AddSingleton<IMcpSessionTracker, McpSessionTracker>();
+
+            // Replace-by-identity (design 07 §2.3, D10.2). Registered in ALL auth modes and for ALL
+            // transports: the reaper is inert unless a client sends AI-Game-Dev-Instance-Id AND the
+            // credential resolves an account, so registering it unconditionally costs one idle singleton
+            // and avoids a mode-shaped hole where the rule silently does not exist.
+            mcpServerBuilder.Services.AddSingleton<IMcpSdkSessionEvictor>(sp => new McpSdkSessionEvictor(
+                sp,
+                sp.GetService<ILogger<McpSdkSessionEvictor>>()));
+            mcpServerBuilder.Services.AddSingleton<IMcpSessionReaper>(sp => new McpSessionReaper(
+                sp.GetRequiredService<IMcpSdkSessionEvictor>(),
+                sp.GetService<ILogger<McpSessionReaper>>()));
             mcpServerBuilder.Services.AddSingleton<McpGracefulShutdownService>();
             mcpServerBuilder.Services.AddHostedService(sp => sp.GetRequiredService<McpGracefulShutdownService>());
 
