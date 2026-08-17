@@ -244,7 +244,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [InlineData("' OR 1=1 --0123456789abcdef01234", "quote/comment payload, valid length")]
         public async Task MalformedInstanceId_IsRejectedWith400_AndNoSessionIsEstablished(string malformed, string why)
         {
-            await using var host = await StartOAuthHostAsync();
+            // Log capture is on because the REJECTION path is the one carrying arbitrary client input, and
+            // therefore the one where an unescaped interpolation would actually matter. The replace path is
+            // covered separately; without this, "nothing derived from the value reaches a log line" would be
+            // asserted only for values that already passed validation.
+            await using var host = await StartOAuthHostAsync(captureLogs: true, captureAllLevels: true);
             var tracker = host.Services.GetRequiredService<IMcpSessionTracker>();
             var reaper = host.Services.GetRequiredService<IMcpSessionReaper>();
             using var client = NewClient();
@@ -266,6 +270,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // response body is how an injection payload gets a second delivery channel.
             response.Body.ShouldNotContain(malformed, Case.Sensitive,
                 "the rejected value must not be echoed into the response body");
+
+            // …and it does not reach a log line either. This is the half that matters most: the value is
+            // arbitrary client input, so an unescaped interpolation here is a log-injection primitive.
+            host.AllLogText.ShouldNotContain(malformed, Case.Sensitive,
+                "the rejected instance id must not be written to any log record");
+
+            // Guard against vacuity: the sink must actually have observed this request's processing. A dead
+            // sink would satisfy the assertion above with the value being logged in full.
+            host.AllLogText.ShouldNotBeNullOrEmpty("the log sink captured nothing at all — it is not wired up");
         }
 
         /// <summary>
