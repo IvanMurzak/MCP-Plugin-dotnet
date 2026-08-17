@@ -77,21 +77,42 @@ namespace com.IvanMurzak.McpPlugin.Server
             var key = new IdentityKey(accountSub!, instanceId!, projectPin);
             var lease = new Lease(this, key, mcpSessionId);
 
+            // The same-session check lives INSIDE the lock, together with MarkDisplaced. It used to sit
+            // after the lock, which meant a same-session re-claim marked the OUTGOING lease `Displaced`
+            // before discovering it was the same session — so that session's handler would later report an
+            // ordinary cancellation as "displaced by replace-by-identity". Cosmetic, but it is exactly the
+            // kind of wrong attribution an operator would then chase.
             Lease? predecessor = null;
+            var sameSessionReclaim = false;
             lock (_claimLock)
             {
-                if (_slots.TryGetValue(key, out var existing) && !ReferenceEquals(existing, lease))
-                    predecessor = existing;
+                if (_slots.TryGetValue(key, out var existing))
+                {
+                    if (string.Equals(existing.McpSessionId, mcpSessionId, StringComparison.Ordinal))
+                    {
+                        // Same session re-claiming its own slot. Nothing to terminate — terminating here
+                        // would kill the live session that just asked to be kept — and nothing to flag.
+                        sameSessionReclaim = true;
+                    }
+                    else
+                    {
+                        predecessor = existing;
+                        // Flag BEFORE evicting: the displaced session's handler observes cancellation as a
+                        // direct consequence of the eviction below, and it must already be able to tell
+                        // that its shutdown is an orderly replace rather than a fault.
+                        predecessor.MarkDisplaced();
+                    }
+                }
 
                 _slots[key] = lease;
+            }
 
-                if (predecessor != null)
-                {
-                    // Flag BEFORE evicting: the displaced session's handler observes cancellation as a
-                    // direct consequence of the eviction below, and it must already be able to tell that
-                    // its shutdown is an orderly replace rather than a fault.
-                    predecessor.MarkDisplaced();
-                }
+            if (sameSessionReclaim)
+            {
+                _logger?.LogDebug(
+                    "MCP identity slot re-claimed by the same session. Instance: {instanceFingerprint}, SessionId: {sessionId}.",
+                    InstanceIdentityHeader.Fingerprint(instanceId), mcpSessionId);
+                return lease;
             }
 
             if (predecessor == null)
@@ -99,16 +120,6 @@ namespace com.IvanMurzak.McpPlugin.Server
                 _logger?.LogDebug(
                     "MCP identity slot claimed. Instance: {instanceFingerprint}, Pin: {pin}, SessionId: {sessionId}, Slots: {slots}.",
                     InstanceIdentityHeader.Fingerprint(instanceId), projectPin ?? "none", mcpSessionId, _slots.Count);
-                return lease;
-            }
-
-            if (string.Equals(predecessor.McpSessionId, mcpSessionId, StringComparison.Ordinal))
-            {
-                // Same session re-claiming its own slot. Nothing to terminate; terminating here would kill
-                // the live session that just asked to be kept.
-                _logger?.LogDebug(
-                    "MCP identity slot re-claimed by the same session. Instance: {instanceFingerprint}, SessionId: {sessionId}.",
-                    InstanceIdentityHeader.Fingerprint(instanceId), mcpSessionId);
                 return lease;
             }
 

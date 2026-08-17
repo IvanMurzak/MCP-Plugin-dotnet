@@ -287,12 +287,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public void SameSessionReClaimingItsOwnSlot_DoesNotEvictItself()
+        public void SameSessionReClaimingItsOwnSlot_DoesNotEvictItself_AndFlagsNeitherLease()
         {
             // A re-entrant claim must not terminate the very session asking to be kept.
             var (reaper, evictor) = Build();
 
-            reaper.Claim(AccountA, InstanceX, projectPin: null, mcpSessionId: "session-1");
+            var first = reaper.Claim(AccountA, InstanceX, projectPin: null, mcpSessionId: "session-1");
             var again = reaper.Claim(AccountA, InstanceX, projectPin: null, mcpSessionId: "session-1");
 
             evictor.Evicted.ShouldBeEmpty("a session must never evict itself");
@@ -300,6 +300,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             again.DisplacedPredecessor.ShouldBeNull();
             reaper.CurrentSessionIdFor(AccountA, InstanceX, null).ShouldBe("session-1");
             reaper.TrackedIdentityCount.ShouldBe(1);
+
+            // The OUTGOING lease must not be flagged either. Asserting only the incoming one missed a real
+            // defect: the same-session check used to run AFTER MarkDisplaced, so this lease was flagged
+            // `Displaced` and the session's handler would then report an ordinary cancellation as "displaced
+            // by replace-by-identity" — a wrong attribution an operator would chase.
+            first!.Displaced.ShouldBeFalse(
+                "no session was displaced, so neither lease may claim it was");
         }
 
         [Fact]
