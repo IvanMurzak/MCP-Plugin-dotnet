@@ -10,6 +10,7 @@
 
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Utils;
@@ -25,6 +26,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
 {
     public class StreamableHttpTransportLayer : ITransportLayer
     {
+        /// <summary>
+        /// How long a NEW session waits for the session it displaced to finish disposing before it stops
+        /// waiting and proceeds. This is a latency bound on <c>initialize</c>, not a correctness bound:
+        /// the displaced session is removed from the SDK's session store synchronously inside
+        /// <c>IMcpSessionReaper.Claim</c>, so exceeding this timeout cannot leave a reachable session or
+        /// reintroduce the pile-up. The wait exists only so the common case is fully settled — and
+        /// therefore deterministic — before the replacement starts serving.
+        /// </summary>
+        public static readonly TimeSpan DisplacedSessionDisposeTimeout = TimeSpan.FromSeconds(10);
+
         public Consts.MCP.Server.TransportMethod TransportMethod
             => Consts.MCP.Server.TransportMethod.streamableHttp;
 
@@ -80,6 +91,82 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                     // saw SessionId == null and select_engine_instance failed 100% of the time.
                     McpSessionTokenContext.CurrentSessionId = mcpClientSessionId;
 
+                    // ── Replace-by-identity (design 07 §2.3, D10.2) ────────────────────────────────────
+                    // This is the only place the rule can run. The installation identity rides on the
+                    // `initialize` request, and this handler is the one hook that sees BOTH that request's
+                    // HttpContext and the freshly minted session id it is about to be keyed under.
+                    //
+                    // Ordering is deliberate: the claim happens BEFORE `server.RunAsync` below, so a
+                    // predecessor is already unreachable by the time this session starts answering. The
+                    // claim itself is synchronous; only the predecessor's resource dispose is awaited, and
+                    // that wait is bounded because the leak-stopping half already completed inside Claim().
+                    //
+                    // Absent header ⇒ `identityLease` stays null ⇒ every line below is skipped and the
+                    // session behaves exactly as it does today. That is the released-client path.
+                    IMcpSessionIdentityLease? identityLease = null;
+                    try
+                    {
+                        var instanceParse = InstanceIdentityHeader.TryRead(context.Request.Headers, out var instanceId);
+                        if (instanceParse == InstanceIdentityParse.Valid)
+                        {
+                            // accountSub comes from the VALIDATED credential, never from a client-supplied
+                            // field — that is what confines a client-supplied instance id to its own account.
+                            var identity = ConnectionIdentity.FromPrincipal(context.User)
+                                        ?? McpSessionTokenContext.CurrentIdentity;
+
+                            // The pin is re-parsed from the original request path rather than read from
+                            // ambient state, so the key never depends on AsyncLocal flow. Malformed pins
+                            // were already rejected upstream by McpSessionTokenMiddleware.
+                            McpSessionTokenMiddleware.TryExtractProjectPin(context.Request.Path.Value, out var projectPin);
+
+                            var reaper = server.Services?.GetService<IMcpSessionReaper>();
+                            identityLease = reaper?.Claim(identity?.AccountId, instanceId, projectPin, mcpClientSessionId);
+
+                            var predecessor = identityLease?.DisplacedPredecessor;
+                            if (predecessor != null && !predecessor.DisposeCompletion.IsCompleted)
+                            {
+                                // Bounded: the predecessor's dispose awaits ITS RunSessionHandler, which in
+                                // turn awaits a SignalR disconnect notification. Blocking `initialize`
+                                // indefinitely behind another session's teardown would turn a reconnect into
+                                // a hang. Timing out here is safe — the predecessor is already evicted from
+                                // the SDK's session store — so it is logged and stepped over, not retried.
+                                //
+                                // The timer is cancelled on the happy path rather than left to expire: a
+                                // replace normally settles in milliseconds, and an abandoned Task.Delay would
+                                // hold a live timer for the full timeout after every single reconnect.
+                                using (var waitCts = CancellationTokenSource.CreateLinkedTokenSource(linkedToken))
+                                {
+                                    var completed = await Task.WhenAny(
+                                        predecessor.DisposeCompletion,
+                                        Task.Delay(DisplacedSessionDisposeTimeout, waitCts.Token)).ConfigureAwait(false);
+                                    waitCts.Cancel();
+                                    if (completed != predecessor.DisposeCompletion)
+                                    {
+                                        logger?.Warn("Displaced MCP session did not finish disposing within {timeout}; " +
+                                            "it is already evicted from the SDK session store, continuing. Session ID: {sessionId}",
+                                            DisplacedSessionDisposeTimeout, mcpClientSessionId);
+                                    }
+                                }
+                            }
+                        }
+                        else if (instanceParse == InstanceIdentityParse.Malformed)
+                        {
+                            // Defence in depth. McpSessionTokenMiddleware rejects a malformed value with
+                            // 400 before routing, so this branch should be unreachable over HTTP; if it is
+                            // ever reached, the session is still established (never rejected here, where
+                            // rejecting would mean failing an already-minted session) but claims no slot.
+                            logger?.Warn("Malformed {header} reached the session handler; no identity slot claimed. Session ID: {sessionId}",
+                                InstanceIdentityHeader.HeaderName, mcpClientSessionId);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // The replace rule must never be able to prevent a session from starting. A client
+                        // that cannot connect is strictly worse than one whose predecessor lingers until the
+                        // idle timeout, so this degrades to today's behaviour instead of failing the session.
+                        logger?.Error(ex, $"Replace-by-identity failed; continuing without it. Session ID: {mcpClientSessionId}.");
+                    }
+
                     try
                     {
                         var services = server.Services ?? throw new InvalidOperationException("MCP Server services are not available.");
@@ -112,12 +199,34 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                             await service.StopAsync(CancellationToken.None);
                         }
                     }
+                    catch (OperationCanceledException) when (identityLease?.Displaced == true)
+                    {
+                        // Displaced by a newer connection carrying the same installation identity. This is
+                        // the rule working, so it must not be logged as a fault: an orderly replace that
+                        // reports itself as an error trains operators to ignore the log, and a reconnect
+                        // loop would fill it. The tracker row was already removed by StopAsync above.
+                        logger?.Debug("MCP session displaced by replace-by-identity; terminated cleanly. Session ID: {sessionId}",
+                            mcpClientSessionId);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        // The SDK cancelled the session's own token: a client DELETE, an idle-timeout
+                        // eviction, or host shutdown. Definitionally an orderly end of session, not an error.
+                        logger?.Debug("MCP session cancelled by the transport; terminated cleanly. Session ID: {sessionId}",
+                            mcpClientSessionId);
+                    }
                     catch (Exception ex)
                     {
                         logger?.Error(ex, $"Error occurred while processing HTTP transport session. Session ID: {mcpClientSessionId}.");
                     }
                     finally
                     {
+                        // Release the identity slot LAST, and only if this session still holds it: a
+                        // displaced session unwinds after its successor installed itself, so an
+                        // unconditional release here would delete the successor's slot and strand a live
+                        // session that no later connection could ever replace. McpSessionReaper.Release
+                        // does that compare-and-remove atomically.
+                        identityLease?.Dispose();
                         logger?.Debug($"-------------------------------------------------\nSession handler for HTTP transport completed. Session ID: {mcpClientSessionId}\n------------------------");
                     }
                 };

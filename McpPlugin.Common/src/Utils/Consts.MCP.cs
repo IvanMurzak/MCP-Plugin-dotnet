@@ -274,6 +274,23 @@ namespace com.IvanMurzak.McpPlugin.Common
 
                     /// <summary>Value the trusted-client header must carry to opt in.</summary>
                     public const string TrustedInternalClientOptInValue = "1";
+
+                    /// <summary>
+                    /// Per-installation MCP instance identity (design 07 §2.3, D10.2). The value is
+                    /// <c>HMAC-SHA256(key = installId, msg = accountSub)</c> truncated to 128 bits and
+                    /// hex-encoded — i.e. exactly 32 lower-case hex characters. It is stable per
+                    /// <c>(installation, account)</c> and unlinkable across accounts, because the server
+                    /// never sees <c>installId</c>.
+                    ///
+                    /// <para><b>No <c>X-</c> prefix, per RFC 6648.</b> The name must match the client's
+                    /// byte-for-byte; see <c>InstanceIdentityHeader</c> for the validation contract.</para>
+                    ///
+                    /// <para><b>This is a routing key, never an authenticator.</b> It is only ever used
+                    /// WITHIN the <c>accountSub</c> scope the bearer credential already established, so a
+                    /// spoofed value can evict only the spoofer's own sessions. Absent is a supported
+                    /// state: a client that never sends it keeps the pre-existing behaviour exactly.</para>
+                    /// </summary>
+                    public const string InstanceId = "AI-Game-Dev-Instance-Id";
                 }
             }
         }
