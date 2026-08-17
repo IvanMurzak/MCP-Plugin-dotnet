@@ -130,14 +130,22 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                                 // indefinitely behind another session's teardown would turn a reconnect into
                                 // a hang. Timing out here is safe — the predecessor is already evicted from
                                 // the SDK's session store — so it is logged and stepped over, not retried.
-                                var completed = await Task.WhenAny(
-                                    predecessor.DisposeCompletion,
-                                    Task.Delay(DisplacedSessionDisposeTimeout, linkedToken)).ConfigureAwait(false);
-                                if (completed != predecessor.DisposeCompletion)
+                                //
+                                // The timer is cancelled on the happy path rather than left to expire: a
+                                // replace normally settles in milliseconds, and an abandoned Task.Delay would
+                                // hold a live timer for the full timeout after every single reconnect.
+                                using (var waitCts = CancellationTokenSource.CreateLinkedTokenSource(linkedToken))
                                 {
-                                    logger?.Warn("Displaced MCP session did not finish disposing within {timeout}; " +
-                                        "it is already evicted from the SDK session store, continuing. Session ID: {sessionId}",
-                                        DisplacedSessionDisposeTimeout, mcpClientSessionId);
+                                    var completed = await Task.WhenAny(
+                                        predecessor.DisposeCompletion,
+                                        Task.Delay(DisplacedSessionDisposeTimeout, waitCts.Token)).ConfigureAwait(false);
+                                    waitCts.Cancel();
+                                    if (completed != predecessor.DisposeCompletion)
+                                    {
+                                        logger?.Warn("Displaced MCP session did not finish disposing within {timeout}; " +
+                                            "it is already evicted from the SDK session store, continuing. Session ID: {sessionId}",
+                                            DisplacedSessionDisposeTimeout, mcpClientSessionId);
+                                    }
                                 }
                             }
                         }
