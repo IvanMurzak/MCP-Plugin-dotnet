@@ -170,6 +170,46 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 .ShouldBe(HttpStatusCode.OK);
         }
 
+        /// <summary>
+        /// ONE account with TWO different installations — the everyday desktop-plus-laptop case — stacks.
+        /// Both sessions stay live, and each still replaces only its own predecessor.
+        ///
+        /// <para>This is the most user-visible way the rule could go wrong: a key that ignored the instance
+        /// id would make signing in on a laptop silently kill the session on the desktop, which reads as a
+        /// network fault to the user. Covered at the unit level too, but asserted here because this is the
+        /// path production actually takes.</para>
+        /// </summary>
+        [Fact]
+        public async Task OneAccountWithTwoInstallations_StacksAndEachReplacesOnlyItsOwn()
+        {
+            await using var host = await StartOAuthHostAsync();
+            var tracker = host.Services.GetRequiredService<IMcpSessionTracker>();
+            using var client = NewClient();
+
+            var desktop = await host.InitializeAsync(client, AccountA, InstanceX);
+            var laptop = await host.InitializeAsync(client, AccountA, InstanceY);
+
+            laptop.ShouldNotBe(desktop);
+            tracker.ActiveSessionCount.ShouldBe(2, "two installations of one account are two sessions");
+
+            // Neither displaced the other.
+            (await host.SendAsync(client, AccountA, desktop, InstanceX, Ping(id: 2))).Status
+                .ShouldBe(HttpStatusCode.OK, "the desktop session must survive the laptop connecting");
+            (await host.SendAsync(client, AccountA, laptop, InstanceY, Ping(id: 3))).Status
+                .ShouldBe(HttpStatusCode.OK);
+
+            // The laptop reconnecting replaces ONLY the laptop's session.
+            var laptop2 = await host.InitializeAsync(client, AccountA, InstanceY);
+            (await host.SendAsync(client, AccountA, laptop, InstanceY, Ping(id: 4))).Status
+                .ShouldBe(HttpStatusCode.NotFound, "the laptop's own earlier session is replaced");
+            (await host.SendAsync(client, AccountA, desktop, InstanceX, Ping(id: 5))).Status
+                .ShouldBe(HttpStatusCode.OK, "the desktop must be untouched by the laptop's reconnect");
+            (await host.SendAsync(client, AccountA, laptop2, InstanceY, Ping(id: 6))).Status
+                .ShouldBe(HttpStatusCode.OK);
+
+            tracker.ActiveSessionCount.ShouldBe(2);
+        }
+
         // ───────────────────────────── the compatibility path (DoD 3) ─────────────────────────────
 
         /// <summary>
