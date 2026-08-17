@@ -1,0 +1,40 @@
+McpPlugin/src/McpPlugin/Reflector/IReflectorModule.cs
+  s_87ed6d00ba8d34::t_4e5d7f37fd4e5f 1-106
+McpPlugin.Tests/Data/ReflectorModules/ReflectorModuleFixtures.cs
+  s_87ed6d00ba8d34::t_e69772ca34cbf1 11-15,22,57-61,63-100,102-106,167-171,182-183,185-186,191,193-195,197-201,203,206,208-211,213,215-223,225-233
+  s_87ed6d00ba8d34::t_221913f73c04b5 115-118,121-124,134,136-151,153,161,163-165
+  s_87ed6d00ba8d34::t_49e5c1d160f7f1 1-10,16-21,23-56,62,101,107-114,119-120,125-133,135,166,172-181,184,187-190,192,196,202,204-205,207,212,214,224,234-235
+  s_87ed6d00ba8d34::t_be4db95e514db5 152,154-160,162
+McpPlugin.Tests/Mcp/ReflectorModuleDiscoveryTests.cs
+  s_87ed6d00ba8d34::t_2f164501e39e96 1-147,149,152-153,155-158,160,162-163,165-168,170-171,178-204
+  s_87ed6d00ba8d34::t_39d1752363ecfd 148,150-151,154,159,161,164,169,172-177
+McpPlugin/src/McpPlugin/Builder/McpPluginBuilder.ReflectorModules.cs
+  s_87ed6d00ba8d34::t_414b16395df9a4 173,181
+  s_87ed6d00ba8d34::t_5c952c21d7680a 135
+  s_87ed6d00ba8d34::t_cb7e82e99d3da6 105-106
+  s_87ed6d00ba8d34::t_c67034d0fe0b52 159
+  s_87ed6d00ba8d34::t_f994ebc0f8300b 78-82
+  s_87ed6d00ba8d34::t_dd8dfdddbe6114 225-230,234-235
+  s_87ed6d00ba8d34::t_5166fd25554202 65-69
+  s_87ed6d00ba8d34::t_e47c85d79b6a8f 1-64,70-77,83-104,107-134,136-158,160-172,174-180,182-224,231-233,236-246
+McpPlugin/src/McpPlugin/Builder/IMcpPluginBuilder.cs
+  s_87ed6d00ba8d34::t_a32d6ca2891caf 72-75
+McpPlugin/src/McpPlugin/Builder/McpPluginBuilder.cs
+  s_87ed6d00ba8d34::t_78165e6bb4ad28 322-326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a604e7caf0df1bf3f852e493fd70aa52cec64437",
+  "prompts": {},
+  "sessions": {
+    "s_87ed6d00ba8d34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6504330-5f4a-425f-aa7a-0d2df0ef195d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
