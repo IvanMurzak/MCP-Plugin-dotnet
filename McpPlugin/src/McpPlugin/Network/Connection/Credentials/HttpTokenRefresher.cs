@@ -46,10 +46,13 @@ namespace com.IvanMurzak.McpPlugin
     ///   <see cref="MachineCredentialLock.LOCK_STALE_MS"/> and let a live lock holder be declared
     ///   stale mid-refresh. A timeout is a <see cref="TokenRefreshFailureKind.Transient"/> failure,
     ///   never an unclassified exception.</item>
-    ///   <item><b><c>invalid_grant</c> classification (04 §3.5):</b> an OAuth error response of
-    ///   exactly <c>invalid_grant</c> is returned as
-    ///   <see cref="TokenRefreshFailureKind.InvalidGrant"/>; every other failure (network, 5xx,
-    ///   other OAuth errors, malformed JSON) is <see cref="TokenRefreshFailureKind.Transient"/>.</item>
+    ///   <item><b>Terminal-error classification (04 §3.5):</b> an OAuth error response of exactly
+    ///   <c>invalid_grant</c> is returned as <see cref="TokenRefreshFailureKind.InvalidGrant"/>,
+    ///   and exactly <c>invalid_target</c> (RFC 8707 §2) as
+    ///   <see cref="TokenRefreshFailureKind.InvalidTarget"/> — defensive hardening: our refresh
+    ///   requests send no <c>resource</c>, so current clients cannot receive it; every other
+    ///   failure (network, 5xx, other OAuth errors, malformed JSON) is
+    ///   <see cref="TokenRefreshFailureKind.Transient"/>.</item>
     /// </list>
     /// Fails closed — any error returns <see cref="TokenRefreshResult.Failure(string?)"/>, never a
     /// partial or fabricated token — and never logs token material.
@@ -223,7 +226,11 @@ namespace com.IvanMurzak.McpPlugin
         /// Parse an <c>/oauth/token</c> refresh response (pure, unit-testable). A success without
         /// <c>refresh_token</c> keeps <see cref="TokenRefreshResult.RefreshToken"/> null (04 §3.4);
         /// an OAuth error of exactly <c>invalid_grant</c> is classified
-        /// <see cref="TokenRefreshFailureKind.InvalidGrant"/>, everything else transient.
+        /// <see cref="TokenRefreshFailureKind.InvalidGrant"/>, exactly <c>invalid_target</c>
+        /// (RFC 8707 §2) is <see cref="TokenRefreshFailureKind.InvalidTarget"/>, everything else
+        /// transient. The raw <c>error</c> (and <c>error_description</c> when present) is preserved
+        /// verbatim in <see cref="TokenRefreshResult.FailureReason"/> so telemetry keeps distinct
+        /// reason strings per error code.
         /// </summary>
         internal static TokenRefreshResult ParseTokenResponse(bool isSuccessStatusCode, int statusCode, string json, Func<DateTimeOffset> clock)
         {
@@ -260,7 +267,9 @@ namespace com.IvanMurzak.McpPlugin
             {
                 var kind = string.Equals(error, "invalid_grant", StringComparison.Ordinal)
                     ? TokenRefreshFailureKind.InvalidGrant
-                    : TokenRefreshFailureKind.Transient;
+                    : string.Equals(error, "invalid_target", StringComparison.Ordinal)
+                        ? TokenRefreshFailureKind.InvalidTarget
+                        : TokenRefreshFailureKind.Transient;
                 var reason = error != null
                     ? (errorDescription != null ? error + ": " + errorDescription : error)
                     : "refresh failed (HTTP " + statusCode + ")";

@@ -17,9 +17,10 @@ namespace com.IvanMurzak.McpPlugin
 {
     /// <summary>
     /// How a failed refresh should be classified by the caller (unified-machine-auth 04 §3.5). The
-    /// distinction is behavioral: <see cref="InvalidGrant"/> is the ONLY kind that may declare a
-    /// credential family dead (after the mandatory post-failure re-read); everything else is
-    /// retryable and must never destroy local state.
+    /// distinction is behavioral: <see cref="InvalidGrant"/> and <see cref="InvalidTarget"/> are
+    /// the only terminal kinds — the only ones that may declare a credential family dead (after
+    /// the mandatory post-failure re-read); everything else is retryable and must never destroy
+    /// local state.
     /// </summary>
     public enum TokenRefreshFailureKind
     {
@@ -35,6 +36,17 @@ namespace com.IvanMurzak.McpPlugin
         /// family is dead: surface sign-in-required, never loop, never delete other families.
         /// </summary>
         InvalidGrant = 1,
+
+        /// <summary>
+        /// The authorization server answered <c>invalid_target</c> (RFC 8707 §2): the requested
+        /// resource is invalid, missing, unknown, or malformed. Terminal like
+        /// <see cref="InvalidGrant"/>, but a server-side audience/resource mismatch — re-auth does
+        /// not reliably cure it, so the caller surfaces a configuration error instead of
+        /// retry-looping. Defensive hardening today: our refresh requests send no <c>resource</c>
+        /// parameter, so current clients cannot receive this error; it exists so a future client
+        /// that adopts RFC 8707 resource indicators inherits sane terminal behavior.
+        /// </summary>
+        InvalidTarget = 2,
     }
 
     /// <summary>
