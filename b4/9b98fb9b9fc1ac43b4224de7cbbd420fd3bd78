@@ -1,0 +1,29 @@
+McpPlugin.Server/src/Hub/BaseHub.cs
+  c60a9ad965da3b26 100-105
+CLAUDE.md
+  c60a9ad965da3b26 73
+README.md
+  c60a9ad965da3b26 309-310,323-324,328-348
+McpPlugin.Server/src/Hub/McpServerHub.cs
+  c60a9ad965da3b26 76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "b49b98fb9b9fc1ac43b4224de7cbbd420fd3bd78",
+  "prompts": {
+    "c60a9ad965da3b26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa438ac4-1549-4bcb-b5df-dc492b0fe207",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 883,
+      "total_deletions": 853,
+      "accepted_lines": 372,
+      "overriden_lines": 0
+    }
+  }
+}

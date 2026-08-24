@@ -1,0 +1,31 @@
+McpPlugin.Tests/AgentConfig/AgentConfiguratorSettingsPortDerivationTests.cs
+  s_326e031aa5101f::t_0d04f07029688a 1-278
+McpPlugin/src/AgentConfig/AgentConfiguratorSettings.cs
+  s_326e031aa5101f::t_da04749fd18618 68-87
+  s_326e031aa5101f::t_257d4c3dc02535 88
+  s_e70383bb4cb548::t_7c98f19339847e 89-90,152-160,173-174,188,209-210,224-225,274-276,279-301,303-320,322-325,340-344,351-355,357,373-375,420-425,429-432
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "7c1a1adb21b8047d86c96bc618bc7e8b105f1570",
+  "prompts": {},
+  "sessions": {
+    "s_326e031aa5101f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "68ec2f7b-3d6f-4270-ba20-80cc09655d7e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_e70383bb4cb548": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96b28b90-eda7-4907-9bb9-08e5da0e87d6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

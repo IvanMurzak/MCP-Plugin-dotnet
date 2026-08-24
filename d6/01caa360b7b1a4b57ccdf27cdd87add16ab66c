@@ -1,0 +1,25 @@
+McpPlugin.Server.Tests/BaseHubAuthorizationTests.cs
+  0d4971bfc8bae53c 1-248
+McpPlugin.Server.Tests/Webhooks/AuthorizationWebhookServiceTests.cs
+  0d4971bfc8bae53c 33,48,73,81-83,86,94,96,102,110-112,115,122,124,130,138-140,151,157,165-167,178,184-187,190,197,199,205-208,211,218,220,226,231-233,236,243,245,251,256-258,261,268,270,289,331,369,397,426,436,463,473
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "d601caa360b7b1a4b57ccdf27cdd87add16ab66c",
+  "prompts": {
+    "0d4971bfc8bae53c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f65c819-f312-4d0c-a390-6a48fafeb706",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 310,
+      "overriden_lines": 0
+    }
+  }
+}
