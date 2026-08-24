@@ -1,0 +1,25 @@
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionConfig.cs
+  s_e0e482beb79118::t_54663fc72402d7 12,63
+  s_e0e482beb79118::t_8b15dacb6c8c22 41-46,51-62
+McpPlugin.Tests/Mcp/McpPluginSkillPathTests.cs
+  s_e0e482beb79118::t_44fd804ba93afb 62,65,67-77,80,83-88,92,94-97,100-105,112-114,118,120-123,125-130,136-137,141,143-145,148-153,156,160-162,166,168-169,172-177,180-182,186,188-206,210,212-231
+McpPlugin/src/McpPlugin/McpPlugin.cs
+  s_e0e482beb79118::t_facaabf740f494 108-118,132-142
+  s_e0e482beb79118::t_0f5668041172e1 256-267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "f397bb57088cee0ee1c257315f592d0b0ac45e7f",
+  "prompts": {},
+  "sessions": {
+    "s_e0e482beb79118": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e9b3851-07f3-4dab-968f-af35848a2368",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+McpPlugin.Server/src/Hub/BaseHub.cs
+  d47ef9a02bc53cfd 14,64
+McpPlugin.Server.Tests/BaseHubAuthorizationTests.cs
+  d47ef9a02bc53cfd 252-254,256-259,264,267-274,283,290,315-317,340,362-364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.4",
+  "base_commit_sha": "8d237371114db8b45bf4fb22342fa1478f9c44c2",
+  "prompts": {
+    "d47ef9a02bc53cfd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c49d6ac1-57de-4ed4-89ea-8ee35c4074ed",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Ivan Murzak",
+      "messages": [],
+      "total_additions": 28,
+      "total_deletions": 49,
+      "accepted_lines": 539,
+      "overriden_lines": 0
+    }
+  }
+}
