@@ -168,6 +168,28 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             result.FailureReason.ShouldContain("invalid_grant");
         }
 
+        [Fact]
+        public async Task Refresh_InvalidTarget_IsClassifiedInvalidTarget()
+        {
+            // The RFC 8707 §2 wire shape: HTTP 400 with the standard OAuth error body. Defensive
+            // hardening (oauth-client-error-hygiene C2): our refresh form sends no `resource`, so
+            // current clients cannot receive this — but a future RFC 8707 adopter inherits the
+            // terminal classification instead of a retry loop.
+            var handler = new RecordingHttpMessageHandler()
+                .RespondWith(HttpStatusCode.BadRequest,
+                    "{\"error\":\"invalid_target\",\"error_description\":\"The requested resource is invalid, missing, unknown, or malformed.\"}");
+            var refresher = NewRefresher(handler);
+
+            var result = await refresher.RefreshAsync(new TokenRefreshRequest(RefreshToken, ServerTarget, StoredClientId));
+
+            result.Succeeded.ShouldBeFalse();
+            result.FailureKind.ShouldBe(TokenRefreshFailureKind.InvalidTarget);
+            // Distinct reason strings preserved end-to-end (C2): the raw error code AND the
+            // server's description both survive into FailureReason for telemetry.
+            result.FailureReason.ShouldContain("invalid_target");
+            result.FailureReason.ShouldContain("The requested resource is invalid");
+        }
+
         [Theory]
         [InlineData(HttpStatusCode.BadRequest, "{\"error\":\"invalid_client\"}")]         // a DIFFERENT OAuth error
         [InlineData(HttpStatusCode.InternalServerError, "{\"detail\":\"boom\"}")]          // 5xx
@@ -246,6 +268,30 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             await refresher.RefreshAsync(new TokenRefreshRequest("RT-family-plugin", ServerTarget, StoredClientId));
 
             handler.Requests.Count.ShouldBe(2); // distinct refresh tokens = distinct families
+        }
+
+        [Fact]
+        public async Task Refresh_AttemptWindow_IsDrivenPurelyByTheInjectedClock()
+        {
+            // Both halves of the 60 s rate-discipline window (04 §3.6) through the fake clock
+            // alone — no wall-clock time, no overridden window: this pins the PRODUCTION
+            // DefaultAttemptWindow (60 s) via the clock seam. Within the window ⇒ memoized (the
+            // shared attempt is replayed); past it ⇒ a fresh network attempt.
+            var now = new DateTimeOffset(2026, 8, 15, 12, 0, 0, TimeSpan.Zero);
+            var handler = new RecordingHttpMessageHandler().RespondWith(HttpStatusCode.OK, SuccessJson);
+            var refresher = NewRefresher(handler, clock: () => now); // default 60 s window
+
+            var first = await refresher.RefreshAsync(new TokenRefreshRequest(RefreshToken, ServerTarget, StoredClientId));
+
+            now = now.AddSeconds(59); // still inside the 60 s window
+            var second = await refresher.RefreshAsync(new TokenRefreshRequest(RefreshToken, ServerTarget, StoredClientId));
+            handler.Requests.Count.ShouldBe(1); // memoized — no second network attempt
+            second.ShouldBeSameAs(first);
+
+            now = now.AddSeconds(2); // 61 s after the attempt started — window elapsed
+            var third = await refresher.RefreshAsync(new TokenRefreshRequest(RefreshToken, ServerTarget, StoredClientId));
+            handler.Requests.Count.ShouldBe(2); // fresh network attempt
+            third.ShouldNotBeSameAs(first);
         }
 
         [Fact]
