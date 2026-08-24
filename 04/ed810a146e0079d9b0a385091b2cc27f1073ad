@@ -1,0 +1,62 @@
+McpPlugin.Server/src/Webhooks/Config/WebhookOptions.cs
+  617eebfd1cdddd31 30-31,40,51-53,62-63,75-77,89,92,99
+McpPlugin.Server/src/Webhooks/Extensions/WebhookServiceExtensions.cs
+  617eebfd1cdddd31 16,36-51,64-65,72
+McpPlugin.Common/src/Utils/DataArguments.cs
+  617eebfd1cdddd31 32-35,54-57,133-142,207-216
+McpPlugin.Server/src/Webhooks/Services/AuthorizationWebhookService.cs
+  617eebfd1cdddd31 1-151
+McpPlugin.Server/src/Hub/McpServerHub.cs
+  617eebfd1cdddd31 22,48-50,65-66
+McpPlugin.Server/src/Webhooks/Services/NoOpAuthorizationWebhookService.cs
+  617eebfd1cdddd31 1-39
+McpPlugin.Server/src/Hub/BaseHub.cs
+  f912516bc9ef5114 54-58
+  617eebfd1cdddd31 16,28,31,33,37,41,52-53,59-72,87
+McpPlugin.Server/src/Auth/TokenAuthenticationHandler.cs
+  617eebfd1cdddd31 15,28-29,33-34,37,62,108,110-112,127,129-131,144,146-148
+  f912516bc9ef5114 109,128,145,153-154,157-161
+McpPlugin.Common/src/Utils/Consts.MCP.Webhook.cs
+  617eebfd1cdddd31 28-29,41-42
+McpPlugin.Server/src/Webhooks/Models/AuthorizationRequest.cs
+  617eebfd1cdddd31 1-50
+McpPlugin.Server/src/Webhooks/Services/IAuthorizationWebhookService.cs
+  617eebfd1cdddd31 1-33
+McpPlugin.Server.Tests/TokenAuthenticationHandlerTests.cs
+  617eebfd1cdddd31 16,64-65,202-203,287-288
+McpPlugin.Server/src/Webhooks/Models/AuthorizationResponse.cs
+  617eebfd1cdddd31 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "04ed810a146e0079d9b0a385091b2cc27f1073ad",
+  "prompts": {
+    "617eebfd1cdddd31": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "752034da-1da6-4702-a0b9-e38ca169c54e",
+        "model": "claude-haiku-4-5-20251001"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 1703,
+      "total_deletions": 1276,
+      "accepted_lines": 608,
+      "overriden_lines": 1
+    },
+    "f912516bc9ef5114": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9845d2cc-8580-4651-893f-c32484087a6a",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 41,
+      "total_deletions": 50,
+      "accepted_lines": 15,
+      "overriden_lines": 1
+    }
+  }
+}

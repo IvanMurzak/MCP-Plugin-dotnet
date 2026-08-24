@@ -1,0 +1,35 @@
+McpPlugin.Server.Tests/Webhooks/ResourceEventTests.cs
+  0315dcfffaab4fe8 19
+McpPlugin.Server.Tests/Webhooks/ConnectionEventTests.cs
+  0315dcfffaab4fe8 20
+McpPlugin.Server.Tests/Webhooks/WebhookDispatcherTests.cs
+  0315dcfffaab4fe8 24
+McpPlugin.Server.Tests/Webhooks/WebhookOptionsTests.cs
+  0315dcfffaab4fe8 18
+McpPlugin.Server.Tests/Webhooks/WebhookEventCollectorTests.cs
+  0315dcfffaab4fe8 21
+McpPlugin.Server.Tests/Webhooks/PromptEventTests.cs
+  0315dcfffaab4fe8 19
+McpPlugin.Server.Tests/Webhooks/ToolCallEventTests.cs
+  0315dcfffaab4fe8 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "1cee19b11f1662ef064573ad7b6583926ee78b10",
+  "prompts": {
+    "0315dcfffaab4fe8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6769f442-a071-4f74-8921-ee56368ce65d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 1211,
+      "total_deletions": 1204,
+      "accepted_lines": 198,
+      "overriden_lines": 0
+    }
+  }
+}

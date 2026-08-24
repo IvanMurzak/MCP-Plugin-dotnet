@@ -1,0 +1,40 @@
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/PluginCredentialProvider.cs
+  s_8d859c66569e2d::t_a612fd8a795799 516
+  s_8d859c66569e2d::t_916824ea2d8bee 660
+  s_8d859c66569e2d::t_0a15d03ad2ed66 365-367
+  s_8d859c66569e2d::t_3a7f0f72532fa4 391
+  s_8d859c66569e2d::t_ae1b91235b301b 70-77
+  s_8d859c66569e2d::t_5e132ec5fa3b3f 536-538,542-643
+  s_8d859c66569e2d::t_0ae6f8c9a12343 393
+  s_8d859c66569e2d::t_741afd2c56cc8f 117-120,128-129,131
+  s_8d859c66569e2d::t_a4d4a490c9a79f 161-171
+  s_8d859c66569e2d::t_308b464d5076cf 91-107
+  s_8d859c66569e2d::t_f58d355734a054 265-267
+  s_8d859c66569e2d::t_fb7a0a532b5ff8 295-297
+  s_8d859c66569e2d::t_8359627124d00a 386-390,392,394-403
+  s_8d859c66569e2d::t_5e126bb3621c55 465
+  s_8d859c66569e2d::t_48952bce0db0ba 460-461,464,468-469,487-495,500-501,504,506-515,517-518
+  s_8d859c66569e2d::t_af9f73b6490491 684
+  s_8d859c66569e2d::t_9008c982d63e29 222-227
+  s_8d859c66569e2d::t_8ac92f2842cbf1 47-59,644-645
+McpPlugin.Tests/Network/Connection/Credentials/PluginCredentialProviderDeadFamilyMemoTests.cs
+  s_8d859c66569e2d::t_b1846c41d4b244 7
+  s_8d859c66569e2d::t_1fa8488cfe5c91 264
+  s_8d859c66569e2d::t_c05bb1d527be30 1-6,8-263,265-405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "fa60fe41b241801afb97f69fbb62b7da2fd6f4b6",
+  "prompts": {},
+  "sessions": {
+    "s_8d859c66569e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d33093a-57c1-4b45-b2ac-0ca6495e78eb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

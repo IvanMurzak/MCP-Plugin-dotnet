@@ -1,0 +1,21 @@
+McpPlugin.Server/src/McpSessionReaper.cs
+  s_d1c4e39f9b17d9::t_efd2cf0282fe69 80-84,86,89,91-104,106-107,110,113-114,118,121-122
+McpPlugin.Server.Tests/McpSessionReaperTests.cs
+  s_d1c4e39f9b17d9::t_b3c4fcb823af42 290,295,303-309
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2a3f264fb3000f723876071007f0e113bdc118f7",
+  "prompts": {},
+  "sessions": {
+    "s_d1c4e39f9b17d9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a6fd2f3-53b9-4a7c-8736-c3a5dc2253d4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

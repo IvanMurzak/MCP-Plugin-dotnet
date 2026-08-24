@@ -1,0 +1,38 @@
+McpPlugin.Tests/Mcp/ToolErrorClassificationTests.cs
+  s_9bb276d7183c60::t_22bcadc39e21cd 23,75-90,174-178
+McpPlugin.Tests/Data/ResponseCallToolErrorMetadataTests.cs
+  s_9bb276d7183c60::t_d36d7354ca8fac 22,26-34
+  s_9bb276d7183c60::t_bf43ecc21a9e9d 35
+McpPlugin.Common/src/Data/Response/Tool/Call/ResponseCallTool.Static.cs
+  s_3c149407cdd5d4::t_917a8d0cc8ac68 25,64
+McpPlugin.Server/src/Client/RequestTrackingService.cs
+  s_3c149407cdd5d4::t_c72f17c34b8447 178
+McpPlugin.Server/src/Tools/ServerNativeTools.cs
+  s_3c149407cdd5d4::t_c99352aa533810 74,102,106,116,122,124,129,134,148,151,155
+McpPlugin/src/Mcp/Tool/RunTool.cs
+  s_3c149407cdd5d4::t_4ae2f1679217f4 185,193,201,234,242,250,268,277,287
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "cbfd61d22fcbd2ce8fd135ce7b7064255f492173",
+  "prompts": {},
+  "sessions": {
+    "s_3c149407cdd5d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "845aef5f-a4aa-4844-b9e6-479df3530c09",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_9bb276d7183c60": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f551e-4ca8-7e60-be86-dea13e2ffad8",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
