@@ -9,6 +9,8 @@
 */
 
 using System;
+using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
@@ -407,8 +409,9 @@ namespace com.IvanMurzak.McpPlugin
 
         /// <summary>
         /// Starts the connection retry loop. Must be called from within a _gate-protected section.
-        /// Detects server-side rejection patterns (immediate disconnect after handshake) and stops
-        /// retrying after <see cref="MaxConsecutiveRejections"/> consecutive rejections.
+        /// Detects server-side rejection patterns (immediate disconnect after handshake, and an
+        /// observable HTTP 401/403 during the attempt itself — <see cref="ConnectionAttemptResult.AuthRejected"/>)
+        /// and stops retrying after <see cref="MaxConsecutiveRejections"/> consecutive rejections.
         /// </summary>
         private async Task<bool> StartConnectionLoop(CancellationToken cancellationToken)
         {
@@ -420,7 +423,8 @@ namespace com.IvanMurzak.McpPlugin
 
             while (!cancellationToken.IsCancellationRequested && _continueToReconnect.CurrentValue)
             {
-                if (await AttemptConnection(cancellationToken))
+                var attempt = await AttemptConnection(cancellationToken);
+                if (attempt == ConnectionAttemptResult.Connected)
                 {
                     consecutiveFailures = 0;
 
@@ -452,17 +456,24 @@ namespace com.IvanMurzak.McpPlugin
                         "This typically indicates authorization failure (invalid or revoked token).",
                         nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveRejections, MaxConsecutiveRejections);
 
-                    if (consecutiveRejections >= MaxConsecutiveRejections)
-                    {
-                        _logger.LogError("{class}[{guid}] {method} Connection to {endpoint} rejected {count} times consecutively. " +
-                            "Stopping reconnection attempts. The server is likely rejecting this client due to an authorization issue. " +
-                            "Please check your authorization token and try reconnecting.",
-                            nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveRejections);
-                        _continueToReconnect.Value = false;
-                        _connectionState.Value = HubConnectionState.Disconnected;
-                        _authorizationRejected.OnNext(Unit.Default);
+                    if (StopAfterRejectionCap(consecutiveRejections))
                         return false;
-                    }
+                }
+                else if (attempt == ConnectionAttemptResult.AuthRejected)
+                {
+                    // The server ANSWERED the attempt with an observable HTTP 401/403
+                    // (oauth-client-error-hygiene 02 §C3.4): it is reachable but rejecting this
+                    // client, so the failure counts toward the auth-rejection cap — not toward the
+                    // unreachable-endpoint failure cap, which it also resets (a 401/403 response
+                    // proves reachability).
+                    consecutiveFailures = 0;
+                    consecutiveRejections++;
+                    _logger.LogWarning("{class}[{guid}] {method} Connection attempt to {endpoint} was rejected with HTTP 401/403 ({count}/{max}). " +
+                        "This indicates an authorization failure (invalid or revoked token).",
+                        nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveRejections, MaxConsecutiveRejections);
+
+                    if (StopAfterRejectionCap(consecutiveRejections))
+                        return false;
                 }
                 else
                 {
@@ -502,17 +513,60 @@ namespace com.IvanMurzak.McpPlugin
         }
 
         /// <summary>
+        /// When the consecutive-rejection cap is reached: stop the reconnect loop, settle
+        /// idle-Disconnected, and fire the aggregated <see cref="OnAuthorizationRejected"/> signal.
+        /// Shared by both rejection flavours (immediate close after handshake, and an observable
+        /// HTTP 401/403 during the attempt — 02 §C3.4). Returns true when the cap fired.
+        /// </summary>
+        private bool StopAfterRejectionCap(int consecutiveRejections)
+        {
+            if (consecutiveRejections < MaxConsecutiveRejections)
+                return false;
+
+            _logger.LogError("{class}[{guid}] {method} Connection to {endpoint} rejected {count} times consecutively. " +
+                "Stopping reconnection attempts. The server is likely rejecting this client due to an authorization issue. " +
+                "Please check your authorization token and try reconnecting.",
+                nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveRejections);
+            _continueToReconnect.Value = false;
+            _connectionState.Value = HubConnectionState.Disconnected;
+            _authorizationRejected.OnNext(Unit.Default);
+            return true;
+        }
+
+        /// <summary>
+        /// Outcome of one connection attempt — the failure-reason seam of
+        /// <see cref="AttemptConnection"/> (oauth-client-error-hygiene 02 §C3.4). Public (not
+        /// protected) so test doubles' composers — not only <see cref="ConnectionManager"/>
+        /// subclasses themselves — can build attempt sequences.
+        /// </summary>
+        public enum ConnectionAttemptResult
+        {
+            /// <summary>The transport started (handshake succeeded, or it was already connected/connecting).</summary>
+            Connected,
+
+            /// <summary>The attempt failed for a non-auth (or unclassifiable) reason: unreachable endpoint, timeout, cancellation.</summary>
+            Failed,
+
+            /// <summary>
+            /// The attempt failed with an OBSERVABLE HTTP 401/403 (auth rejection at negotiate/handshake).
+            /// Only produced on TFMs where <c>HttpRequestException.StatusCode</c> exists (.NET 5+); the
+            /// netstandard2.1 (Unity) build never produces it — no message-text matching on any TFM.
+            /// </summary>
+            AuthRejected,
+        }
+
+        /// <summary>
         /// Attempts to start the connection. Must be called from within a _gate-protected section.
         /// Protected virtual to allow test subclasses to simulate server behavior.
         /// </summary>
-        protected virtual async Task<bool> AttemptConnection(CancellationToken cancellationToken)
+        protected virtual async Task<ConnectionAttemptResult> AttemptConnection(CancellationToken cancellationToken)
         {
             var connection = _hubConnection.CurrentValue;
             if (connection == null)
-                return false;
+                return ConnectionAttemptResult.Failed;
 
             if (connection.State is HubConnectionState.Connected or HubConnectionState.Connecting)
-                return true;
+                return ConnectionAttemptResult.Connected;
 
             _logger.LogInformation("{class}[{guid}] {method} Starting connection attempt to: {endpoint}",
                 nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint);
@@ -530,7 +584,7 @@ namespace com.IvanMurzak.McpPlugin
                     // Observe the task to prevent UnobservedTaskException; the exception
                     // (typically OperationCanceledException) is expected and can be ignored.
                     _ = connectionTask.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
-                    return false;
+                    return ConnectionAttemptResult.Failed;
                 }
 
                 if (connectionTask.IsCompletedSuccessfully)
@@ -538,12 +592,14 @@ namespace com.IvanMurzak.McpPlugin
                     _logger.LogInformation("{class}[{guid}] {method} Connection established successfully to: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint);
                     _transportConnected.OnNext(Unit.Default);
-                    return true;
+                    return ConnectionAttemptResult.Connected;
                 }
                 else
                 {
                     _logger.LogWarning("{class}[{guid}] {method} Connection attempt failed for endpoint: {endpoint}. Exception: {exception}",
                         nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint, connectionTask.Exception?.Message);
+                    if (IsObservableAuthRejection(connectionTask.Exception))
+                        return ConnectionAttemptResult.AuthRejected;
                 }
             }
             catch (OperationCanceledException)
@@ -560,9 +616,47 @@ namespace com.IvanMurzak.McpPlugin
             {
                 _logger.LogError(ex, "{class}[{guid}] {method} Connection attempt failed for endpoint: {endpoint}. Error: {error}",
                     nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint, ex.Message);
+                if (IsObservableAuthRejection(ex))
+                    return ConnectionAttemptResult.AuthRejected;
             }
 
+            return ConnectionAttemptResult.Failed;
+        }
+
+        /// <summary>
+        /// True when the attempt's exception tree carries an OBSERVABLE HTTP 401/403 — i.e. an
+        /// <see cref="HttpRequestException"/> whose <c>StatusCode</c> is Unauthorized/Forbidden
+        /// (oauth-client-error-hygiene 02 §C3.4). Best-effort by design: on the netstandard2.1
+        /// (Unity) TFM <see cref="HttpRequestException"/> has no <c>StatusCode</c> property (it was
+        /// added in .NET 5) and message-text matching is FORBIDDEN on every TFM, so this always
+        /// returns false there — an auth failure at negotiate degrades to the ordinary failure
+        /// branch, still bounded by the credential provider's dead-family verdict (C3.1).
+        /// </summary>
+        private static bool IsObservableAuthRejection(Exception? exception)
+        {
+#if NETSTANDARD2_1
+            _ = exception;
             return false;
+#else
+            static bool Walk(Exception? ex, int depth)
+            {
+                if (ex == null || depth > 8)
+                    return false;
+                if (ex is HttpRequestException { StatusCode: HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden })
+                    return true;
+                if (ex is AggregateException aggregate)
+                {
+                    foreach (var inner in aggregate.InnerExceptions)
+                    {
+                        if (Walk(inner, depth + 1))
+                            return true;
+                    }
+                    return false;
+                }
+                return Walk(ex.InnerException, depth + 1);
+            }
+            return Walk(exception, 0);
+#endif
         }
 
         protected virtual async Task WaitBeforeRetry(CancellationToken cancellationToken)
