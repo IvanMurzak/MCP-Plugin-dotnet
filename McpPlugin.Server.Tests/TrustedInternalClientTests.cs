@@ -123,6 +123,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             // Default-case wire shape MUST be unchanged for enabled primitives —
             // a non-null Meta would surface to every existing third-party client.
+            // Prompts, resources and resource templates assign this result WHOLESALE,
+            // so the null is load-bearing for them; the tools call site layers its
+            // skillDescription/skillBody keys on top via BuildToolMeta instead of
+            // changing this helper. (Tool-side composition: ToolListSkillMetaTests.)
             ExtensionsListMeta.BuildEnabledMeta(enabled: true).ShouldBeNull();
         }
 
@@ -134,6 +138,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             meta.ShouldNotBeNull();
             meta!.ContainsKey(ExtensionsListMeta.EnabledKey).ShouldBeTrue();
             meta[ExtensionsListMeta.EnabledKey]!.GetValue<bool>().ShouldBeFalse();
+            // ...and nothing else: the shared helper stays a pure enabled-annotation for
+            // its three non-tool call sites.
+            meta.Count.ShouldBe(1);
         }
 
         // ─────────────────────────────────────────────────────────────────────
@@ -143,6 +150,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void ToTool_OmitsMeta_WhenEnabled()
         {
+            // ToTool() now composes through BuildToolMeta, which may also add
+            // skillDescription/skillBody. With neither set — the case here — the result
+            // must still be the pre-existing null.
             new ResponseListTool { Name = "ping", Enabled = true, InputSchema = Consts.MCP.EmptyInputSchema }
                 .ToTool()
                 .Meta
@@ -156,6 +166,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             meta.ShouldNotBeNull();
             meta![ExtensionsListMeta.EnabledKey]!.GetValue<bool>().ShouldBeFalse();
+            // A tool with no skill metadata carries the enabled annotation ALONE, so the
+            // additive change leaves this payload byte-identical to what shipped before.
+            meta.Count.ShouldBe(1);
         }
 
         [Fact]
