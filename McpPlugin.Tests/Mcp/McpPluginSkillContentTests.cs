@@ -197,11 +197,17 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             generator.Generate(skills, _tempDir);
 
             var content = File.ReadAllText(Path.Combine(_tempDir, "test-skill", "SKILL.md"));
-            var lines = content.Split('\n');
-            lines[0].Trim().ShouldBe("---");
-            lines[1].Trim().ShouldBe("name: test-skill");
-            lines[2].Trim().ShouldBe("description: Test description");
-            lines[3].Trim().ShouldBe("---");
+            // Normalize CRLF so the indent assertions below compare content, not line endings.
+            var lines = content.Replace("\r\n", "\n").Split('\n');
+            lines[0].ShouldBe("---");
+            lines[1].ShouldBe("name: test-skill");
+            lines[2].ShouldBe("description: Test description");
+            // The provenance marker is part of the front-matter block, so it sits BEFORE the
+            // closing '---'. Asserted un-trimmed on the nested key to pin its two-space indent,
+            // which is what makes it a YAML mapping rather than a sibling scalar.
+            lines[3].ShouldBe("metadata:");
+            lines[4].ShouldBe("  generated-by: mcp-plugin-dotnet");
+            lines[5].ShouldBe("---");
         }
 
         // ── Deletion ────────────────────────────────────────────────────────

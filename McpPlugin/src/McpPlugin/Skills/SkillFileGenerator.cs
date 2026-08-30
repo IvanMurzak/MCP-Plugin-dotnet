@@ -49,6 +49,48 @@ namespace com.IvanMurzak.McpPlugin.Skills
             _logger = logger;
         }
 
+        // ── Provenance marker ────────────────────────────────────────────────
+
+        /// <summary>
+        /// YAML front-matter key holding the provenance block. <c>metadata</c> is a first-class
+        /// SKILL.md front-matter field: hosts read it as a free-form mapping of extra keys.
+        /// </summary>
+        public const string ProvenanceBlockKey = "metadata";
+
+        /// <summary>
+        /// Key, nested under <see cref="ProvenanceBlockKey"/>, that marks a SKILL.md as written by
+        /// this generator rather than hand-authored by a user.
+        /// </summary>
+        public const string ProvenanceKey = "generated-by";
+
+        /// <summary>
+        /// Value written for <see cref="ProvenanceKey"/>. Deliberately a constant carrying no
+        /// version and no timestamp, so regenerating an unchanged tool rewrites a byte-identical file.
+        /// </summary>
+        public const string ProvenanceValue = "mcp-plugin-dotnet";
+
+        /// <summary>
+        /// Appends the provenance marker as raw YAML lines. Callers must invoke it INSIDE the
+        /// front-matter block — before the closing <c>---</c> — because a consumer that identifies
+        /// generated skills parses the front-matter only:
+        /// <code>
+        /// ---
+        /// name: tool-name
+        /// description: ...
+        /// metadata:
+        ///   generated-by: mcp-plugin-dotnet
+        /// ---
+        /// </code>
+        /// Written literally rather than through <see cref="EscapeYaml"/>, which escapes a single
+        /// scalar and would collapse the nested mapping into a quoted string.
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected static void AppendProvenanceMetadata(StringBuilder sb)
+        {
+            sb.AppendLine(ProvenanceBlockKey + ":");
+            sb.AppendLine("  " + ProvenanceKey + ": " + ProvenanceValue);
+        }
+
         // ── Customization properties ─────────────────────────────────────────
 
         /// <summary>
@@ -331,7 +373,8 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
         /// <summary>
         /// Builds the full markdown content for a custom skill's SKILL.md.
-        /// Contains YAML frontmatter (name, description) followed by the verbatim content body.
+        /// Contains YAML frontmatter (name, description, and the
+        /// <see cref="AppendProvenanceMetadata"/> marker) followed by the verbatim content body.
         /// </summary>
         protected virtual string BuildSkillContentMarkdown(ISkillContent skill, string skillName)
         {
@@ -343,6 +386,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine("---");
             sb.AppendLine($"name: {EscapeYaml(skillName)}");
             sb.AppendLine($"description: {EscapeYaml(yamlDescription)}");
+            AppendProvenanceMetadata(sb);
             sb.AppendLine("---");
 
             // Verbatim content body
@@ -478,6 +522,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine("---");
             sb.AppendLine($"name: {EscapeYaml(skillName)}");
             sb.AppendLine($"description: {EscapeYaml(yamlDescription)}");
+            AppendProvenanceMetadata(sb);
             sb.AppendLine("---");
             sb.AppendLine();
             BuildFrontMatterNotes(sb);
@@ -562,6 +607,8 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// ---
         /// name: tool-name
         /// description: ...
+        /// metadata:
+        ///   generated-by: mcp-plugin-dotnet
         /// ---
         ///                          ← content appended HERE
         /// # Tool Title
