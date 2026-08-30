@@ -205,6 +205,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             // The provenance marker is part of the front-matter block, so it sits BEFORE the
             // closing '---'. Asserted un-trimmed on the nested key to pin its two-space indent,
             // which is what makes it a YAML mapping rather than a sibling scalar.
+            // These are LITERALS on purpose, not SkillFileGenerator's own constants: the on-disk
+            // bytes are the contract a front-matter reader parses, so a changed constant must
+            // redden this rather than move with it. SkillFileGeneratorProvenanceTests spells the
+            // same two literals for the same reason — a marker-format change touches both.
             lines[3].ShouldBe("metadata:");
             lines[4].ShouldBe("  generated-by: mcp-plugin-dotnet");
             lines[5].ShouldBe("---");
