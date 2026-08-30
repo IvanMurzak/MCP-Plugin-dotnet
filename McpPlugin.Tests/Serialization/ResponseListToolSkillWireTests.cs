@@ -61,9 +61,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
 
             var json = JsonSerializer.Serialize(source, options);
 
-            // Positive artifact on the WIRE, not merely on the round-tripped object: a
-            // field-instead-of-property member is absent here even though the CLR object
-            // that produced it held the value.
+            // Positive artifact on the WIRE, not merely on the round-tripped object (the
+            // class summary above states why that distinction is the point of this file).
             using (var doc = JsonDocument.Parse(json))
             {
                 doc.RootElement
@@ -140,9 +139,13 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
             // Backward tolerance: a plugin built before this change sends a payload with
             // neither member. The server must still materialise the tool.
             var options = HubPayloadOptions();
+            // `Enabled` is carried as FALSE on purpose. The member defaults to `true`, so
+            // asserting it deserializes to `true` is satisfied by the initializer and holds
+            // under every mutation, including one that stops binding the member at all.
+            // `false` is the only value in the domain that distinguishes a real bind.
             var oldShape =
                 "{\"" + WireName(options, nameof(ResponseListTool.Name)) + "\":\"gameobject-create\"," +
-                "\"" + WireName(options, nameof(ResponseListTool.Enabled)) + "\":true," +
+                "\"" + WireName(options, nameof(ResponseListTool.Enabled)) + "\":false," +
                 "\"" + WireName(options, nameof(ResponseListTool.Description)) + "\":\"legacy\"}";
 
             var parsed = JsonSerializer.Deserialize<ResponseListTool>(oldShape, options);
@@ -150,7 +153,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
             parsed.ShouldNotBeNull();
             parsed!.Name.ShouldBe("gameobject-create");
             parsed.Description.ShouldBe("legacy");
-            parsed.Enabled.ShouldBeTrue();
+            parsed.Enabled.ShouldBeFalse();
             parsed.SkillDescription.ShouldBeNull();
             parsed.SkillBody.ShouldBeNull();
         }

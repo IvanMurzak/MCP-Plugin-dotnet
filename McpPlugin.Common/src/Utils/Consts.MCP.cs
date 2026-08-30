@@ -263,8 +263,11 @@ namespace com.IvanMurzak.McpPlugin.Common
                     /// — and disabled entries are tagged with
                     /// <c>_meta.enabled = false</c> so the trusted client can tell
                     /// them apart. Any client that does NOT send this header keeps
-                    /// the pre-existing behaviour: disabled entries are filtered
-                    /// out, and no <c>_meta</c> is emitted by this server.
+                    /// the pre-existing filtering: disabled entries are filtered
+                    /// out, so <c>_meta.enabled</c> never reaches it.
+                    /// <c>_meta</c> itself is NOT trusted-client-only: a
+                    /// <c>tools/list</c> entry also carries the skill keys for every
+                    /// caller, so its presence does not imply this mode.
                     ///
                     /// This is a UX gate, NOT a security boundary — the header is
                     /// trivially spoofable. Pair it with bearer-token auth when

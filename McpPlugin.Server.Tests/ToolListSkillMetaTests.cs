@@ -21,11 +21,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
     /// <c>skillDescription</c> / <c>skillBody</c>. The projection under test is
     /// <c>ExtensionsTool.ToTool()</c> — the exact expression
     /// <c>ToolRouter.ListAll</c> maps every plugin tool through.
-    /// <para>
-    /// The composition is deliberately tools-only:
-    /// <c>ExtensionsListMeta.BuildEnabledMeta</c> keeps its null-when-enabled contract
-    /// because prompts, resources and resource templates assign its result wholesale.
-    /// </para>
+    /// The composition is deliberately tools-only — see the <c>remarks</c> on
+    /// <c>ExtensionsListMeta.BuildToolMeta</c> for why the shared helper stays untouched.
     /// </summary>
     public class ToolListSkillMetaTests
     {
@@ -54,11 +51,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             meta![ExtensionsListMeta.SkillDescriptionKey]!.GetValue<string>().ShouldBe(SkillDescriptionText);
             meta[ExtensionsListMeta.SkillBodyKey]!.GetValue<string>().ShouldBe(SkillBodyText);
 
-            // An ENABLED tool must not gain an `enabled` key: the two assertions above are
-            // the positive control proving the object was built, so this absence is a
-            // statement about `enabled` alone.
-            meta.ContainsKey(ExtensionsListMeta.EnabledKey).ShouldBeFalse();
-            meta.Count.ShouldBe(2);
+            // An ENABLED tool must not gain an `enabled` key. The exact key SET says that in
+            // one assertion and pins emission ORDER too; the value assertions above are the
+            // positive control proving the object was built at all.
+            meta.Select(kv => kv.Key).ShouldBe(
+                new[] { ExtensionsListMeta.SkillDescriptionKey, ExtensionsListMeta.SkillBodyKey });
         }
 
         [Fact]
@@ -92,7 +89,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             meta![ExtensionsListMeta.EnabledKey]!.GetValue<bool>().ShouldBeFalse();
             meta[ExtensionsListMeta.SkillDescriptionKey]!.GetValue<string>().ShouldBe(SkillDescriptionText);
             meta[ExtensionsListMeta.SkillBodyKey]!.GetValue<string>().ShouldBe(SkillBodyText);
-            meta.Count.ShouldBe(3);
+            // Same key-SET form as the two-key case above: this is the only test exercising
+            // all three keys, so it is the only one that can pin their emission order.
+            meta.Select(kv => kv.Key).ShouldBe(new[]
+            {
+                ExtensionsListMeta.EnabledKey,
+                ExtensionsListMeta.SkillDescriptionKey,
+                ExtensionsListMeta.SkillBodyKey
+            });
         }
 
         [Fact]
@@ -122,13 +126,33 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public void BuildToolMeta_MatchesToTool_ForTheAttributedCase()
+        public void ToTool_RelaysWhitespaceOnlySkillBody_BecauseTheGuardIsIsNullOrEmpty()
         {
-            // Pins the helper itself, so a future call site gets the same composition.
+            // BuildToolMeta guards with IsNullOrEmpty, NOT IsNullOrWhiteSpace, so a
+            // whitespace-only value is relayed verbatim; SkillFileGenerator drops it from
+            // SKILL.md. That divergence is deliberate and was prose-only until this test:
+            // swapping the guard to IsNullOrWhiteSpace reddened NOTHING and would have
+            // silently turned the comment at the guard into a false claim.
+            var meta = Tool(skillBody: "   ").ToTool().Meta;
+
+            meta.ShouldNotBeNull();
+            meta![ExtensionsListMeta.SkillBodyKey]!.GetValue<string>().ShouldBe("   ");
+            meta.Select(kv => kv.Key).ShouldBe(new[] { ExtensionsListMeta.SkillBodyKey });
+        }
+
+        [Fact]
+        public void BuildToolMeta_EmitsExactlyTheSkillKeys_WhenCalledDirectly()
+        {
+            // Pins the PUBLIC helper directly. ToTool() assigns BuildToolMeta(response)
+            // verbatim today, so this deliberately overlaps
+            // ToTool_EmitsOnlySkillDescription_WhenBodyAbsent above; it earns its place only
+            // because BuildToolMeta ships as public API of com.IvanMurzak.McpPlugin.Server and
+            // a second call site could use it without going through ToTool().
             var meta = ExtensionsListMeta.BuildToolMeta(Tool(skillDescription: SkillDescriptionText));
 
             meta.ShouldNotBeNull();
             meta![ExtensionsListMeta.SkillDescriptionKey]!.GetValue<string>().ShouldBe(SkillDescriptionText);
+            meta.Select(kv => kv.Key).ShouldBe(new[] { ExtensionsListMeta.SkillDescriptionKey });
         }
 
         [Fact]
@@ -142,6 +166,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             meta.ShouldNotBeNull();
             meta!.Select(kv => kv.Key).ShouldBe(new[] { ExtensionsListMeta.EnabledKey });
+        }
+
+        [Fact]
+        public void SkillMetaKeys_AreTheLiteralWireNames()
+        {
+            // Every other assertion in this file reads the keys THROUGH these constants, so
+            // changing a constant's VALUE would rename the key for every MCP client while
+            // reddening nothing. These two strings ARE the wire contract; pin them literally.
+            ExtensionsListMeta.SkillDescriptionKey.ShouldBe("skillDescription");
+            ExtensionsListMeta.SkillBodyKey.ShouldBe("skillBody");
         }
     }
 }

@@ -81,7 +81,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 // receive disabled tools so the field never reaches them.
                 // Tools additionally carry `skillDescription` / `skillBody` when the tool
                 // declares them, so MCP clients can build a tool catalog without calling
-                // every tool's schema. Still null when there is nothing to emit.
+                // every tool's schema.
                 Meta = ExtensionsListMeta.BuildToolMeta(response)
             };
         }
