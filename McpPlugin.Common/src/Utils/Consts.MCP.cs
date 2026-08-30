@@ -292,9 +292,9 @@ namespace com.IvanMurzak.McpPlugin.Common
                     ///
                     /// <para><b>Opt-in because the payload is large, not because it is
                     /// secret.</b> The skill blurb and body are re-sent in full on EVERY
-                    /// <c>tools/list</c>; across a real engine catalog that is hundreds of
-                    /// kilobytes per listing, per session. Clients that never read the
-                    /// keys should not pay for them.</para>
+                    /// <c>tools/list</c>; at the measured 216-tool engine catalog that is
+                    /// roughly 205,000 characters (~200 KB) per listing, per session.
+                    /// Clients that never read the keys should not pay for them.</para>
                     ///
                     /// <para><b>A separate axis from <see cref="TrustedInternalClient"/>
                     /// on purpose.</b> That header ALSO unlocks the disabled-tool catalog,

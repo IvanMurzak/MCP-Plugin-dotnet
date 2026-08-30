@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
@@ -93,7 +94,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             McpSessionTokenContext.IsSkillMetaClient.ShouldBeFalse();
 
             var capturedFlag = false;
-            System.Text.Json.Nodes.JsonObject? capturedMeta = null;
+            JsonObject? capturedMeta = null;
 
             await InvokeMiddlewareAsync(
                 headers: new() { [Consts.MCP.Server.Headers.SkillMetaClient] = "1" },
@@ -112,7 +113,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             capturedMeta.Select(kv => kv.Key).ShouldBe(
                 new[] { ExtensionsListMeta.SkillDescriptionKey, ExtensionsListMeta.SkillBodyKey });
 
-            // Cleared in the middleware's `finally`, exactly like the trusted flag.
+            // The caller's flow never observes the middleware's write: AsyncTaskMethodBuilder
+            // restores the ExecutionContext around an async method, so this holds whether or not
+            // the `finally` reset exists. It is NOT evidence about that reset — see the block
+            // above `Middleware_SkillMetaFlag_DoesNotLeakIntoTheNextRequest` for what is.
             McpSessionTokenContext.IsSkillMetaClient.ShouldBeFalse();
         }
 
@@ -126,7 +130,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // An ENABLED tool's pre-skill-metadata `_meta` was `null` — BuildEnabledMeta's own
             // contract, assigned wholesale. Asserting the WHOLE payload rather than "the skill keys
             // are missing": a null cannot be satisfied by a partially-built object.
-            System.Text.Json.Nodes.JsonObject? gated = null;
+            JsonObject? gated = null;
             await InvokeMiddlewareAsync(
                 headers: new(),
                 next: () => { gated = AttributedTool().ToTool().Meta; return Task.CompletedTask; });
@@ -136,7 +140,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // Positive control, SAME fixture: with the header the very same tool emits both keys.
             // Without this, `gated == null` would be equally satisfied by a fixture that carried no
             // skill metadata in the first place, and the assertion above would prove nothing.
-            System.Text.Json.Nodes.JsonObject? optedIn = null;
+            JsonObject? optedIn = null;
             await InvokeMiddlewareAsync(
                 headers: new() { [Consts.MCP.Server.Headers.SkillMetaClient] = "1" },
                 next: () => { optedIn = AttributedTool().ToTool().Meta; return Task.CompletedTask; });
@@ -152,7 +156,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // A DISABLED tool's pre-skill-metadata `_meta` was exactly `{"enabled":false}`. The
             // serialized text is the whole-payload artifact: it pins the key set, the value, AND
             // that nothing else rode along.
-            System.Text.Json.Nodes.JsonObject? gated = null;
+            JsonObject? gated = null;
             await InvokeMiddlewareAsync(
                 headers: new(),
                 next: () => { gated = AttributedTool(enabled: false).ToTool().Meta; return Task.CompletedTask; });
@@ -162,7 +166,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // Positive control, SAME fixture: with the header all three keys appear, so the payload
             // above is short because of the gate and not because the tool had nothing to publish.
-            System.Text.Json.Nodes.JsonObject? optedIn = null;
+            JsonObject? optedIn = null;
             await InvokeMiddlewareAsync(
                 headers: new() { [Consts.MCP.Server.Headers.SkillMetaClient] = "1" },
                 next: () => { optedIn = AttributedTool(enabled: false).ToTool().Meta; return Task.CompletedTask; });
@@ -194,7 +198,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             McpSessionTokenContext.IsSkillMetaClient.ShouldBeFalse();
 
             var capturedFlag = true;
-            System.Text.Json.Nodes.JsonObject? capturedMeta = null;
+            JsonObject? capturedMeta = null;
 
             await InvokeMiddlewareAsync(
                 headers: new() { [Consts.MCP.Server.Headers.SkillMetaClient] = headerValue },
@@ -268,8 +272,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // IsTrustedInternalClient instead of IsSkillMetaClient, the skill keys below would
             // appear for a caller that only ever asked for the unfiltered catalog.
             var visibleNames = new List<string>();
-            System.Text.Json.Nodes.JsonObject? disabledMeta = null;
-            System.Text.Json.Nodes.JsonObject? enabledMeta = null;
+            JsonObject? disabledMeta = null;
+            JsonObject? enabledMeta = null;
 
             await InvokeMiddlewareAsync(
                 headers: new() { [Consts.MCP.Server.Headers.TrustedInternalClient] = "1" },
@@ -296,7 +300,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // The mirror: opting in to skill metadata must not widen catalog visibility. A single
             // shared flag — or SelectVisible learning to read the skill flag — reddens here.
             var visibleNames = new List<string>();
-            System.Text.Json.Nodes.JsonObject? enabledMeta = null;
+            JsonObject? enabledMeta = null;
 
             await InvokeMiddlewareAsync(
                 headers: new() { [Consts.MCP.Server.Headers.SkillMetaClient] = "1" },
@@ -349,7 +353,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // `finally` reset of request 1 is the only thing standing between the two, which is
             // exactly the pooled-request hazard this asserts against.
             var secondFlag = true;
-            System.Text.Json.Nodes.JsonObject? secondMeta = null;
+            JsonObject? secondMeta = null;
             await InvokeMiddlewareAsync(
                 headers: new(),
                 next: () =>

@@ -30,7 +30,8 @@ namespace com.IvanMurzak.McpPlugin
         /// Sourced from <see cref="AiSkillDescriptionAttribute"/> on the underlying method by default.
         /// <para>
         /// PUBLISHED: this value is also copied onto the MCP <c>tools/list</c> entry as the
-        /// <c>_meta.skillDescription</c> key, for every caller — it is not SKILL.md-only.
+        /// <c>_meta.skillDescription</c> key for callers that opted in with the
+        /// <c>X-McpPlugin-Skill-Meta: 1</c> request header — it is not SKILL.md-only.
         /// </para>
         /// </summary>
         string? SkillDescription { get; }
@@ -42,9 +43,11 @@ namespace com.IvanMurzak.McpPlugin
         /// Sourced from <see cref="AiSkillBodyAttribute"/> on the underlying method by default.
         /// <para>
         /// PUBLISHED: this value is also copied onto the MCP <c>tools/list</c> entry as the
-        /// <c>_meta.skillBody</c> key, for every caller — it is not SKILL.md-only. It is
-        /// uncapped on that path, so keep it to content that is safe and sensible to send to
-        /// every connected MCP client.
+        /// <c>_meta.skillBody</c> key for callers that opted in with the
+        /// <c>X-McpPlugin-Skill-Meta: 1</c> request header — it is not SKILL.md-only. It is
+        /// uncapped on that path, and that header is a payload gate rather than a security
+        /// boundary (any client may send it), so keep it to content that is safe and sensible
+        /// to send to any connected MCP client.
         /// </para>
         /// </summary>
         string? SkillBody { get; }

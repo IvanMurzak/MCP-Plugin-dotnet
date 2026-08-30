@@ -94,12 +94,11 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             var meta = BuildEnabledMeta(response.Enabled);
 
-            // Opt-in gate: the skill blurb and body are re-sent in full on every
-            // tools/list, which across a real engine catalog is hundreds of kilobytes per
-            // listing. Only a caller that asked for them pays for them; everyone else gets
-            // exactly the pre-skill-metadata _meta shape (null when enabled, {enabled:false}
-            // when disabled). Checked BEFORE the per-key guards so neither key can be
-            // reached without the opt-in.
+            // Opt-in gate. Checked BEFORE the per-key guards, so neither skill key can be
+            // reached without the opt-in and a caller that did not opt in gets the
+            // pre-skill-metadata _meta shape (null when enabled, {enabled:false} when
+            // disabled) by construction rather than by two guards agreeing. Why it is
+            // opt-in, and the measured payload size: Consts.MCP.Server.Headers.SkillMetaClient.
             if (!McpSessionTokenContext.IsSkillMetaClient)
                 return meta;
 

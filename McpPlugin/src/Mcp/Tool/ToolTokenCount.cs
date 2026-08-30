@@ -95,10 +95,13 @@ namespace com.IvanMurzak.McpPlugin
             if (!string.IsNullOrEmpty(description))
                 jsonObject["description"] = description;
 
-            // Published skill metadata. It reaches every MCP client on the tools/list entry as
-            // _meta.skillDescription / _meta.skillBody, gated there on the SAME string.IsNullOrEmpty
-            // test used here — so an absent value costs nothing and a present one is measured exactly
-            // once, under the same accounting the members above get.
+            // Published skill metadata. It reaches the tools/list entry as _meta.skillDescription
+            // / _meta.skillBody only for callers that opted in with X-McpPlugin-Skill-Meta: 1, and
+            // this count deliberately ignores that opt-in: it answers "what does this catalogue cost
+            // a client that reads the skill metadata?", which is the same number whoever asks. The
+            // PER-KEY emptiness guard on the wire is the SAME string.IsNullOrEmpty test used here
+            // (the opt-in gate sits BEFORE it), so an absent value costs nothing and a present one is
+            // measured exactly once, under the same accounting the members above get.
             if (!string.IsNullOrEmpty(skillDescription))
                 jsonObject[SkillDescriptionKey] = skillDescription;
 
