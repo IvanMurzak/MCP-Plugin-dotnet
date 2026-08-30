@@ -266,8 +266,11 @@ namespace com.IvanMurzak.McpPlugin.Common
                     /// the pre-existing filtering: disabled entries are filtered
                     /// out, so <c>_meta.enabled</c> never reaches it.
                     /// <c>_meta</c> itself is NOT trusted-client-only: a
-                    /// <c>tools/list</c> entry also carries the skill keys for every
-                    /// caller, so its presence does not imply this mode.
+                    /// <c>tools/list</c> entry may also carry the skill keys, but those
+                    /// have their OWN opt-in header (<see cref="SkillMetaClient"/>) and
+                    /// this one neither grants nor implies them. Neither header implies
+                    /// the other — see <see cref="SkillMetaClient"/> for why the two
+                    /// axes are deliberately separate.
                     ///
                     /// This is a UX gate, NOT a security boundary — the header is
                     /// trivially spoofable. Pair it with bearer-token auth when
@@ -277,6 +280,37 @@ namespace com.IvanMurzak.McpPlugin.Common
 
                     /// <summary>Value the trusted-client header must carry to opt in.</summary>
                     public const string TrustedInternalClientOptInValue = "1";
+
+                    /// <summary>
+                    /// Marks the caller as a skill-metadata consumer. When the request
+                    /// carries this header set to <c>"1"</c>, each <c>tools/list</c>
+                    /// entry additionally carries <c>_meta.skillDescription</c> /
+                    /// <c>_meta.skillBody</c> for every tool that declares them (see
+                    /// <c>ExtensionsListMeta.BuildToolMeta</c>). A caller that does NOT
+                    /// send it receives neither key, i.e. exactly the <c>_meta</c> shape
+                    /// the server produced before those keys existed.
+                    ///
+                    /// <para><b>Opt-in because the payload is large, not because it is
+                    /// secret.</b> The skill blurb and body are re-sent in full on EVERY
+                    /// <c>tools/list</c>; across a real engine catalog that is hundreds of
+                    /// kilobytes per listing, per session. Clients that never read the
+                    /// keys should not pay for them.</para>
+                    ///
+                    /// <para><b>A separate axis from <see cref="TrustedInternalClient"/>
+                    /// on purpose.</b> That header ALSO unlocks the disabled-tool catalog,
+                    /// so reusing it here would start shipping <c>Enabled = false</c>
+                    /// tools to every skill-metadata consumer. The two flags are
+                    /// independent: sending one never sets the other.</para>
+                    ///
+                    /// <para>This is a payload gate, NOT a security boundary — the header
+                    /// is trivially spoofable, exactly like
+                    /// <see cref="TrustedInternalClient"/>. Keep skill text to content
+                    /// that is safe to publish to any connected MCP client.</para>
+                    /// </summary>
+                    public const string SkillMetaClient = "X-McpPlugin-Skill-Meta";
+
+                    /// <summary>Value the skill-metadata header must carry to opt in.</summary>
+                    public const string SkillMetaClientOptInValue = "1";
 
                     /// <summary>
                     /// Per-installation MCP instance identity (design 07 §2.3, D10.2). The value is

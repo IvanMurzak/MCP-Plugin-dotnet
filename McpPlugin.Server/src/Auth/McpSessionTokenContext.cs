@@ -22,6 +22,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         static readonly AsyncLocal<string?> _currentClientIp = new();
         static readonly AsyncLocal<string?> _currentUserAgent = new();
         static readonly AsyncLocal<bool> _isTrustedInternalClient = new();
+        static readonly AsyncLocal<bool> _isSkillMetaClient = new();
         static readonly AsyncLocal<ConnectionIdentity?> _currentIdentity = new();
         static readonly AsyncLocal<string?> _currentProjectPin = new();
         static readonly AsyncLocal<string?> _currentSelectedInstanceId = new();
@@ -117,6 +118,26 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         {
             get => _isTrustedInternalClient.Value;
             set => _isTrustedInternalClient.Value = value;
+        }
+
+        /// <summary>
+        /// True when the in-flight request opted in to skill metadata. Set by
+        /// <see cref="McpSessionTokenMiddleware"/> from the
+        /// <c>X-McpPlugin-Skill-Meta</c> header (see
+        /// <c>Consts.MCP.Server.Headers.SkillMetaClient</c>) and consumed by
+        /// <c>ExtensionsListMeta.BuildToolMeta</c> to decide whether a
+        /// <c>tools/list</c> entry carries <c>_meta.skillDescription</c> /
+        /// <c>_meta.skillBody</c>. Cleared in the middleware's <c>finally</c>,
+        /// so values never leak across requests.
+        /// <para>A SEPARATE flag from <see cref="IsTrustedInternalClient"/> on
+        /// purpose: that one also unlocks the <c>Enabled = false</c> catalog, so
+        /// a client asking only for skill metadata must not acquire it. Neither
+        /// property reads or writes the other's slot.</para>
+        /// </summary>
+        public static bool IsSkillMetaClient
+        {
+            get => _isSkillMetaClient.Value;
+            set => _isSkillMetaClient.Value = value;
         }
     }
 }

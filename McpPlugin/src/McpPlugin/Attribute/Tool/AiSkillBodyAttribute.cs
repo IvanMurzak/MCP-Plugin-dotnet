@@ -18,10 +18,12 @@ namespace com.IvanMurzak.McpPlugin
     /// usage notes, suggestions) that would otherwise blow past the 1024-character cap on the YAML
     /// <c>description:</c> field.
     /// <para>
-    /// This text is <b>not</b> written into the YAML front-matter, but it DOES reach the MCP
+    /// This text is <b>not</b> written into the YAML front-matter, but it CAN reach the MCP
     /// <c>tools/list</c> payload: the server emits it as the <c>_meta.skillBody</c> key on the
-    /// tool's list entry, for every caller — see <c>ExtensionsListMeta.BuildToolMeta</c>.
-    /// Keep it to content that is safe to publish to any connected MCP client.
+    /// tool's list entry for callers that opted in with the <c>X-McpPlugin-Skill-Meta: 1</c>
+    /// request header — see <c>ExtensionsListMeta.BuildToolMeta</c>. That header is a payload gate,
+    /// not a security boundary (any client may send it), so keep this text to content that is safe
+    /// to publish to any connected MCP client.
     /// </para>
     /// </summary>
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = false, Inherited = true)]

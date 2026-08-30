@@ -1,4 +1,4 @@
-/*
+﻿/*
 ┌────────────────────────────────────────────────────────────────────────┐
 │  Author: Ivan Murzak (https://github.com/IvanMurzak)                   │
 │  Repository: GitHub (https://github.com/IvanMurzak/MCP-Plugin-dotnet)  │
@@ -11,6 +11,7 @@
 using System.Linq;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure;
 using Shouldly;
 using Xunit;
 
@@ -23,6 +24,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
     /// <c>ToolRouter.ListAll</c> maps every plugin tool through.
     /// The composition is deliberately tools-only — see the <c>remarks</c> on
     /// <c>ExtensionsListMeta.BuildToolMeta</c> for why the shared helper stays untouched.
+    ///
+    /// <para>Every case here runs INSIDE <see cref="SkillMetaClientScope"/>, i.e. as a caller that
+    /// sent <c>X-McpPlugin-Skill-Meta: 1</c>. That is load-bearing rather than incidental: the keys
+    /// are now gated, so without the opt-in the "no key is emitted" cases below would hold for the
+    /// gate's reason instead of their own and could no longer tell the composition apart from a
+    /// server that never learned to emit skill metadata at all. What the gate itself does to a
+    /// caller that did NOT opt in is pinned separately, in <c>SkillMetaClientGateTests</c>.</para>
     /// </summary>
     public class ToolListSkillMetaTests
     {
@@ -45,6 +53,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void ToTool_EmitsBothSkillKeys_WhenBothPresent()
         {
+            using var optIn = SkillMetaClientScope.OptIn();
+
             var meta = Tool(skillDescription: SkillDescriptionText, skillBody: SkillBodyText).ToTool().Meta;
 
             meta.ShouldNotBeNull();
@@ -61,6 +71,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void ToTool_EmitsOnlySkillDescription_WhenBodyAbsent()
         {
+            using var optIn = SkillMetaClientScope.OptIn();
+
             var meta = Tool(skillDescription: SkillDescriptionText).ToTool().Meta;
 
             meta.ShouldNotBeNull();
@@ -71,6 +83,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void ToTool_EmitsOnlySkillBody_WhenDescriptionAbsent()
         {
+            using var optIn = SkillMetaClientScope.OptIn();
+
             var meta = Tool(skillBody: SkillBodyText).ToTool().Meta;
 
             meta.ShouldNotBeNull();
@@ -81,6 +95,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void ToTool_CombinesEnabledFalseWithSkillKeys_WhenDisabledAndAttributed()
         {
+            using var optIn = SkillMetaClientScope.OptIn();
+
             var meta = Tool(enabled: false, skillDescription: SkillDescriptionText, skillBody: SkillBodyText)
                 .ToTool()
                 .Meta;
@@ -102,6 +118,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void ToTool_OmitsMetaEntirely_WhenEnabledAndNoSkillMetadata()
         {
+            using var optIn = SkillMetaClientScope.OptIn();
+
             // The unchanged default wire shape: this is what every third-party client sees
             // today, and the whole point of composing instead of always emitting an object.
             Tool().ToTool().Meta.ShouldBeNull();
@@ -110,6 +128,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void ToTool_EmitsOnlyEnabledKey_WhenDisabledAndNoSkillMetadata()
         {
+            using var optIn = SkillMetaClientScope.OptIn();
+
             var meta = Tool(enabled: false).ToTool().Meta;
 
             meta.ShouldNotBeNull();
@@ -120,6 +140,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void ToTool_TreatsBlankSkillMetadataAsAbsent()
         {
+            using var optIn = SkillMetaClientScope.OptIn();
+
             // A tool whose attribute carried an empty string must not push an empty key onto
             // the wire — clients render the catalog line from it.
             Tool(skillDescription: string.Empty, skillBody: string.Empty).ToTool().Meta.ShouldBeNull();
@@ -128,6 +150,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void ToTool_RelaysWhitespaceOnlySkillBody_BecauseTheGuardIsIsNullOrEmpty()
         {
+            using var optIn = SkillMetaClientScope.OptIn();
+
             // BuildToolMeta guards with IsNullOrEmpty, NOT IsNullOrWhiteSpace, so a
             // whitespace-only value is relayed verbatim; SkillFileGenerator drops it from
             // SKILL.md. That divergence is deliberate and was prose-only until this test:
@@ -143,6 +167,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void BuildToolMeta_EmitsExactlyTheSkillKeys_WhenCalledDirectly()
         {
+            using var optIn = SkillMetaClientScope.OptIn();
+
             // Pins the PUBLIC helper directly. ToTool() assigns BuildToolMeta(response)
             // verbatim today, so this deliberately overlaps
             // ToTool_EmitsOnlySkillDescription_WhenBodyAbsent above; it earns its place only
@@ -158,6 +184,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void BuildEnabledMeta_StillEmitsExactlyTheEnabledKey()
         {
+            using var optIn = SkillMetaClientScope.OptIn();
+
             // The three non-tool call sites (prompts / resources / resource templates) assign
             // BuildEnabledMeta's result WHOLESALE, so teaching it the skill keys would leak
             // them onto primitives that have no such metadata. This reddens if the skill keys

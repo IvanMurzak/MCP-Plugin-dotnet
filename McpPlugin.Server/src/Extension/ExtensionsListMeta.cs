@@ -36,10 +36,14 @@ namespace com.IvanMurzak.McpPlugin.Server
     /// <remarks>
     /// MCP's <c>_meta</c> field is reserved for protocol-level metadata that
     /// servers may emit and clients may ignore (per spec). We use it for two
-    /// things: the plugin-side <c>Enabled</c> flag, surfaced ONLY to trusted
-    /// internal clients that have opted in to the unfiltered catalog — see
+    /// things, each behind its OWN opt-in header: the plugin-side <c>Enabled</c>
+    /// flag, surfaced only to trusted internal clients that have opted in to the
+    /// unfiltered catalog — see
     /// <see cref="com.IvanMurzak.McpPlugin.Common.Consts.MCP.Server.Headers.TrustedInternalClient"/>
-    /// — and, on tools only, the skill blurb / body, which reach EVERY caller.
+    /// — and, on tools only, the skill blurb / body, surfaced only to callers
+    /// that sent
+    /// <see cref="com.IvanMurzak.McpPlugin.Common.Consts.MCP.Server.Headers.SkillMetaClient"/>.
+    /// The two headers are independent; neither grants the other's payload.
     /// </remarks>
     public static class ExtensionsListMeta
     {
@@ -64,15 +68,24 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// <summary>
         /// Builds the <c>_meta</c> object for a <c>tools/list</c> entry: the
         /// <see cref="BuildEnabledMeta"/> annotation, plus <c>skillDescription</c> /
-        /// <c>skillBody</c> whenever the tool carries them. Returns
+        /// <c>skillBody</c> whenever the tool carries them AND the caller opted in to
+        /// skill metadata with <c>X-McpPlugin-Skill-Meta: 1</c> (see
+        /// <see cref="McpSessionTokenContext.IsSkillMetaClient"/>). Returns
         /// <see langword="null"/> when there is nothing at all to emit, so an enabled
         /// tool with no skill metadata keeps today's exact wire shape.
         /// </summary>
         /// <remarks>
-        /// Tools-only on purpose. <see cref="BuildEnabledMeta"/> stays untouched because
+        /// <para>Tools-only on purpose. <see cref="BuildEnabledMeta"/> stays untouched because
         /// prompts / resources / resource-templates share it and rely on its
         /// null-when-enabled contract; composing here instead of mutating it keeps those
-        /// three call sites byte-identical.
+        /// three call sites byte-identical.</para>
+        /// <para>The skill gate reads
+        /// <see cref="McpSessionTokenContext.IsSkillMetaClient"/> and DELIBERATELY not
+        /// <see cref="McpSessionTokenContext.IsTrustedInternalClient"/>: the latter also
+        /// drives <see cref="SelectVisible{TIn, TOut}"/>, so keying skill metadata off it
+        /// would hand every skill-metadata consumer the disabled-tool catalog as well.
+        /// For a caller that did not opt in, this method's output is byte-identical to
+        /// <see cref="BuildEnabledMeta"/>'s.</para>
         /// </remarks>
         public static JsonObject? BuildToolMeta(Common.Model.ResponseListTool response)
         {
@@ -80,6 +93,15 @@ namespace com.IvanMurzak.McpPlugin.Server
                 throw new ArgumentNullException(nameof(response));
 
             var meta = BuildEnabledMeta(response.Enabled);
+
+            // Opt-in gate: the skill blurb and body are re-sent in full on every
+            // tools/list, which across a real engine catalog is hundreds of kilobytes per
+            // listing. Only a caller that asked for them pays for them; everyone else gets
+            // exactly the pre-skill-metadata _meta shape (null when enabled, {enabled:false}
+            // when disabled). Checked BEFORE the per-key guards so neither key can be
+            // reached without the opt-in.
+            if (!McpSessionTokenContext.IsSkillMetaClient)
+                return meta;
 
             // IsNullOrEmpty, not IsNullOrWhiteSpace: the guard drops an attribute that
             // carried an empty string, and nothing more. SkillFileGenerator uses
