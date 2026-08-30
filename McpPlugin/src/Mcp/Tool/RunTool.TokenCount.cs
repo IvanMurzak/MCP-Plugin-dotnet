@@ -16,6 +16,7 @@ namespace com.IvanMurzak.McpPlugin
     public partial class RunTool
     {
         private int? _cachedTokenCount;
+        private int? _cachedSkillMetadataTokenCount;
 
         /// <summary>
         /// Gets the semantic token count for this tool based on its JSON schema (including description).
@@ -43,8 +44,28 @@ namespace com.IvanMurzak.McpPlugin
         }
 
         /// <summary>
+        /// The portion of <see cref="TokenCount"/> contributed by this tool's published skill metadata
+        /// (<see cref="SkillDescription"/> / <see cref="SkillBody"/>), including its JSON key overhead.
+        /// Cached on first read, like <see cref="TokenCount"/>: both inputs are fixed for the lifetime of
+        /// the instance (they are read from attributes on the underlying <c>Method</c>, which never
+        /// changes), so no cache invalidation is required.
+        /// </summary>
+        public int SkillMetadataTokenCount
+        {
+            get
+            {
+                if (_cachedSkillMetadataTokenCount.HasValue)
+                    return _cachedSkillMetadataTokenCount.Value;
+
+                _cachedSkillMetadataTokenCount = CalculateSkillMetadataTokenCount();
+                return _cachedSkillMetadataTokenCount.Value;
+            }
+        }
+
+        /// <summary>
         /// Calculates the semantic token count for this tool.
-        /// The calculation is based on the JSON Schema including name, title, description, input schema, and output schema.
+        /// The calculation is based on the JSON Schema including name, title, description, published skill
+        /// metadata, input schema, and output schema.
         /// Uses a simple approximation: characters / 4 for semantic tokens (common for many LLM tokenizers).
         /// Delegates to the shared <see cref="ToolTokenCount.Calculate"/> helper so that the formula is
         /// identical to <see cref="ProxyTool"/>.
@@ -53,11 +74,29 @@ namespace com.IvanMurzak.McpPlugin
         {
             try
             {
-                return ToolTokenCount.Calculate(Name, Title, Description, InputSchema, OutputSchema);
+                return ToolTokenCount.Calculate(Name, Title, Description, SkillDescription, SkillBody, InputSchema, OutputSchema);
             }
             catch (Exception ex)
             {
                 _logger?.LogWarning(ex, "Failed to calculate token count for tool '{0}'. Returning 0.", Name);
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Calculates the skill-metadata share of this tool's token count, with the same
+        /// return-0-on-failure resilience <see cref="CalculateTokenCount"/> has: a breakdown must never
+        /// be able to poison <see cref="IToolManager.EnabledToolsSkillMetadataTokenCount"/>.
+        /// </summary>
+        private int CalculateSkillMetadataTokenCount()
+        {
+            try
+            {
+                return ToolTokenCount.CalculateSkillMetadata(Name, Title, Description, SkillDescription, SkillBody, InputSchema, OutputSchema);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to calculate skill-metadata token count for tool '{0}'. Returning 0.", Name);
                 return 0;
             }
         }

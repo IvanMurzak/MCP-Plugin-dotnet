@@ -33,7 +33,21 @@ namespace com.IvanMurzak.McpPlugin
         /// </para>
         /// </summary>
         int EnabledToolsTokenCount { get; }
-        
+
+        /// <summary>
+        /// The portion of <see cref="EnabledToolsTokenCount"/> contributed by the enabled tools' published
+        /// skill metadata (<c>_meta.skillDescription</c> / <c>_meta.skillBody</c> on every
+        /// <c>tools/list</c> entry), including its JSON key overhead.
+        /// <c>EnabledToolsTokenCount - EnabledToolsSkillMetadataTokenCount</c> is what the catalogue
+        /// weighed before that metadata reached the wire, so the two together answer "how much of the
+        /// catalogue is skill metadata?" without changing the meaning of the total.
+        /// <para>
+        /// Defaulted to <c>0</c> so an existing external <see cref="IToolManager"/> implementation keeps
+        /// compiling; <see cref="McpToolManager"/> overrides it.
+        /// </para>
+        /// </summary>
+        int EnabledToolsSkillMetadataTokenCount => 0;
+
         IEnumerable<IRunTool> GetAllTools();
         bool HasTool(string name);
         bool AddTool(string name, IRunTool runner);

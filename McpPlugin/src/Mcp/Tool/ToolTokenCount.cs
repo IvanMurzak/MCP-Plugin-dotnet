@@ -30,9 +30,22 @@ namespace com.IvanMurzak.McpPlugin
     internal static class ToolTokenCount
     {
         /// <summary>
-        /// Calculates the semantic token count from a tool's name, title, description, input schema, and
-        /// output schema. The calculation builds a JSON object containing the non-empty fields and the
-        /// (non-null) schema nodes, serializes it, and returns <c>ceil(length / 4)</c>.
+        /// JSON key the skill description is measured under. Deliberately the same spelling the wire uses
+        /// for <c>tools/list</c> <c>_meta.skillDescription</c> (McpPlugin.Server's <c>ExtensionsListMeta</c>),
+        /// so the instrument measures the payload that is actually shipped.
+        /// </summary>
+        public const string SkillDescriptionKey = "skillDescription";
+
+        /// <summary>
+        /// JSON key the skill body is measured under. Same wire-parity rule as
+        /// <see cref="SkillDescriptionKey"/> (<c>tools/list</c> <c>_meta.skillBody</c>).
+        /// </summary>
+        public const string SkillBodyKey = "skillBody";
+
+        /// <summary>
+        /// Calculates the semantic token count from a tool's name, title, description, published skill
+        /// metadata, input schema, and output schema. The calculation builds a JSON object containing the
+        /// non-empty fields and the (non-null) schema nodes, serializes it, and returns <c>ceil(length / 4)</c>.
         /// </summary>
         /// <remarks>
         /// The schema nodes are inserted via a detached deep copy (round-trip through
@@ -42,7 +55,14 @@ namespace com.IvanMurzak.McpPlugin
         /// may only have a single parent). The serialized JSON — and therefore the resulting count — is
         /// identical to assigning the node directly, so this is behavior-preserving for the numeric result.
         /// </remarks>
-        public static int Calculate(string? name, string? title, string? description, JsonNode? inputSchema, JsonNode? outputSchema)
+        public static int Calculate(
+            string? name,
+            string? title,
+            string? description,
+            string? skillDescription,
+            string? skillBody,
+            JsonNode? inputSchema,
+            JsonNode? outputSchema)
         {
             // Build a JSON representation of the tool's schema using JsonObject
             var jsonObject = new JsonObject();
@@ -57,6 +77,16 @@ namespace com.IvanMurzak.McpPlugin
             if (!string.IsNullOrEmpty(description))
                 jsonObject["description"] = description;
 
+            // Published skill metadata. It reaches every MCP client on the tools/list entry as
+            // _meta.skillDescription / _meta.skillBody, gated there on the SAME string.IsNullOrEmpty
+            // test used here — so an absent value costs nothing and a present one is measured exactly
+            // once, under the same accounting the members above get.
+            if (!string.IsNullOrEmpty(skillDescription))
+                jsonObject[SkillDescriptionKey] = skillDescription;
+
+            if (!string.IsNullOrEmpty(skillBody))
+                jsonObject[SkillBodyKey] = skillBody;
+
             // Add schemas as detached copies so the caller's live nodes are not re-parented.
             if (inputSchema != null)
                 jsonObject["inputSchema"] = JsonNode.Parse(inputSchema.ToJsonString());
@@ -70,6 +100,30 @@ namespace com.IvanMurzak.McpPlugin
             // Calculate tokens: using a common approximation of 1 token per 4 characters
             // This is a reasonable estimate for English text and JSON structures
             return (int)Math.Ceiling(jsonString.Length / 4.0);
+        }
+
+        /// <summary>
+        /// The portion of <see cref="Calculate"/>'s result contributed by the published skill metadata,
+        /// including the JSON key and separator overhead the two members bring with them. Defined as the
+        /// difference between the full count and the count of the identical tool with no skill metadata,
+        /// so <c>total - share</c> is exactly the count the entry carried before that metadata reached
+        /// the wire, and the meaning of the total itself is unchanged for every existing caller.
+        /// Returns <c>0</c> when the tool publishes no skill metadata.
+        /// </summary>
+        public static int CalculateSkillMetadata(
+            string? name,
+            string? title,
+            string? description,
+            string? skillDescription,
+            string? skillBody,
+            JsonNode? inputSchema,
+            JsonNode? outputSchema)
+        {
+            if (string.IsNullOrEmpty(skillDescription) && string.IsNullOrEmpty(skillBody))
+                return 0;
+
+            return Calculate(name, title, description, skillDescription, skillBody, inputSchema, outputSchema)
+                 - Calculate(name, title, description, null, null, inputSchema, outputSchema);
         }
     }
 }
