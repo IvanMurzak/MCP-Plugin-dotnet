@@ -33,6 +33,14 @@ namespace com.IvanMurzak.McpPlugin
         /// JSON key the skill description is measured under. Deliberately the same spelling the wire uses
         /// for <c>tools/list</c> <c>_meta.skillDescription</c> (McpPlugin.Server's <c>ExtensionsListMeta</c>),
         /// so the instrument measures the payload that is actually shipped.
+        /// <para>
+        /// <b>This is a SECOND declaration of that spelling, not a reference to it</b> — McpPlugin.Server
+        /// cannot be referenced from here, and the measured count depends on the key's LENGTH, so a rename on
+        /// one side alone would silently shift every skill-bearing tool's share. Each side is pinned to the
+        /// literal by its own test, so a one-sided rename reddens that side; keeping them in step is a
+        /// convention, not a compile-time guarantee. Single-sourcing the pair in McpPlugin.Common (which both
+        /// assemblies already reference) would make it one, at the cost of new public surface there.
+        /// </para>
         /// </summary>
         public const string SkillDescriptionKey = "skillDescription";
 
@@ -48,12 +56,22 @@ namespace com.IvanMurzak.McpPlugin
         /// non-empty fields and the (non-null) schema nodes, serializes it, and returns <c>ceil(length / 4)</c>.
         /// </summary>
         /// <remarks>
+        /// <para>
+        /// The skill members are measured FLAT, alongside the other fields, whereas the wire nests them inside
+        /// a <c>_meta</c> object. For an enabled tool that object exists only because of them, so the figure
+        /// omits its own <c>,"_meta":{</c> … <c>}</c> wrapper — about ten characters, two to three tokens per
+        /// skill-bearing tool. That is deliberate: the members are counted under the same flat accounting
+        /// every other member gets, rather than in a unit of their own. Treat the result as a catalogue-weight
+        /// estimate, not as byte-exact wire cost.
+        /// </para>
+        /// <para>
         /// The schema nodes are inserted via a detached deep copy (round-trip through
         /// <see cref="JsonNode.ToJsonString(System.Text.Json.JsonSerializerOptions)"/> +
         /// <see cref="JsonNode.Parse(string, System.Text.Json.Nodes.JsonNodeOptions?, System.Text.Json.JsonDocumentOptions)"/>)
         /// so that the caller's live <see cref="JsonNode"/> is never re-parented (a <see cref="JsonNode"/>
         /// may only have a single parent). The serialized JSON — and therefore the resulting count — is
         /// identical to assigning the node directly, so this is behavior-preserving for the numeric result.
+        /// </para>
         /// </remarks>
         public static int Calculate(
             string? name,

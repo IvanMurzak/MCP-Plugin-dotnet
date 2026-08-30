@@ -94,9 +94,10 @@ namespace com.IvanMurzak.McpPlugin
         /// metadata reached the wire — which is what makes "how much of the catalogue is skill metadata?"
         /// answerable from a single listing. Zero when the tool publishes no skill metadata.
         /// <para>
-        /// Defaulted so that an existing external <see cref="IRunTool"/> implementation keeps compiling; a
-        /// tool that publishes skill metadata should override it (see <see cref="RunTool"/> /
-        /// <see cref="ProxyTool"/>).
+        /// Defaulted so that an existing external <see cref="IRunTool"/> implementation keeps compiling; an
+        /// implementation whose tools publish skill metadata should provide its own (see
+        /// <see cref="RunTool"/> / <see cref="ProxyTool"/>), or its share is reported as zero while its
+        /// <see cref="TokenCount"/> may or may not include the payload.
         /// </para>
         /// </summary>
         int SkillMetadataTokenCount => 0;

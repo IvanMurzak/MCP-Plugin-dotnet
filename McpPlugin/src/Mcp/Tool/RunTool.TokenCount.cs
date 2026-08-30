@@ -19,9 +19,10 @@ namespace com.IvanMurzak.McpPlugin
         private int? _cachedSkillMetadataTokenCount;
 
         /// <summary>
-        /// Gets the semantic token count for this tool based on its JSON schema (including description).
-        /// The token count is calculated from the JSON representation of the tool's input schema and description.
-        /// This value is cached after the first calculation.
+        /// Gets the semantic token count for this tool based on its JSON schema (including description and
+        /// the published skill metadata). The token count is calculated from the JSON representation of the
+        /// tool's name, title, description, <see cref="SkillDescription"/> / <see cref="SkillBody"/>, input
+        /// schema and output schema. This value is cached after the first calculation.
         ///
         /// <para>
         /// <b>Note:</b> This uses a simplified approximation of 1 token per 4 characters, which is a common
@@ -46,9 +47,9 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// The portion of <see cref="TokenCount"/> contributed by this tool's published skill metadata
         /// (<see cref="SkillDescription"/> / <see cref="SkillBody"/>), including its JSON key overhead.
-        /// Cached on first read, like <see cref="TokenCount"/>: both inputs are fixed for the lifetime of
-        /// the instance (they are read from attributes on the underlying <c>Method</c>, which never
-        /// changes), so no cache invalidation is required.
+        /// Cached on first read, like <see cref="TokenCount"/>, and for the same reason: both inputs are read
+        /// from attributes on the underlying <c>Method</c>, which this type never rebinds, so no cache
+        /// invalidation is required.
         /// </summary>
         public int SkillMetadataTokenCount
         {

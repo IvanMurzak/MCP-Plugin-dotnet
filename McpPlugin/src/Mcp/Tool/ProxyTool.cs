@@ -71,7 +71,9 @@ namespace com.IvanMurzak.McpPlugin
 
         /// <summary>
         /// Semantic token count for this tool, computed once (then cached) from the same chars/4 approximation
-        /// used by <see cref="RunTool"/> via the shared <see cref="ToolTokenCount.Calculate"/> helper.
+        /// used by <see cref="RunTool"/> via the shared <see cref="ToolTokenCount.Calculate"/> helper. Covers
+        /// the description AND the published skill metadata (<see cref="SkillDescription"/> /
+        /// <see cref="SkillBody"/>); <see cref="SkillMetadataTokenCount"/> is that payload's share of it.
         /// </summary>
         public int TokenCount
         {

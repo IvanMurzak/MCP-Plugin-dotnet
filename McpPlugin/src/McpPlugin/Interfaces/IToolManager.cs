@@ -42,8 +42,14 @@ namespace com.IvanMurzak.McpPlugin
         /// weighed before that metadata reached the wire, so the two together answer "how much of the
         /// catalogue is skill metadata?" without changing the meaning of the total.
         /// <para>
+        /// <b>Note:</b> that subtraction reads the two properties independently, and each re-walks the tool
+        /// set on access (see <see cref="EnabledToolsTokenCount"/>). Registering or enabling a tool between
+        /// the two reads therefore yields a difference computed from two different catalogues. Take both
+        /// figures at a point where the catalogue is not being mutated.
+        /// </para>
+        /// <para>
         /// Defaulted to <c>0</c> so an existing external <see cref="IToolManager"/> implementation keeps
-        /// compiling; <see cref="McpToolManager"/> overrides it.
+        /// compiling; <see cref="McpToolManager"/> implements it.
         /// </para>
         /// </summary>
         int EnabledToolsSkillMetadataTokenCount => 0;
