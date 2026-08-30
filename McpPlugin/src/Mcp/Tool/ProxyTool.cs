@@ -44,6 +44,7 @@ namespace com.IvanMurzak.McpPlugin
     {
         private readonly Func<string, IReadOnlyDictionary<string, JsonElement>?, CancellationToken, Task<ResponseCallTool>> _handler;
         private int? _cachedTokenCount;
+        private int? _cachedSkillMetadataTokenCount;
 
         public string Name { get; }
         public string? Title { get; }
@@ -70,7 +71,9 @@ namespace com.IvanMurzak.McpPlugin
 
         /// <summary>
         /// Semantic token count for this tool, computed once (then cached) from the same chars/4 approximation
-        /// used by <see cref="RunTool"/> via the shared <see cref="ToolTokenCount.Calculate"/> helper.
+        /// used by <see cref="RunTool"/> via the shared <see cref="ToolTokenCount.Calculate"/> helper. Covers
+        /// the description AND the published skill metadata (<see cref="SkillDescription"/> /
+        /// <see cref="SkillBody"/>); <see cref="SkillMetadataTokenCount"/> is that payload's share of it.
         /// </summary>
         public int TokenCount
         {
@@ -81,7 +84,7 @@ namespace com.IvanMurzak.McpPlugin
 
                 try
                 {
-                    _cachedTokenCount = ToolTokenCount.Calculate(Name, Title, Description, InputSchema, OutputSchema);
+                    _cachedTokenCount = ToolTokenCount.Calculate(Name, Title, Description, SkillDescription, SkillBody, InputSchema, OutputSchema);
                 }
                 catch
                 {
@@ -91,6 +94,33 @@ namespace com.IvanMurzak.McpPlugin
                     _cachedTokenCount = 0;
                 }
                 return _cachedTokenCount.Value;
+            }
+        }
+
+        /// <summary>
+        /// The portion of <see cref="TokenCount"/> contributed by <see cref="SkillDescription"/> /
+        /// <see cref="SkillBody"/>, including their JSON key overhead. Computed once (then cached) from the
+        /// same helper <see cref="RunTool"/> uses. The two inputs are get-only and assigned in the
+        /// constructor, so — exactly like <see cref="TokenCount"/> — the cached value can never go stale.
+        /// </summary>
+        public int SkillMetadataTokenCount
+        {
+            get
+            {
+                if (_cachedSkillMetadataTokenCount.HasValue)
+                    return _cachedSkillMetadataTokenCount.Value;
+
+                try
+                {
+                    _cachedSkillMetadataTokenCount = ToolTokenCount.CalculateSkillMetadata(Name, Title, Description, SkillDescription, SkillBody, InputSchema, OutputSchema);
+                }
+                catch
+                {
+                    // Same silent resilience as TokenCount above: a breakdown must never be able to poison
+                    // IToolManager.EnabledToolsSkillMetadataTokenCount.
+                    _cachedSkillMetadataTokenCount = 0;
+                }
+                return _cachedSkillMetadataTokenCount.Value;
             }
         }
 

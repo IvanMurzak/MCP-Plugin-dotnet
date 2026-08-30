@@ -70,6 +70,15 @@ namespace com.IvanMurzak.McpPlugin
             .Where(kvp => kvp.Value.Enabled)
             .Sum(kvp => kvp.Value.TokenCount);
 
+        /// <summary>
+        /// The skill-metadata share of <see cref="EnabledToolsTokenCount"/>, summed over the SAME enabled
+        /// tools so the two figures are directly comparable (subtracting one from the other yields the
+        /// pre-skill-metadata catalogue weight).
+        /// </summary>
+        public int EnabledToolsSkillMetadataTokenCount => _tools
+            .Where(kvp => kvp.Value.Enabled)
+            .Sum(kvp => kvp.Value.SkillMetadataTokenCount);
+
         public bool HasTool(string name) => _tools.ContainsKey(name);
         public bool AddTool(string name, IRunTool runner)
         {

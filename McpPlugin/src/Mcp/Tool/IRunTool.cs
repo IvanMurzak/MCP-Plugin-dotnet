@@ -82,9 +82,25 @@ namespace com.IvanMurzak.McpPlugin
         bool? OpenWorldHint { get; }
 
         /// <summary>
-        /// Gets the semantic token count for this tool based on its JSON schema (including description).
+        /// Gets the semantic token count for this tool based on its JSON schema (including description
+        /// and the published skill metadata).
         /// </summary>
         int TokenCount { get; }
+
+        /// <summary>
+        /// The portion of <see cref="TokenCount"/> contributed by the published skill metadata
+        /// (<see cref="SkillDescription"/> / <see cref="SkillBody"/>), including its JSON key overhead.
+        /// <c>TokenCount - SkillMetadataTokenCount</c> is therefore the count the entry carried before that
+        /// metadata reached the wire — which is what makes "how much of the catalogue is skill metadata?"
+        /// answerable from a single listing. Zero when the tool publishes no skill metadata.
+        /// <para>
+        /// Defaulted so that an existing external <see cref="IRunTool"/> implementation keeps compiling; an
+        /// implementation whose tools publish skill metadata should provide its own (see
+        /// <see cref="RunTool"/> / <see cref="ProxyTool"/>), or its share is reported as zero while its
+        /// <see cref="TokenCount"/> may or may not include the payload.
+        /// </para>
+        /// </summary>
+        int SkillMetadataTokenCount => 0;
 
         /// <summary>
         /// Executes the target method with named parameters.
