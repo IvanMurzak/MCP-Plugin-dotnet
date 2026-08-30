@@ -116,6 +116,11 @@ namespace com.IvanMurzak.McpPlugin
                 var result = _tools
                     .Select(kvp =>
                     {
+                        // SkillDescription / SkillBody are deliberately NOT copied here,
+                        // unlike McpToolManager.RunListTool: system tools are projected only
+                        // by the hand-built REST handler in SystemToolEndpoints, which emits a
+                        // fixed key set and never reaches ExtensionsTool.ToTool(). Copy them
+                        // if a system tool ever has to appear in an MCP tools/list response.
                         var response = new ResponseListTool()
                         {
                             Name = kvp.Value.Name,

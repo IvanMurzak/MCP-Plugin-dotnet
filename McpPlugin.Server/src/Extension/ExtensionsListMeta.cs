@@ -28,15 +28,18 @@ namespace com.IvanMurzak.McpPlugin.Server
     ///   <see cref="ModelContextProtocol.Protocol.Prompt"/>,
     ///   <see cref="ModelContextProtocol.Protocol.Resource"/>,
     ///   <see cref="ModelContextProtocol.Protocol.ResourceTemplate"/> primitives
-    ///   (<see cref="BuildEnabledMeta"/>).</description></item>
+    ///   (<see cref="BuildEnabledMeta"/> for prompts / resources / resource
+    ///   templates; tools compose through <see cref="BuildToolMeta"/>, which
+    ///   adds the skill keys on top of it).</description></item>
     /// </list>
     /// </summary>
     /// <remarks>
     /// MCP's <c>_meta</c> field is reserved for protocol-level metadata that
-    /// servers may emit and clients may ignore (per spec). We use it to surface
-    /// the plugin-side <c>Enabled</c> flag to trusted internal clients that
-    /// have opted in to the unfiltered catalog — see
-    /// <see cref="com.IvanMurzak.McpPlugin.Common.Consts.MCP.Server.Headers.TrustedInternalClient"/>.
+    /// servers may emit and clients may ignore (per spec). We use it for two
+    /// things: the plugin-side <c>Enabled</c> flag, surfaced ONLY to trusted
+    /// internal clients that have opted in to the unfiltered catalog — see
+    /// <see cref="com.IvanMurzak.McpPlugin.Common.Consts.MCP.Server.Headers.TrustedInternalClient"/>
+    /// — and, on tools only, the skill blurb / body, which reach EVERY caller.
     /// </remarks>
     public static class ExtensionsListMeta
     {
@@ -51,6 +54,46 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// </summary>
         public static JsonObject? BuildEnabledMeta(bool enabled)
             => enabled ? null : new JsonObject { [EnabledKey] = false };
+
+        /// <summary>Property name carrying a tool's short skill blurb on the <c>_meta</c> object.</summary>
+        public const string SkillDescriptionKey = "skillDescription";
+
+        /// <summary>Property name carrying a tool's long-form skill markdown on the <c>_meta</c> object.</summary>
+        public const string SkillBodyKey = "skillBody";
+
+        /// <summary>
+        /// Builds the <c>_meta</c> object for a <c>tools/list</c> entry: the
+        /// <see cref="BuildEnabledMeta"/> annotation, plus <c>skillDescription</c> /
+        /// <c>skillBody</c> whenever the tool carries them. Returns
+        /// <see langword="null"/> when there is nothing at all to emit, so an enabled
+        /// tool with no skill metadata keeps today's exact wire shape.
+        /// </summary>
+        /// <remarks>
+        /// Tools-only on purpose. <see cref="BuildEnabledMeta"/> stays untouched because
+        /// prompts / resources / resource-templates share it and rely on its
+        /// null-when-enabled contract; composing here instead of mutating it keeps those
+        /// three call sites byte-identical.
+        /// </remarks>
+        public static JsonObject? BuildToolMeta(Common.Model.ResponseListTool response)
+        {
+            if (response == null)
+                throw new ArgumentNullException(nameof(response));
+
+            var meta = BuildEnabledMeta(response.Enabled);
+
+            // IsNullOrEmpty, not IsNullOrWhiteSpace: the guard drops an attribute that
+            // carried an empty string, and nothing more. SkillFileGenerator uses
+            // IsNullOrWhiteSpace for the SKILL.md body, so a whitespace-only SkillBody is
+            // dropped there and relayed here. That is deliberate: these keys are a verbatim
+            // relay of the attribute text, whereas SKILL.md is rendered markdown.
+            if (!string.IsNullOrEmpty(response.SkillDescription))
+                (meta ??= new JsonObject())[SkillDescriptionKey] = response.SkillDescription;
+
+            if (!string.IsNullOrEmpty(response.SkillBody))
+                (meta ??= new JsonObject())[SkillBodyKey] = response.SkillBody;
+
+            return meta;
+        }
 
         /// <summary>
         /// Filters a list-router's source primitives to the set the current

@@ -19,7 +19,10 @@ namespace com.IvanMurzak.McpPlugin
     /// front-matter, decorate the same tool method with this attribute to provide a short summary.
     /// <para>
     /// The original <see cref="System.ComponentModel.DescriptionAttribute"/> remains the source of truth
-    /// for the MCP <c>tools/list</c> payload that AI agents see; this attribute only controls the YAML field.
+    /// for the tool's <c>description</c> in the MCP <c>tools/list</c> payload. This attribute controls the
+    /// YAML field AND is surfaced beside it as the <c>_meta.skillDescription</c> key on the tool's
+    /// <c>tools/list</c> entry, for every caller — see <c>ExtensionsListMeta.BuildToolMeta</c>,
+    /// so keep it to content that is safe to publish to any connected MCP client.
     /// </para>
     /// </summary>
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = false, Inherited = true)]

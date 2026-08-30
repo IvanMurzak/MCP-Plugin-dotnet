@@ -79,7 +79,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                 // internal clients (which receive the unfiltered list) can tell which
                 // entries the user has turned off plugin-side. Untrusted clients never
                 // receive disabled tools so the field never reaches them.
-                Meta = ExtensionsListMeta.BuildEnabledMeta(response.Enabled)
+                // Tools additionally carry `skillDescription` / `skillBody` when the tool
+                // declares them, so MCP clients can build a tool catalog without calling
+                // every tool's schema.
+                Meta = ExtensionsListMeta.BuildToolMeta(response)
             };
         }
 

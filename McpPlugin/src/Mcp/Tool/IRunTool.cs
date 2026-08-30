@@ -28,6 +28,10 @@ namespace com.IvanMurzak.McpPlugin
         /// When <see langword="null"/>, <see cref="Skills.SkillFileGenerator"/> falls back to <see cref="Description"/>
         /// (truncated to fit the YAML cap).
         /// Sourced from <see cref="AiSkillDescriptionAttribute"/> on the underlying method by default.
+        /// <para>
+        /// PUBLISHED: this value is also copied onto the MCP <c>tools/list</c> entry as the
+        /// <c>_meta.skillDescription</c> key, for every caller — it is not SKILL.md-only.
+        /// </para>
         /// </summary>
         string? SkillDescription { get; }
 
@@ -36,6 +40,12 @@ namespace com.IvanMurzak.McpPlugin
         /// and the <c>## How to Call</c> section. Lets tools ship rich content (code samples, notes) that
         /// would otherwise overflow the YAML <c>description:</c> cap.
         /// Sourced from <see cref="AiSkillBodyAttribute"/> on the underlying method by default.
+        /// <para>
+        /// PUBLISHED: this value is also copied onto the MCP <c>tools/list</c> entry as the
+        /// <c>_meta.skillBody</c> key, for every caller — it is not SKILL.md-only. It is
+        /// uncapped on that path, so keep it to content that is safe and sensible to send to
+        /// every connected MCP client.
+        /// </para>
         /// </summary>
         string? SkillBody { get; }
 

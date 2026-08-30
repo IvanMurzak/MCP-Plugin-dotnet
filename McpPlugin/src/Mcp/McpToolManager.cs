@@ -191,6 +191,8 @@ namespace com.IvanMurzak.McpPlugin
                             Enabled = kvp.Value.Enabled,
                             Title = kvp.Value.Title,
                             Description = kvp.Value.Description,
+                            SkillDescription = kvp.Value.SkillDescription,
+                            SkillBody = kvp.Value.SkillBody,
                             InputSchema = kvp.Value.InputSchema.ToJsonElement() ?? Common.Consts.MCP.EmptyInputSchema,
                             ReadOnlyHint = kvp.Value.ReadOnlyHint,
                             DestructiveHint = kvp.Value.DestructiveHint,

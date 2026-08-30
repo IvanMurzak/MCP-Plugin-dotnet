@@ -100,8 +100,12 @@ namespace com.IvanMurzak.McpPlugin
         /// <param name="name">Unique tool name. Required.</param>
         /// <param name="title">Human-readable title. Optional.</param>
         /// <param name="description">Tool description shown to the AI client. Optional.</param>
-        /// <param name="skillDescription">Optional concise SKILL.md description override.</param>
-        /// <param name="skillBody">Optional long-form SKILL.md body.</param>
+        /// <param name="skillDescription">Optional concise skill blurb. Feeds the SKILL.md YAML
+        /// <c>description:</c> field AND the <c>tools/list</c> <c>_meta.skillDescription</c> key,
+        /// which reaches every MCP client. Optional.</param>
+        /// <param name="skillBody">Optional long-form skill markdown. Feeds the SKILL.md body AND
+        /// the <c>tools/list</c> <c>_meta.skillBody</c> key, which reaches every MCP client — so
+        /// keep it to content that is safe to publish. Optional.</param>
         /// <param name="inputSchema">JSON Schema for the tool inputs, supplied externally. Optional.</param>
         /// <param name="outputSchema">JSON Schema for the tool output, supplied externally. Optional.</param>
         /// <param name="readOnlyHint">MCP read-only behavior hint. Optional.</param>
