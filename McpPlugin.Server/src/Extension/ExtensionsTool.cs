@@ -80,8 +80,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                 // entries the user has turned off plugin-side. Untrusted clients never
                 // receive disabled tools so the field never reaches them.
                 // Tools additionally carry `skillDescription` / `skillBody` when the tool
-                // declares them, so MCP clients can build a tool catalog without calling
-                // every tool's schema.
+                // declares them AND the caller opted in to skill metadata, so such a client
+                // can build a tool catalog without calling every tool's schema while callers
+                // that never read those keys are not charged the payload — see
+                // ExtensionsListMeta.BuildToolMeta.
                 Meta = ExtensionsListMeta.BuildToolMeta(response)
             };
         }

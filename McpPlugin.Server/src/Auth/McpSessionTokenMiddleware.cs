@@ -153,6 +153,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                     StringComparison.Ordinal);
             }
 
+            // Skill-metadata opt-in — a SEPARATE axis from the trusted-client header above,
+            // never a second reader of it. Sharing that flag would hand every skill-metadata
+            // consumer the `Enabled = false` catalog too (SelectVisible reads the same
+            // predicate), which is a visibility change nobody asked for by sending this
+            // header. Ordinal compare against the exact opt-in value, exactly like the
+            // block above: "true" / "yes" / "0" are NOT interchangeable with "1".
+            if (context.Request.Headers.TryGetValue(Consts.MCP.Server.Headers.SkillMetaClient, out var skillMetaHeader))
+            {
+                McpSessionTokenContext.IsSkillMetaClient = string.Equals(
+                    skillMetaHeader.ToString(),
+                    Consts.MCP.Server.Headers.SkillMetaClientOptInValue,
+                    StringComparison.Ordinal);
+            }
+
             try
             {
                 await _next(context);
@@ -163,6 +177,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 McpSessionTokenContext.CurrentClientIp = null;
                 McpSessionTokenContext.CurrentUserAgent = null;
                 McpSessionTokenContext.IsTrustedInternalClient = false;
+                McpSessionTokenContext.IsSkillMetaClient = false;
                 McpSessionTokenContext.CurrentIdentity = null;
                 McpSessionTokenContext.CurrentProjectPin = null;
                 McpSessionTokenContext.CurrentSelectedInstanceId = null;
