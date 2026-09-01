@@ -216,6 +216,22 @@ matched. That is the 16 rows above: 13 agreeing with the expectation as listed, 
 recorded as wrong. The two diagnoses are the most informative results in the round and are written
 up in §7.
 
+### Cross-TFM confirmation
+
+The round above ran on **net9.0** for speed. The four decisive plants were re-run on **net8.0** and
+produced **identical** failing counts, test for test:
+
+| Plant | net9.0 | net8.0 |
+|---|---|---|
+| P1 (`PerSessionExecutionContext = false`) | `Total 23 / Passed 6 / Failed 17` | `Total 23 / Passed 6 / Failed 17` |
+| P4 (both writers removed) | `Total 23 / Passed 11 / Failed 12` | `Total 23 / Passed 11 / Failed 12` |
+| P6 (gate always open) | `Total 23 / Passed 12 / Failed 11` | `Total 23 / Passed 12 / Failed 11` |
+| P7 (gate always closed) | `Total 23 / Passed 12 / Failed 11` | `Total 23 / Passed 12 / Failed 11` |
+
+Worth stating because the mechanism under test is runtime behaviour (`ExecutionContext` capture and
+`AsyncLocal` flow), not compile-time behaviour — so "it reddens on one TFM" is not automatically a
+statement about the other. The remaining twelve plants were measured on net9.0 only.
+
 ### P6 and P7 are independently attributed
 
 The previous plant log had to record its P1/P2 as one equivalence class because the two mutations
