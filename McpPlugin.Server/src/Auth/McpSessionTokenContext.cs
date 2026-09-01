@@ -105,14 +105,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         }
 
         /// <summary>
-        /// True when the in-flight request was issued by a trusted in-process
-        /// client (our own CLI / desktop app). Set by
-        /// <see cref="McpSessionTokenMiddleware"/> from the
+        /// True when the caller opted in to the unfiltered catalog. Read from the
         /// <c>X-McpPlugin-Internal-Client</c> header (see
         /// <c>Consts.MCP.Server.Headers.TrustedInternalClient</c>) and consumed
         /// by the MCP <c>list</c> routers to decide whether to surface
-        /// <c>Enabled = false</c> primitives. Cleared in the middleware's
-        /// <c>finally</c>, so values never leak across requests.
+        /// <c>Enabled = false</c> primitives.
+        /// <para>SESSION-scoped on the streamable-HTTP MCP path and per-request on
+        /// every other surface, exactly like <see cref="IsSkillMetaClient"/> — see
+        /// the ruling recorded there, which was taken for both flags together
+        /// because they share one ambient context and one publication site.</para>
         /// </summary>
         public static bool IsTrustedInternalClient
         {
@@ -121,14 +122,48 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         }
 
         /// <summary>
-        /// True when the in-flight request opted in to skill metadata. Set by
-        /// <see cref="McpSessionTokenMiddleware"/> from the
+        /// True when the caller opted in to skill metadata. Read from the
         /// <c>X-McpPlugin-Skill-Meta</c> header (see
         /// <c>Consts.MCP.Server.Headers.SkillMetaClient</c>) and consumed by
         /// <c>ExtensionsListMeta.BuildToolMeta</c> to decide whether a
         /// <c>tools/list</c> entry carries <c>_meta.skillDescription</c> /
-        /// <c>_meta.skillBody</c>. Cleared in the middleware's <c>finally</c>,
-        /// so values never leak across requests.
+        /// <c>_meta.skillBody</c>.
+        ///
+        /// <para><b>THE RULING — the opt-in is a property of the SESSION, not of the
+        /// request.</b> On the streamable-HTTP MCP path the value is read from the
+        /// <c>initialize</c> request by
+        /// <c>StreamableHttpTransportLayer.RunSessionHandler</c> and fixed for the
+        /// whole session; a later request's header is IGNORED, and a reconnect
+        /// re-decides from scratch. On every OTHER surface (the direct-tool REST
+        /// endpoints, and any future non-MCP reader) the value is the in-flight
+        /// request's, written by <see cref="McpSessionTokenMiddleware"/> and cleared
+        /// in its <c>finally</c>, so it never leaks across requests.</para>
+        ///
+        /// <para><b>Why per-session, and what was rejected.</b> The alternative —
+        /// each <c>tools/list</c> deciding for itself — is not implementable on this
+        /// transport without giving up something worth more.
+        /// <c>HttpServerTransportOptions.PerSessionExecutionContext</c> is <c>true</c>,
+        /// so a request handler runs on the <see cref="System.Threading.ExecutionContext"/>
+        /// captured during <c>initialize</c> and cannot observe its own request's
+        /// ambient state at all. Making this one flag per-request would mean either
+        /// turning that option off — which is what published <see cref="CurrentSessionId"/>
+        /// and made sticky instance selection work at all (issue #193/#195); it
+        /// failed 100% of the time before — or threading the value through a
+        /// session-keyed side table, which two concurrent requests on one session
+        /// would race. Against that, the opt-in describes the CLIENT's appetite for a
+        /// large payload, which does not change within a connection: every other
+        /// value on this context (token, identity, pin, session id) is already
+        /// session-scoped, and a single per-request exception would need its own
+        /// mechanism to buy nothing.
+        /// The rejected option is recorded because the previous behaviour was neither
+        /// — it LOOKED per-request (a per-request middleware write) and BEHAVED
+        /// per-session (that write frozen into the session's context), with no test
+        /// crossing the transport to say which was intended.</para>
+        ///
+        /// <para>Pinned end-to-end by
+        /// <c>SkillMetaSessionSemanticsOverHttpTests</c>; the capture mechanism itself
+        /// is measured by <c>PerSessionExecutionContextCaptureTests</c>.</para>
+        ///
         /// <para>A SEPARATE flag from <see cref="IsTrustedInternalClient"/> on
         /// purpose: that one also unlocks the <c>Enabled = false</c> catalog, so
         /// a client asking only for skill metadata must not acquire it. Neither

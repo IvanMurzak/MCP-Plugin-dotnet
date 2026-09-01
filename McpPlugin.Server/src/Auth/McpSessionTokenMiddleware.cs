@@ -145,27 +145,26 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             if (!string.IsNullOrEmpty(userAgent))
                 McpSessionTokenContext.CurrentUserAgent = userAgent;
 
-            if (context.Request.Headers.TryGetValue(Consts.MCP.Server.Headers.TrustedInternalClient, out var trustedHeader))
-            {
-                McpSessionTokenContext.IsTrustedInternalClient = string.Equals(
-                    trustedHeader.ToString(),
-                    Consts.MCP.Server.Headers.TrustedInternalClientOptInValue,
-                    StringComparison.Ordinal);
-            }
+            // Both opt-in flags are read through ClientOptInHeaders, which is also what
+            // StreamableHttpTransportLayer.RunSessionHandler calls when it fixes these values for
+            // the lifetime of an MCP session. One definition of the ordinal "1" rule, two callers.
+            //
+            // Still written ONLY when the header is present: an absent header must leave the flag
+            // as it was rather than assert `false` over it. That is what lets a session-scoped
+            // publisher establish a value the middleware will not clobber on a later request, and
+            // it is the property SkillMetaClientGateTests' leak case is built on.
+            var trustedOptIn = ClientOptInHeaders.ReadTrustedInternalClient(context.Request.Headers);
+            if (trustedOptIn.HasValue)
+                McpSessionTokenContext.IsTrustedInternalClient = trustedOptIn.Value;
 
             // Skill-metadata opt-in — a SEPARATE axis from the trusted-client header above,
             // never a second reader of it. Sharing that flag would hand every skill-metadata
             // consumer the `Enabled = false` catalog too (SelectVisible reads the same
             // predicate), which is a visibility change nobody asked for by sending this
-            // header. Ordinal compare against the exact opt-in value, exactly like the
-            // block above: "true" / "yes" / "0" are NOT interchangeable with "1".
-            if (context.Request.Headers.TryGetValue(Consts.MCP.Server.Headers.SkillMetaClient, out var skillMetaHeader))
-            {
-                McpSessionTokenContext.IsSkillMetaClient = string.Equals(
-                    skillMetaHeader.ToString(),
-                    Consts.MCP.Server.Headers.SkillMetaClientOptInValue,
-                    StringComparison.Ordinal);
-            }
+            // header.
+            var skillMetaOptIn = ClientOptInHeaders.ReadSkillMetaClient(context.Request.Headers);
+            if (skillMetaOptIn.HasValue)
+                McpSessionTokenContext.IsSkillMetaClient = skillMetaOptIn.Value;
 
             try
             {

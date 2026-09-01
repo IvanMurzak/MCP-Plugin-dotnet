@@ -144,6 +144,15 @@ collateral, not the attribution.
 - The `enabled` contract, `BuildEnabledMeta`, and `SelectVisible`'s own behaviour are out of this
   task's scope. `TrustedInternalClientTests.cs` is byte-identical (`git diff` on it is empty) and is
   the regression fence for them; P4 and P9 above show that fence is live.
+- ~~**No test drives the gate over the real Streamable HTTP transport.**~~ **CLOSED** by
+  [`skill-meta-session-semantics.md`](skill-meta-session-semantics.md) (taskflow a5). The gap
+  described below was real and its diagnosis was right: instrumented measurement confirmed that a
+  `tools/list` handler observes the `initialize` request's ambient state, so the header on
+  `tools/list` alone did nothing. That behaviour is now a stated **per-session** ruling, published
+  from `RunSessionHandler` rather than left to middleware ordering, and pinned by a 2×2 matrix driven
+  over a real session in both `auth=none` and `auth=oauth`. The paragraph below is kept verbatim as
+  the record of what this round did and did not establish.
+
 - **No test drives the gate over the real Streamable HTTP transport.** Every case here reaches the
   middleware directly through a `DefaultHttpContext`, so the assertion and the middleware's
   `AsyncLocal` write share one execution flow. Production does not: `StreamableHttpTransportLayer`
