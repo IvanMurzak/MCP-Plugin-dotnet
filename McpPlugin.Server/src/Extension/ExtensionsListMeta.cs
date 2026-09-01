@@ -79,6 +79,14 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// prompts / resources / resource-templates share it and rely on its
         /// null-when-enabled contract; composing here instead of mutating it keeps those
         /// three call sites byte-identical.</para>
+        /// <para>The flag this reads is SESSION-scoped on the MCP streamable-HTTP path: it
+        /// carries the <c>initialize</c> request's answer, not the answer of the
+        /// <c>tools/list</c> request being served. That is deliberate — the ruling and the
+        /// rejected per-request alternative are on
+        /// <see cref="McpSessionTokenContext.IsSkillMetaClient"/> — and it is why the tests
+        /// that matter for this gate are the over-HTTP ones: reaching this method through a
+        /// <c>DefaultHttpContext</c> puts the write and the read on one execution flow, which
+        /// is green whichever semantics the transport actually has.</para>
         /// <para>The skill gate reads
         /// <see cref="McpSessionTokenContext.IsSkillMetaClient"/> and DELIBERATELY not
         /// <see cref="McpSessionTokenContext.IsTrustedInternalClient"/>: the latter also

@@ -272,6 +272,13 @@ namespace com.IvanMurzak.McpPlugin.Common
                     /// the other — see <see cref="SkillMetaClient"/> for why the two
                     /// axes are deliberately separate.
                     ///
+                    /// <para><b>On the MCP streamable-HTTP transport this header is read from
+                    /// <c>initialize</c> and only from <c>initialize</c></b> — the same session
+                    /// semantics as <see cref="SkillMetaClient"/>, where the ruling and the
+                    /// client-side rule ("send it on every request") are written out in full.
+                    /// The direct-tool REST endpoints are plain HTTP requests and read it
+                    /// per request as usual.</para>
+                    ///
                     /// This is a UX gate, NOT a security boundary — the header is
                     /// trivially spoofable. Pair it with bearer-token auth when
                     /// "disabled-tool exposure" is sensitive.
@@ -301,6 +308,28 @@ namespace com.IvanMurzak.McpPlugin.Common
                     /// so reusing it here would start shipping <c>Enabled = false</c>
                     /// tools to every skill-metadata consumer. The two flags are
                     /// independent: sending one never sets the other.</para>
+                    ///
+                    /// <para><b>ON THE MCP STREAMABLE-HTTP TRANSPORT THIS HEADER IS READ FROM
+                    /// <c>initialize</c> AND ONLY FROM <c>initialize</c>.</b> The opt-in is a
+                    /// property of the SESSION: whatever the <c>initialize</c> request said
+                    /// governs every <c>tools/list</c> on that session, and the header on a
+                    /// later request is ignored — it neither turns the metadata on nor turns
+                    /// it off. Two consequences a client author must plan for:
+                    /// <list type="bullet">
+                    ///   <item><description>Sending it on <c>tools/list</c> but not on
+                    ///   <c>initialize</c> yields NO skill metadata, silently. The tools are
+                    ///   all still there; only the <c>_meta</c> keys are missing.</description></item>
+                    ///   <item><description>A reconnect is a NEW session and re-decides from
+                    ///   scratch, so a client that drops the header on a re-<c>initialize</c>
+                    ///   loses its skill metadata mid-life.</description></item>
+                    /// </list>
+                    /// The safe rule is the simple one: send it on EVERY request, including
+                    /// <c>initialize</c> and every reconnect. The rationale and the rejected
+                    /// per-request alternative are recorded on
+                    /// <c>McpSessionTokenContext.IsSkillMetaClient</c>; the behaviour is pinned
+                    /// over a real transport by <c>SkillMetaSessionSemanticsOverHttpTests</c>.
+                    /// (<see cref="TrustedInternalClient"/> has the identical session
+                    /// semantics.)</para>
                     ///
                     /// <para>This is a payload gate, NOT a security boundary — the header
                     /// is trivially spoofable, exactly like
