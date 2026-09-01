@@ -208,8 +208,13 @@ collection break rather than from the planted violation.
 | **P11s** | Same mutation, scored against `SKILL_ONLY` | green | **green** | *(none)* | `Total tests: 13 / Passed: 13 / Failed: 0` |
 | **P12** | A tenth property added to `McpSessionTokenContext` | red | **red** | 1 — `EveryAmbientValueIsClassified` | `Shouldly.ShouldAssertException : declared` |
 
-**14 of 16 rows matched their prediction on the first attempt**; the two that did not are the two
-most informative results in the round and are written up below rather than quietly re-predicted.
+**Arithmetic of the round, stated exactly.** Thirteen plants were predicted up front (P1–P12 plus
+P3b); **ten matched on the first attempt**. The three that did not — **P8**, **P10**, **P11** — are
+kept in the table with their original prediction and a `MISMATCH` verdict rather than quietly
+re-predicted, and each produced a corrected instrument (**P8b**, **P10s**, **P11s**) which then
+matched. That is the 16 rows above: 13 agreeing with the expectation as listed, 3 deliberately
+recorded as wrong. The two diagnoses are the most informative results in the round and are written
+up in §7.
 
 ### P6 and P7 are independently attributed
 
