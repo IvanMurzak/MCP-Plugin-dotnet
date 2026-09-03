@@ -52,6 +52,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
         }
 
         /// <summary>
+        /// The loopback base URL Kestrel actually bound, e.g. <c>http://127.0.0.1:54321</c>.
+        ///
+        /// <para>Exposed because a test that drives this host from OUTSIDE the test process - by
+        /// spawning a real plugin subprocess and pointing it at the SignalR hub
+        /// (<c>NullEngineRealTransportTests</c>) - has no other way to learn the OS-assigned port.
+        /// In-process callers do not need it; they go through <see cref="PostAsync"/>.</para>
+        /// </summary>
+        public string BaseUrl => _baseUrl;
+
+        /// <summary>
         /// Starts the host. <paramref name="registerFakes"/> runs AFTER the production wiring, so a
         /// singleton it registers is the one the routers resolve (same pattern as
         /// <c>AmbientSessionIdOverHttpTests</c>' <c>FakeJwksKeyProvider</c>).
@@ -183,8 +193,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
         /// response, or a multi-line data payload — comes back as two documents run together and
         /// fails to parse. Every caller today sends one request and reads one response. A caller that
         /// needs more should split the frames here rather than work around the concatenation.</para>
+        ///
+        /// <para>Public because <see cref="CallAsync"/> only sends PARAMETERLESS requests: a caller
+        /// that needs <c>params</c> (a <c>tools/call</c>, a <c>resources/read</c>) posts through
+        /// <see cref="PostAsync"/> and needs the same unwrapping. Duplicating it in the caller would
+        /// fork the "one JSON document per reply" assumption documented above.</para>
         /// </summary>
-        static string Unwrap(string body)
+        public static string Unwrap(string body)
         {
             if (!body.Contains("data:", StringComparison.Ordinal))
                 return body;
