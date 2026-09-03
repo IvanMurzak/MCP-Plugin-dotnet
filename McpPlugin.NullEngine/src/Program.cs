@@ -61,6 +61,11 @@ namespace com.IvanMurzak.McpPlugin.NullEngine
         public static async Task<int> Main(string[] args)
         {
             args ??= Array.Empty<string>();
+            // ArgsUtils directly, not DataArguments: DataArguments models the SERVER's argument
+            // surface (port, authorization, webhooks, bind), and this process is a plugin CLIENT
+            // that does not reference McpPlugin.Server. ConnectionConfig - the client-side
+            // precedent - parses argv the same way. The three flags read here are fixture-only, so
+            // adding them to a shipped netstandard2.1 type every engine consumes would be worse.
             var parsed = ArgsUtils.ParseLineArguments(args);
 
             if (parsed.ContainsKey("help") || parsed.ContainsKey("h"))
@@ -93,9 +98,9 @@ namespace com.IvanMurzak.McpPlugin.NullEngine
 
             var reflector = new Reflector();
 
-            var mcpPlugin = new McpPluginBuilder(version)
+            using var mcpPlugin = new McpPluginBuilder(version)
                 .WithConfigFromArgsOrEnv(args)
-                // A3: WithConfigFromArgsOrEnv sets only Host + TimeoutMs. Without ProjectRootPath the
+                // WithConfigFromArgsOrEnv sets only Host + TimeoutMs. Without ProjectRootPath the
                 // relative default SkillsPath ('SKILLS') cannot be resolved and the very first skill
                 // generation throws, which the plugin logs at Error level - the 'fail:' line this host
                 // is required to never emit. Keep this chained call.
@@ -111,8 +116,6 @@ namespace com.IvanMurzak.McpPlugin.NullEngine
                 .Build(reflector);
 
             NullEngineHost.Logger = mcpPlugin.Logger;
-            NullEngineHost.ProjectRoot = projectRoot;
-            NullEngineHost.Endpoint = endpoint;
 
             using var lifetime = new CancellationTokenSource();
             Console.CancelKeyPress += (_, eventArgs) =>
@@ -126,11 +129,18 @@ namespace com.IvanMurzak.McpPlugin.NullEngine
 
             try
             {
-                await mcpPlugin.Connect(handshakeCts.Token);
+                await mcpPlugin.Connect(handshakeCts.Token).ConfigureAwait(false);
             }
-            catch (OperationCanceledException)
+            catch (Exception ex)
             {
-                // Fall through to the deadline check below so the exit code has one source.
+                // Deliberately broad. The deadline check below is the SINGLE source of the exit code,
+                // and how a transport reports an unreachable endpoint - cancelling versus throwing -
+                // is exactly the kind of thing that differs across the three operating systems this
+                // host is required to run on. Narrowing this to OperationCanceledException lets such a
+                // throw escape Main, replacing the documented exit 3 (and the HANDSHAKE-FAILED line a
+                // consumer keys off) with an unhandled-exception exit code and no diagnostic at all.
+                // Reported on stderr so nothing is swallowed silently.
+                Console.Error.WriteLine($"NULL-ENGINE CONNECT-FAILED {ex.GetType().Name}: {ex.Message}");
             }
 
             var ready = false;
@@ -150,7 +160,6 @@ namespace com.IvanMurzak.McpPlugin.NullEngine
                 Console.Error.WriteLine(
                     $"NULL-ENGINE HANDSHAKE-FAILED endpoint={endpoint} timeout-ms={timeoutMs}");
                 Console.Error.Flush();
-                mcpPlugin.Dispose();
                 return ExitHandshakeFailed;
             }
 
@@ -162,8 +171,7 @@ namespace com.IvanMurzak.McpPlugin.NullEngine
             var resourceCount = mcpPlugin.McpManager.ResourceManager?.GetAllResources().Count() ?? 0;
             var pluginVersion = ResolvePluginInformationalVersion();
 
-            NullEngineHost.SetToolNames(toolNames);
-            NullEngineHost.SetCounts(toolNames.Length, promptCount, resourceCount, pluginVersion);
+            NullEngineHost.SetCatalog(toolNames, promptCount, resourceCount, pluginVersion, endpoint, projectRoot);
 
             Console.Out.WriteLine(
                 $"{ReadyLinePrefix} tools={toolNames.Length} prompts={promptCount} resources={resourceCount} plugin={pluginVersion}");
@@ -184,7 +192,6 @@ namespace com.IvanMurzak.McpPlugin.NullEngine
                 // Requested shutdown - the only way out of the idle wait.
             }
 
-            mcpPlugin.Dispose();
             return ExitOk;
         }
 
@@ -210,9 +217,7 @@ namespace com.IvanMurzak.McpPlugin.NullEngine
 
             var temp = readyFile + ".tmp";
             File.WriteAllText(temp, payload.ToJsonString(), new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-            if (File.Exists(readyFile))
-                File.Delete(readyFile);
-            File.Move(temp, readyFile);
+            File.Move(temp, readyFile, overwrite: true);
         }
 
         static void Cancel(CancellationTokenSource source)

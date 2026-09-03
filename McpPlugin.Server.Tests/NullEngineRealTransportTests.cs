@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -34,21 +35,24 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
     /// library and the server together.
     ///
     /// <para><b>Why a subprocess, and why a derived path rather than a ProjectReference.</b> The
-    /// separate OS process is the POINT, not an isolation trick: T1 is "a real headless host process
-    /// reached over a real transport", which an in-process reference could not be. It is NOT about
-    /// keeping the client assembly out of this process — this csproj already references
-    /// <c>McpPlugin</c> (for <c>ProjectIdentity</c>), so the client library is loaded here anyway.
-    /// The engine is LOCATED by a path derived from this assembly's own bin directory (env override
-    /// <c>MCPPLUGIN_NULLENGINE_DLL</c>), relying on solution build order — the task spec's declared
-    /// default. <c>ProjectReference ReferenceOutputAssembly="false"</c> is the documented
+    /// separate OS process is the POINT, not an isolation trick: a real headless host process
+    /// reached over a real transport is exactly what this class exists to cover, and an in-process
+    /// reference could not be one. It is NOT about keeping the client assembly out of this process
+    /// — this csproj already references <c>McpPlugin</c> (for <c>ProjectIdentity</c>), so the
+    /// client library is loaded here anyway. The engine is LOCATED by a path derived from this
+    /// assembly's own bin directory (env override <c>MCPPLUGIN_NULLENGINE_DLL</c>), relying on
+    /// solution build order. <c>ProjectReference ReferenceOutputAssembly="false"</c> is the
     /// alternative if derivation ever proves brittle; it would add a build-order coupling and copy
     /// the engine's outputs beside this test's, which derivation does not.</para>
     ///
     /// <para><b>Why one plugin at a time.</b> <c>NoAuthMcpStrategy.OnPluginConnected</c> enforces a
     /// single plugin connection, and the client registry it uses (<c>ClientUtils</c>) is keyed by hub
     /// TYPE and therefore process-global. A second engine connecting anywhere in this process would
-    /// evict the first. Both tests below start and stop their own engine, and the class carries
-    /// <c>[Collection]</c> so it never runs beside another collection-marked class.</para>
+    /// evict the first. Both tests below start and stop their own engine, and the class joins the
+    /// <c>McpPlugin.Server</c> collection, which serialises it against every OTHER class in that
+    /// SAME collection. That is the available protection, not a whole-assembly guarantee: xUnit
+    /// still runs classes carrying NO <c>[Collection]</c> in parallel with this one, so the
+    /// registry could in principle be disturbed from there.</para>
     /// </summary>
     [Collection("McpPlugin.Server")]
     public sealed class NullEngineRealTransportTests
@@ -57,6 +61,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         /// The exact catalog the engine must publish. Duplicated from the engine's own source rather
         /// than referenced, because this project deliberately does not reference that assembly (see
         /// the class remarks). A rename on either side must break this list - that is the point.
+        ///
+        /// <para>That reasoning governs EVERY engine-derived literal in this region, not just this
+        /// array: replacing any of them with a reference to the engine's own constant would make a
+        /// coordinated rename on both sides keep the test green, which is exactly the failure these
+        /// assertions exist to catch.</para>
         /// </summary>
         static readonly string[] ExpectedToolNames =
         {
@@ -82,6 +91,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
         const string ConfigResourceUri = "null-engine://config";
 
+        /// <summary>Duplicated from the engine's <c>Program.ReadyLinePrefix</c> - see the catalog remark above.</summary>
+        const string ReadyLinePrefix = "NULL-ENGINE READY";
+
         /// <summary>Duplicated from <c>NullEngineTools.FailMessage</c> - see the catalog remark above.</summary>
         const string FailMessage = "null-engine: deliberate tool failure (fixed message).";
 
@@ -98,7 +110,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         const string EchoText = "round-trip";
         const int EchoNumber = 7;
 
-        /// <summary>CJK + Latin-1 + em dash + an astral-plane emoji, written as escapes on purpose.</summary>
+        /// <summary>
+        /// CJK + Latin-1 + em dash + an astral-plane emoji, written as escapes on purpose.
+        ///
+        /// <para>Deliberately NOT the engine's own default sample - this one omits a character that
+        /// one carries. A test that sent the engine its own default back could not tell an echo from
+        /// a tool that ignored the argument and returned the default.</para>
+        /// </summary>
         const string UnicodeText = "\u4F60\u597D \u00E9\u00E8\u00EA \u2014 \uD83D\uDE80";
 
         /// <summary>The prefixes the Microsoft.Extensions.Logging console formatter writes.</summary>
@@ -123,7 +141,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             using var engine = NullEngineProcess.Start(host.BaseUrl);
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
 
-            var ready = engine.WaitForReady(TimeSpan.FromSeconds(30));
+            // Strictly LONGER than the engine's own 30s handshake deadline (NullEngineProcess.Start's
+            // default), so a slow handshake surfaces as the engine's own HANDSHAKE-FAILED diagnostic
+            // rather than racing this wait to a less informative timeout.
+            var ready = engine.WaitForReady(TimeSpan.FromSeconds(45));
 
             // ---- the ready contract -------------------------------------------------------------
             ready.GetProperty("pid").GetInt32().ShouldBe(engine.Id,
@@ -138,22 +159,41 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // read at runtime — NEVER the Consts.PluginVersion compile-time constant. A presence
             // check ("not null or whitespace") cannot tell those two apart, so this asserts the exact
             // value against the same attribute read from the copy of McpPlugin.dll loaded here.
-            // What makes it able to fail: plant P13 swaps the host's runtime read for
-            // Consts.PluginVersion, and the two differ whenever the informational version carries
-            // source-revision metadata — which every build from a git checkout produces (measured on
-            // this tree: "8.3.0+de71a72…" vs "8.3.0").
-            McpPluginInformationalVersion.ShouldNotBeNullOrWhiteSpace(
-                "the reference value must exist, else the equality below could not discriminate");
+            // What makes it able to fail: swapping the host's runtime read for Consts.PluginVersion
+            // reds this, because the two differ whenever the informational version carries
+            // source-revision metadata — which every build from a git checkout produces
+            // (measured on this tree: "8.3.0+de71a72…" vs "8.3.0").
+            // NOT a null/blank check: the engine's resolver falls back to "unknown", so its reported
+            // value is never blank and a blank-check here would be ENTAILED by the equality below
+            // (zero halves, unfalsifiable). The condition that actually destroys discrimination is
+            // the informational version collapsing ONTO the constant, which happens in any build
+            // where no source-revision suffix is stamped (a source archive, a .git-less container
+            // context). Assert THAT, so the day it happens this fails loudly instead of quietly
+            // certifying a constant the ruling forbids.
+            McpPluginInformationalVersion.ShouldNotBe(
+                global::com.IvanMurzak.McpPlugin.Common.Consts.PluginVersion,
+                "the McpPlugin assembly carries no source-revision suffix, so its runtime informational " +
+                "version is byte-identical to Consts.PluginVersion and the equality below can no longer " +
+                "tell the runtime read from the compile-time constant");
             ready.GetProperty("plugin_version").GetString().ShouldBe(McpPluginInformationalVersion,
                 "the ready file must report the McpPlugin assembly's informational version, read at runtime");
 
-            var readyLine = engine.StdoutLines.FirstOrDefault(line => line.StartsWith("NULL-ENGINE READY", StringComparison.Ordinal));
-            readyLine.ShouldNotBeNull("the engine must print exactly one ready line to stdout");
-            readyLine!.ShouldContain($"tools={ExpectedToolNames.Length}", Case.Sensitive);
-            readyLine.ShouldContain($"prompts={ExpectedPromptNames.Length}", Case.Sensitive);
-            readyLine.ShouldContain("resources=1", Case.Sensitive);
-            readyLine.ShouldContain("plugin=" + McpPluginInformationalVersion, Case.Sensitive,
-                "the ready LINE carries the same identity as the ready FILE");
+            // A bounded WAIT, not an instant read. WaitForReady returns on the ready FILE's
+            // existence, while the ready LINE reaches the capture through an asynchronous
+            // OutputDataReceived callback, so sampling the list here races the capture thread on a
+            // loaded runner. Same reasoning as the liveness window further down.
+            var readyLine = engine.WaitForStdoutLine(ReadyLinePrefix, TimeSpan.FromSeconds(10));
+            readyLine.ShouldNotBeNull("the engine must print a ready line to stdout. " + engine.Describe());
+            engine.StdoutLines.Count(line => line.StartsWith(ReadyLinePrefix, StringComparison.Ordinal))
+                .ShouldBe(1, "the engine must print EXACTLY one ready line, which is what the contract " +
+                    "promises - an at-least-one check would pass on a host that printed it twice");
+            // ONE exact equality rather than four substring checks: the ready line is a contract an
+            // out-of-process consumer parses, and ShouldContain("resources=1") is satisfied by
+            // "resources=10". Equality also gives the whole line a single plantable claim.
+            readyLine.ShouldBe(
+                $"{ReadyLinePrefix} tools={ExpectedToolNames.Length} prompts={ExpectedPromptNames.Length} " +
+                $"resources=1 plugin={McpPluginInformationalVersion}",
+                "the ready line is a contract, not a bag of substrings. " + engine.Describe());
 
             var sessionId = await host.HandshakeAsync(client, "null-engine-real-transport");
 
@@ -273,9 +313,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // ---- every 'fail:' block after that is one of the two deliberate error tools ---------
             var failBlocks = engine.FailBlocks();
-            failBlocks.Count.ShouldBeGreaterThanOrEqualTo(2,
-                "this test called fail AND throw, so at least two error blocks must exist - " +
-                "an empty set would satisfy the attribution check below for free");
+            // One floor PER deliberate tool, not a combined count of two: this test called fail AND
+            // throw, and a bare 'at least two' is satisfied by two blocks from the SAME tool, which
+            // would hide a regression that silenced the other one. Both floors together also rule
+            // out the empty set that would satisfy the attribution loop below for free.
+            failBlocks.Count(block => block.Contains(FailMessage, StringComparison.Ordinal))
+                .ShouldBeGreaterThan(0, "null-engine/fail must log the error block it advertises. " + engine.Describe());
+            failBlocks.Count(block => block.Contains(ThrowMessage, StringComparison.Ordinal))
+                .ShouldBeGreaterThan(0, "null-engine/throw's exception must reach the engine's own error log. " + engine.Describe());
             foreach (var block in failBlocks)
             {
                 (block.Contains(FailMessage, StringComparison.Ordinal) || block.Contains(ThrowMessage, StringComparison.Ordinal))
@@ -285,7 +330,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // ---- teardown: the engine is killed, leaving no orphan --------------------------------
             // Asserted HERE, on the engine that actually connected and served this whole session —
             // that is the shape a leaked process would come from, and it is still ALIVE at this point
-            // (the liveness assertion above proved so). Plant P12 removes the Kill call and reds this,
+            // (the liveness assertion above proved so). Removing the Kill() call below reds this,
             // which is what makes the assertion a claim about killing rather than about a process that
             // had already died on its own.
             engine.Kill();
@@ -294,10 +339,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         /// <summary>
-        /// The other half of the CLI contract the upper layers (<c>p1-null-engine-node</c>,
-        /// <c>p1-t1-app</c>, <c>p1-t1-cloud</c>) key off: an engine that cannot complete the version
-        /// handshake inside <c>--mcp-server-timeout</c> exits <b>3</b> and says so on stderr — it does
-        /// not hang, and it does not exit 0. Port 1 is used because nothing can be listening there.
+        /// The other half of the CLI contract every out-of-process consumer of this engine keys off:
+        /// an engine that cannot complete the version handshake inside <c>--mcp-server-timeout</c>
+        /// exits <b>3</b> and says so on stderr — it does not hang, and it does not exit 0.
+        /// Port 1 is used because nothing can be listening there.
         /// </summary>
         [Fact]
         public void HandshakeFailure_ExitsWithCode3_AndLeavesNoOrphan()
@@ -405,12 +450,22 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                     RedirectStandardError = true,
                     WorkingDirectory = AppContext.BaseDirectory,
                 };
+                // The child inherits this process's environment, and ConnectionConfig reads
+                // MCP_SKILLS_FOLDER / MCP_SERVER_ENDPOINT / MCP_SERVER_TIMEOUT from it. The first
+                // feeds the SkillsPath resolution whose failure IS the `fail:` line the startup-window
+                // assertion polices, so an ambient value could red this test for a purely
+                // environmental reason. Every one of them is passed explicitly below; drop the
+                // inherited copies so the arguments are the only input.
+                startInfo.Environment.Remove("MCP_SKILLS_FOLDER");
+                startInfo.Environment.Remove("MCP_SERVER_ENDPOINT");
+                startInfo.Environment.Remove("MCP_SERVER_TIMEOUT");
+
                 startInfo.ArgumentList.Add(engineDll);
                 startInfo.ArgumentList.Add("--mcp-server-endpoint=" + endpoint);
                 startInfo.ArgumentList.Add("--project-root=" + Path.Combine(workDirectory, "project"));
                 startInfo.ArgumentList.Add("--ready-file=" + readyFile);
                 startInfo.ArgumentList.Add(
-                    "--mcp-server-timeout=" + timeoutMs.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                    "--mcp-server-timeout=" + timeoutMs.ToString(CultureInfo.InvariantCulture));
 
                 return new NullEngineProcess(startInfo, workDirectory, readyFile);
             }
@@ -419,8 +474,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             /// <c>AppContext.BaseDirectory</c> is
             /// <c>&lt;repo&gt;/McpPlugin.Server.Tests/bin/&lt;Configuration&gt;/&lt;tfm&gt;/</c>, so the
             /// engine built for the SAME configuration and the SAME target framework as this test leg
-            /// sits four directories up. Deriving the path (rather than adding a ProjectReference)
-            /// keeps the v8 client graph out of this v10 process.
+            /// sits four directories up. Deriving the path rather than adding a ProjectReference is
+            /// NOT about assembly isolation — this csproj already references <c>McpPlugin</c>, so
+            /// that graph is loaded here regardless (see the class remarks). It avoids a build-order
+            /// coupling and keeps the engine's outputs from being copied beside this test's.
             /// </summary>
             static string ResolveEngineDll()
             {
@@ -456,9 +513,43 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             /// <summary>
             /// True when the process exits within <paramref name="window"/>, false when it is still
             /// running at the end of it.
+            ///
+            /// <para>The parameterless <c>WaitForExit()</c> after a positive result is load-bearing,
+            /// not belt-and-braces: the timed overload returns as soon as the process object reports
+            /// exit, WITHOUT waiting for the asynchronous stdout/stderr handlers to drain. A caller
+            /// that asserts on captured output right afterwards - as the handshake-failure test does
+            /// with the stderr line the engine writes microseconds before exiting - would otherwise
+            /// read a list the capture thread has not finished filling.</para>
             /// </summary>
             public bool ExitedWithin(TimeSpan window)
-                => _process.WaitForExit((int)window.TotalMilliseconds);
+            {
+                if (!_process.WaitForExit((int)window.TotalMilliseconds))
+                    return false;
+
+                _process.WaitForExit();
+                return true;
+            }
+
+            /// <summary>
+            /// Waits up to <paramref name="timeout"/> for a captured stdout line starting with
+            /// <paramref name="prefix"/>, or null if none arrives. Needed because the capture is
+            /// asynchronous, so a line the engine has already written may not be in the list yet.
+            /// </summary>
+            public string? WaitForStdoutLine(string prefix, TimeSpan timeout)
+            {
+                var deadlineUtc = DateTime.UtcNow + timeout;
+                while (true)
+                {
+                    var hit = StdoutLines.FirstOrDefault(line => line.StartsWith(prefix, StringComparison.Ordinal));
+                    if (hit != null)
+                        return hit;
+
+                    if (DateTime.UtcNow >= deadlineUtc)
+                        return null;
+
+                    Thread.Sleep(25);
+                }
+            }
 
             public IReadOnlyList<string> StdoutLines
             {
@@ -478,10 +569,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 var lines = StdoutLines;
                 for (var i = 0; i < lines.Count; i++)
                 {
-                    if (lines[i].StartsWith("NULL-ENGINE READY", StringComparison.Ordinal))
+                    if (lines[i].StartsWith(ReadyLinePrefix, StringComparison.Ordinal))
                         return lines.Take(i).ToArray();
                 }
-                return lines;
+
+                // No ready line captured means there IS no startup window to return. Falling back to
+                // the whole capture would fold the deliberate fail/throw blocks into it and red the
+                // startup assertion with a message blaming the engine for an error it never logged.
+                throw new Xunit.Sdk.XunitException(
+                    "no ready line was captured, so the startup window is undefined. " + Describe());
             }
 
             /// <summary>
@@ -536,25 +632,41 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 _process.WaitForExit(15000);
             }
 
+            /// <summary>
+            /// Built from the snapshot accessors rather than under <c>_gate</c>: that is the same lock
+            /// the output callbacks take to append lines, and every assertion message here is built
+            /// EAGERLY (Shouldly 4.x has no lazy message overload), including on the passing path.
+            /// Holding it across two joins of a Trace-level capture would briefly stall stdout
+            /// draining for the very process the assertion is about - and the liveness check calls
+            /// this while the engine is still running.
+            /// </summary>
             public string Describe()
             {
-                lock (_gate)
-                {
-                    return "exited=" + (_process.HasExited ? _process.ExitCode.ToString() : "no") +
-                        "\nstdout:\n" + string.Join("\n", _stdout) +
-                        "\nstderr:\n" + string.Join("\n", _stderr);
-                }
+                var exited = _process.HasExited
+                    ? _process.ExitCode.ToString(CultureInfo.InvariantCulture)
+                    : "no";
+
+                return "exited=" + exited +
+                    "\nstdout:\n" + string.Join("\n", StdoutLines) +
+                    "\nstderr:\n" + string.Join("\n", StderrLines);
             }
 
             public void Dispose()
             {
+                // Both catches are deliberately broad. This runs while a `using` may be unwinding an
+                // assertion failure, and an exception thrown out of Dispose REPLACES that failure -
+                // turning a precise red into an unrelated teardown stack trace, which is the worst
+                // outcome on a CI-only failure. Kill(entireProcessTree) is documented to throw
+                // AggregateException when a child races it, and Directory.Delete throws
+                // UnauthorizedAccessException (NOT an IOException) when a just-killed process still
+                // holds a handle. Neither is worth losing the real failure over.
                 try
                 {
                     Kill();
                 }
-                catch (InvalidOperationException)
+                catch (Exception)
                 {
-                    // Already gone.
+                    // Already gone, or the OS refused - teardown is best effort.
                 }
                 finally
                 {
@@ -563,7 +675,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                     {
                         Directory.Delete(_workDirectory, recursive: true);
                     }
-                    catch (IOException)
+                    catch (Exception)
                     {
                         // Best effort - the OS temp directory is swept anyway.
                     }

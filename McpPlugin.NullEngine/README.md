@@ -38,11 +38,11 @@ dotnet McpPlugin.NullEngine.dll --help
 
 | Flag | Meaning | Default |
 |---|---|---|
-| `--mcp-server-endpoint=<url>` | MCP server base URL. The existing `ConnectionConfig` key; env `MCP_SERVER_ENDPOINT` also works. | `http://localhost:8080` |
+| `--mcp-server-endpoint=<url>` | MCP server base URL. The existing `ConnectionConfig` key; env `MCP_SERVER_ENDPOINT` also works. | `Consts.Hub.DefaultHost` (`http://localhost:8080` today) |
 | `--project-root=<dir>` | Host project root. Sets `ConnectionConfig.ProjectRootPath`, which anchors the relative `SkillsPath` (`SKILLS`). | a fresh temp directory |
 | `--ready-file=<path>` | Write `{pid, tools, prompts, resources, plugin_version}` as JSON once the handshake succeeded. Written via temp-file + rename, so a reader never sees a partial document. | not written |
 | `--exit-after-ms=<n>` | Exit `0` this many milliseconds after becoming ready. | run until Ctrl-C |
-| `--mcp-server-timeout=<ms>` | Handshake timeout; env `MCP_SERVER_TIMEOUT`. | `10000` |
+| `--mcp-server-timeout=<ms>` | Handshake timeout; env `MCP_SERVER_TIMEOUT`. | `Consts.Hub.DefaultTimeoutMs` (`10000` today) |
 | `--help` | Print the contract and exit `0` **without connecting**. | — |
 
 `--project-root` is not cosmetic. Without it the plugin cannot resolve the relative default
