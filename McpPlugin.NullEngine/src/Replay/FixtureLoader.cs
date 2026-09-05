@@ -527,6 +527,14 @@ namespace com.IvanMurzak.McpPlugin.NullEngine.Replay
         public static List<CObject> ReadLines(string text, string path = "<fixture>")
         {
             var objects = new List<CObject>();
+            // Stripped HERE rather than left to the file read, so Canonicalize(text) and
+            // Load(path) accept the same inputs: File.ReadAllText's StreamReader removes a BOM on
+            // its own, which would otherwise make the string overload stricter than the file one.
+            // chain_fixture.py reads with "utf-8-sig" for the same reason.
+            // Written as an escape: a raw BOM glyph in a C# literal is invisible in every editor
+            // and would not survive a tool that rewrites this file.
+            if (text.Length > 0 && text[0] == '\uFEFF')
+                text = text.Substring(1);
             var lines = text.Split('\n');
             for (var i = 0; i < lines.Length; i++)
             {

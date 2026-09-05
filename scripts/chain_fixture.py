@@ -328,7 +328,12 @@ def read_lines(path):
     except OSError as error:
         raise FixtureError("cannot read %s: %s" % (path, error))
 
-    text = raw.decode("utf-8")
+    # A leading BOM is stripped, NOT tolerated by accident: the C# side reads fixtures with
+    # File.ReadAllText(path, Encoding.UTF8), whose StreamReader removes one on its own. Without
+    # this the two implementations would DISAGREE about which files they accept - replay would
+    # serve a BOM'd fixture happily while the diff that gates CI refused it - and "the two agree"
+    # is the whole promise of this format.
+    text = raw.decode("utf-8-sig")
     objects = []
     for number, line in enumerate(text.split("\n"), start=1):
         line = line.rstrip("\r")

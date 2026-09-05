@@ -289,6 +289,42 @@ namespace com.IvanMurzak.McpPlugin.Tests.Chain
         }
 
         /// <summary>
+        /// A leading UTF-8 BOM must be accepted — and ignored — by BOTH implementations.
+        ///
+        /// <para>Not hypothetical tidiness: <c>File.ReadAllText(path, Encoding.UTF8)</c> strips a
+        /// BOM on its own, so before this was pinned the replay host would happily serve a BOM'd
+        /// fixture while <c>chain_fixture.py</c> — the tool that gates CI — refused the same file
+        /// as unparsable JSON. A disagreement about which files are ACCEPTED is the same defect
+        /// class as a disagreement about their canonical bytes.</para>
+        /// </summary>
+        [PythonFact]
+        public void ALeadingBomIsAcceptedAndIgnoredByBothImplementations()
+        {
+            // Written as an escape: a raw BOM glyph in a C# literal is invisible in every editor
+            // and would not survive a tool that rewrites this file.
+            const string bom = "\uFEFF";
+            var plain = MixedFixture();
+            var withBom = bom + plain;
+
+            // The positive half: the BOM really is there, so "it was ignored" is a claim about
+            // the readers and not about a fixture that never carried one.
+            withBom[0].ShouldBe(bom[0]);
+            ChainToolchain.WriteText(Path.Combine(_scratch, "bom.jsonl"), withBom);
+            var bytes = File.ReadAllBytes(Path.Combine(_scratch, "bom.jsonl"));
+            bytes.Take(3).ToArray().ShouldBe(new byte[] { 0xEF, 0xBB, 0xBF },
+                "the file must actually start with the UTF-8 BOM bytes");
+
+            FixtureLoader.Canonicalize(withBom).ShouldBe(FixtureLoader.Canonicalize(plain),
+                "the C# canonicaliser must ignore a leading BOM");
+
+            var fromScript = Path.Combine(_scratch, "bom.out.jsonl");
+            var result = ChainToolchain.RunScript("canonicalize", Path.Combine(_scratch, "bom.jsonl"), "--out", fromScript);
+            result.ExitCode.ShouldBe(0, "chain_fixture.py must accept a BOM'd fixture. " + result.Describe());
+            ChainToolchain.ReadText(fromScript).ShouldBe(FixtureLoader.Canonicalize(plain),
+                "and must produce the same bytes the C# side does");
+        }
+
+        /// <summary>
         /// The C# reader must refuse the same inputs the Python one refuses, with the same
         /// classification: a schema it does not understand and an over-cap fixture are exit-4
         /// conditions, not contract changes.
