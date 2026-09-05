@@ -1,0 +1,31 @@
+McpPlugin/src/AgentConfig/AiAgentConfigurator.cs
+  s_a1c4a96cac24ea::t_256fce898201a0 211,225,247
+McpPlugin.Tests/AgentConfig/AiAgentConfiguratorTests.cs
+  s_daf10b373a7783::t_4cb9159978387a 83-155
+McpPlugin/src/AgentConfig/AgentConfiguratorSettings.cs
+  s_daf10b373a7783::t_a508f559ed3273 206-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "5164a6c3bca4629bd34888d65022c3e07718e995",
+  "prompts": {},
+  "sessions": {
+    "s_a1c4a96cac24ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e9cca27-a0f3-433c-be2f-3208b1ae4505",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_daf10b373a7783": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a914c3e121c4d4f73",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

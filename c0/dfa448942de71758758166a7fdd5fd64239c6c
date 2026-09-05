@@ -1,0 +1,19 @@
+McpPlugin.Server/src/Transport/StreamableHttpTransportLayer.cs
+  s_70140c226c319a::t_2890d4ff15bc53 40,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "c0dfa448942de71758758166a7fdd5fd64239c6c",
+  "prompts": {},
+  "sessions": {
+    "s_70140c226c319a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d19f18e5-4c42-4846-96a1-9f895ece0414",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
