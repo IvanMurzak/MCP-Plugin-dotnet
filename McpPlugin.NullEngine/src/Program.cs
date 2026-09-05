@@ -19,6 +19,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.NullEngine.Replay;
 using com.IvanMurzak.McpPlugin.NullEngine.Tools;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.Logging;
@@ -52,11 +53,23 @@ namespace com.IvanMurzak.McpPlugin.NullEngine
         /// <summary>Prefix of the single line printed to stdout once the handshake succeeded.</summary>
         public const string ReadyLinePrefix = "NULL-ENGINE READY";
 
-        /// <summary>Clean shutdown (Ctrl-C, <c>--exit-after-ms</c>, or <c>--help</c>).</summary>
+        /// <summary>Prefix of the line printed once a <c>--replay</c> fixture has been registered.</summary>
+        public const string ReplayLinePrefix = "NULL-ENGINE REPLAY";
+
+        /// <summary>Prefix of the line printed once <c>--dump-raw</c> has written its dump.</summary>
+        public const string DumpRawLinePrefix = "NULL-ENGINE DUMP-RAW";
+
+        /// <summary>Clean shutdown (Ctrl-C, <c>--exit-after-ms</c>, <c>--dump-raw</c>, or <c>--help</c>).</summary>
         public const int ExitOk = 0;
+
+        /// <summary>The arguments do not make sense together (e.g. <c>--dump-raw</c> with no battery).</summary>
+        public const int ExitUsage = 2;
 
         /// <summary>The version handshake did not complete inside the plugin timeout.</summary>
         public const int ExitHandshakeFailed = 3;
+
+        /// <summary>A <c>--replay</c> fixture (or a <c>--dump-raw</c> battery) could not be read as schema 1.</summary>
+        public const int ExitFixtureInvalid = 4;
 
         public static async Task<int> Main(string[] args)
         {
@@ -82,6 +95,43 @@ namespace com.IvanMurzak.McpPlugin.NullEngine
                 ? Path.GetFullPath(readyFileValue)
                 : null;
 
+            // ── T2 record / replay (docs/chain-fixtures.md). Argument surface only: everything
+            //    these three flags do lives in src/Replay/.
+            var replayPath = ResolveOptionalPath(parsed, "replay");
+            var dumpRawPath = ResolveOptionalPath(parsed, "dump-raw");
+            var batteryPath = ResolveOptionalPath(parsed, "battery");
+            var fixtureEngine = parsed.TryGetValue("engine", out var engineValue) && !string.IsNullOrWhiteSpace(engineValue)
+                ? engineValue
+                : "null-engine";
+            var fixtureEngineVersion = parsed.TryGetValue("engine-version", out var engineVersionValue) && !string.IsNullOrWhiteSpace(engineVersionValue)
+                ? engineVersionValue
+                : "0";
+            var fixtureSurface = parsed.TryGetValue("surface", out var surfaceValue) && !string.IsNullOrWhiteSpace(surfaceValue)
+                ? surfaceValue
+                : "editor";
+
+            if (dumpRawPath != null && batteryPath == null)
+            {
+                Console.Error.WriteLine("NULL-ENGINE USAGE --dump-raw requires --battery=<file>");
+                Console.Error.Flush();
+                return ExitUsage;
+            }
+
+            Fixture? fixture = null;
+            if (replayPath != null)
+            {
+                try
+                {
+                    fixture = FixtureLoader.Load(replayPath);
+                }
+                catch (FixtureFormatException ex)
+                {
+                    Console.Error.WriteLine("NULL-ENGINE REPLAY-LOAD-FAILED " + ex.Message);
+                    Console.Error.Flush();
+                    return ExitFixtureInvalid;
+                }
+            }
+
             var exitAfterMs = ParseInt(parsed, "exit-after-ms", 0);
             var timeoutMs = ConnectionConfig.GetTimeoutFromArgsOrEnv(args);
             if (timeoutMs <= 0)
@@ -98,7 +148,7 @@ namespace com.IvanMurzak.McpPlugin.NullEngine
 
             var reflector = new Reflector();
 
-            using var mcpPlugin = new McpPluginBuilder(version)
+            var builder = new McpPluginBuilder(version)
                 .WithConfigFromArgsOrEnv(args)
                 // WithConfigFromArgsOrEnv sets only Host + TimeoutMs. Without ProjectRootPath the
                 // relative default SkillsPath ('SKILLS') cannot be resolved and the very first skill
@@ -110,12 +160,66 @@ namespace com.IvanMurzak.McpPlugin.NullEngine
                     logging.AddConsole();
                     logging.SetMinimumLevel(LogLevel.Trace);
                 })
-                .WithToolsFromAssembly(typeof(NullEngineTools).Assembly)
                 .WithPromptsFromAssembly(typeof(NullEngineTools).Assembly)
-                .WithResourcesFromAssembly(typeof(NullEngineTools).Assembly)
-                .Build(reflector);
+                .WithResourcesFromAssembly(typeof(NullEngineTools).Assembly);
+
+            // In --replay the catalogue served must be EXACTLY the fixture's - a consumer asserts
+            // its tools/list against the fixture's tool count (docs/chain-fixtures.md F6), and the
+            // hand-written set would be published ON TOP of it. The hand-written set itself stays
+            // (open question Q5): it is what the reference fixture is recorded FROM.
+            if (fixture == null)
+                builder = builder.WithToolsFromAssembly(typeof(NullEngineTools).Assembly);
+
+            using var mcpPlugin = builder.Build(reflector);
 
             NullEngineHost.Logger = mcpPlugin.Logger;
+
+            if (fixture != null)
+            {
+                var registered = ReplayTool.RegisterAll(mcpPlugin.McpManager.ToolManager, fixture);
+                // BEFORE Connect: the first catalogue the server ever sees is then the fixture's,
+                // rather than an empty one corrected a moment later.
+                Console.Out.WriteLine($"{ReplayLinePrefix} {ReplayTool.Describe(fixture)} registered={registered}");
+                Console.Out.Flush();
+            }
+
+            // Hoisted above the handshake because --dump-raw never connects: the catalogue is a
+            // product of Build(), not of the transport.
+            var toolNames = (mcpPlugin.McpManager.ToolManager?.GetAllTools() ?? Enumerable.Empty<IRunTool>())
+                .Select(tool => tool.Name)
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .ToArray();
+            var promptCount = mcpPlugin.McpManager.PromptManager?.GetAllPrompts().Count() ?? 0;
+            var resourceCount = mcpPlugin.McpManager.ResourceManager?.GetAllResources().Count() ?? 0;
+            var pluginVersion = ResolvePluginInformationalVersion();
+
+            if (dumpRawPath != null)
+            {
+                NullEngineHost.SetCatalog(toolNames, promptCount, resourceCount, pluginVersion, endpoint, projectRoot);
+                try
+                {
+                    var dumped = await RawDump.WriteAsync(
+                        mcpPlugin.McpManager.ToolManager!,
+                        dumpRawPath,
+                        batteryPath!,
+                        fixtureEngine,
+                        fixtureEngineVersion,
+                        fixtureSurface,
+                        pluginVersion: ResolveHostInformationalVersion(),
+                        mcpPluginVersion: pluginVersion).ConfigureAwait(false);
+
+                    Console.Out.WriteLine(
+                        $"{DumpRawLinePrefix} tools={dumped.Tools} calls={dumped.Calls} out={dumpRawPath}");
+                    Console.Out.Flush();
+                    return ExitOk;
+                }
+                catch (FixtureFormatException ex)
+                {
+                    Console.Error.WriteLine("NULL-ENGINE DUMP-RAW-FAILED " + ex.Message);
+                    Console.Error.Flush();
+                    return ExitFixtureInvalid;
+                }
+            }
 
             using var lifetime = new CancellationTokenSource();
             Console.CancelKeyPress += (_, eventArgs) =>
@@ -162,14 +266,6 @@ namespace com.IvanMurzak.McpPlugin.NullEngine
                 Console.Error.Flush();
                 return ExitHandshakeFailed;
             }
-
-            var toolNames = (mcpPlugin.McpManager.ToolManager?.GetAllTools() ?? Enumerable.Empty<IRunTool>())
-                .Select(tool => tool.Name)
-                .OrderBy(name => name, StringComparer.Ordinal)
-                .ToArray();
-            var promptCount = mcpPlugin.McpManager.PromptManager?.GetAllPrompts().Count() ?? 0;
-            var resourceCount = mcpPlugin.McpManager.ResourceManager?.GetAllResources().Count() ?? 0;
-            var pluginVersion = ResolvePluginInformationalVersion();
 
             NullEngineHost.SetCatalog(toolNames, promptCount, resourceCount, pluginVersion, endpoint, projectRoot);
 
@@ -240,6 +336,11 @@ namespace com.IvanMurzak.McpPlugin.NullEngine
             return Path.Combine(Path.GetTempPath(), "mcp-null-engine-" + Guid.NewGuid().ToString("N"));
         }
 
+        static string? ResolveOptionalPath(IDictionary<string, string> parsed, string key)
+            => parsed.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value)
+                ? Path.GetFullPath(value)
+                : null;
+
         static int ParseInt(IDictionary<string, string> parsed, string key, int fallback)
             => parsed.TryGetValue(key, out var value) && int.TryParse(value, out var parsedValue)
                 ? parsedValue
@@ -253,6 +354,25 @@ namespace com.IvanMurzak.McpPlugin.NullEngine
         static string ResolvePluginInformationalVersion()
         {
             var assembly = typeof(global::com.IvanMurzak.McpPlugin.McpPlugin).Assembly;
+            var informational = assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+
+            if (!string.IsNullOrEmpty(informational))
+                return informational!;
+
+            return assembly.GetName().Version?.ToString() ?? "unknown";
+        }
+
+        /// <summary>
+        /// This HOST assembly's informational version. It fills a fixture's
+        /// <c>meta.plugin_version</c>, which for a real engine names the ENGINE PLUGIN's version -
+        /// a different artifact from <c>meta.mcp_plugin_version</c>, which names McpPlugin's. Both
+        /// are masked in the diff (docs/chain-fixtures.md F3), so this is provenance for a human,
+        /// never a comparison input.
+        /// </summary>
+        static string ResolveHostInformationalVersion()
+        {
+            var assembly = typeof(Program).Assembly;
             var informational = assembly
                 .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
 
@@ -282,12 +402,22 @@ namespace com.IvanMurzak.McpPlugin.NullEngine
             builder.AppendLine($"                               Default: {Consts.Hub.DefaultTimeoutMs}");
             builder.AppendLine("  --help                       Print this text and exit 0 without connecting.");
             builder.AppendLine();
+            builder.AppendLine("T2 record / replay (docs/chain-fixtures.md):");
+            builder.AppendLine("  --replay=<fixture>           Serve the fixture's tool set INSTEAD of the built-in one.");
+            builder.AppendLine("  --dump-raw=<file>            Record a raw dump in-process, then exit 0 without connecting.");
+            builder.AppendLine("  --battery=<file>             Calls to make; required with --dump-raw.");
+            builder.AppendLine("  --engine=<name>              meta.engine of a --dump-raw fixture. Default: null-engine.");
+            builder.AppendLine("  --engine-version=<v>         meta.engine_version. Default: 0.");
+            builder.AppendLine("  --surface=<editor|runtime>   meta.surface. Default: editor.");
+            builder.AppendLine();
             builder.AppendLine("Ready line (stdout, exactly once):");
             builder.AppendLine($"  {ReadyLinePrefix} tools=<n> prompts=<n> resources=<n> plugin=<informational version>");
             builder.AppendLine();
             builder.AppendLine("Exit codes:");
-            builder.AppendLine($"  {ExitOk}  clean shutdown (Ctrl-C, --exit-after-ms, --help)");
+            builder.AppendLine($"  {ExitOk}  clean shutdown (Ctrl-C, --exit-after-ms, --dump-raw, --help)");
+            builder.AppendLine($"  {ExitUsage}  the arguments do not make sense together");
             builder.AppendLine($"  {ExitHandshakeFailed}  the version handshake did not complete inside the timeout");
+            builder.AppendLine($"  {ExitFixtureInvalid}  a --replay fixture or --dump-raw battery could not be read");
             return builder.ToString();
         }
     }

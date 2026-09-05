@@ -24,6 +24,18 @@
          the harness executable next to the test assembly, where
          MachineCredentialLockTakeoverPlantTests spawns it via `dotnet`. -->
     <ProjectReference Include="../McpPlugin.Tests.LockHarness/McpPlugin.Tests.LockHarness.csproj" />
+    <!-- T2 chain fixtures: CanonicalizeParityTests compares the C# canonicaliser
+         (McpPlugin.NullEngine/src/Replay/FixtureLoader.cs) against scripts/chain_fixture.py, so it
+         needs the type, not the process. Test-only infrastructure, never packed. -->
+    <ProjectReference Include="../McpPlugin.NullEngine/McpPlugin.NullEngine.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- One copy of "where is the toolchain, and can we run python?", compiled into both test
+         assemblies. McpPlugin.Server.Tests owns the file because the record/replay tests live
+         there; duplicating it here would let the two projects drift into skipping for different
+         reasons, which is exactly the failure ChainToolchainAvailabilityTests exists to catch. -->
+    <Compile Include="../McpPlugin.Server.Tests/Chain/ChainToolchain.cs" Link="Chain/ChainToolchain.cs" />
   </ItemGroup>
 
   <ItemGroup>

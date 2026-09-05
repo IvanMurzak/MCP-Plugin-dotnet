@@ -1,0 +1,13 @@
+# T2 chain fixtures and the tool that writes them are BYTE-compared:
+# docs/chain-fixtures.md F1 fixes the encoding at "UTF-8, LF", DoD 3/4 compare whole
+# files byte-for-byte, and the vendoring rule (chain_fixture.py is copied into every
+# engine repo and checked by sha256) needs the script's bytes to be identical too.
+#
+# This repository has core.autocrlf enabled and, until this file, no attributes at
+# all - so a Windows checkout rewrote every text file to CRLF. That is invisible for
+# C# sources and fatal for a byte comparison: the committed fixture would arrive with
+# CRLF line endings while chain_fixture.py always writes LF, and every byte-identity
+# assertion would fail on the Windows leg only.
+*.jsonl text eol=lf
+*.py text eol=lf
+tests/chain-fixtures/** text eol=lf
