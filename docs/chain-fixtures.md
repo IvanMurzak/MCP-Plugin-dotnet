@@ -31,6 +31,12 @@ reference sample: [`tests/chain-fixtures/null-engine/tools.jsonl`](../tests/chai
 (`.gitattributes` pins `*.jsonl` to `eol=lf`; this repository has `core.autocrlf` on, and a CRLF
 checkout would break every byte comparison on Windows.)
 
+Both readers **tolerate on input** what neither ever writes: a trailing CR on a line, and a leading
+UTF-8 BOM. Tolerated identically on both sides on purpose — `File.ReadAllText(path, Encoding.UTF8)`
+strips a BOM by itself, so before that was matched in Python the replay host served a BOM'd fixture
+happily while the diff that gates CI refused the same file. A disagreement about which files are
+*accepted* is as much a defect here as a disagreement about their canonical bytes.
+
 **Line 1 — `meta`:**
 
 ```json
