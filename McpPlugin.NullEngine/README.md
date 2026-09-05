@@ -11,8 +11,15 @@ results.
 It is **test / fixture infrastructure**: `IsPackable=false`, never packed, never published, and
 absent from `deploy.yml` / `release.yml` on purpose.
 
-- Source: `src/Program.cs`, `src/Tools/`, `src/Prompts/`, `src/Resources/`
-- In-repo consumer: `McpPlugin.Server.Tests/NullEngineRealTransportTests.cs`
+Since the T2 tier it is also the **replay host**: `--replay <fixture>` makes it serve a recorded
+engine's tool set instead of its own, so the desktop app and the cloud server can be tested against
+Unity's / Godot's / Unreal's real contract with no engine installed. See
+[`docs/chain-fixtures.md`](../docs/chain-fixtures.md).
+
+- Source: `src/Program.cs`, `src/Tools/`, `src/Prompts/`, `src/Resources/`, `src/Replay/`
+- In-repo consumers: `McpPlugin.Server.Tests/NullEngineRealTransportTests.cs` (T1),
+  `McpPlugin.Server.Tests/Chain/` (T2 record / replay),
+  `McpPlugin.Tests/Chain/CanonicalizeParityTests.cs` (the canonicaliser's differential test)
 
 ## Build
 
@@ -32,7 +39,10 @@ dotnet McpPlugin.NullEngine.dll --mcp-server-endpoint=<url> \
                                 [--project-root=<dir>] \
                                 [--ready-file=<path>] \
                                 [--exit-after-ms=<n>] \
-                                [--mcp-server-timeout=<ms>]
+                                [--mcp-server-timeout=<ms>] \
+                                [--replay=<fixture>]
+dotnet McpPlugin.NullEngine.dll --dump-raw=<out> --battery=<file> \
+                                [--engine=<name>] [--engine-version=<v>] [--surface=<editor|runtime>]
 dotnet McpPlugin.NullEngine.dll --help
 ```
 
@@ -44,6 +54,10 @@ dotnet McpPlugin.NullEngine.dll --help
 | `--exit-after-ms=<n>` | Exit `0` this many milliseconds after becoming ready. | run until Ctrl-C |
 | `--mcp-server-timeout=<ms>` | Handshake timeout; env `MCP_SERVER_TIMEOUT`. | `Consts.Hub.DefaultTimeoutMs` (`10000` today) |
 | `--help` | Print the contract and exit `0` **without connecting**. | — |
+| `--replay=<fixture>` | Serve a recorded fixture's tool set **instead of** the built-in one, and answer each call with the response recorded for the same `(name, args_hash)`. Prompts and resources are unaffected. See [`docs/chain-fixtures.md`](../docs/chain-fixtures.md) F6. | not replaying |
+| `--dump-raw=<out>` | Record a raw fixture **in-process** (no server, no connection), then exit `0`. Requires `--battery`. Feed the result to `chain_fixture.py canonicalize`. | not dumping |
+| `--battery=<file>` | The calls `--dump-raw` makes. Required with it, ignored otherwise. | — |
+| `--engine=<name>` / `--engine-version=<v>` / `--surface=<editor\|runtime>` | `meta` fields of a `--dump-raw` fixture. | `null-engine` / `0` / `editor` |
 
 `--project-root` is not cosmetic. Without it the plugin cannot resolve the relative default
 `SkillsPath` and logs an error during construction (`Cannot resolve relative SkillsPath 'SKILLS'
@@ -75,8 +89,25 @@ tell a locally built assembly from a released one.
 
 | Code | Meaning |
 |---|---|
-| `0` | Clean shutdown: Ctrl-C, `--exit-after-ms` elapsed, or `--help`. |
+| `0` | Clean shutdown: Ctrl-C, `--exit-after-ms` elapsed, `--dump-raw` finished, or `--help`. |
+| `2` | The arguments do not make sense together (`--dump-raw` without `--battery`). `NULL-ENGINE USAGE …` on stderr. |
 | `3` | The version handshake did not complete within `--mcp-server-timeout`. A `NULL-ENGINE HANDSHAKE-FAILED …` line is written to stderr. |
+| `4` | A `--replay` fixture or `--dump-raw` battery could not be read as schema 1. `NULL-ENGINE REPLAY-LOAD-FAILED …` / `NULL-ENGINE DUMP-RAW-FAILED …` on stderr. |
+
+### Record / replay lines
+
+A `--replay` run prints one extra stdout line **before** the ready line:
+
+```
+NULL-ENGINE REPLAY tools=12 calls=14 fixture=<path> registered=12
+```
+
+and its ready line reports the FIXTURE's tool count, because the built-in catalogue is not
+registered in that mode. A `--dump-raw` run never connects and prints instead:
+
+```
+NULL-ENGINE DUMP-RAW tools=12 calls=14 out=<path>
+```
 
 ### Logging
 
