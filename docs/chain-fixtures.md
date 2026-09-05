@@ -140,6 +140,28 @@ they pin different SignalR majors), and the parity assertion in
 `ChainRecordReplayTests.InProcessDumpAndMcpRecord_AgreeAfterCanonicalization` is what stops it
 drifting.
 
+### Writing an in-process recorder for a real engine
+
+An engine cannot run `McpPlugin.NullEngine` inside its editor, so each engine leg writes its own
+recorder against the **existing** `McpPlugin.Common` types — no new plugin API, which is what keeps
+it compiling against the pinned DLLs. `McpPlugin.NullEngine/src/Replay/RawDump.cs` is the reference
+implementation; the rules it encodes are:
+
+* Drive `IToolManager.RunListTool` once, then `RunCallTool` per battery entry.
+* Project each `ResponseData<ResponseCallTool>` the way the server would:
+  * outer `Status == Error` → `{"status":"error","content":[{"type":"text","text":<outer Message>}]}`,
+    the response's own content **discarded** (that is what `ToolRouter.Call` does);
+  * outer `Value == null` → the same shape with `"[Error] Tool returned null value"`;
+  * otherwise → status from the inner `Status`, content blocks mapped, `structuredContent` as-is.
+* Content-block `type` is one of `text` \| `image` \| `audio` \| `resource`. A **text** block records
+  only `type` and `text` — its `MimeType` does not reach the wire. `image` / `audio` record `data`
+  (base64) and `mimeType`. `resource` records `{uri, mimeType?, text|blob}`, text preferred over blob.
+* `errorKind` is the `ResponseErrorKind` member NAME — `None`, `BadRequest`, `NotFound`, `Conflict`,
+  `Timeout`, `Unavailable`, `Internal` — recorded on every call, success included. Parsing is
+  case-insensitive on replay, with `Internal` as the fallback for an unknown value.
+* Write the lines in any order with any key order: `canonicalize` sorts, masks, caps and computes
+  `args_hash`. A raw dump is F1-**shaped**, not canonical.
+
 > **Note.** A `resource` content block is the one shape whose two projections are not proven equal —
 > the null engine emits none, so no test covers it. An engine whose tools return embedded resources
 > should record with one recorder kind consistently until that gap is closed.
