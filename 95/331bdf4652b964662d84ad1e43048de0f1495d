@@ -1,0 +1,27 @@
+McpPlugin.Tests/Network/Connection/Credentials/ConnectTokenlessUnboundedAwaitTests.cs
+  s_b67136e6529520::t_4cc6ed6eba4fea 1-194,230-282
+  s_b67136e6529520::t_4db07fc572f6df 195-229
+  s_b67136e6529520::t_097e657951aefe 283-303
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionManager.Connect.cs
+  s_b67136e6529520::t_71f70cc6f162a7 56,58,63,67,69,79-87,89-92,94,97-98,102-130,133-155,163,213,249,292,466,557-562
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionManager.Disconnect.cs
+  s_b67136e6529520::t_d78dd40048b7b5 142,207
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionManager.cs
+  s_b67136e6529520::t_6975659d5f9f6a 50-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "95331bdf4652b964662d84ad1e43048de0f1495d",
+  "prompts": {},
+  "sessions": {
+    "s_b67136e6529520": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2daca18-c5ed-4768-89b7-aca692402cf8",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
