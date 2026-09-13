@@ -3,7 +3,8 @@ name: test-pull-request
 # Chain leg (node `mcp-plugin-dotnet`): the SAME jobs also run under `workflow_dispatch` with a
 # chain lock as their single input. `.github/scripts/chain_feed.py` (vendored, byte-identical to
 # ai-game-dev-software `.scripts/chain/leg/chain_feed.py`) then self-builds ReflectorNet from the
-# lock's sha into a local feed and forces it with an exact `[ws]` override before restore. On an
+# lock's sha into a local feed and forces it with an exact-version NuGet override
+# (`[<version>-ws.g<sha8>]`) before restore. On an
 # ordinary pull_request every chain step is a no-op ("chain: no lock (ordinary run)").
 on:
   pull_request:
@@ -93,8 +94,9 @@ jobs:
           name: test-results-${{ matrix.os }}
           path: TestResults/**/*.trx
 
-      # Identity proof (never an exit code): every consumer's obj/project.assets.json must resolve
-      # the lock's ws ReflectorNet. Exits 3 on any mismatch => this job is RED even if tests passed.
+      # Identity proof, read from each consumer's obj/project.assets.json (not inferred from a restore
+      # exit code): it must resolve the lock's ws ReflectorNet. Exits 3 on any mismatch => this job is
+      # RED even if tests passed.
       - name: chain leg record
         id: chain_record
         if: always()
