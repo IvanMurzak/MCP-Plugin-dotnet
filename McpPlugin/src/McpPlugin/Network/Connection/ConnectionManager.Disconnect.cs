@@ -139,6 +139,7 @@ namespace com.IvanMurzak.McpPlugin
             if (acquiredOngoingGate)
             {
                 _ongoingConnectionTask = null;
+                _ongoingFirstOutcomeTask = null;
                 _ongoingConnectionGate.Release();
             }
             else
@@ -203,6 +204,7 @@ namespace com.IvanMurzak.McpPlugin
             // Clear the ongoing connection task to prevent new Connect calls from waiting for it
             await _ongoingConnectionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             _ongoingConnectionTask = null;
+            _ongoingFirstOutcomeTask = null;
             _ongoingConnectionGate.Release();
 
             var tempHubConnection = ClearConnectionState();
