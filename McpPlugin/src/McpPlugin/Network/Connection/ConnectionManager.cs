@@ -48,6 +48,15 @@ namespace com.IvanMurzak.McpPlugin
         private volatile Task<bool>? _ongoingConnectionTask;
 
         /// <summary>
+        /// Companion to <see cref="_ongoingConnectionTask"/>, written and cleared under the same
+        /// <c>_ongoingConnectionGate</c> hold. Completes with the in-flight attempt's FIRST DECIDED
+        /// outcome rather than with the whole (possibly unbounded) reconnect retry loop, so a caller
+        /// holding a token that can never be cancelled has something it can actually await. See the
+        /// release rationale in <c>Connect</c>.
+        /// </summary>
+        private volatile Task<bool>? _ongoingFirstOutcomeTask;
+
+        /// <summary>
         /// Tracks the background HubConnection disposal dispatched by <see cref="DisconnectImmediateCore"/>.
         /// Bounded-joinable via <see cref="WaitForImmediateTeardown"/> so a caller on a reload/
         /// AssemblyLoadContext-unload thread can wait for the transport's threads/handles to be released
