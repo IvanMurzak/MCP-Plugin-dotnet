@@ -1,9 +1,34 @@
 name: test-pull-request
 
+# Chain leg (node `mcp-plugin-dotnet`): the SAME jobs also run under `workflow_dispatch` with a
+# chain lock as their single input. `.github/scripts/chain_feed.py` (vendored, byte-identical to
+# ai-game-dev-software `.scripts/chain/leg/chain_feed.py`) then self-builds ReflectorNet from the
+# lock's sha into a local feed and forces it with an exact-version NuGet override
+# (`[<version>-ws.g<sha8>]`) before restore. On an
+# ordinary pull_request every chain step is a no-op ("chain: no lock (ordinary run)").
 on:
   pull_request:
-    branches: [main, dev]
+    branches: [main, dev, chain-testing]
     types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      lock:
+        description: the chain lock JSON (<= 60000 characters)
+        required: true
+        type: string
+      lock_hash8:
+        description: first 8 hex characters of the lock hash
+        required: true
+        type: string
+
+# Empty on ordinary runs => GitHub's default title. The chain dispatcher captures a dispatched run
+# by this exact title + headSha. No `concurrency` block: nothing cancels today, and two different
+# locks must be able to run side by side.
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('chain {0} mcp-plugin-dotnet', inputs.lock_hash8) || '' }}
+
+env:
+  CHAIN_LOCK: ${{ inputs.lock }}
+  CHAIN_LOCK_HASH8: ${{ inputs.lock_hash8 }}
 
 jobs:
   test:
@@ -15,6 +40,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     permissions:
       checks: write
       pull-requests: write
@@ -29,6 +55,13 @@ jobs:
           dotnet-version: |
             8.0.x
             9.0.x
+
+      - name: chain feed
+        id: chain
+        shell: bash
+        run: |
+          PY="$(command -v python || command -v python3)"
+          "$PY" .github/scripts/chain_feed.py apply --node mcp-plugin-dotnet --job test
 
       - name: Restore dependencies
         working-directory: ./
@@ -61,6 +94,24 @@ jobs:
           name: test-results-${{ matrix.os }}
           path: TestResults/**/*.trx
 
+      # Identity proof, read from each consumer's obj/project.assets.json (not inferred from a restore
+      # exit code): it must resolve the lock's ws ReflectorNet. Exits 3 on any mismatch => this job is
+      # RED even if tests passed.
+      - name: chain leg record
+        id: chain_record
+        if: always()
+        shell: bash
+        run: |
+          PY="$(command -v python || command -v python3)"
+          "$PY" .github/scripts/chain_feed.py record --node mcp-plugin-dotnet --job test --job-status "${{ job.status }}" --out chain-leg.json
+
+      - name: chain leg artifact
+        if: always() && env.CHAIN_ACTIVE == '1'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.chain_record.outputs.artifact_name }}
+          path: chain-leg.json
+
   # mcp-authorize Phase-2 gate (design 04/07, task b8): the cross-language golden-vector parity
   # signal. The C# ProjectIdentity vectors (McpPlugin/src/AgentConfig/ProjectIdentity.GoldenVectors.json)
   # are the canonical origin every TS/JS engine-CLI port MUST reproduce at Phase 4 (routing pin +
@@ -68,6 +119,7 @@ jobs:
   # TS consumers plug into later; runs the reference tests hermetically (no external services).
   golden-vector-parity:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -81,6 +133,13 @@ jobs:
             8.0.x
             9.0.x
 
+      - name: chain feed
+        id: chain
+        shell: bash
+        run: |
+          PY="$(command -v python || command -v python3)"
+          "$PY" .github/scripts/chain_feed.py apply --node mcp-plugin-dotnet --job golden-vector-parity
+
       - name: Restore
         run: dotnet restore McpPlugin.Tests/McpPlugin.Tests.csproj
 
@@ -93,3 +152,18 @@ jobs:
           --no-build --configuration Release --verbosity normal
           --filter "FullyQualifiedName~ProjectIdentityGoldenVector"
           -- RunConfiguration.TreatNoTestsAsError=true
+
+      - name: chain leg record
+        id: chain_record
+        if: always()
+        shell: bash
+        run: |
+          PY="$(command -v python || command -v python3)"
+          "$PY" .github/scripts/chain_feed.py record --node mcp-plugin-dotnet --job golden-vector-parity --job-status "${{ job.status }}" --out chain-leg.json
+
+      - name: chain leg artifact
+        if: always() && env.CHAIN_ACTIVE == '1'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.chain_record.outputs.artifact_name }}
+          path: chain-leg.json
