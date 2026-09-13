@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The "null engine": a REAL headless McpPlugin host - real McpPluginBuilder, real SignalR
+       transport, no editor. Spawned as an actual OS process by McpPlugin.Server.Tests
+       (NullEngineRealTransportTests) so this repo has at least one test that drives a real plugin
+       against the real server host over the real transport, and by out-of-repo consumers that need
+       one deterministic, scriptable engine process to point a server at.
+
+       Test / fixture infrastructure only - never packed, never published (IsPackable=false, and it
+       is absent from deploy.yml / release.yml on purpose).
+
+       Two TFMs, mirroring McpPlugin.Tests.LockHarness: McpPlugin.Server.Tests runs on net8.0 AND
+       net9.0, and each test leg locates the exe built for its OWN TFM. -->
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>11.0</LangVersion>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>com.IvanMurzak.McpPlugin.NullEngine</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- McpPlugin ONLY. No reference to McpPlugin.Server: this process is a plugin CLIENT, and the
+         two pin different SignalR major versions (client 8.0.15, server 10.0.3). -->
+    <ProjectReference Include="../McpPlugin/McpPlugin.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Same console-logging provider and version DemoConsoleApp uses. The 'fail:'/'info:' line
+         prefixes this host's contract is asserted on are this formatter's. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.3" />
+  </ItemGroup>
+
+</Project>

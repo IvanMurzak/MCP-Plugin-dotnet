@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "_comment": [
+    "One call whose response is far above F4's 32 KB cap (null-engine/large-payload returns the",
+    "requested number of kibibytes verbatim), plus one small call beside it. The small call is",
+    "load-bearing, not filler: it is the positive half that shows the SAME fixture family can",
+    "carry an un-capped response, so 'the big one was replaced by its digest' is a statement",
+    "about the cap and not about the tool, the recorder or the battery being broken."
+  ],
+  "calls": [
+    { "name": "null-engine/ping", "args": {} },
+    { "name": "null-engine/large-payload", "args": { "kb": 40 } }
+  ]
+}

@@ -44,6 +44,7 @@ namespace com.IvanMurzak.McpPlugin
     {
         private readonly Func<string, IReadOnlyDictionary<string, JsonElement>?, CancellationToken, Task<ResponseCallTool>> _handler;
         private int? _cachedTokenCount;
+        private int? _cachedSkillMetadataTokenCount;
 
         public string Name { get; }
         public string? Title { get; }
@@ -70,7 +71,9 @@ namespace com.IvanMurzak.McpPlugin
 
         /// <summary>
         /// Semantic token count for this tool, computed once (then cached) from the same chars/4 approximation
-        /// used by <see cref="RunTool"/> via the shared <see cref="ToolTokenCount.Calculate"/> helper.
+        /// used by <see cref="RunTool"/> via the shared <see cref="ToolTokenCount.Calculate"/> helper. Covers
+        /// the description AND the published skill metadata (<see cref="SkillDescription"/> /
+        /// <see cref="SkillBody"/>); <see cref="SkillMetadataTokenCount"/> is that payload's share of it.
         /// </summary>
         public int TokenCount
         {
@@ -81,7 +84,7 @@ namespace com.IvanMurzak.McpPlugin
 
                 try
                 {
-                    _cachedTokenCount = ToolTokenCount.Calculate(Name, Title, Description, InputSchema, OutputSchema);
+                    _cachedTokenCount = ToolTokenCount.Calculate(Name, Title, Description, SkillDescription, SkillBody, InputSchema, OutputSchema);
                 }
                 catch
                 {
@@ -95,13 +98,45 @@ namespace com.IvanMurzak.McpPlugin
         }
 
         /// <summary>
+        /// The portion of <see cref="TokenCount"/> contributed by <see cref="SkillDescription"/> /
+        /// <see cref="SkillBody"/>, including their JSON key overhead. Computed once (then cached) from the
+        /// same helper <see cref="RunTool"/> uses. The two inputs are get-only and assigned in the
+        /// constructor, so — exactly like <see cref="TokenCount"/> — the cached value can never go stale.
+        /// </summary>
+        public int SkillMetadataTokenCount
+        {
+            get
+            {
+                if (_cachedSkillMetadataTokenCount.HasValue)
+                    return _cachedSkillMetadataTokenCount.Value;
+
+                try
+                {
+                    _cachedSkillMetadataTokenCount = ToolTokenCount.CalculateSkillMetadata(Name, Title, Description, SkillDescription, SkillBody, InputSchema, OutputSchema);
+                }
+                catch
+                {
+                    // Same silent resilience as TokenCount above: a breakdown must never be able to poison
+                    // IToolManager.EnabledToolsSkillMetadataTokenCount.
+                    _cachedSkillMetadataTokenCount = 0;
+                }
+                return _cachedSkillMetadataTokenCount.Value;
+            }
+        }
+
+        /// <summary>
         /// Creates a runtime/proxy tool.
         /// </summary>
         /// <param name="name">Unique tool name. Required.</param>
         /// <param name="title">Human-readable title. Optional.</param>
         /// <param name="description">Tool description shown to the AI client. Optional.</param>
-        /// <param name="skillDescription">Optional concise SKILL.md description override.</param>
-        /// <param name="skillBody">Optional long-form SKILL.md body.</param>
+        /// <param name="skillDescription">Optional concise skill blurb. Feeds the SKILL.md YAML
+        /// <c>description:</c> field AND the <c>tools/list</c> <c>_meta.skillDescription</c> key,
+        /// which reaches callers that opted in with <c>X-McpPlugin-Skill-Meta: 1</c>. Optional.</param>
+        /// <param name="skillBody">Optional long-form skill markdown. Feeds the SKILL.md body AND
+        /// the <c>tools/list</c> <c>_meta.skillBody</c> key, which reaches callers that opted in
+        /// with <c>X-McpPlugin-Skill-Meta: 1</c> — a payload gate, not a security boundary, so
+        /// keep it to content that is safe to publish. Optional.</param>
         /// <param name="inputSchema">JSON Schema for the tool inputs, supplied externally. Optional.</param>
         /// <param name="outputSchema">JSON Schema for the tool output, supplied externally. Optional.</param>
         /// <param name="readOnlyHint">MCP read-only behavior hint. Optional.</param>

@@ -291,9 +291,36 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             // Assert - verify only one connection attempt while both tasks are running
             providerCallCount.ShouldBe(1, "second call should reuse first connection attempt");
 
-            // Complete connection and wait for both tasks
+            // Complete connection and wait for both tasks.
+            //
+            // WHY 8000 AND NOT 5000 — do not lower this again.
+            // This test starts TWO independent 5-second clocks and requires the one that starts
+            // FIRST to finish before the one that starts SECOND:
+            //   clock A: the `new CancellationTokenSource(5s)` created inside firstTask's Task.Run body;
+            //   clock B: the Task.Delay(timeoutMs) started here, inside EnsureTasksCompleteAsync.
+            // Clock B starts LATER than clock A by only (EnsureConnectionStartedAsync + the
+            // Task.Delay(50) above) — structurally >50 ms, but rarely more than ~150 ms.
+            //
+            // Against the unreachable endpoint, Connect returns ONLY when clock A fires: the retry
+            // loop runs with the default MaxConsecutiveConnectionFailures == 0 (unlimited retry —
+            // pinned by ConnectionManagerRejectionTests.Connect_RetriesUnlimited_ByDefault_WhenNotOptedIn,
+            // godotengine/godot#78513), so after the first attempt fails it sits in WaitBeforeRetry's
+            // 5 s backoff until the token kills it. So with a 5000 ms budget the pass/fail condition
+            // was just:  FAILS iff unwind_latency > (clock B start - clock A start),
+            // i.e. the whole safety margin was ~50 ms of scheduler slack.
+            //
+            // Measured: margin 27-79 ms over 24 instrumented runs (idle Windows: min 46 / median 54 /
+            // max 79; under DOTNET_PROCESSOR_COUNT=2 + 64 CPU hogs: min 27). And in CI run
+            // 34698401570 the macOS net8.0 leg PASSED at 5.1596 s while the macOS net9.0 leg FAILED
+            // at 5.1518 s — the PASSING run was 7.7 ms SLOWER. Pass and fail are the same execution
+            // differing by single-digit milliseconds of scheduler jitter, not a race in
+            // ConnectionManager (single-flight dedup held in every run: providerCallCount == 1).
+            //
+            // 8000 matches the sibling Connect_WhenCalledConcurrently_MakesOnlyOneConnectionAttempt,
+            // which was raised 5000 -> 8000 in commit 3531a30 (2026-03-30) for exactly this reason;
+            // this test was simply missed at the time.
             allowConnectionToComplete.SetResult(true);
-            await EnsureTasksCompleteAsync(5000, firstTask, secondTask);
+            await EnsureTasksCompleteAsync(8000, firstTask, secondTask);
 
             providerCallCount.ShouldBe(1, "provider should only be called once");
         }

@@ -40,7 +40,8 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// Reads <see cref="AiSkillDescriptionAttribute"/> from the underlying method, if present.
         /// Used by <see cref="Skills.SkillFileGenerator"/> in place of <see cref="MethodWrapper.Description"/>
-        /// when building the SKILL.md YAML <c>description:</c> field.
+        /// when building the SKILL.md YAML <c>description:</c> field, AND copied onto the MCP
+        /// <c>tools/list</c> entry as <c>_meta.skillDescription</c> — see <see cref="IRunTool.SkillDescription"/>.
         /// </summary>
         /// <remarks>
         /// Uses the plural <c>GetCustomAttributes</c> overload so that a method carrying BOTH
@@ -56,7 +57,8 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// Reads <see cref="AiSkillBodyAttribute"/> from the underlying method, if present.
         /// Used by <see cref="Skills.SkillFileGenerator"/> to inject long-form markdown into the SKILL.md body
-        /// between the description paragraph and the <c>## How to Call</c> section.
+        /// between the description paragraph and the <c>## How to Call</c> section, AND copied onto the
+        /// MCP <c>tools/list</c> entry as <c>_meta.skillBody</c> — see <see cref="IRunTool.SkillBody"/>.
         /// </summary>
         /// <remarks>
         /// Uses the plural <c>GetCustomAttributes</c> overload so that a method carrying BOTH

@@ -53,15 +53,20 @@ namespace com.IvanMurzak.McpPlugin
             // NOT be acquired under _ongoingConnectionGate (Disconnect acquires them in the
             // opposite order: _gate → _ongoingConnectionGate).
             Task<bool>? ongoingTask;
+            Task<bool>? ongoingFirstOutcome;
             TaskCompletionSource<bool>? connectionAttempt = null;
+            TaskCompletionSource<bool>? firstOutcome = null;
             await _ongoingConnectionGate.WaitAsync(cancellationToken);
             try
             {
                 ongoingTask = _ongoingConnectionTask;
+                ongoingFirstOutcome = _ongoingFirstOutcomeTask;
                 if (ongoingTask == null)
                 {
                     connectionAttempt = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    firstOutcome = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
                     _ongoingConnectionTask = connectionAttempt.Task;
+                    _ongoingFirstOutcomeTask = firstOutcome.Task;
                 }
             }
             finally
@@ -70,39 +75,84 @@ namespace com.IvanMurzak.McpPlugin
             }
 
             if (ongoingTask != null)
-                return await WaitForConnectionCompletion(ongoingTask, cancellationToken);
-
-            var result = false;
-            try
             {
-                result = await ConnectCore(cancellationToken);
-                return result;
+                // A joiner that cannot cancel must attach to the FIRST DECIDED OUTCOME, never to
+                // the full attempt: with the default (unlimited) reconnect cap the leader's loop
+                // has no terminating condition, so awaiting its completion with a token that can
+                // never fire would be an await that can never complete. Same reasoning as the
+                // leader's own release below.
+                var joinTarget = !cancellationToken.CanBeCanceled && ongoingFirstOutcome != null
+                    ? ongoingFirstOutcome
+                    : ongoingTask;
+                return await WaitForConnectionCompletion(joinTarget, cancellationToken);
             }
-            finally
+
+            // The leader's full attempt: the connection cycle plus the (possibly unbounded)
+            // reconnect retry loop, followed by the single-flight cleanup.
+            async Task<bool> RunAttemptAsync()
             {
+                var result = false;
                 try
                 {
-                    // Use CancellationToken.None: cleanup must run even when cancellationToken
-                    // has already been cancelled by DisconnectImmediate.
-                    await _ongoingConnectionGate.WaitAsync(CancellationToken.None);
-                    // DisconnectImmediate may have detached this attempt (nulled the field) and a
-                    // successor Connect may already have installed itself — never clobber it.
-                    if (ReferenceEquals(_ongoingConnectionTask, connectionAttempt!.Task))
-                        _ongoingConnectionTask = null;
-                    _ongoingConnectionGate.Release();
-                }
-                catch (ObjectDisposedException)
-                {
-                    // Disposed mid-attempt: the field no longer matters, but the proxy below MUST
-                    // still complete so joined callers are never orphaned.
+                    result = await ConnectCore(cancellationToken, firstOutcome);
+                    return result;
                 }
                 finally
                 {
-                    // Complete the proxy only AFTER the field is cleared, so a caller arriving
-                    // after completion starts a fresh attempt instead of adopting a stale result.
-                    connectionAttempt!.TrySetResult(result);
+                    try
+                    {
+                        // Use CancellationToken.None: cleanup must run even when cancellationToken
+                        // has already been cancelled by DisconnectImmediate.
+                        await _ongoingConnectionGate.WaitAsync(CancellationToken.None);
+                        // DisconnectImmediate may have detached this attempt (nulled the field) and a
+                        // successor Connect may already have installed itself — never clobber it.
+                        if (ReferenceEquals(_ongoingConnectionTask, connectionAttempt!.Task))
+                        {
+                            _ongoingConnectionTask = null;
+                            _ongoingFirstOutcomeTask = null;
+                        }
+                        _ongoingConnectionGate.Release();
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Disposed mid-attempt: the field no longer matters, but the proxies below
+                        // MUST still complete so joined callers are never orphaned.
+                    }
+                    finally
+                    {
+                        // Complete the proxy only AFTER the field is cleared, so a caller arriving
+                        // after completion starts a fresh attempt instead of adopting a stale result.
+                        connectionAttempt!.TrySetResult(result);
+                        // Safety net: the loop normally releases first-outcome waiters at its first
+                        // backoff, but every early return (disposed, cancelled, already connected,
+                        // provider failure) reaches here instead — no waiter may be orphaned.
+                        firstOutcome!.TrySetResult(result);
+                    }
                 }
             }
+
+            // A caller that handed us a token we can NEVER observe — CancellationToken.None, which
+            // is the `= default` of this method's own signature and therefore the shape of every
+            // `Connect()` call site — must not be awaited on the reconnect retry loop. With the
+            // default cap (MaxConsecutiveConnectionFailures == 0 = retry an unreachable endpoint
+            // forever) that loop cannot give up and the token cannot fire, so the await would have
+            // no terminating condition at all and would simply never complete. Release such a
+            // caller with the FIRST DECIDED OUTCOME and let the loop keep reconnecting in the
+            // background — the reconnect intent (KeepConnected) is untouched, so the historical
+            // Unity/Unreal behaviour is preserved; only the caller stops being held hostage.
+            //
+            // A caller that supplied a REAL token keeps the historical contract exactly: it awaits
+            // the whole loop and is released when its own token cancels (godotengine/godot#78513,
+            // pinned by ConnectionManagerRejectionTests.Connect_RetriesUnlimited_ByDefault_WhenNotOptedIn).
+            if (!cancellationToken.CanBeCanceled)
+            {
+                var background = RunAttemptAsync();
+                // Fire-and-forget: observe faults so an unobserved exception can never escape.
+                _ = background.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
+                return await firstOutcome!.Task;
+            }
+
+            return await RunAttemptAsync();
         }
 
         /// <summary>
@@ -110,7 +160,7 @@ namespace com.IvanMurzak.McpPlugin
         /// the actual connection attempt. Only ever entered by the caller that installed itself in
         /// <see cref="_ongoingConnectionTask"/>; everyone else joins that task instead.
         /// </summary>
-        private async Task<bool> ConnectCore(CancellationToken cancellationToken)
+        private async Task<bool> ConnectCore(CancellationToken cancellationToken, TaskCompletionSource<bool>? firstOutcome)
         {
             try
             {
@@ -160,7 +210,7 @@ namespace com.IvanMurzak.McpPlugin
 
                 _continueToReconnect.Value = true;
 
-                return await InternalConnect(cancellationToken);
+                return await InternalConnect(cancellationToken, firstOutcome);
             }
             finally
             {
@@ -196,7 +246,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// Internal connection logic. Must be called from within a _gate-protected section.
         /// </summary>
-        private async Task<bool> InternalConnect(CancellationToken cancellationToken)
+        private async Task<bool> InternalConnect(CancellationToken cancellationToken, TaskCompletionSource<bool>? firstOutcome = null)
         {
             try
             {
@@ -239,7 +289,7 @@ namespace com.IvanMurzak.McpPlugin
                     return false;
                 }
 
-                return await StartConnectionLoop(cancellationToken);
+                return await StartConnectionLoop(cancellationToken, firstOutcome);
             }
             catch (OperationCanceledException)
             {
@@ -413,7 +463,7 @@ namespace com.IvanMurzak.McpPlugin
         /// observable HTTP 401/403 during the attempt itself — <see cref="ConnectionAttemptResult.AuthRejected"/>)
         /// and stops retrying after <see cref="MaxConsecutiveRejections"/> consecutive rejections.
         /// </summary>
-        private async Task<bool> StartConnectionLoop(CancellationToken cancellationToken)
+        private async Task<bool> StartConnectionLoop(CancellationToken cancellationToken, TaskCompletionSource<bool>? firstOutcome = null)
         {
             _logger.LogDebug("{class}[{guid}] {method} Starting connection loop for endpoint: {endpoint}",
                 nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint);
@@ -503,6 +553,12 @@ namespace com.IvanMurzak.McpPlugin
 
                 if (cancellationToken.IsCancellationRequested || !_continueToReconnect.CurrentValue)
                     break;
+
+                // The attempt cycle is decided and the loop is about to back off and retry. This
+                // is the release point for callers that cannot cancel (see Connect): they get this
+                // outcome now instead of awaiting a loop that may never terminate. Idempotent, so
+                // later iterations are no-ops and the very first decided outcome is the one served.
+                firstOutcome?.TrySetResult(false);
 
                 await WaitBeforeRetry(cancellationToken);
             }

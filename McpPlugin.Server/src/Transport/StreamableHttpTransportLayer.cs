@@ -91,6 +91,30 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                     // saw SessionId == null and select_engine_instance failed 100% of the time.
                     McpSessionTokenContext.CurrentSessionId = mcpClientSessionId;
 
+                    // ── Client opt-in flags are SESSION-scoped, decided here (a5 ruling) ───────────────
+                    // Both `X-McpPlugin-Skill-Meta` and `X-McpPlugin-Internal-Client` are properties of
+                    // the SESSION, read from the `initialize` request and fixed for the session's whole
+                    // life. A later request's header is ignored — see the ruling and the rejected
+                    // per-request alternative on McpSessionTokenContext.IsSkillMetaClient.
+                    //
+                    // Publishing them HERE rather than relying on McpSessionTokenMiddleware is the whole
+                    // point. The middleware also writes them, and on `initialize` its write lands inside
+                    // the ExecutionContext captured below, so today the two agree — but only because the
+                    // middleware happens to sit upstream of the capture. That is an accident of pipeline
+                    // ordering, not a decision: relocate the middleware, or add any stage that captures
+                    // the context earlier, and the session's opt-in silently becomes "whatever was left
+                    // in the ambient slot" with nothing to notice. Reading the header from the request
+                    // that ESTABLISHES the session makes the semantics true by construction.
+                    //
+                    // Written unconditionally, `false` included: the value must be the initialize
+                    // request's answer, not "the initialize request's answer, or else whatever was
+                    // already there". The middleware's own write stays conditional for the opposite and
+                    // equally deliberate reason (see the comment at its call site).
+                    McpSessionTokenContext.IsSkillMetaClient =
+                        ClientOptInHeaders.ReadSkillMetaClient(context.Request.Headers) ?? false;
+                    McpSessionTokenContext.IsTrustedInternalClient =
+                        ClientOptInHeaders.ReadTrustedInternalClient(context.Request.Headers) ?? false;
+
                     // ── Replace-by-identity (design 07 §2.3, D10.2) ────────────────────────────────────
                     // This is the only place the rule can run. The installation identity rides on the
                     // `initialize` request, and this handler is the one hook that sees BOTH that request's

@@ -177,6 +177,38 @@
 > `resources/templates/list`, `prompts/list` and `tools/list` all behave identically. The internal
 > message reaches operators through the router's `Warn` log, which is now its only carrier.
 
+> **Client opt-in headers are SESSION-scoped on the MCP path (a5 ruling, 2026-09-01).**
+> `X-McpPlugin-Skill-Meta` and `X-McpPlugin-Internal-Client` are read from the **`initialize`**
+> request and fixed for the session's whole life; a later request's header is **ignored**, and a
+> reconnect re-decides from scratch. Both are now published from
+> `StreamableHttpTransportLayer.RunSessionHandler` alongside `CurrentToken` / `CurrentSessionId`
+> rather than relying on `McpSessionTokenMiddleware`'s per-request write happening to land inside the
+> captured context. On the direct-tool REST endpoints — plain HTTP requests, no MCP session — both
+> stay per request. **Client rule: send them on every request, including `initialize` and every
+> reconnect.** The rationale, the rejected per-request alternative, the measurement and the plant
+> round are in [`plant-logs/skill-meta-session-semantics.md`](plant-logs/skill-meta-session-semantics.md).
+>
+> **Why any of this needs saying — the whole ambient context is session-scoped.**
+> `HttpServerTransportOptions.PerSessionExecutionContext` is `true`, so every MCP request handler
+> runs on the `ExecutionContext` captured inside `RunSessionHandler` **during `initialize`**, and can
+> never observe its own request's ambient state. Measured over a real session
+> (`PerSessionExecutionContextCaptureTests`): with a different `User-Agent` on each request, a
+> `tools/list` handler reads the `initialize` request's. The full classification —
+> `AmbientSessionStateAuditTests` keeps it mechanical, so a new ambient value cannot join
+> unclassified:
+>
+> | Ambient value | Class |
+> |---|---|
+> | `CurrentToken`, `CurrentSessionId`, `IsSkillMetaClient`, `IsTrustedInternalClient` | deliberately re-published from the `initialize` request in `RunSessionHandler` |
+> | `CurrentProjectPin`, `CurrentClientIp`, `CurrentUserAgent`, `CurrentIdentity` | middleware-only ⇒ frozen at `initialize` (each constant per session, or unread on this path) |
+> | `CurrentSelectedInstanceId` | frozen (null), and compensated — `AccountMcpStrategy.ResolveSelection` looks the live value up in `ISessionSelectionStore` by `CurrentSessionId` |
+>
+> Two consequences worth carrying: a request presenting a **different account's** valid token on an
+> established session is rejected `403` by the SDK's own session/user binding before any handler runs
+> (so the frozen `CurrentIdentity` can never disagree with the wire), and moving
+> `McpSessionTokenMiddleware` **before `UseAuthentication()`** silently nulls `CurrentIdentity` for
+> every session — measured, and now pinned.
+
 ## Overview
 
 The MCP Plugin Server is configured through **two independent axes**: **Transport** and **Auth**.

@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "_comment": [
+    "The null engine's reference battery: every tool in the hand-written catalogue is called at",
+    "least once, so the committed fixture covers the whole contract rather than a convenient",
+    "subset. null-engine/optional-args appears TWICE with different arguments, which is what",
+    "makes the (name, args_hash) key of F1/F6 observable at all - a fixture with one call per",
+    "name could not tell a lookup keyed on the name from one keyed on the pair.",
+    "Deliberately absent: any call large enough to trip F4's 32 KB response cap. A capped",
+    "response cannot be replayed (it is stored as its digest), so including one here would make",
+    "the replay round-trip un-assertable; battery-oversize.json exists for that path."
+  ],
+  "calls": [
+    { "name": "null-engine/ping", "args": {} },
+    { "name": "null-engine/echo", "args": { "payload": { "text": "round-trip", "number": 7, "flag": true } } },
+    { "name": "null-engine/enum-arg", "args": { "color": "Green" } },
+    { "name": "null-engine/fail", "args": {} },
+    { "name": "null-engine/large-payload", "args": { "kb": 1 } },
+    { "name": "null-engine/list-self", "args": {} },
+    { "name": "null-engine/nested", "args": {} },
+    { "name": "null-engine/optional-args", "args": {} },
+    { "name": "null-engine/optional-args", "args": { "name": "chain", "count": 3 } },
+    { "name": "null-engine/progress", "args": { "steps": 2 } },
+    { "name": "null-engine/slow", "args": { "ms": 0 } },
+    { "name": "null-engine/throw", "args": {} },
+    { "name": "null-engine/unicode", "args": {} },
+    { "name": "null-engine/unicode", "args": { "text": "你好 éèê — 🚀" } }
+  ]
+}

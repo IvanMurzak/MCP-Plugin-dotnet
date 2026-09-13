@@ -25,6 +25,29 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         public bool? IdempotentHint { get; set; }
         public bool? OpenWorldHint { get; set; }
 
+        /// <summary>
+        /// Optional concise blurb sourced from the tool's <c>AiSkillDescription</c> attribute.
+        /// Surfaced on the wire so the MCP server can emit it as a <c>tools/list</c>
+        /// <c>_meta.skillDescription</c> key. <see langword="null"/> when the tool declares none.
+        /// </summary>
+        /// <remarks>
+        /// MUST stay a property: the SignalR payload serializer is configured by
+        /// <see cref="SignalR_JsonConfiguration"/>, which does NOT propagate
+        /// <c>JsonSerializerOptions.IncludeFields</c> — a field would compile and pass
+        /// in-process tests while silently vanishing on the wire.
+        /// </remarks>
+        public string? SkillDescription { get; set; }
+
+        /// <summary>
+        /// Optional long-form markdown sourced from the tool's <c>AiSkillBody</c> attribute.
+        /// Surfaced on the wire so the MCP server can emit it as a <c>tools/list</c>
+        /// <c>_meta.skillBody</c> key. <see langword="null"/> when the tool declares none.
+        /// </summary>
+        /// <remarks>
+        /// MUST stay a property, for the same reason as <see cref="SkillDescription"/>.
+        /// </remarks>
+        public string? SkillBody { get; set; }
+
         public ResponseListTool() { }
     }
 }

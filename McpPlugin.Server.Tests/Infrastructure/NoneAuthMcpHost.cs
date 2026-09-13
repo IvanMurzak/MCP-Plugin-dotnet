@@ -10,6 +10,7 @@
 
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -51,6 +52,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
         }
 
         /// <summary>
+        /// The loopback base URL Kestrel actually bound, e.g. <c>http://127.0.0.1:54321</c>.
+        ///
+        /// <para>Exposed because a test that drives this host from OUTSIDE the test process - by
+        /// spawning a real plugin subprocess and pointing it at the SignalR hub
+        /// (<c>NullEngineRealTransportTests</c>) - has no other way to learn the OS-assigned port.
+        /// In-process callers do not need it; they go through <see cref="PostAsync"/>.</para>
+        /// </summary>
+        public string BaseUrl => _baseUrl;
+
+        /// <summary>
         /// Starts the host. <paramref name="registerFakes"/> runs AFTER the production wiring, so a
         /// singleton it registers is the one the routers resolve (same pattern as
         /// <c>AmbientSessionIdOverHttpTests</c>' <c>FakeJwksKeyProvider</c>).
@@ -87,8 +98,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
             return new NoneAuthMcpHost(app, address);
         }
 
-        /// <summary>initialize + notifications/initialized; returns the server-minted session id.</summary>
-        public async Task<string> HandshakeAsync(HttpClient client, string clientName = "mcp-plugin-server-test")
+        /// <summary>
+        /// initialize + notifications/initialized; returns the server-minted session id.
+        ///
+        /// <para>The two requests take SEPARATE header bags on purpose. Which request carried a
+        /// header is the discriminating variable for every session-semantics test in this suite, so
+        /// a harness that could only set headers "for the handshake" would collapse exactly the
+        /// distinction under test.</para>
+        /// </summary>
+        public async Task<string> HandshakeAsync(
+            HttpClient client,
+            string clientName = "mcp-plugin-server-test",
+            IReadOnlyDictionary<string, string>? initializeHeaders = null,
+            IReadOnlyDictionary<string, string>? initializedHeaders = null)
         {
             var (_, sessionId) = await PostAsync(client, null, new
             {
@@ -101,10 +123,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
                     capabilities = new { },
                     clientInfo = new { name = clientName, version = "1.0.0" }
                 }
-            });
+            }, initializeHeaders);
 
             sessionId.ShouldNotBeNullOrEmpty("the server must mint an Mcp-Session-Id on initialize");
-            await PostAsync(client, sessionId, new { jsonrpc = "2.0", method = "notifications/initialized" });
+            await PostAsync(client, sessionId, new { jsonrpc = "2.0", method = "notifications/initialized" }, initializedHeaders);
             return sessionId!;
         }
 
@@ -112,24 +134,38 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
         /// Sends one parameterless JSON-RPC request on an established session and returns the
         /// response body with the SSE framing removed.
         /// </summary>
-        public async Task<string> CallAsync(HttpClient client, string sessionId, string method, int id = 2)
+        public async Task<string> CallAsync(
+            HttpClient client,
+            string sessionId,
+            string method,
+            int id = 2,
+            IReadOnlyDictionary<string, string>? headers = null)
         {
             var (body, _) = await PostAsync(client, sessionId, new
             {
                 jsonrpc = "2.0",
                 id,
                 method
-            });
+            }, headers);
             return Unwrap(body);
         }
 
-        public async Task<(string Body, string? SessionId)> PostAsync(HttpClient client, string? sessionId, object payload)
+        public async Task<(string Body, string? SessionId)> PostAsync(
+            HttpClient client,
+            string? sessionId,
+            object payload,
+            IReadOnlyDictionary<string, string>? headers = null)
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, _baseUrl + "/mcp");
             request.Headers.Accept.ParseAdd("application/json");
             request.Headers.Accept.ParseAdd("text/event-stream");
             if (!string.IsNullOrEmpty(sessionId))
                 request.Headers.TryAddWithoutValidation("Mcp-Session-Id", sessionId);
+            if (headers != null)
+            {
+                foreach (var header in headers)
+                    request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
             request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
             using var response = await client.SendAsync(request);
@@ -157,8 +193,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
         /// response, or a multi-line data payload — comes back as two documents run together and
         /// fails to parse. Every caller today sends one request and reads one response. A caller that
         /// needs more should split the frames here rather than work around the concatenation.</para>
+        ///
+        /// <para>Public because <see cref="CallAsync"/> only sends PARAMETERLESS requests: a caller
+        /// that needs <c>params</c> (a <c>tools/call</c>, a <c>resources/read</c>) posts through
+        /// <see cref="PostAsync"/> and needs the same unwrapping. Duplicating it in the caller would
+        /// fork the "one JSON document per reply" assumption documented above.</para>
         /// </summary>
-        static string Unwrap(string body)
+        public static string Unwrap(string body)
         {
             if (!body.Contains("data:", StringComparison.Ordinal))
                 return body;

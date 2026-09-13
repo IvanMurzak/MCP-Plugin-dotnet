@@ -263,8 +263,21 @@ namespace com.IvanMurzak.McpPlugin.Common
                     /// — and disabled entries are tagged with
                     /// <c>_meta.enabled = false</c> so the trusted client can tell
                     /// them apart. Any client that does NOT send this header keeps
-                    /// the pre-existing behaviour: disabled entries are filtered
-                    /// out, and no <c>_meta</c> is emitted by this server.
+                    /// the pre-existing filtering: disabled entries are filtered
+                    /// out, so <c>_meta.enabled</c> never reaches it.
+                    /// <c>_meta</c> itself is NOT trusted-client-only: a
+                    /// <c>tools/list</c> entry may also carry the skill keys, but those
+                    /// have their OWN opt-in header (<see cref="SkillMetaClient"/>) and
+                    /// this one neither grants nor implies them. Neither header implies
+                    /// the other — see <see cref="SkillMetaClient"/> for why the two
+                    /// axes are deliberately separate.
+                    ///
+                    /// <para><b>On the MCP streamable-HTTP transport this header is read from
+                    /// <c>initialize</c> and only from <c>initialize</c></b> — the same session
+                    /// semantics as <see cref="SkillMetaClient"/>, where the ruling and the
+                    /// client-side rule ("send it on every request") are written out in full.
+                    /// The direct-tool REST endpoints are plain HTTP requests and read it
+                    /// per request as usual.</para>
                     ///
                     /// This is a UX gate, NOT a security boundary — the header is
                     /// trivially spoofable. Pair it with bearer-token auth when
@@ -274,6 +287,59 @@ namespace com.IvanMurzak.McpPlugin.Common
 
                     /// <summary>Value the trusted-client header must carry to opt in.</summary>
                     public const string TrustedInternalClientOptInValue = "1";
+
+                    /// <summary>
+                    /// Marks the caller as a skill-metadata consumer. When the request
+                    /// carries this header set to <c>"1"</c>, each <c>tools/list</c>
+                    /// entry additionally carries <c>_meta.skillDescription</c> /
+                    /// <c>_meta.skillBody</c> for every tool that declares them (see
+                    /// <c>ExtensionsListMeta.BuildToolMeta</c>). A caller that does NOT
+                    /// send it receives neither key, i.e. exactly the <c>_meta</c> shape
+                    /// the server produced before those keys existed.
+                    ///
+                    /// <para><b>Opt-in because the payload is large, not because it is
+                    /// secret.</b> The skill blurb and body are re-sent in full on EVERY
+                    /// <c>tools/list</c>; at the measured 216-tool engine catalog that is
+                    /// roughly 205,000 characters (~200 KB) per listing, per session.
+                    /// Clients that never read the keys should not pay for them.</para>
+                    ///
+                    /// <para><b>A separate axis from <see cref="TrustedInternalClient"/>
+                    /// on purpose.</b> That header ALSO unlocks the disabled-tool catalog,
+                    /// so reusing it here would start shipping <c>Enabled = false</c>
+                    /// tools to every skill-metadata consumer. The two flags are
+                    /// independent: sending one never sets the other.</para>
+                    ///
+                    /// <para><b>ON THE MCP STREAMABLE-HTTP TRANSPORT THIS HEADER IS READ FROM
+                    /// <c>initialize</c> AND ONLY FROM <c>initialize</c>.</b> The opt-in is a
+                    /// property of the SESSION: whatever the <c>initialize</c> request said
+                    /// governs every <c>tools/list</c> on that session, and the header on a
+                    /// later request is ignored — it neither turns the metadata on nor turns
+                    /// it off. Two consequences a client author must plan for:
+                    /// <list type="bullet">
+                    ///   <item><description>Sending it on <c>tools/list</c> but not on
+                    ///   <c>initialize</c> yields NO skill metadata, silently. The tools are
+                    ///   all still there; only the <c>_meta</c> keys are missing.</description></item>
+                    ///   <item><description>A reconnect is a NEW session and re-decides from
+                    ///   scratch, so a client that drops the header on a re-<c>initialize</c>
+                    ///   loses its skill metadata mid-life.</description></item>
+                    /// </list>
+                    /// The safe rule is the simple one: send it on EVERY request, including
+                    /// <c>initialize</c> and every reconnect. The rationale and the rejected
+                    /// per-request alternative are recorded on
+                    /// <c>McpSessionTokenContext.IsSkillMetaClient</c>; the behaviour is pinned
+                    /// over a real transport by <c>SkillMetaSessionSemanticsOverHttpTests</c>.
+                    /// (<see cref="TrustedInternalClient"/> has the identical session
+                    /// semantics.)</para>
+                    ///
+                    /// <para>This is a payload gate, NOT a security boundary — the header
+                    /// is trivially spoofable, exactly like
+                    /// <see cref="TrustedInternalClient"/>. Keep skill text to content
+                    /// that is safe to publish to any connected MCP client.</para>
+                    /// </summary>
+                    public const string SkillMetaClient = "X-McpPlugin-Skill-Meta";
+
+                    /// <summary>Value the skill-metadata header must carry to opt in.</summary>
+                    public const string SkillMetaClientOptInValue = "1";
 
                     /// <summary>
                     /// Per-installation MCP instance identity (design 07 §2.3, D10.2). The value is

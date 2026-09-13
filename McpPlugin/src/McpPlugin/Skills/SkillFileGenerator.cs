@@ -49,6 +49,57 @@ namespace com.IvanMurzak.McpPlugin.Skills
             _logger = logger;
         }
 
+        // ── Provenance marker ────────────────────────────────────────────────
+
+        /// <summary>
+        /// YAML front-matter key holding the provenance block. In the Skills file format used by
+        /// Codex (and Anthropic Agent Skills), <c>metadata</c> is a declared front-matter field
+        /// carrying a free-form mapping of extra keys — which is why the marker is nested under it
+        /// rather than written as a bare top-level key a host would simply ignore.
+        /// </summary>
+        public const string ProvenanceBlockKey = "metadata";
+
+        /// <summary>
+        /// Key, nested under <see cref="ProvenanceBlockKey"/>, that marks a SKILL.md as written by
+        /// this generator rather than hand-authored by a user.
+        /// </summary>
+        public const string ProvenanceKey = "generated-by";
+
+        /// <summary>
+        /// Value written for <see cref="ProvenanceKey"/>. Deliberately a constant carrying no
+        /// version and no timestamp, so regenerating an unchanged tool rewrites a byte-identical file.
+        /// </summary>
+        public const string ProvenanceValue = "mcp-plugin-dotnet";
+
+        /// <summary>
+        /// Appends the provenance marker as raw YAML lines. Callers must invoke it INSIDE the
+        /// front-matter block — before the closing <c>---</c> — because a consumer that identifies
+        /// generated skills parses the front-matter only:
+        /// <code>
+        /// ---
+        /// name: tool-name
+        /// description: ...
+        /// metadata:
+        ///   generated-by: mcp-plugin-dotnet
+        /// ---
+        /// </code>
+        /// Written literally rather than through <see cref="EscapeYaml"/>, which escapes a single
+        /// scalar and would collapse the nested mapping into a quoted string.
+        /// <para>
+        /// The default <see cref="BuildMarkdown"/> and <see cref="BuildSkillContentMarkdown"/>
+        /// implementations call this, so the marker is emitted for every file THEY write. It is a
+        /// convention, not an invariant the type can enforce: a subclass that replaces either of
+        /// those wholesale — which their own documentation permits — must call this itself, or the
+        /// files it writes carry no marker and read as hand-authored to any consumer.
+        /// </para>
+        /// </summary>
+        /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
+        protected static void AppendProvenanceMetadata(StringBuilder sb)
+        {
+            sb.AppendLine(ProvenanceBlockKey + ":");
+            sb.AppendLine("  " + ProvenanceKey + ": " + ProvenanceValue);
+        }
+
         // ── Customization properties ─────────────────────────────────────────
 
         /// <summary>
@@ -331,7 +382,10 @@ namespace com.IvanMurzak.McpPlugin.Skills
 
         /// <summary>
         /// Builds the full markdown content for a custom skill's SKILL.md.
-        /// Contains YAML frontmatter (name, description) followed by the verbatim content body.
+        /// Contains YAML frontmatter (name, description, and the
+        /// <see cref="AppendProvenanceMetadata"/> marker) followed by the verbatim content body.
+        /// An override that rebuilds the front matter must still call
+        /// <see cref="AppendProvenanceMetadata"/> before the closing <c>---</c>.
         /// </summary>
         protected virtual string BuildSkillContentMarkdown(ISkillContent skill, string skillName)
         {
@@ -343,6 +397,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine("---");
             sb.AppendLine($"name: {EscapeYaml(skillName)}");
             sb.AppendLine($"description: {EscapeYaml(yamlDescription)}");
+            AppendProvenanceMetadata(sb);
             sb.AppendLine("---");
 
             // Verbatim content body
@@ -464,6 +519,8 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// Override to replace or extend the entire document structure.
         /// For targeted changes, prefer overriding individual section helpers or the
         /// customization properties/methods instead.
+        /// An override that rebuilds the front matter must still call
+        /// <see cref="AppendProvenanceMetadata"/> before the closing <c>---</c>.
         /// </summary>
         protected virtual string BuildMarkdown(IRunTool tool, string skillName, string host)
         {
@@ -478,6 +535,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine("---");
             sb.AppendLine($"name: {EscapeYaml(skillName)}");
             sb.AppendLine($"description: {EscapeYaml(yamlDescription)}");
+            AppendProvenanceMetadata(sb);
             sb.AppendLine("---");
             sb.AppendLine();
             BuildFrontMatterNotes(sb);
@@ -562,6 +620,8 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// ---
         /// name: tool-name
         /// description: ...
+        /// metadata:
+        ///   generated-by: mcp-plugin-dotnet
         /// ---
         ///                          ← content appended HERE
         /// # Tool Title
