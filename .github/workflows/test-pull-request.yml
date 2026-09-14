@@ -56,12 +56,35 @@ jobs:
             8.0.x
             9.0.x
 
-      - name: chain feed
-        id: chain
+      # The interpreter is resolved ONCE per job and invoked through the ${{ env.CHAIN_PY }}
+      # expression (never a bare `python`: macOS has none, a hosted Windows image has no `python3`).
+      - name: chain python (posix)
+        if: runner.os != 'Windows' && env.CHAIN_PY == ''
         shell: bash
         run: |
-          PY="$(command -v python || command -v python3)"
-          "$PY" .github/scripts/chain_feed.py apply --node mcp-plugin-dotnet --job test
+          for c in python3 python; do
+            if "$c" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' >/dev/null 2>&1; then
+              echo "CHAIN_PY=$c" >> "$GITHUB_ENV"; exit 0
+            fi
+          done
+          echo 'chain: no Python 3.9+ on PATH (tried python3, python)' >&2; exit 2
+
+      - name: chain python (windows)
+        if: runner.os == 'Windows' && env.CHAIN_PY == ''
+        shell: pwsh
+        run: |
+          foreach ($c in 'python', 'py', 'python3') {
+            if (-not (Get-Command $c -ErrorAction SilentlyContinue)) { continue }
+            $global:LASTEXITCODE = $null
+            & $c -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' 2>$null
+            if ($LASTEXITCODE -eq 0) { "CHAIN_PY=$c" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8; exit 0 }
+          }
+          [Console]::Error.WriteLine('chain: no Python 3.9+ on PATH (tried python, py, python3)'); exit 2
+
+      # `test` restores the whole solution, so it consumes every edge of this node: no --edges.
+      - name: chain feed
+        id: chain
+        run: ${{ env.CHAIN_PY }} .github/scripts/chain_feed.py apply --node mcp-plugin-dotnet --job test
 
       - name: Restore dependencies
         working-directory: ./
@@ -87,8 +110,11 @@ jobs:
         with:
           files: 'TestResults/**/*.trx'
 
+      # Ordinary PR runs only (~1 MB per OS). A chain dispatch's verdict is the test step's own
+      # conclusion plus the leg record below, so the .trx files are not uploaded there (owner
+      # artifact-storage rule 2026-09-14: upload only what the verdict needs).
       - name: Upload Test Results
-        if: always()
+        if: always() && github.event_name != 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: test-results-${{ matrix.os }}
@@ -96,21 +122,23 @@ jobs:
 
       # Identity proof, read from each consumer's obj/project.assets.json (not inferred from a restore
       # exit code): it must resolve the lock's ws ReflectorNet. Exits 3 on any mismatch => this job is
-      # RED even if tests passed.
+      # RED even if tests passed. `--job-status` makes a failed/cancelled test run record `result: red`.
       - name: chain leg record
         id: chain_record
         if: always()
-        shell: bash
-        run: |
-          PY="$(command -v python || command -v python3)"
-          "$PY" .github/scripts/chain_feed.py record --node mcp-plugin-dotnet --job test --job-status "${{ job.status }}" --out chain-leg.json
+        run: >-
+          ${{ env.CHAIN_PY }} .github/scripts/chain_feed.py record --node mcp-plugin-dotnet --job test
+          --job-status ${{ job.status }}
+          --warn "pin drift: the csprojs pin com.IvanMurzak.ReflectorNet 5.4.0; under a lock this leg resolves the lock's 5.4.0-ws.g<sha8> override instead"
+          --out chain-leg.json
 
       - name: chain leg artifact
-        if: always() && env.CHAIN_ACTIVE == '1'
+        if: always() && steps.chain_record.outputs.artifact_name != ''
         uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.chain_record.outputs.artifact_name }}
           path: chain-leg.json
+          retention-days: 1
 
   # mcp-authorize Phase-2 gate (design 04/07, task b8): the cross-language golden-vector parity
   # signal. The C# ProjectIdentity vectors (McpPlugin/src/AgentConfig/ProjectIdentity.GoldenVectors.json)
@@ -133,12 +161,22 @@ jobs:
             8.0.x
             9.0.x
 
-      - name: chain feed
-        id: chain
+      - name: chain python (posix)
+        if: runner.os != 'Windows' && env.CHAIN_PY == ''
         shell: bash
         run: |
-          PY="$(command -v python || command -v python3)"
-          "$PY" .github/scripts/chain_feed.py apply --node mcp-plugin-dotnet --job golden-vector-parity
+          for c in python3 python; do
+            if "$c" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' >/dev/null 2>&1; then
+              echo "CHAIN_PY=$c" >> "$GITHUB_ENV"; exit 0
+            fi
+          done
+          echo 'chain: no Python 3.9+ on PATH (tried python3, python)' >&2; exit 2
+
+      # This job restores only McpPlugin.Tests (=> McpPlugin + McpPlugin.Common), never
+      # McpPlugin.Server, so it scopes apply AND record to exactly those two consumer projects.
+      - name: chain feed
+        id: chain
+        run: ${{ env.CHAIN_PY }} .github/scripts/chain_feed.py apply --node mcp-plugin-dotnet --job golden-vector-parity --edges McpPlugin/McpPlugin.csproj --edges McpPlugin.Common/McpPlugin.Common.csproj
 
       - name: Restore
         run: dotnet restore McpPlugin.Tests/McpPlugin.Tests.csproj
@@ -156,14 +194,17 @@ jobs:
       - name: chain leg record
         id: chain_record
         if: always()
-        shell: bash
-        run: |
-          PY="$(command -v python || command -v python3)"
-          "$PY" .github/scripts/chain_feed.py record --node mcp-plugin-dotnet --job golden-vector-parity --job-status "${{ job.status }}" --out chain-leg.json
+        run: >-
+          ${{ env.CHAIN_PY }} .github/scripts/chain_feed.py record --node mcp-plugin-dotnet --job golden-vector-parity
+          --edges McpPlugin/McpPlugin.csproj --edges McpPlugin.Common/McpPlugin.Common.csproj
+          --job-status ${{ job.status }}
+          --warn "pin drift: the csprojs pin com.IvanMurzak.ReflectorNet 5.4.0; under a lock this leg resolves the lock's 5.4.0-ws.g<sha8> override instead"
+          --out chain-leg.json
 
       - name: chain leg artifact
-        if: always() && env.CHAIN_ACTIVE == '1'
+        if: always() && steps.chain_record.outputs.artifact_name != ''
         uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.chain_record.outputs.artifact_name }}
           path: chain-leg.json
+          retention-days: 1
