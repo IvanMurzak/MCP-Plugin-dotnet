@@ -4,8 +4,8 @@ name: test-pull-request
 # chain lock as their single input. `.github/scripts/chain_feed.py` (vendored, byte-identical to
 # ai-game-dev-software `.scripts/chain/leg/chain_feed.py`) then self-builds ReflectorNet from the
 # lock's sha into a local feed and forces it with an exact-version NuGet override
-# (`[<version>-ws.g<sha8>]`) before restore. On an
-# ordinary pull_request every chain step is a no-op ("chain: no lock (ordinary run)").
+# (`[<version>-ws.g<sha8>]`) before restore. On an ordinary pull_request only the interpreter
+# resolver runs; the chain feed/record steps are no-ops ("chain: no lock (ordinary run)").
 on:
   pull_request:
     branches: [main, dev, chain-testing]
@@ -111,8 +111,8 @@ jobs:
           files: 'TestResults/**/*.trx'
 
       # Ordinary PR runs only (~1 MB per OS). A chain dispatch's verdict is the test step's own
-      # conclusion plus the leg record below, so the .trx files are not uploaded there (owner
-      # artifact-storage rule 2026-09-14: upload only what the verdict needs).
+      # conclusion plus the leg record below, so the .trx files are not uploaded there (the owner's
+      # artifact-storage rule: upload only what the verdict needs).
       - name: Upload Test Results
         if: always() && github.event_name != 'workflow_dispatch'
         uses: actions/upload-artifact@v7
