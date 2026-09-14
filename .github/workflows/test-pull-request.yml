@@ -57,29 +57,36 @@ jobs:
             9.0.x
 
       # The interpreter is resolved ONCE per job and invoked through the ${{ env.CHAIN_PY }}
-      # expression (never a bare `python`: macOS has none, a hosted Windows image has no `python3`).
+      # expression. Each resolver RUNS a candidate and exports its own absolute, space-free
+      # sys.executable, never a bare name, and never `py` (verbatim `print-fragment` output).
       - name: chain python (posix)
         if: runner.os != 'Windows' && env.CHAIN_PY == ''
         shell: bash
         run: |
           for c in python3 python; do
-            if "$c" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' >/dev/null 2>&1; then
-              echo "CHAIN_PY=$c" >> "$GITHUB_ENV"; exit 0
-            fi
+            exe="$("$c" -c 'import sys, select, zlib, hashlib; sys.version_info >= (3, 9) or sys.exit(1); print(sys.executable.replace(chr(92), chr(47)))' 2>/dev/null)" || continue
+            case "$exe" in /*) ;; *) continue ;; esac
+            case "$exe" in *[[:space:]]*) continue ;; esac
+            [ -f "$exe" ] && [ -x "$exe" ] || continue
+            echo "CHAIN_PY=$exe" >> "$GITHUB_ENV"; exit 0
           done
-          echo 'chain: no Python 3.9+ on PATH (tried python3, python)' >&2; exit 2
+          echo 'chain: no Python 3.9+ on PATH that runs and reports an absolute, space-free sys.executable (tried python3, python)' >&2; exit 2
 
       - name: chain python (windows)
         if: runner.os == 'Windows' && env.CHAIN_PY == ''
         shell: pwsh
         run: |
-          foreach ($c in 'python', 'py', 'python3') {
-            if (-not (Get-Command $c -ErrorAction SilentlyContinue)) { continue }
+          foreach ($c in 'python', 'python3') {
+            $cmd = Get-Command $c -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $cmd) { continue }
             $global:LASTEXITCODE = $null
-            & $c -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' 2>$null
-            if ($LASTEXITCODE -eq 0) { "CHAIN_PY=$c" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8; exit 0 }
+            try { $out = & $cmd.Source -c 'import sys, select, zlib, hashlib; sys.version_info >= (3, 9) or sys.exit(1); print(sys.executable.replace(chr(92), chr(47)))' 2>$null } catch { continue }
+            if ($LASTEXITCODE -ne 0) { continue }
+            $exe = (@($out) -join ' ').Trim()
+            if ($exe -notmatch '^[A-Za-z]:/\S+\z' -or -not (Test-Path -LiteralPath $exe -PathType Leaf)) { continue }
+            "CHAIN_PY=$exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8; exit 0
           }
-          [Console]::Error.WriteLine('chain: no Python 3.9+ on PATH (tried python, py, python3)'); exit 2
+          [Console]::Error.WriteLine('chain: no Python 3.9+ on PATH that runs and reports an absolute, space-free sys.executable (tried python, python3; never py)'); exit 2
 
       # `test` restores the whole solution, so it consumes every edge of this node: no --edges.
       - name: chain feed
@@ -161,16 +168,35 @@ jobs:
             8.0.x
             9.0.x
 
+      # Verbatim `print-fragment` resolvers (see the `test` job); the windows one skips on ubuntu.
       - name: chain python (posix)
         if: runner.os != 'Windows' && env.CHAIN_PY == ''
         shell: bash
         run: |
           for c in python3 python; do
-            if "$c" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' >/dev/null 2>&1; then
-              echo "CHAIN_PY=$c" >> "$GITHUB_ENV"; exit 0
-            fi
+            exe="$("$c" -c 'import sys, select, zlib, hashlib; sys.version_info >= (3, 9) or sys.exit(1); print(sys.executable.replace(chr(92), chr(47)))' 2>/dev/null)" || continue
+            case "$exe" in /*) ;; *) continue ;; esac
+            case "$exe" in *[[:space:]]*) continue ;; esac
+            [ -f "$exe" ] && [ -x "$exe" ] || continue
+            echo "CHAIN_PY=$exe" >> "$GITHUB_ENV"; exit 0
           done
-          echo 'chain: no Python 3.9+ on PATH (tried python3, python)' >&2; exit 2
+          echo 'chain: no Python 3.9+ on PATH that runs and reports an absolute, space-free sys.executable (tried python3, python)' >&2; exit 2
+
+      - name: chain python (windows)
+        if: runner.os == 'Windows' && env.CHAIN_PY == ''
+        shell: pwsh
+        run: |
+          foreach ($c in 'python', 'python3') {
+            $cmd = Get-Command $c -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $cmd) { continue }
+            $global:LASTEXITCODE = $null
+            try { $out = & $cmd.Source -c 'import sys, select, zlib, hashlib; sys.version_info >= (3, 9) or sys.exit(1); print(sys.executable.replace(chr(92), chr(47)))' 2>$null } catch { continue }
+            if ($LASTEXITCODE -ne 0) { continue }
+            $exe = (@($out) -join ' ').Trim()
+            if ($exe -notmatch '^[A-Za-z]:/\S+\z' -or -not (Test-Path -LiteralPath $exe -PathType Leaf)) { continue }
+            "CHAIN_PY=$exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8; exit 0
+          }
+          [Console]::Error.WriteLine('chain: no Python 3.9+ on PATH that runs and reports an absolute, space-free sys.executable (tried python, python3; never py)'); exit 2
 
       # This job restores only McpPlugin.Tests (=> McpPlugin + McpPlugin.Common), never
       # McpPlugin.Server, so it scopes apply AND record to exactly those two consumer projects.
