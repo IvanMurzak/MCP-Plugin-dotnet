@@ -26,7 +26,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
     {
         public override string AgentName => "Antigravity";
         public override string AgentId => "antigravity";
-        public override string DownloadUrl => "https://antigravity.google/download";
+        public override string DownloadUrl => "https://antigravity.google/product/antigravity-ide";
         public override string? SkillsPath => ".agent/skills";
         public override string? IconName => "antigravity-64.png";
 
