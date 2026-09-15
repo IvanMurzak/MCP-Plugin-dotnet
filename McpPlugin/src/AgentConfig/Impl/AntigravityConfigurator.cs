@@ -31,7 +31,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         public override string? IconName => "antigravity-64.png";
 
         private static string GlobalConfigPath(AgentConfiguratorSettings s) => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gemini", "config", "mcp_config.json");
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gemini", "antigravity", "mcp_config.json");
 
         protected override AiAgentConfig CreateStdioConfig(AgentConfiguratorSettings settings, ILogger? logger)
             => new JsonAiAgentConfig(AgentName, GlobalConfigPath(settings), bodyPath: "mcpServers", logger: logger)
