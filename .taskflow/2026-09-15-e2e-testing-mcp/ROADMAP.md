@@ -28,12 +28,13 @@ Write the actual tests for the Antigravity CLI.
 
 | Task (spec) | needs | repo/base | imp/cx | model | Status | Run / PR | Updated |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Scaffold DummyServer | | MCP-Plugin-dotnet | | | Pending | | |
-| Implement Transports & Logs | Scaffold DummyServer | MCP-Plugin-dotnet | | | Pending | | |
-| Scaffold E2E.Tests | | MCP-Plugin-dotnet | | | Pending | | |
-| Implement Sandbox & Assertions | Scaffold E2E.Tests, Implement Transports & Logs | MCP-Plugin-dotnet | | | Pending | | |
-| Antigravity Adapter & Tests | Implement Sandbox & Assertions | MCP-Plugin-dotnet | | | Pending | | |
+| Scaffold DummyServer (`a1`) | | MCP-Plugin-dotnet | 3/2 | fast | Pending | | |
+| Implement Transports (`a2`) | a1 | MCP-Plugin-dotnet | 6/5 | mid | Pending | | |
+| Scaffold E2E.Tests (`b1`) | a2 | MCP-Plugin-dotnet | 3/2 | fast | Pending | | |
+| Implement Sandbox (`b2`) | b1 | MCP-Plugin-dotnet | 5/5 | mid | Pending | | |
+| Antigravity Tests (`b3`) | b2 | MCP-Plugin-dotnet | 7/7 | mid | Pending | | |
 
 ## Progress Log
 
 - **2026-09-15:** Taskflow plan generated and reviewed. No P0/P1/P2 structural findings. Owner decisions D1 and D2 approved. Proceeding to task creation.
+- **2026-09-15:** Created immutable task specifications in `tasks/`. Task board populated. Ready for execution.
