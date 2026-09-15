@@ -1,0 +1,14 @@
+McpPlugin/src/AgentConfig/Impl/AntigravityConfigurator.cs
+  h_8325a340bf5897 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "518420936332742846ef8c6ab3bebf7dc6376826",
+  "prompts": {},
+  "humans": {
+    "h_8325a340bf5897": {
+      "author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
