@@ -31,7 +31,7 @@ Write the actual tests for the Antigravity CLI.
 | Scaffold DummyServer (`a1`) | | MCP-Plugin-dotnet | 3/2 | fast | ✅ | | |
 | Implement Transports (`a2`) | a1 | MCP-Plugin-dotnet | 6/5 | mid | ✅ | | |
 | Scaffold E2E.Tests (`b1`) | a2 | MCP-Plugin-dotnet | 3/2 | fast | ✅ | | |
-| Implement Sandbox (`b2`) | b1 | MCP-Plugin-dotnet | 5/5 | mid | Pending | | |
+| Implement Sandbox (`b2`) | b1 | MCP-Plugin-dotnet | 5/5 | mid | 🔵 | | |
 | Antigravity Tests (`b3`) | b2 | MCP-Plugin-dotnet | 7/7 | mid | Pending | | |
 
 ## Progress Log
