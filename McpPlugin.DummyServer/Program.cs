@@ -23,9 +23,16 @@ namespace McpPlugin.DummyServer
 
         private void Intercept(string? line)
         {
-            if (line != null && line.Contains("\"method\":\"initialize\""))
+            if (line != null)
             {
-                File.AppendAllText(_logFile, "[EVENT] Received: initialize\n");
+                if (line.Contains("\"ping\""))
+                {
+                    File.AppendAllText(_logFile, "[EVENT] Received: ping\n");
+                }
+                else if (line.Contains("\"initialize\""))
+                {
+                    File.AppendAllText(_logFile, "[EVENT] Received: initialize\n");
+                }
             }
         }
 
@@ -43,7 +50,50 @@ namespace McpPlugin.DummyServer
             return line;
         }
 
-        public override int Read() => _inner.Read();
+        public override int Read(char[] buffer, int index, int count)
+        {
+            int read = _inner.Read(buffer, index, count);
+            if (read > 0)
+            {
+                var text = new string(buffer, index, read);
+                Intercept(text);
+            }
+            return read;
+        }
+
+        public override async Task<int> ReadAsync(char[] buffer, int index, int count)
+        {
+            int read = await _inner.ReadAsync(buffer, index, count);
+            if (read > 0)
+            {
+                var text = new string(buffer, index, read);
+                Intercept(text);
+            }
+            return read;
+        }
+
+        public override int Read(Span<char> buffer)
+        {
+            int read = _inner.Read(buffer);
+            if (read > 0)
+            {
+                var text = new string(buffer.Slice(0, read));
+                Intercept(text);
+            }
+            return read;
+        }
+
+        public override async ValueTask<int> ReadAsync(Memory<char> buffer, System.Threading.CancellationToken cancellationToken = default)
+        {
+            int read = await _inner.ReadAsync(buffer, cancellationToken);
+            if (read > 0)
+            {
+                var text = new string(buffer.Span.Slice(0, read));
+                Intercept(text);
+            }
+            return read;
+        }
+
         public override int Peek() => _inner.Peek();
     }
 
@@ -108,7 +158,7 @@ namespace McpPlugin.DummyServer
                         var body = await reader.ReadToEndAsync();
                         context.Request.Body.Position = 0;
 
-                        if (body.Contains("\"method\":\"initialize\""))
+                        if (body.Contains("\"initialize\""))
                         {
                             File.AppendAllText(logFile, "[EVENT] Received: initialize\n");
                         }
