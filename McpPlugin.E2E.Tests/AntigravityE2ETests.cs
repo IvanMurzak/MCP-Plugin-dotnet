@@ -37,9 +37,10 @@ public class AntigravityE2ETests
             Assert.Fail($"Log file not created. Agy Out: {outStr}\nAgy Err: {errStr}");
         }
         var logContent = File.ReadAllText(logFile);
-        Assert.Contains("[EVENT] Connected", logContent);
-        Assert.Contains("[EVENT] Received: initialize", logContent);
-        Assert.Contains("[EVENT] Tool Call: ping", logContent);
+        var (agyOut, agyErr) = adapter.GetOutputs();
+        Assert.True(logContent.Contains("[EVENT] Connected"), $"Missing Connected. Agy Out: {agyOut}");
+        Assert.True(logContent.Contains("[EVENT] Received: initialize"), $"Missing initialize. Agy Out: {agyOut}");
+        Assert.True(logContent.Contains("[EVENT] Tool Call: ping"), $"Missing ping. Agy Out: {agyOut}");
     }
 
     [Fact]
@@ -52,7 +53,7 @@ public class AntigravityE2ETests
 
         var dummyServerDll = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "McpPlugin.DummyServer.dll"));
         
-        var psi = new ProcessStartInfo("dotnet", $"\"{dummyServerDll}\" --transport streamableHttp --log-file \"{logFile}\"")
+        var psi = new ProcessStartInfo("dotnet", $"\"{dummyServerDll}\" --transport streamableHttp --log-file \"{logFile}\" --mcp-server-auth-mode None")
         {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -78,8 +79,9 @@ public class AntigravityE2ETests
                 Assert.Fail($"Log file not created. Agy Out: {outStr}\nAgy Err: {errStr}\nDummyServer Out: {dummyServerProcess.StandardOutput.ReadToEnd()}\nDummyServer Err: {dummyServerProcess.StandardError.ReadToEnd()}");
             }
             var logContent = File.ReadAllText(logFile);
-            Assert.Contains("[EVENT] Connected", logContent);
-            Assert.Contains("[EVENT] Tool Call: ping", logContent);
+            var (agyOut, agyErr) = adapter.GetOutputs();
+            Assert.True(logContent.Contains("[EVENT] Connected"), $"Missing Connected. Agy Out: {agyOut}");
+            Assert.True(logContent.Contains("[EVENT] Tool Call: ping"), $"Missing ping. Agy Out: {agyOut}");
         }
         finally
         {

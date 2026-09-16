@@ -27,7 +27,7 @@ public class AntigravityAdapter : IDisposable
             dummyServer["command"] = "dotnet";
             var dummyServerDll = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "McpPlugin.DummyServer.dll"));
             var logFileFwd = logFile.Replace('\\', '/');
-            dummyServer["args"] = new JsonArray { dummyServerDll.Replace('\\', '/'), "--transport", "stdio", "--log-file", logFileFwd };
+            dummyServer["args"] = new JsonArray { dummyServerDll.Replace('\\', '/'), "--transport", "stdio", "--log-file", logFileFwd, "--mcp-server-auth-mode", "None" };
         }
         else if (transport == "streamableHttp")
         {
@@ -57,8 +57,8 @@ public class AntigravityAdapter : IDisposable
         File.WriteAllText(Path.Combine(configPath1, "settings.json"), settings.ToJsonString());
     }
 
-    private string _outStr = "";
-    private string _errStr = "";
+    private Task<string>? _outTask;
+    private Task<string>? _errTask;
 
     public void LaunchAgy(string arguments = "-p \"use the ping tool and tell me the result\"")
     {
@@ -70,16 +70,11 @@ public class AntigravityAdapter : IDisposable
             WorkingDirectory = _sandbox.DirectoryPath
         };
 
-        psi.Environment["HOME"] = _sandbox.DirectoryPath;
-        psi.Environment["USERPROFILE"] = _sandbox.DirectoryPath;
-        psi.Environment["APPDATA"] = _sandbox.DirectoryPath;
-        psi.Environment["LOCALAPPDATA"] = _sandbox.DirectoryPath;
-
         _process = Process.Start(psi);
         if (_process == null) throw new Exception("Failed to start agy process");
         
-        Task.Run(() => { _outStr = _process.StandardOutput.ReadToEnd(); });
-        Task.Run(() => { _errStr = _process.StandardError.ReadToEnd(); });
+        _outTask = _process.StandardOutput.ReadToEndAsync();
+        _errTask = _process.StandardError.ReadToEndAsync();
     }
 
     public void WaitForExit(int milliseconds = 30000)
@@ -92,7 +87,7 @@ public class AntigravityAdapter : IDisposable
 
     public (string, string) GetOutputs()
     {
-        return (_outStr, _errStr);
+        return (_outTask?.Result ?? "", _errTask?.Result ?? "");
     }
 
     public void Dispose()
