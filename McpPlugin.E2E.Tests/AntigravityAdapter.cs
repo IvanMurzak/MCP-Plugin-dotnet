@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json.Nodes;
+using System.Threading.Tasks;
 
 namespace McpPlugin.E2E.Tests;
 
@@ -56,6 +57,9 @@ public class AntigravityAdapter : IDisposable
         File.WriteAllText(Path.Combine(configPath1, "settings.json"), settings.ToJsonString());
     }
 
+    private string _outStr = "";
+    private string _errStr = "";
+
     public void LaunchAgy(string arguments = "-p \"use the ping tool and tell me the result\"")
     {
         var psi = new ProcessStartInfo("agy", arguments)
@@ -73,6 +77,9 @@ public class AntigravityAdapter : IDisposable
 
         _process = Process.Start(psi);
         if (_process == null) throw new Exception("Failed to start agy process");
+        
+        Task.Run(() => { _outStr = _process.StandardOutput.ReadToEnd(); });
+        Task.Run(() => { _errStr = _process.StandardError.ReadToEnd(); });
     }
 
     public void WaitForExit(int milliseconds = 30000)
@@ -85,8 +92,7 @@ public class AntigravityAdapter : IDisposable
 
     public (string, string) GetOutputs()
     {
-        if (_process == null) return ("", "");
-        return (_process.StandardOutput.ReadToEnd(), _process.StandardError.ReadToEnd());
+        return (_outStr, _errStr);
     }
 
     public void Dispose()
