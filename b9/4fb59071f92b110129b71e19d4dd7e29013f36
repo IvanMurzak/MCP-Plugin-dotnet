@@ -1,0 +1,31 @@
+McpPlugin.E2E.Tests/LogParser.cs
+  s_c7987960245c7b::t_9d77be95a8e969 1-53
+McpPlugin.E2E.Tests/Sandbox.cs
+  s_c7987960245c7b::t_85dce4def6a8b8 1-2,6,8-16,18-19,21-34
+McpPlugin.E2E.Tests/SandboxAndLogParserTests.cs
+  s_5801a853f78e8a::t_ddc11f44e30aa2 1-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b94fb59071f92b110129b71e19d4dd7e29013f36",
+  "prompts": {},
+  "sessions": {
+    "s_5801a853f78e8a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0a4e9-83c5-7213-9989-30fded927707",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_c7987960245c7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "370aad94-9c8a-4b3c-a63d-4982a83a2756",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
