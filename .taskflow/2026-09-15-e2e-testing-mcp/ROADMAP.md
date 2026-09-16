@@ -28,7 +28,7 @@ Write the actual tests for the Antigravity CLI.
 
 | Task (spec) | needs | repo/base | imp/cx | model | Status | Run / PR | Updated |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Scaffold DummyServer (`a1`) | | MCP-Plugin-dotnet | 3/2 | fast | 🔵 | | |
+| Scaffold DummyServer (`a1`) | | MCP-Plugin-dotnet | 3/2 | fast | ⛔ No project or commit found | | |
 | Implement Transports (`a2`) | a1 | MCP-Plugin-dotnet | 6/5 | mid | Pending | | |
 | Scaffold E2E.Tests (`b1`) | a2 | MCP-Plugin-dotnet | 3/2 | fast | Pending | | |
 | Implement Sandbox (`b2`) | b1 | MCP-Plugin-dotnet | 5/5 | mid | Pending | | |
