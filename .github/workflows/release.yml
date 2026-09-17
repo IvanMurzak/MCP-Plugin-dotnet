@@ -1,9 +1,35 @@
 name: release
 
+# Releases happen ONLY by a manual dispatch of this workflow (owner directive 2026-09-16).
+# Merging a version bump to `main` publishes nothing.
+#
+#   gh workflow run release.yml -R IvanMurzak/MCP-Plugin-dotnet --ref main -f dry_run=true
+#   gh workflow run release.yml -R IvanMurzak/MCP-Plugin-dotnet --ref main -f dry_run=false
+#
+# Order: guards -> full tests + pack rehearsal -> NuGet publish (deploy.yml, --skip-duplicate)
+# -> wait until all three packages are live on NuGet -> tag + GitHub Release.
+# The tag/Release come LAST so a re-dispatch after a failed publish/verification is possible
+# (a real run refuses to start when the tag already exists).
+# A dry run runs every test/build job and publishes NOTHING (no NuGet push, no tag, no Release).
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run: run every test and build job, publish nothing.'
+        required: false
+        default: false
+        type: boolean
+      release_notes:
+        description: 'Optional text appended to the auto-generated GitHub Release notes.'
+        required: false
+        default: ''
+        type: string
+
+run-name: ${{ inputs.dry_run && 'release (dry run)' || 'release' }}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   check-version-tag:
@@ -13,6 +39,17 @@ jobs:
       prev_tag: ${{ steps.prev_tag.outputs.tag }}
       tag_exists: ${{ steps.tag_exists.outputs.exists }}
     steps:
+      - name: Ref guard (a real release runs only on main)
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          REF: ${{ github.ref }}
+        run: |
+          echo "ref: $REF  dry_run: $DRY_RUN"
+          if [ "$DRY_RUN" != "true" ] && [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::A real (non-dry-run) release must be dispatched on refs/heads/main, got '$REF'."
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
@@ -26,6 +63,33 @@ jobs:
           echo "current-version=$version" >> $GITHUB_OUTPUT
           echo "Version: $version"
 
+      # The five files commands/bump-version.ps1 rewrites must all agree with the source of
+      # truth, or the packs/metadata would ship mixed versions (was asserted by the local
+      # release script after the bump; now enforced at release time).
+      - name: Version consistency guard
+        env:
+          VERSION: ${{ steps.get_version.outputs.current-version }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::McpPlugin/McpPlugin.csproj <Version> '$VERSION' is not MAJOR.MINOR.PATCH"
+            exit 1
+          fi
+          fail=0
+          check() { # file, expected-count, fixed-string
+            n=$(grep -cF -- "$3" "$1" || true)
+            if [ "$n" != "$2" ]; then
+              echo "::error file=$1::expected $2 occurrence(s) of '$3', found $n"
+              fail=1
+            fi
+          }
+          check McpPlugin/McpPlugin.csproj               1 "<Version>$VERSION</Version>"
+          check McpPlugin.Common/McpPlugin.Common.csproj 1 "<Version>$VERSION</Version>"
+          check McpPlugin.Server/McpPlugin.Server.csproj 1 "<Version>$VERSION</Version>"
+          check McpPlugin.Common/src/Utils/Consts.cs     1 "public const string PluginVersion = \"$VERSION\""
+          check McpPlugin.Server/server.json             2 "\"version\": \"$VERSION\""
+          exit $fail
+
       - name: Find previous version tag
         id: prev_tag
         uses: WyriHaximus/github-action-get-previous-tag@v2
@@ -36,8 +100,32 @@ jobs:
         with:
           tag: ${{ steps.get_version.outputs.current-version }}
 
+      - name: Version guard (tag must not exist for a real release)
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          VERSION: ${{ steps.get_version.outputs.current-version }}
+          TAG_EXISTS: ${{ steps.tag_exists.outputs.exists }}
+        run: |
+          if [ "$TAG_EXISTS" = "true" ]; then
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "::warning::Tag '$VERSION' already exists. Dry run continues; a real release of this version would FAIL here. Bump <Version> first."
+            else
+              echo "::error::Tag '$VERSION' already exists: version $VERSION is already released. Bump <Version> (commands/bump-version.ps1) and merge before dispatching a release."
+              exit 1
+            fi
+          else
+            echo "Tag '$VERSION' does not exist yet: OK to release."
+          fi
+
   test:
-    runs-on: ubuntu-latest
+    # Same OS matrix as test-pull-request.yml: the credential store's at-rest protection and
+    # atomic-write behaviour are OS-specific, so a release gates on all three.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
     needs: check-version-tag
     permissions:
       checks: write
@@ -71,8 +159,9 @@ jobs:
         run: dotnet test --no-build --verbosity normal --configuration Release --logger "trx;LogFilePrefix=test-results" --results-directory ./TestResults
 
       - name: Publish Test Results
+        # The docker-based action only runs on Linux.
         uses: EnricoMi/publish-unit-test-result-action@v2
-        if: always()
+        if: always() && runner.os == 'Linux'
         with:
           files: 'TestResults/**/*.trx'
 
@@ -80,16 +169,168 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: test-results
+          name: test-results-${{ matrix.os }}
           path: TestResults/**/*.trx
+
+  # Mirrors test-pull-request.yml's golden-vector-parity job (without the chain-lock steps).
+  golden-vector-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: check-version-tag
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      - name: Restore
+        run: dotnet restore McpPlugin.Tests/McpPlugin.Tests.csproj
+
+      - name: Build
+        run: dotnet build McpPlugin.Tests/McpPlugin.Tests.csproj --no-restore --configuration Release
+
+      - name: Golden-vector parity (C# ProjectIdentity reference)
+        run: >-
+          dotnet test McpPlugin.Tests/McpPlugin.Tests.csproj
+          --no-build --configuration Release --verbosity normal
+          --filter "FullyQualifiedName~ProjectIdentityGoldenVector"
+          -- RunConfiguration.TreatNoTestsAsError=true
+
+  # Pack rehearsal: the same pack commands deploy.yml runs, WITHOUT pushing, so a dry run
+  # proves the three .nupkg files build with the expected names. Runs on dry and real runs.
+  build-packages:
+    runs-on: ubuntu-latest
+    needs: check-version-tag
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: |
+            8.0.x
+            9.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Pack McpPlugin.Common NuGet package
+        working-directory: ./McpPlugin.Common
+        run: dotnet pack McpPlugin.Common.csproj --no-build --configuration Release --output ../nupkg
+
+      - name: Pack McpPlugin NuGet package
+        working-directory: ./McpPlugin
+        run: dotnet pack McpPlugin.csproj --no-build --configuration Release --output ../nupkg
+
+      - name: Pack McpPlugin.Server NuGet package
+        working-directory: ./McpPlugin.Server
+        run: dotnet pack McpPlugin.Server.csproj --no-build --configuration Release --output ../nupkg
+
+      - name: Verify expected packages
+        env:
+          VERSION: ${{ needs.check-version-tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          ls -la nupkg
+          fail=0
+          for id in com.IvanMurzak.McpPlugin.Common com.IvanMurzak.McpPlugin com.IvanMurzak.McpPlugin.Server; do
+            f="nupkg/$id.$VERSION.nupkg"
+            if [ -f "$f" ]; then echo "OK  $f"; else echo "::error::Expected package not produced: $f"; fail=1; fi
+          done
+          exit $fail
+
+  deploy:
+    needs: [
+      check-version-tag,
+      test,
+      golden-vector-parity,
+      build-packages
+    ]
+    if: inputs.dry_run != true && needs.check-version-tag.outputs.tag_exists == 'false'
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/deploy.yml
+    with:
+      version: ${{ needs.check-version-tag.outputs.version }}
+
+  # Post-publish verification (moved in from the local release script
+  # `wait-release-and-nuget.py`): all THREE packages must be live on the NuGet v3
+  # flat-container index. 25-minute window, then one grace recheck after 120s. Any package
+  # still missing fails the run (a half-published release must not be tagged).
+  verify-nuget:
+    runs-on: ubuntu-latest
+    needs: [check-version-tag, deploy]
+    if: inputs.dry_run != true
+    timeout-minutes: 35
+    steps:
+      - name: Wait for all packages on NuGet
+        env:
+          VERSION: ${{ needs.check-version-tag.outputs.version }}
+          PACKAGES: com.IvanMurzak.McpPlugin.Common com.IvanMurzak.McpPlugin com.IvanMurzak.McpPlugin.Server
+          CAP_SECONDS: '1500'
+          GRACE_SECONDS: '120'
+          INTERVAL_SECONDS: '30'
+        run: |
+          set -uo pipefail
+          is_live() { # package id -> 0 when $VERSION is in its flat-container index
+            local lid body
+            lid=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')
+            body=$(curl -fsS --max-time 30 "https://api.nuget.org/v3-flatcontainer/$lid/index.json") || return 1
+            printf '%s' "$body" | jq -e --arg v "$VERSION" 'any(.versions[]; . == $v)' > /dev/null
+          }
+          missing="$PACKAGES"
+          sweep() {
+            local still=""
+            for p in $missing; do
+              if is_live "$p"; then echo "live: $p $VERSION"; else still="$still $p"; fi
+            done
+            missing=$(echo $still)
+          }
+          start=$(date +%s)
+          while :; do
+            sweep
+            [ -z "$missing" ] && break
+            elapsed=$(( $(date +%s) - start ))
+            if [ "$elapsed" -ge "$CAP_SECONDS" ]; then break; fi
+            echo "waiting (${elapsed}s): $missing"
+            sleep "$INTERVAL_SECONDS"
+          done
+          if [ -n "$missing" ]; then
+            echo "cap reached; grace recheck in ${GRACE_SECONDS}s"
+            sleep "$GRACE_SECONDS"
+            sweep
+          fi
+          if [ -n "$missing" ]; then
+            echo "::error::Half-published release: not on NuGet at $VERSION after cap+grace: $missing"
+            exit 1
+          fi
+          echo "All packages live on NuGet at $VERSION"
 
   release-at-github:
     runs-on: ubuntu-latest
     needs: [
       check-version-tag,
-      test
+      test,
+      golden-vector-parity,
+      build-packages,
+      deploy,
+      verify-nuget
     ]
-    if: needs.check-version-tag.outputs.tag_exists == 'false'
+    if: inputs.dry_run != true && needs.check-version-tag.outputs.tag_exists == 'false'
     outputs:
       version: ${{ needs.check-version-tag.outputs.version }}
       success: ${{ steps.rel_desc.outputs.success }}
@@ -105,6 +346,7 @@ jobs:
         id: rel_desc
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_NOTES_EXTRA: ${{ inputs.release_notes }}
         run: |
           set -e
           version=${{ needs.check-version-tag.outputs.version }}
@@ -139,6 +381,10 @@ jobs:
             done
           fi
 
+          if [ -n "$RELEASE_NOTES_EXTRA" ]; then
+            printf '\n%s\n' "$RELEASE_NOTES_EXTRA" >> release.md
+          fi
+
           printf "release_body<<ENDOFRELEASEBODY\n%s\nENDOFRELEASEBODY\n" "$(cat release.md)" >> $GITHUB_OUTPUT
           echo "success=true" >> $GITHUB_OUTPUT
 
@@ -146,19 +392,11 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.check-version-tag.outputs.version }}
+          # Tag the dispatched commit, not whatever main points at when this job runs.
+          target_commitish: ${{ github.sha }}
           name: ${{ needs.check-version-tag.outputs.version }}
           body: ${{ steps.rel_desc.outputs.release_body }}
           draft: false
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  deploy:
-    needs: release-at-github
-    if: needs.release-at-github.outputs.success == 'true'
-    permissions:
-      id-token: write
-      contents: read
-    uses: ./.github/workflows/deploy.yml
-    with:
-      version: ${{ needs.release-at-github.outputs.version }}

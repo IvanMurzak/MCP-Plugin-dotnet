@@ -1,16 +1,8 @@
 name: deploy
 
+# Reusable child of release.yml ONLY. No release/dispatch trigger of its own: the only path
+# to a NuGet publish is a manual dispatch of release.yml, after its full test set passes.
 on:
-  release:
-    types: [released]
-
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Deploy to NuGet and Docker Hub version (e.g., 1.0.0).'
-        required: true
-        type: string
-
   workflow_call:
     inputs:
       version: { required: true, type: string }
@@ -24,10 +16,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Extract version from tag
+      - name: Extract version from input
         id: version
         run: |
-          version=${{ inputs.version || github.event.release.tag_name }}
+          version=${{ inputs.version }}
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "Extracted version: $version"
 
