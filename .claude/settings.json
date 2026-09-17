@@ -1,32 +1,6 @@
 {
-  "allow": [
-    "Bash",
-    "Read",
-    "Write",
-    "Edit",
-    "Glob",
-    "Grep",
-    "Agent",
-    "WebFetch",
-    "WebSearch",
-    "mcp__*"
-  ],
   "enabledPlugins": {
     "csharp-lsp@claude-plugins-official": true,
     "github@claude-plugins-official": true
-  },
-  "permissions": {
-    "allow": [
-      "Bash",
-      "Read",
-      "Write",
-      "Edit",
-      "Glob",
-      "Grep",
-      "Agent",
-      "WebFetch",
-      "WebSearch",
-      "mcp__*"
-    ]
   }
 }
