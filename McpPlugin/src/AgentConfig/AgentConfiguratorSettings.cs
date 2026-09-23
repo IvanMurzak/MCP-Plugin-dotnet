@@ -293,9 +293,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// </summary>
         public AgentConfiguratorSettings WithProjectKey(string? projectKey)
         {
-            var copy = new AgentConfiguratorSettings(
-                OperatingSystem, ProjectRootPath, ExecutableFullPath, Port, TimeoutMs, Host, Token,
-                ConnectionMode, AuthOption, ServerExecutableName, ServerVersion, DockerImage, LocalPortDerivation);
+            // Memberwise: every setting (and the cached identity, which depends only on ProjectRootPath) carries over.
+            var copy = (AgentConfiguratorSettings)MemberwiseClone();
             copy.ProjectKey = projectKey;
             return copy;
         }

@@ -184,7 +184,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             string Manual(AgentConfiguratorSettings s) => string.Join("\n", new ClaudeCodeConfigurator()
                 .Describe(s, TransportMethod.streamableHttp).Sections.SelectMany(x => x.Items).Select(i => i.Text));
 
-            Manual(Cloud("/proj")).ShouldContain("--header \"Authorization: Bearer " + Key + "\"");
+            // Same shape as the written config, key redacted (Describe renders every section from ForDisplay()).
+            Manual(Cloud("/proj")).ShouldContain("--header \"Authorization: Bearer " + AgentConfiguratorSettings.ProjectKeyDisplayPlaceholder + "\"");
+            Manual(Cloud("/proj")).ShouldNotContain(Key);
             // Cloud WITHOUT a key writes URL-only ⇒ the manual command must not invent a header either.
             Manual(Cloud("/proj", key: null)).ShouldNotContain("Authorization");
         }

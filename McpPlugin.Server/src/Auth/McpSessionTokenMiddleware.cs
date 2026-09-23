@@ -337,7 +337,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             }, context.RequestAborted);
         }
 
-        static bool IsHex(string? s)
+        internal static bool IsHex(string? s)
         {
             if (string.IsNullOrEmpty(s) || s!.Length > 64)
                 return false;

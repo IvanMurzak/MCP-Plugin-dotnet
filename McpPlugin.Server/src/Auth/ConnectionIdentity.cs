@@ -59,6 +59,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         /// </summary>
         public DateTimeOffset? Exp { get; }
 
+        /// <summary>
+        /// The project pin a project key (<c>agd_pk_…</c>) is bound to (project-keys contract §5), or null for an
+        /// account-wide credential. Every account-scoped reader (instance listing / selection / enrollment) narrows
+        /// to this pin, so a project key never sees or reaches another project of the same account.
+        /// </summary>
+        public string? BoundProjectPin { get; init; }
+
         public ConnectionIdentity(string accountId, string role, string? clientId = null, DateTimeOffset? exp = null)
         {
             if (string.IsNullOrEmpty(accountId))
@@ -114,7 +121,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                    ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var scope = principal.FindFirst(TokenAuthenticationHandler.ScopeClaimType)?.Value;
             var clientId = principal.FindFirst(TokenAuthenticationHandler.ClientIdClaimType)?.Value;
-            return Create(sub, scope, clientId);
+            var identity = Create(sub, scope, clientId);
+            var boundPin = principal.FindFirst(TokenAuthenticationHandler.ProjectPinClaimType)?.Value;
+            return identity == null || string.IsNullOrEmpty(boundPin) ? identity : identity with { BoundProjectPin = boundPin };
         }
     }
 }

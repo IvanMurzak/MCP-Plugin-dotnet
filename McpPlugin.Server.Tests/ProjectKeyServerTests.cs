@@ -22,6 +22,7 @@ using com.IvanMurzak.McpPlugin.Server.Auth.OAuth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 using com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure;
 using com.IvanMurzak.McpPlugin.Server.Tests.OAuth;
+using com.IvanMurzak.McpPlugin.Server.Tools;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -193,6 +194,54 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             McpSessionTokenMiddleware.ResolveEffectiveProjectPin(ProjectPinParse.Absent, null, jwt, out effective)
                 .ShouldBe(McpSessionTokenMiddleware.ProjectKeyPinCheck.NotProjectKey);
             effective.ShouldBeNull();
+        }
+
+        // ── Account-scoped native tools narrow to the key's project ───────────────────────────────
+
+        [Fact]
+        public void Identity_FromKeyPrincipal_CarriesTheBoundPin_JwtDoesNot()
+        {
+            ConnectionIdentity.FromPrincipal(KeyPrincipal(PinA))!.BoundProjectPin.ShouldBe(PinA);
+            ConnectionIdentity.FromPrincipal(new ClaimsPrincipal(new ClaimsIdentity(
+                new[] { new Claim(TokenAuthenticationHandler.SubjectClaimType, Account) }, "test")))!.BoundProjectPin.ShouldBeNull();
+        }
+
+        [Fact]
+        public async Task ListInstances_WithAProjectKey_ShowsOnlyTheBoundProject_AccountWideSeesBoth()
+        {
+            var instances = new AccountInstances();
+            instances.Register(Account, new PluginInstanceMetadata("instance-A", "unity", "GameA", HashA, "PC-1"), "conn-A");
+            instances.Register(Account, new PluginInstanceMetadata("instance-B", "godot", "GameB", HashB, "PC-2"), "conn-B");
+            var tools = new ServerNativeTools(instances, new SessionSelectionStore(), new Moq.Mock<IEnrollmentClient>().Object);
+
+            var keyed = await tools.HandleAsync(ServerNativeTools.ListInstances, new System.Collections.Generic.Dictionary<string, System.Text.Json.JsonElement>(),
+                new SelectionToolContext(Account, "s1", PinA, ProjectKey, boundProjectPin: PinA));
+            var wide = await tools.HandleAsync(ServerNativeTools.ListInstances, new System.Collections.Generic.Dictionary<string, System.Text.Json.JsonElement>(),
+                new SelectionToolContext(Account, "s2", null, "jwt"));
+
+            var keyedText = string.Join("\n", keyed.Content.Select(c => c.Text));
+            keyedText.ShouldContain("instance-A");
+            keyedText.ShouldNotContain("instance-B");
+            keyedText.ShouldNotContain("GameB");
+            // Control: the SAME registry lists both projects to an account-wide credential.
+            var wideText = string.Join("\n", wide.Content.Select(c => c.Text));
+            wideText.ShouldContain("instance-A");
+            wideText.ShouldContain("instance-B");
+        }
+
+        [Fact]
+        public async Task Enroll_WithAProjectKey_IsRefused()
+        {
+            var enrollment = new Moq.Mock<IEnrollmentClient>(Moq.MockBehavior.Strict);
+            var tools = new ServerNativeTools(new AccountInstances(), new SessionSelectionStore(), enrollment.Object);
+            var args = new System.Collections.Generic.Dictionary<string, System.Text.Json.JsonElement>
+            {
+                ["engine"] = System.Text.Json.JsonDocument.Parse("\"unity\"").RootElement,
+            };
+
+            var result = await tools.HandleAsync(ServerNativeTools.EnrollPlugin, args, new SelectionToolContext(Account, "s1", PinA, ProjectKey, boundProjectPin: PinA));
+
+            result.Status.ShouldBe(com.IvanMurzak.McpPlugin.Common.Model.ResponseStatus.Error);
         }
 
         // ── Over HTTP, REAL production wiring (auth=oauth): 403 on a foreign pin ──────────────────

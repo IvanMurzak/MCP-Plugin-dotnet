@@ -295,13 +295,16 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Common.Consts.MCP.Server.TransportMethod transport,
             ILogger? logger = null)
         {
-            var sections = BuildSections(settings, transport, logger);
+            // Status compares against what Configure REALLY writes; every user-visible section is built from the
+            // redacted snapshot, so no BuildSections override can ever render the raw project key.
             var status = GetStatus(settings, transport, logger);
+            var display = settings.ForDisplay();
+            var sections = BuildSections(display, transport, logger);
 
             // Append the per-agent Troubleshooting section(s) after the configuration sections,
             // mirroring Unity's per-configurator "Troubleshooting" foldout (emitted last). Agents
             // that declare none get an empty list and the sections are unchanged.
-            var troubleshooting = BuildTroubleshootingSections(settings, transport, logger);
+            var troubleshooting = BuildTroubleshootingSections(display, transport, logger);
             if (troubleshooting.Count > 0)
             {
                 var withTroubleshooting = new List<ConfigurationSection>(sections);
@@ -376,15 +379,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Common.Consts.MCP.Server.TransportMethod transport,
             ILogger? logger)
         {
-            // Display path: must not EXPOSE a secret (mcp-authorize i1 / BUG-A scoping), so a PAT /
-            // local-secret snapshot still renders the credential-free OAuth shape. A Cloud project-key
-            // snapshot renders the SAME shape Configure writes (the Authorization header is present) with
-            // the key redacted to a placeholder, so the preview never contradicts the written file.
             var config = transport == Common.Consts.MCP.Server.TransportMethod.stdio
                 ? GetStdioConfig(settings, logger)
-                : settings.HasProjectKey
-                    ? GetHttpConfig(settings.ForDisplay(), logger, HttpCredentialMode.AccessToken)
-                    : GetHttpConfig(settings, logger);
+                : GetDisplayHttpConfig(settings, logger);
             return new[]
             {
                 new ConfigurationSection("Configuration", true, new[]
@@ -399,6 +396,16 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// Resolves a (possibly project-relative) skills path to an absolute filesystem path,
         /// mirroring the Unity editor's resolution but operating on the supplied value.
         /// </summary>
+        /// <summary>
+        /// The HTTP config a user-visible preview renders. Must not EXPOSE a secret (mcp-authorize i1 / BUG-A), so a
+        /// PAT / local-secret snapshot renders the credential-free OAuth shape; a Cloud project-key snapshot renders
+        /// the SAME shape Configure writes (header present), key redacted via <see cref="AgentConfiguratorSettings.ForDisplay"/>.
+        /// </summary>
+        protected AiAgentConfig GetDisplayHttpConfig(AgentConfiguratorSettings settings, ILogger? logger)
+            => settings.HasProjectKey
+                ? GetHttpConfig(settings.ForDisplay(), logger, HttpCredentialMode.AccessToken)
+                : GetHttpConfig(settings, logger);
+
         protected static string ResolveAbsoluteSkillsPath(string projectRootPath, string folder)
         {
             if (string.IsNullOrEmpty(folder))

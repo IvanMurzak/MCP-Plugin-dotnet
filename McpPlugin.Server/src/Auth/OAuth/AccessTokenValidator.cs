@@ -199,16 +199,18 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
         /// <summary>The <c>token_type</c> the AS reports for a project key (contract §3).</summary>
         public const string ProjectKeyTokenType = "project_key";
 
+        private const string ProjectKeyOnPluginPlane = "project key is not valid on the plugin plane";
+
         private async Task<OAuthValidationResult> ValidateOpaqueAsync(string token, TokenValidationPlane plane, CancellationToken cancellationToken)
         {
             // A project key is recognised by ANY of its three markers, so the plane / pin rules below can
             // never be skipped by an AS response that omits one of them.
             var looksLikeProjectKey = token.StartsWith(ProjectKeyPrefix, StringComparison.Ordinal);
 
-            // Plane restriction (contract §4): a project key is an AGENT-plane credential only. Rejected
-            // before introspection when the value itself says so.
+            // Plane restriction (contract §4): a project key is an AGENT-plane credential only. The prefix check
+            // saves the introspection round-trip; the post-introspection check covers keys recognised by pin/type.
             if (looksLikeProjectKey && plane == TokenValidationPlane.Plugin)
-                return OAuthValidationResult.Fail("opaque", "project key is not valid on the plugin plane");
+                return OAuthValidationResult.Fail("opaque", ProjectKeyOnPluginPlane);
 
             var result = await _introspection.IntrospectAsync(token, cancellationToken).ConfigureAwait(false);
             if (!result.Active)
@@ -224,7 +226,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
                 return OAuthValidationResult.Success("opaque", result.Subject, result.Scope);
 
             if (plane == TokenValidationPlane.Plugin)
-                return OAuthValidationResult.Fail("opaque", "project key is not valid on the plugin plane");
+                return OAuthValidationResult.Fail("opaque", ProjectKeyOnPluginPlane);
 
             // Fail closed: a project key whose pin is missing must never be treated as account-wide.
             if (result.ProjectPin == null)

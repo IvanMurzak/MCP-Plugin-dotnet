@@ -59,7 +59,6 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         private readonly Func<CancellationToken, Task<string?>> _accessTokenProvider;
         private readonly Func<string?>? _subjectFallback;
-        private readonly ProjectKeyStore _store;
         private readonly HttpClient _http;
         private readonly ILogger? _logger;
 
@@ -80,7 +79,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         {
             _accessTokenProvider = accessTokenProvider ?? throw new ArgumentNullException(nameof(accessTokenProvider));
             Issuer = ProjectKeyStore.NormalizeIssuerOrigin(issuer);
-            _store = store ?? new ProjectKeyStore();
+            Store = store ?? new ProjectKeyStore();
             _http = httpClient ?? SharedHttpClient;
             _subjectFallback = subjectFallback;
             _logger = logger;
@@ -90,7 +89,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public string Issuer { get; }
 
         /// <summary>The local cache this provider reads and writes.</summary>
-        public ProjectKeyStore Store => _store;
+        public ProjectKeyStore Store { get; }
 
         /// <summary>
         /// A provider backed by an in-process <see cref="com.IvanMurzak.McpPlugin.PluginCredentialProvider"/>
@@ -152,7 +151,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 return null; // no machine login: cannot mint, and a cached key cannot be attributed to anyone.
 
             var sub = ResolveSubject(accessToken!);
-            var cached = _store.Get(Issuer, pin);
+            var cached = Store.Get(Issuer, pin);
             if (cached != null && sub != null && string.Equals(cached.Sub, sub, StringComparison.Ordinal))
             {
                 var validity = await ValidateAsync(cached.Key, pin, cancellationToken).ConfigureAwait(false);
@@ -204,7 +203,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                     return KeyValidity.Unknown;
                 if (json["active"] is JsonValue active && active.TryGetValue<bool>(out var isActive) && !isActive)
                     return KeyValidity.Invalid;
-                var serverPin = GetString(json, "project_pin");
+                var serverPin = ProjectKeyStore.GetString(json, "project_pin");
                 if (serverPin != null && !string.Equals(serverPin, pin, StringComparison.OrdinalIgnoreCase))
                     return KeyValidity.Invalid; // cached under the wrong pin — never reuse a key for another project.
                 return KeyValidity.Valid;
@@ -220,10 +219,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             string accessToken, string? sub, string pin, string engine, string machineName, string? label,
             CancellationToken cancellationToken)
         {
+            engine = NormalizeEngine(engine);
             var payload = new JsonObject
             {
                 ["project_pin"] = pin,
-                ["engine"] = NormalizeEngine(engine),
+                ["engine"] = engine,
                 ["machine_name"] = machineName ?? string.Empty,
             };
             if (!string.IsNullOrEmpty(label))
@@ -252,7 +252,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             }
 
             var json = TryParseObject(body);
-            var key = json == null ? null : GetString(json, "key");
+            var key = json == null ? null : ProjectKeyStore.GetString(json, "key");
             if (string.IsNullOrEmpty(key))
             {
                 _logger?.LogWarning("Project key mint for pin {Pin} returned no key.", pin);
@@ -261,15 +261,15 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
             try
             {
-                _store.Put(new ProjectKeyEntry
+                Store.Put(new ProjectKeyEntry
                 {
                     Key = key!,
-                    KeyId = GetString(json!, "key_id"),
+                    KeyId = ProjectKeyStore.GetString(json!, "key_id"),
                     Pin = pin,
                     Issuer = Issuer,
                     Sub = sub,
-                    Engine = NormalizeEngine(engine),
-                    CreatedAt = GetString(json!, "created_at"),
+                    Engine = engine,
+                    CreatedAt = ProjectKeyStore.GetString(json!, "created_at"),
                 });
             }
             catch (Exception ex) when (ex is System.IO.IOException || ex is UnauthorizedAccessException)
@@ -300,7 +300,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 var b64 = parts[1].Replace('-', '+').Replace('_', '/');
                 b64 = b64.PadRight(b64.Length + (4 - b64.Length % 4) % 4, '=');
                 var payload = TryParseObject(Encoding.UTF8.GetString(Convert.FromBase64String(b64)));
-                return payload == null ? null : GetString(payload, "sub");
+                return payload == null ? null : ProjectKeyStore.GetString(payload, "sub");
             }
             catch (FormatException)
             {
@@ -335,8 +335,5 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 return null;
             }
         }
-
-        private static string? GetString(JsonObject node, string name) =>
-            node[name] is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
     }
 }

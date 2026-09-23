@@ -56,7 +56,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public const string FileName = "project-keys.json";
         public const int CurrentVersion = 1;
 
-        private static readonly Regex PinPattern = new Regex("^[0-9a-f]{8}$", RegexOptions.CultureInvariant);
+        private static readonly Regex PinPattern = new Regex("^[0-9a-f]{" + ProjectIdentity.PinLength + "}$", RegexOptions.CultureInvariant);
         private static readonly JsonSerializerOptions WriteOptions = new JsonSerializerOptions { WriteIndented = true };
 
         private readonly string _baseDirectory;
@@ -231,7 +231,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         private static bool IsWindows => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
-        private static string? GetString(JsonObject node, string name) =>
+        internal static string? GetString(JsonObject node, string name) =>
             node[name] is JsonValue v && v.TryGetValue<string>(out var s) ? s : null;
 
         private static int GetInt(JsonObject node, string name) =>

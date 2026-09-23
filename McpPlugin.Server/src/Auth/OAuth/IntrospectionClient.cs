@@ -164,16 +164,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
 
         /// <summary>Lower-cases and validates a v2 project pin (exactly 8 hex chars); null when malformed.</summary>
         internal static string? NormalizeProjectPin(string? pin)
-        {
-            if (pin == null || pin.Length != 8)
-                return null;
-            foreach (var c in pin)
-            {
-                if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
-                    return null;
-            }
-            return pin.ToLowerInvariant();
-        }
+            => pin != null && pin.Length == ProjectKeyPinLength && McpSessionTokenMiddleware.IsHex(pin) ? pin.ToLowerInvariant() : null;
+
+        /// <summary>A project key is bound to a v2 pin: exactly 8 hex chars (<c>ProjectIdentity.PinLength</c> client-side).</summary>
+        private const int ProjectKeyPinLength = 8;
 
         private static string Hash(string token)
         {
