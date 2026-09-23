@@ -54,6 +54,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             public HttpStatusCode MintStatus = HttpStatusCode.Created;
             public Action? OnMint;
             public string CurrentPin = Pin;
+            public HttpStatusCode RevokeStatus = HttpStatusCode.NoContent;
+            public Exception? RevokeThrows;
             private int _minted;
 
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -81,6 +83,12 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
                     {
                         Content = new StringContent("{\"key\":\"agd_pk_minted_" + _minted + "\",\"key_id\":\"pk_" + _minted + "\",\"project_pin\":\"" + pin + "\",\"created_at\":\"2026-09-23T00:00:00Z\"}"),
                     };
+                }
+                if (request.Method == HttpMethod.Delete && request.RequestUri.AbsolutePath.StartsWith(ProjectKeyProvider.MintPath + "/"))
+                {
+                    if (RevokeThrows != null)
+                        throw RevokeThrows;
+                    return new HttpResponseMessage(RevokeStatus);
                 }
                 return new HttpResponseMessage(HttpStatusCode.NotFound);
             }
@@ -261,8 +269,78 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             var server = new FakeServer();
 
             (await Provider(server, () => Jwt("usr_1")).RegenerateAsync(Pin, "godot", "PC")).ShouldBe("agd_pk_minted_1");
-            server.Requests.ShouldAllBe(r => r.Method == HttpMethod.Post);
+            server.Requests.Select(r => r.Method).ShouldBe(new[] { HttpMethod.Post, HttpMethod.Delete });
             Store.Get("https://ai-game.dev", Pin)!.Key.ShouldBe("agd_pk_minted_1");
+        }
+
+        [Fact]
+        public async Task Regenerate_RevokesThePreviousCachedKey_WithTheMintAccessToken_AfterCaching()
+        {
+            SeedCache("agd_pk_cached", "usr_1");
+            var server = new FakeServer();
+            var token = Jwt("usr_1");
+
+            (await Provider(server, () => token).RegenerateAsync(Pin, "unity", "PC")).ShouldBe("agd_pk_minted_1");
+
+            var revoke = server.Requests.Single(r => r.Method == HttpMethod.Delete);
+            revoke.Path.ShouldBe(ProjectKeyProvider.MintPath + "/pk_old");
+            revoke.Bearer.ShouldBe(token);
+            server.Requests.Last().ShouldBe(revoke); // revoke only after the new key was minted
+        }
+
+        [Theory]
+        [InlineData(HttpStatusCode.InternalServerError)]
+        [InlineData(HttpStatusCode.NotFound)]
+        [InlineData(HttpStatusCode.Unauthorized)]
+        public async Task Regenerate_RevokeRefused_StillReturnsAndCachesTheNewKey(HttpStatusCode status)
+        {
+            SeedCache("agd_pk_cached", "usr_1");
+            var server = new FakeServer { RevokeStatus = status };
+
+            (await Provider(server, () => Jwt("usr_1")).RegenerateAsync(Pin, "unity", "PC")).ShouldBe("agd_pk_minted_1");
+            server.Requests.ShouldContain(r => r.Method == HttpMethod.Delete);
+            Store.Get("https://ai-game.dev", Pin)!.Key.ShouldBe("agd_pk_minted_1");
+        }
+
+        [Fact]
+        public async Task Regenerate_RevokeUnreachable_StillReturnsAndCachesTheNewKey()
+        {
+            SeedCache("agd_pk_cached", "usr_1");
+            var server = new FakeServer { RevokeThrows = new HttpRequestException("offline") };
+
+            (await Provider(server, () => Jwt("usr_1")).RegenerateAsync(Pin, "unity", "PC")).ShouldBe("agd_pk_minted_1");
+            server.Requests.ShouldContain(r => r.Method == HttpMethod.Delete);
+            Store.Get("https://ai-game.dev", Pin)!.Key.ShouldBe("agd_pk_minted_1");
+        }
+
+        [Fact]
+        public async Task Regenerate_NoPreviousEntry_RevokesNothing()
+        {
+            var server = new FakeServer();
+
+            (await Provider(server, () => Jwt("usr_1")).RegenerateAsync(Pin, "unity", "PC")).ShouldBe("agd_pk_minted_1");
+            server.Requests.ShouldNotContain(r => r.Method == HttpMethod.Delete);
+        }
+
+        [Fact]
+        public async Task Regenerate_MintRefused_RevokesNothing()
+        {
+            SeedCache("agd_pk_cached", "usr_1");
+            var server = new FakeServer { MintStatus = HttpStatusCode.InternalServerError };
+
+            (await Provider(server, () => Jwt("usr_1")).RegenerateAsync(Pin, "unity", "PC")).ShouldBeNull();
+            server.Requests.ShouldNotContain(r => r.Method == HttpMethod.Delete);
+            Store.Get("https://ai-game.dev", Pin)!.Key.ShouldBe("agd_pk_cached");
+        }
+
+        [Fact]
+        public async Task GetOrMint_ReplacingARevokedCachedKey_NeverRevokes()
+        {
+            SeedCache("agd_pk_cached", "usr_1");
+            var server = new FakeServer { CurrentStatus = () => HttpStatusCode.Unauthorized };
+
+            (await Provider(server, () => Jwt("usr_1")).GetOrMintAsync(Pin, "unity", "PC")).ShouldBe("agd_pk_minted_1");
+            server.Requests.ShouldNotContain(r => r.Method == HttpMethod.Delete);
         }
 
         [Fact]

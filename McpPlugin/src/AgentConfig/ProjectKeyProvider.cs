@@ -187,9 +187,10 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         }
 
         /// <summary>
-        /// "Regenerate key": mints a fresh key for <paramref name="pin"/> and overwrites the cache entry
-        /// (older keys stay valid server-side until revoked). Returns <c>null</c> when not signed in or the
-        /// mint fails — the cached entry is then left untouched.
+        /// "Regenerate key": mints a fresh key for <paramref name="pin"/>, overwrites the cache entry, then
+        /// revokes the previously cached key (<c>DELETE /api/mcp/project-keys/{keyId}</c>, contract §7) with the
+        /// same access token. A failed revoke is logged and never fails the regenerate. Returns <c>null</c> when
+        /// not signed in or the mint fails — the cached entry is then left untouched and nothing is revoked.
         /// </summary>
         public async Task<string?> RegenerateAsync(
             string pin, string engine, string machineName, string? label = null, CancellationToken cancellationToken = default)
@@ -201,8 +202,15 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 var accessToken = await _accessTokenProvider(cancellationToken).ConfigureAwait(false);
                 if (string.IsNullOrEmpty(accessToken) || IsCacheUnreadable())
                     return null;
-                return await MintAndStoreAsync(accessToken!, ResolveSubject(accessToken!), pin, engine, machineName, label, cancellationToken,
+                var previous = Store.Get(Issuer, pin);
+                var key = await MintAndStoreAsync(accessToken!, ResolveSubject(accessToken!), pin, engine, machineName, label, cancellationToken,
                     keepConcurrentWrite: false, keyReadBeforeMint: null).ConfigureAwait(false);
+                // Revoke only once the new key is actually cached: a failed cache write leaves the old entry in
+                // place, and revoking it then would strand the cache on a dead key.
+                if (key != null && !string.IsNullOrEmpty(previous?.KeyId) && previous!.Key != key
+                    && Store.Get(Issuer, pin)?.Key == key)
+                    await RevokeAsync(accessToken!, previous.KeyId!, pin, cancellationToken).ConfigureAwait(false);
+                return key;
             }
             finally
             {
@@ -270,6 +278,22 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             {
                 _logger?.LogDebug("Project key validation could not reach {Issuer}: {Message}", Issuer, ex.Message);
                 return KeyValidity.Unknown;
+            }
+        }
+
+        private async Task RevokeAsync(string accessToken, string keyId, string pin, CancellationToken cancellationToken)
+        {
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Delete, Issuer + MintPath + "/" + Uri.EscapeDataString(keyId));
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+                using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+                if (!response.IsSuccessStatusCode)
+                    _logger?.LogWarning("Revoking the previous project key {KeyId} for pin {Pin} was refused by {Issuer}: HTTP {Status}.", keyId, pin, Issuer, (int)response.StatusCode);
+            }
+            catch (Exception ex) when (!(ex is OperationCanceledException) || !cancellationToken.IsCancellationRequested)
+            {
+                _logger?.LogWarning("Revoking the previous project key {KeyId} for pin {Pin} could not reach {Issuer}: {Message}", keyId, pin, Issuer, ex.Message);
             }
         }
 
