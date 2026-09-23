@@ -177,8 +177,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                         return cached.Key; // valid, or unverifiable right now (transient) — reuse (contract §6).
                 }
 
-                return await MintAndStoreAsync(accessToken!, sub, pin, engine, machineName, label, cancellationToken,
+                var (key, _) = await MintAndStoreAsync(accessToken!, sub, pin, engine, machineName, label, cancellationToken,
                     keepConcurrentWrite: true, keyReadBeforeMint: cached?.Key).ConfigureAwait(false);
+                return key;
             }
             finally
             {
@@ -203,13 +204,12 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 if (string.IsNullOrEmpty(accessToken) || IsCacheUnreadable())
                     return null;
                 var previous = Store.Get(Issuer, pin);
-                var key = await MintAndStoreAsync(accessToken!, ResolveSubject(accessToken!), pin, engine, machineName, label, cancellationToken,
+                var (key, stored) = await MintAndStoreAsync(accessToken!, ResolveSubject(accessToken!), pin, engine, machineName, label, cancellationToken,
                     keepConcurrentWrite: false, keyReadBeforeMint: null).ConfigureAwait(false);
                 // Revoke only once the new key is actually cached: a failed cache write leaves the old entry in
                 // place, and revoking it then would strand the cache on a dead key.
-                if (key != null && !string.IsNullOrEmpty(previous?.KeyId) && previous!.Key != key
-                    && Store.Get(Issuer, pin)?.Key == key)
-                    await RevokeAsync(accessToken!, previous.KeyId!, pin, cancellationToken).ConfigureAwait(false);
+                if (stored && previous is { KeyId: { Length: > 0 } oldKeyId })
+                    await RevokeAsync(accessToken!, oldKeyId, pin, cancellationToken).ConfigureAwait(false);
                 return key;
             }
             finally
@@ -297,7 +297,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             }
         }
 
-        private async Task<string?> MintAndStoreAsync(
+        /// <returns>The key to use (<c>null</c> when the mint failed) and whether it was written to the cache.</returns>
+        private async Task<(string? Key, bool Stored)> MintAndStoreAsync(
             string accessToken, string? sub, string pin, string engine, string machineName, string? label,
             CancellationToken cancellationToken, bool keepConcurrentWrite, string? keyReadBeforeMint)
         {
@@ -324,13 +325,13 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger?.LogWarning("Project key mint for pin {Pin} was refused by {Issuer}: HTTP {Status}.", pin, Issuer, (int)response.StatusCode);
-                    return null;
+                    return (null, false);
                 }
             }
             catch (Exception ex) when (!(ex is OperationCanceledException) || !cancellationToken.IsCancellationRequested)
             {
                 _logger?.LogWarning("Project key mint for pin {Pin} could not reach {Issuer}: {Message}", pin, Issuer, ex.Message);
-                return null;
+                return (null, false);
             }
 
             var json = TryParseObject(body);
@@ -338,7 +339,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             if (string.IsNullOrEmpty(key))
             {
                 _logger?.LogWarning("Project key mint for pin {Pin} returned no key.", pin);
-                return null;
+                return (null, false);
             }
 
             try
@@ -357,14 +358,15 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 key = keepConcurrentWrite ? Store.PutUnlessConcurrentlyReplaced(minted, keyReadBeforeMint) : minted.Key;
                 if (!keepConcurrentWrite)
                     Store.Put(minted);
+                return (key, true);
             }
             catch (Exception ex) when (ex is System.IO.IOException || ex is UnauthorizedAccessException
                 || ex is System.Security.Cryptography.CryptographicException)
             {
                 // The key is valid either way; a cache write failure only costs a re-mint next time.
                 _logger?.LogWarning("Project key cache write failed: {Message}", ex.Message);
+                return (key, false);
             }
-            return key;
         }
 
         // Contract §6: the credential's recorded subject, else the access token's own sub claim.
