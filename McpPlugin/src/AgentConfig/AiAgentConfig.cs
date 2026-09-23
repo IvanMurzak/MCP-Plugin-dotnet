@@ -49,7 +49,18 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         protected readonly ILogger? _logger;
 
         public string Name { get; set; }
+        /// <summary>
+        /// The config file this entry is written to. For a config that spans several files
+        /// (<see cref="CompositeAiAgentConfig"/>) this is a display string listing every path —
+        /// use <see cref="ConfigPaths"/> for file access.
+        /// </summary>
         public string ConfigPath { get; set; }
+
+        /// <summary>
+        /// Every config file this entry is written to. A single-file config returns just
+        /// <see cref="ConfigPath"/>; a <see cref="CompositeAiAgentConfig"/> returns each candidate file.
+        /// </summary>
+        public virtual IReadOnlyList<string> ConfigPaths => new[] { ConfigPath };
         public string BodyPath { get; set; }
         public abstract string ExpectedFileContent { get; }
         public IReadOnlyList<string> IdentityKeys => _identityKeys;
