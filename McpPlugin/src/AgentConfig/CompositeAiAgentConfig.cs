@@ -36,14 +36,15 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// <summary>Separator used to join the child paths into the display <see cref="AiAgentConfig.ConfigPath"/>.</summary>
         public const string PathDisplaySeparator = "; ";
 
-        private readonly IReadOnlyList<AiAgentConfig> _configs;
+        private readonly AiAgentConfig[] _configs;
+        private readonly string[] _paths;
         private List<string> _failedConfigPaths = new();
 
         /// <summary>The per-file child configs, in priority order.</summary>
         public IReadOnlyList<AiAgentConfig> Configs => _configs;
 
         /// <summary>The candidate file paths, one per child, in priority order.</summary>
-        public override IReadOnlyList<string> ConfigPaths => _configs.Select(c => c.ConfigPath).ToArray();
+        public override IReadOnlyList<string> ConfigPaths => _paths;
 
         /// <summary>The paths whose write failed during the last <see cref="Configure"/> call (empty on success).</summary>
         public IReadOnlyList<string> FailedConfigPaths => _failedConfigPaths;
@@ -52,17 +53,23 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public override string ExpectedFileContent => _configs[0].ExpectedFileContent;
 
         public CompositeAiAgentConfig(string name, IReadOnlyList<AiAgentConfig> configs, ILogger? logger = null)
-            : base(
-                name: name,
-                configPath: string.Join(PathDisplaySeparator, (configs ?? throw new ArgumentNullException(nameof(configs))).Select(c => c.ConfigPath)),
-                bodyPath: configs.Count > 0 ? configs[0].BodyPath : Common.Consts.MCP.Server.DefaultBodyPath,
-                logger: logger)
+            : this(name, RequireNonEmpty(configs), logger) { }
+
+        private CompositeAiAgentConfig(string name, AiAgentConfig[] configs, ILogger? logger)
+            : base(name, configPath: string.Empty, bodyPath: configs[0].BodyPath, logger: logger)
         {
+            _configs = configs;
+            _paths = configs.Select(c => c.ConfigPath).ToArray();
+            ConfigPath = string.Join(PathDisplaySeparator, _paths);
+        }
+
+        private static AiAgentConfig[] RequireNonEmpty(IReadOnlyList<AiAgentConfig> configs)
+        {
+            if (configs == null)
+                throw new ArgumentNullException(nameof(configs));
             if (configs.Count == 0)
                 throw new ArgumentException("A composite config needs at least one child config.", nameof(configs));
-            _configs = configs.ToArray();
-            foreach (var key in _configs[0].IdentityKeys)
-                base.AddIdentityKey(key);
+            return configs.ToArray();
         }
 
         public override bool Configure()

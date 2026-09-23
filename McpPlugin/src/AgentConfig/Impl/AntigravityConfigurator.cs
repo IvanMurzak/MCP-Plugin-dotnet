@@ -45,7 +45,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         /// <c>&lt;UserProfile&gt;/.gemini/config/mcp_config.json</c> and
         /// <c>&lt;UserProfile&gt;/.gemini/antigravity/mcp_config.json</c>.
         /// </summary>
-        public IReadOnlyList<string> GlobalConfigPaths()
+        private IReadOnlyList<string> GlobalConfigPaths()
         {
             var home = _userProfileOverride ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             return new[]
@@ -56,26 +56,26 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         }
 
         protected override AiAgentConfig CreateStdioConfig(AgentConfiguratorSettings settings, ILogger? logger)
-            => Composite(logger, path => new JsonAiAgentConfig(AgentName, path, bodyPath: "mcpServers", logger: logger)
-                .AddIdentityKey("serverUrl")
-                .SetProperty("disabled", JsonValue.Create(false)!, requiredForConfiguration: true)
+            => Composite(logger, path => Entry(path, logger)
                 .SetProperty("command", JsonValue.Create(settings.ExecutableFullPath.Replace('\\', '/'))!, requiredForConfiguration: true, comparison: ValueComparisonMode.Path)
                 .SetProperty("args", AgentConfigBuilders.StdioArgs(settings), requiredForConfiguration: true)
-                .SetPropertyToRemove("url")
-                .SetPropertyToRemove("serverUrl")
-                .SetPropertyToRemove("type"));
+                .SetPropertyToRemove("serverUrl"));
 
         protected override AiAgentConfig CreateHttpConfig(AgentConfiguratorSettings settings, ILogger? logger)
-            => Composite(logger, path => new JsonAiAgentConfig(AgentName, path, bodyPath: "mcpServers", logger: logger)
-                .AddIdentityKey("serverUrl")
-                .SetProperty("disabled", JsonValue.Create(false)!, requiredForConfiguration: true)
+            => Composite(logger, path => Entry(path, logger)
                 .SetProperty("serverUrl", JsonValue.Create(settings.PinnedHttpUrl)!, requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
                 .SetPropertyToRemove("command")
-                .SetPropertyToRemove("args")
-                .SetPropertyToRemove("url")
-                .SetPropertyToRemove("type"));
+                .SetPropertyToRemove("args"));
 
-        private CompositeAiAgentConfig Composite(ILogger? logger, Func<string, AiAgentConfig> build)
+        /// <summary>The transport-independent part of the entry: <c>disabled:false</c>, no <c>url</c>/<c>type</c>.</summary>
+        private JsonAiAgentConfig Entry(string path, ILogger? logger)
+            => new JsonAiAgentConfig(AgentName, path, bodyPath: "mcpServers", logger: logger)
+                .AddIdentityKey("serverUrl")
+                .SetProperty("disabled", JsonValue.Create(false)!, requiredForConfiguration: true)
+                .SetPropertyToRemove("url")
+                .SetPropertyToRemove("type");
+
+        private CompositeAiAgentConfig Composite(ILogger? logger, Func<string, JsonAiAgentConfig> build)
             => new CompositeAiAgentConfig(AgentName, GlobalConfigPaths().Select(build).ToArray(), logger);
 
         protected override IReadOnlyList<ConfigurationSection> BuildSections(

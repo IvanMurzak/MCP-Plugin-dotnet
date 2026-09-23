@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.AgentConfig
@@ -194,12 +195,14 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             if (!config.ExpectedFileContent.Contains(settings.Token!, StringComparison.Ordinal))
                 return; // credential is not in the file (e.g. env-var placement) — nothing to warn about.
 
-            if (!IsProjectScopedPath(config.ConfigPath, settings.ProjectRootPath))
+            // A multi-file config (CompositeAiAgentConfig) is checked per file — ConfigPath is only its display string.
+            var projectFile = config.ConfigPaths.FirstOrDefault(p => IsProjectScopedPath(p, settings.ProjectRootPath));
+            if (projectFile == null)
                 return; // user-global config path — the preferred placement for a PAT.
 
             logger?.LogWarning(
                 "Writing an access token into project-scoped config file '{ConfigPath}' — it is under the project root and may be committed to version control. Prefer an env-var or user-scope placement for the access token.",
-                config.ConfigPath);
+                projectFile);
         }
 
         /// <summary>
@@ -382,26 +385,17 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             var config = transport == Common.Consts.MCP.Server.TransportMethod.stdio
                 ? GetStdioConfig(settings, logger)
                 : GetDisplayHttpConfig(settings, logger);
+            // A multi-file agent's manual-setup text names every file the entry belongs in.
             var paths = config.ConfigPaths;
-            if (paths.Count <= 1)
-            {
-                return new[]
-                {
-                    new ConfigurationSection("Configuration", true, new[]
-                    {
-                        ConfigurationItem.Description($"Use the Configure button to write the MCP entry into {AgentName}'s config file."),
-                        ConfigurationItem.ReadOnlyField(config.ExpectedFileContent)
-                    })
-                };
-            }
-
-            // Multi-file agent: the manual-setup text must name every file the entry belongs in.
             var items = new List<ConfigurationItem>
             {
-                ConfigurationItem.Description($"Use the Configure button to write the MCP entry into each of {AgentName}'s config files:")
+                ConfigurationItem.Description(paths.Count > 1
+                    ? $"Use the Configure button to write the MCP entry into each of {AgentName}'s config files:"
+                    : $"Use the Configure button to write the MCP entry into {AgentName}'s config file.")
             };
-            foreach (var path in paths)
-                items.Add(ConfigurationItem.Description($"- {path}"));
+            if (paths.Count > 1)
+                foreach (var path in paths)
+                    items.Add(ConfigurationItem.Description($"- {path}"));
             items.Add(ConfigurationItem.ReadOnlyField(config.ExpectedFileContent));
             return new[] { new ConfigurationSection("Configuration", true, items) };
         }
