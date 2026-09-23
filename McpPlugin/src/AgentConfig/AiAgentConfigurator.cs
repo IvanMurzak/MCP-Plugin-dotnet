@@ -19,15 +19,18 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
     /// <summary>
     /// How a credential is written into an HTTP MCP config (mcp-authorize b6). The default is
     /// <see cref="Oauth"/>: the config carries no credential at all — the client performs native
-    /// MCP OAuth against the server URL (design 03 Flow A). <see cref="AccessToken"/> is the
-    /// advanced PAT escape hatch (Flow C) written ONLY on explicit request, preferring env-var /
-    /// user-scope placement; writing it into a project-scoped file emits a warning.
+    /// MCP OAuth against the server URL (design 03 Flow A). <see cref="AccessToken"/> writes an
+    /// <c>Authorization: Bearer</c> credential: the Cloud <b>project key</b> (the Cloud default whenever
+    /// <see cref="AgentConfiguratorSettings.ProjectKey"/> is set — project-keys contract §7), the local
+    /// server's offline <c>token</c>-mode secret, or an explicitly supplied PAT (Flow C; writing a PAT into
+    /// a project-scoped file emits a warning). Resolve it with
+    /// <see cref="AgentConfiguratorSettings.ResolveHttpCredentialMode"/>.
     /// </summary>
     public enum HttpCredentialMode
     {
         /// <summary>Default: no credential written; the client authorizes natively via OAuth.</summary>
         Oauth,
-        /// <summary>Advanced PAT path: write the legacy bearer/header shape (explicit opt-in only).</summary>
+        /// <summary>Write the bearer/header shape (Cloud project key, local token-mode secret, or explicit PAT).</summary>
         AccessToken
     }
 
@@ -84,7 +87,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// flow completes the loop. The few clients that cannot do MCP OAuth override this to
         /// <c>false</c>, which is the signal for the engine UI to offer the "Advanced: use access
         /// token" (PAT) path (<see cref="HttpCredentialMode.AccessToken"/>, design 03 Flow C). The
-        /// flag never changes what the DEFAULT path writes — that path is always credential-free.
+        /// flag never changes what the resolved default writes: Cloud with a project key writes the
+        /// project-key header for every agent; otherwise the default is credential-free.
         /// </summary>
         public virtual bool SupportsOAuth => true;
 
@@ -113,12 +117,13 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         }
 
         /// <summary>
-        /// Returns the HTTP config, ready to <c>Configure()</c> / inspect. On the default
+        /// Returns the HTTP config, ready to <c>Configure()</c> / inspect. On the
         /// <see cref="HttpCredentialMode.Oauth"/> path the config is credential-free — the client
         /// authorizes natively against the pinned server URL (design 03 Flow A). Passing
-        /// <see cref="HttpCredentialMode.AccessToken"/> is the explicit advanced PAT path (Flow C):
-        /// it writes the legacy bearer shape and, when that credential would land in a
-        /// project-scoped file, emits a warning (prefer env-var / user-scope placement).
+        /// <see cref="HttpCredentialMode.AccessToken"/> writes <c>Authorization: Bearer
+        /// &lt;<see cref="AgentConfiguratorSettings.HttpBearerToken"/>&gt;</c> (the Cloud project key when set,
+        /// else the local secret / PAT); a PAT landing in a project-scoped file emits a warning. Writers
+        /// should pass <c>settings.ResolveHttpCredentialMode()</c>.
         /// <para>
         /// CONTRACT (mcp-authorize i1 / BUG-A): any caller that builds an EXPECTED config to compare
         /// against what <c>Configure()</c> writes — i.e. a status / detect / match check — MUST pass
@@ -163,8 +168,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             AgentConfiguratorSettings settings,
             HttpCredentialMode credentialMode)
         {
-            var writeToken = credentialMode == HttpCredentialMode.AccessToken && !string.IsNullOrEmpty(settings.Token);
-            config.ApplyHttpAuthorization(writeToken, settings.Token);
+            var bearer = settings.HttpBearerToken;
+            var writeToken = credentialMode == HttpCredentialMode.AccessToken && !string.IsNullOrEmpty(bearer);
+            config.ApplyHttpAuthorization(writeToken, bearer);
         }
 
         /// <summary>
@@ -180,7 +186,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             HttpCredentialMode credentialMode,
             ILogger? logger)
         {
-            if (credentialMode != HttpCredentialMode.AccessToken || string.IsNullOrEmpty(settings.Token))
+            // A Cloud project key is written into the project config by design (owner ruling 2026-09-23:
+            // no git warnings for project keys) — it is pin-bound and revocable. Only a PAT / local secret warns.
+            if (credentialMode != HttpCredentialMode.AccessToken || settings.HasProjectKey || string.IsNullOrEmpty(settings.Token))
                 return;
 
             if (!config.ExpectedFileContent.Contains(settings.Token!, StringComparison.Ordinal))
@@ -368,15 +376,15 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Common.Consts.MCP.Server.TransportMethod transport,
             ILogger? logger)
         {
-            // Display path: intentionally renders the credential-free OAuth shape (no resolved
-            // credential mode). Do NOT thread settings.ResolveHttpCredentialMode() here — this is a
-            // user-visible ReadOnlyField, and the AccessToken shape would surface the raw
-            // Authorization: Bearer <secret> in the UI. Only the status validators (IsDetected /
-            // IsConfigured / GetStatus) resolve the mode, because they must MATCH what Configure
-            // wrote; display must not EXPOSE the secret (mcp-authorize i1 / BUG-A scoping).
+            // Display path: must not EXPOSE a secret (mcp-authorize i1 / BUG-A scoping), so a PAT /
+            // local-secret snapshot still renders the credential-free OAuth shape. A Cloud project-key
+            // snapshot renders the SAME shape Configure writes (the Authorization header is present) with
+            // the key redacted to a placeholder, so the preview never contradicts the written file.
             var config = transport == Common.Consts.MCP.Server.TransportMethod.stdio
                 ? GetStdioConfig(settings, logger)
-                : GetHttpConfig(settings, logger);
+                : settings.HasProjectKey
+                    ? GetHttpConfig(settings.ForDisplay(), logger, HttpCredentialMode.AccessToken)
+                    : GetHttpConfig(settings, logger);
             return new[]
             {
                 new ConfigurationSection("Configuration", true, new[]

@@ -1,0 +1,130 @@
+{
+  "description": "Cross-language golden vectors for the local project-key cache ~/.ai-game-dev/project-keys.json (project-keys contract §6). Authored in MCP-Plugin-dotnet (C# ProjectKeyStore) and vendored byte-identical into AI-Game-Dev-CLI-Core (TS). The document below is the canonical PLAIN-JSON form, i.e. the UTF-8 bytes BEFORE protection: on POSIX it is the file content (mode 0600); on Windows the file is the raw CryptProtectData (CurrentUser, null entropy, CRYPTPROTECT_UI_FORBIDDEN) blob of those bytes — the identical envelope credentials.json uses — so no DPAPI output appears here. Compare PARSED VALUES, never raw bytes (indentation differs between the C# and TS writers). Entry names are '<issuerOrigin>#<pin>': issuerOrigin is the WHATWG URL origin (lower-case scheme+host, default port dropped, no path/query/fragment/trailing slash) and pin is the v2 pin lower-cased (exactly 8 hex).",
+  "issuerOrigins": [
+    { "input": "https://ai-game.dev", "origin": "https://ai-game.dev" },
+    { "input": "https://ai-game.dev/", "origin": "https://ai-game.dev" },
+    { "input": "HTTPS://AI-Game.DEV:443/", "origin": "https://ai-game.dev" },
+    { "input": "https://ai-game.dev/api/mcp/project-keys?x=1#frag", "origin": "https://ai-game.dev" },
+    { "input": "https://ai-game.dev:8443/mcp", "origin": "https://ai-game.dev:8443" },
+    { "input": "http://localhost:8080/", "origin": "http://localhost:8080" },
+    { "input": "http://127.0.0.1:80/mcp", "origin": "http://127.0.0.1" },
+    { "input": "http://[::1]:5703/", "origin": "http://[::1]:5703" }
+  ],
+  "invalidIssuers": ["", "   ", "ai-game.dev", "/relative/path", "ftp://ai-game.dev", "not a url"],
+  "entryNames": [
+    { "issuer": "https://ai-game.dev", "pin": "aabbccdd", "name": "https://ai-game.dev#aabbccdd" },
+    { "issuer": "HTTPS://AI-GAME.DEV/", "pin": "AABBCCDD", "name": "https://ai-game.dev#aabbccdd" },
+    { "issuer": "http://localhost:5703/mcp", "pin": "0f1e2d3c", "name": "http://localhost:5703#0f1e2d3c" }
+  ],
+  "invalidPins": ["", "aabbcc", "aabbccdd0", "aabbccdg", "aabb ccd", "aabbccdd11223344"],
+  "document": {
+    "version": 1,
+    "futureTopLevel": { "must": "survive" },
+    "keys": {
+      "https://ai-game.dev#aabbccdd": {
+        "key": "agd_pk_Gv1n0-aabbccdd-unity-key-value-xxxxxxxxxxxxxxxxxxx",
+        "keyId": "pk_101",
+        "pin": "aabbccdd",
+        "issuer": "https://ai-game.dev",
+        "sub": "usr_9f8e7d6c",
+        "engine": "unity",
+        "createdAt": "2026-09-23T10:11:12.000Z"
+      },
+      "https://ai-game.dev#11223344": {
+        "key": "agd_pk_Gv1n0-11223344-godot-key-value-yyyyyyyyyyyyyyyyyyy",
+        "keyId": "pk_102",
+        "pin": "11223344",
+        "issuer": "https://ai-game.dev",
+        "sub": "usr_9f8e7d6c",
+        "engine": "godot",
+        "createdAt": "2026-09-23T10:11:13.000Z",
+        "futureEntryField": 42
+      },
+      "http://localhost:5703#aabbccdd": {
+        "key": "agd_pk_Gv1n0-local-issuer-same-pin-zzzzzzzzzzzzzzzzzzzzz",
+        "keyId": "pk_7",
+        "pin": "aabbccdd",
+        "issuer": "http://localhost:5703",
+        "sub": "usr_local",
+        "engine": "unreal",
+        "createdAt": "2026-09-22T00:00:00.000Z"
+      }
+    }
+  },
+  "lookups": [
+    { "issuer": "https://ai-game.dev", "pin": "aabbccdd", "expectKey": "agd_pk_Gv1n0-aabbccdd-unity-key-value-xxxxxxxxxxxxxxxxxxx", "expectSub": "usr_9f8e7d6c", "expectKeyId": "pk_101" },
+    { "issuer": "HTTPS://AI-Game.dev:443/", "pin": "AABBCCDD", "expectKey": "agd_pk_Gv1n0-aabbccdd-unity-key-value-xxxxxxxxxxxxxxxxxxx", "expectSub": "usr_9f8e7d6c", "expectKeyId": "pk_101" },
+    { "issuer": "http://localhost:5703", "pin": "aabbccdd", "expectKey": "agd_pk_Gv1n0-local-issuer-same-pin-zzzzzzzzzzzzzzzzzzzzz", "expectSub": "usr_local", "expectKeyId": "pk_7" },
+    { "issuer": "https://ai-game.dev", "pin": "deadbeef", "expectKey": null }
+  ],
+  "put": {
+    "entry": {
+      "key": "agd_pk_Gv1n0-11223344-regenerated-wwwwwwwwwwwwwwwwwwwwwwwww",
+      "keyId": "pk_103",
+      "pin": "11223344",
+      "issuer": "https://ai-game.dev/",
+      "sub": "usr_9f8e7d6c",
+      "engine": "godot",
+      "createdAt": "2026-09-23T11:00:00.000Z"
+    },
+    "after": {
+      "version": 1,
+      "futureTopLevel": { "must": "survive" },
+      "keys": {
+        "https://ai-game.dev#aabbccdd": {
+          "key": "agd_pk_Gv1n0-aabbccdd-unity-key-value-xxxxxxxxxxxxxxxxxxx",
+          "keyId": "pk_101",
+          "pin": "aabbccdd",
+          "issuer": "https://ai-game.dev",
+          "sub": "usr_9f8e7d6c",
+          "engine": "unity",
+          "createdAt": "2026-09-23T10:11:12.000Z"
+        },
+        "https://ai-game.dev#11223344": {
+          "key": "agd_pk_Gv1n0-11223344-regenerated-wwwwwwwwwwwwwwwwwwwwwwwww",
+          "keyId": "pk_103",
+          "pin": "11223344",
+          "issuer": "https://ai-game.dev",
+          "sub": "usr_9f8e7d6c",
+          "engine": "godot",
+          "createdAt": "2026-09-23T11:00:00.000Z",
+          "futureEntryField": 42
+        },
+        "http://localhost:5703#aabbccdd": {
+          "key": "agd_pk_Gv1n0-local-issuer-same-pin-zzzzzzzzzzzzzzzzzzzzz",
+          "keyId": "pk_7",
+          "pin": "aabbccdd",
+          "issuer": "http://localhost:5703",
+          "sub": "usr_local",
+          "engine": "unreal",
+          "createdAt": "2026-09-22T00:00:00.000Z"
+        }
+      }
+    }
+  },
+  "putIntoEmpty": {
+    "entry": {
+      "key": "agd_pk_first-key-on-a-fresh-machine-vvvvvvvvvvvvvvvvvvvvvvvvv",
+      "keyId": "pk_1",
+      "pin": "CAFEBABE",
+      "issuer": "https://ai-game.dev",
+      "sub": "usr_new",
+      "engine": "unity",
+      "createdAt": "2026-09-23T12:00:00.000Z"
+    },
+    "after": {
+      "version": 1,
+      "keys": {
+        "https://ai-game.dev#cafebabe": {
+          "key": "agd_pk_first-key-on-a-fresh-machine-vvvvvvvvvvvvvvvvvvvvvvvvv",
+          "keyId": "pk_1",
+          "pin": "cafebabe",
+          "issuer": "https://ai-game.dev",
+          "sub": "usr_new",
+          "engine": "unity",
+          "createdAt": "2026-09-23T12:00:00.000Z"
+        }
+      }
+    }
+  }
+}

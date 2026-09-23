@@ -88,10 +88,25 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             return this;
         }
 
+        /// <summary>
+        /// Key of the static HTTP-header inline table (Codex <c>config.toml</c>:
+        /// <c>http_headers = { "Authorization" = "Bearer …" }</c> on a streamable-HTTP server entry).
+        /// </summary>
+        public const string HttpHeadersKey = "http_headers";
+
         public override void ApplyHttpAuthorization(bool isRequired, string? token)
         {
-            // TOML HTTP config format does not currently support injecting
-            // authorization headers. Implement when TOML HTTP auth is needed.
+            if (isRequired && !string.IsNullOrEmpty(token))
+            {
+                SetProperty(
+                    HttpHeadersKey,
+                    new Dictionary<string, string> { ["Authorization"] = $"Bearer {token}" },
+                    requiredForConfiguration: true);
+            }
+            else
+            {
+                SetPropertyToRemove(HttpHeadersKey);
+            }
         }
 
         public override void ApplyStdioAuthorization(bool isRequired, string? token)

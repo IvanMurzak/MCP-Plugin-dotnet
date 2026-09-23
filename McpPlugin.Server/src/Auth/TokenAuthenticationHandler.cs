@@ -34,6 +34,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         public const string ScopeClaimType = "scope";
         public const string ClientIdClaimType = "client_id";
 
+        /// <summary>
+        /// Claim carrying the pin a project key is bound to (project-keys contract §5). Present only for a
+        /// project-key principal; <see cref="McpSessionTokenMiddleware"/> enforces it against the path pin.
+        /// </summary>
+        public const string ProjectPinClaimType = "agd_project_pin";
+
         readonly IAuthorizationWebhookService _authorizationWebhookService;
         readonly IOAuthTokenValidator? _oauthValidator;
         readonly OAuthResourceServerConfig? _oauthConfig;
@@ -187,6 +193,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 claims.Add(new Claim(ScopeClaimType, validation.Scope!));
             if (!string.IsNullOrEmpty(validation.ClientId))
                 claims.Add(new Claim(ClientIdClaimType, validation.ClientId!));
+            if (!string.IsNullOrEmpty(validation.ProjectPin))
+                claims.Add(new Claim(ProjectPinClaimType, validation.ProjectPin!));
 
             var identity = new ClaimsIdentity(claims, SchemeName);
             var principal = new ClaimsPrincipal(identity);

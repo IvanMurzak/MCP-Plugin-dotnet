@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Server.Tools;
@@ -72,6 +73,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         /// <summary>Machine-readable error code returned when a present pin cannot be parsed.</summary>
         public const string InvalidProjectPinError = "invalid_project_pin";
 
+        /// <summary>Machine-readable error code returned when a project key is used against another project's pin.</summary>
+        public const string ProjectPinMismatchError = "project_pin_mismatch";
+
         private readonly RequestDelegate _next;
 
         public McpSessionTokenMiddleware(RequestDelegate next) => _next = next;
@@ -88,6 +92,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             if (pinParse == ProjectPinParse.Malformed)
             {
                 await WriteInvalidProjectPinAsync(context).ConfigureAwait(false);
+                return;
+            }
+
+            // ── Project-key pin binding (project-keys contract §5). ──
+            // A project key's authority is ONE project: a request with no path pin is routed as if it
+            // carried the key's pin; a request naming a DIFFERENT pin is refused outright (403), never
+            // routed. Account-wide credentials (JWT, PAT) carry no pin claim and are unaffected.
+            if (ResolveEffectiveProjectPin(pinParse, projectPin, context.User, out projectPin) == ProjectKeyPinCheck.Mismatch)
+            {
+                await WriteProjectPinMismatchAsync(context).ConfigureAwait(false);
                 return;
             }
 
@@ -234,6 +248,58 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             }
 
             return sawMarker ? ProjectPinParse.Valid : ProjectPinParse.Absent;
+        }
+
+        /// <summary>Outcome of binding a request to a project key's pin (see <see cref="ResolveEffectiveProjectPin"/>).</summary>
+        public enum ProjectKeyPinCheck
+        {
+            /// <summary>The principal is not a project key — the path pin (or its absence) stands.</summary>
+            NotProjectKey = 0,
+            /// <summary>Project key; the path pin equals the key's pin, or was absent and now IS the key's pin.</summary>
+            Bound = 1,
+            /// <summary>Project key used against a different project's pin — the request must be refused (403).</summary>
+            Mismatch = 2,
+        }
+
+        /// <summary>
+        /// Applies the project-keys contract §5 to a parsed path pin: when <paramref name="user"/> carries a
+        /// <see cref="TokenAuthenticationHandler.ProjectPinClaimType"/> claim, an absent path pin becomes the
+        /// token pin, an equal one (case-insensitive) stands, and a different one is a
+        /// <see cref="ProjectKeyPinCheck.Mismatch"/>. Pure — shared by the middleware and the session layer so
+        /// both key the SAME effective pin.
+        /// </summary>
+        public static ProjectKeyPinCheck ResolveEffectiveProjectPin(ProjectPinParse pathParse, string? pathPin, ClaimsPrincipal? user, out string? effectivePin)
+        {
+            effectivePin = pathPin;
+            var tokenPin = user?.FindFirst(TokenAuthenticationHandler.ProjectPinClaimType)?.Value;
+            if (string.IsNullOrEmpty(tokenPin))
+                return ProjectKeyPinCheck.NotProjectKey;
+
+            if (pathParse != ProjectPinParse.Valid || string.IsNullOrEmpty(pathPin))
+            {
+                effectivePin = tokenPin!.ToLowerInvariant();
+                return ProjectKeyPinCheck.Bound;
+            }
+
+            if (string.Equals(pathPin, tokenPin, StringComparison.OrdinalIgnoreCase))
+                return ProjectKeyPinCheck.Bound;
+
+            effectivePin = null;
+            return ProjectKeyPinCheck.Mismatch;
+        }
+
+        /// <summary>
+        /// Refuses a project-key request aimed at another project's pin. Terminal — no handler, hub or tool
+        /// observes the request. Neither pin is echoed (the caller knows what it sent).
+        /// </summary>
+        static Task WriteProjectPinMismatchAsync(HttpContext context)
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return context.Response.WriteAsJsonAsync(new
+            {
+                error = ProjectPinMismatchError,
+                message = "This project key is bound to a different project; it cannot access the project pin in the request path."
+            }, context.RequestAborted);
         }
 
         /// <summary>

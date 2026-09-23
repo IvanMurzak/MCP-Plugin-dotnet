@@ -64,11 +64,18 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
         public string? Scope { get; }
         public string? ClientId { get; }
 
+        /// <summary>
+        /// The pin a project key is bound to (project-keys contract §3/§5), or null for an account-wide
+        /// token (JWT, PAT). When set, the request may only reach that project.
+        /// </summary>
+        public string? ProjectPin { get; }
+
         /// <summary><c>"jwt"</c> or <c>"opaque"</c>.</summary>
         public string TokenType { get; }
 
-        private OAuthValidationResult(bool succeeded, string? failureReason, string? subject, string? scope, string? clientId, string tokenType)
+        private OAuthValidationResult(bool succeeded, string? failureReason, string? subject, string? scope, string? clientId, string tokenType, string? projectPin = null)
         {
+            ProjectPin = projectPin;
             Succeeded = succeeded;
             FailureReason = failureReason;
             Subject = subject;
@@ -79,6 +86,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
 
         public static OAuthValidationResult Success(string tokenType, string? subject, string? scope, string? clientId = null)
             => new OAuthValidationResult(true, null, subject, scope, clientId, tokenType);
+
+        /// <summary>Success for a project key bound to <paramref name="projectPin"/>.</summary>
+        public static OAuthValidationResult SuccessForProjectKey(string tokenType, string? subject, string? scope, string projectPin, string? clientId = null)
+            => new OAuthValidationResult(true, null, subject, scope, clientId, tokenType, projectPin);
 
         public static OAuthValidationResult Fail(string tokenType, string reason)
             => new OAuthValidationResult(false, reason, null, null, null, tokenType);

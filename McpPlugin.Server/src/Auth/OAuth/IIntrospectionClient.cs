@@ -36,12 +36,25 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
         public string? Scope { get; }
         public DateTimeOffset? ExpiresAt { get; }
 
-        public IntrospectionResult(bool active, string? subject = null, string? scope = null, DateTimeOffset? expiresAt = null)
+        /// <summary>
+        /// The <c>agd_project_pin</c> extension member (project-keys contract §3): present ONLY for a project
+        /// key (<c>agd_pk_…</c>), whose authority is strictly bound to this v2 pin (8 lower-case hex). Null for
+        /// every other token (PATs stay account-wide).
+        /// </summary>
+        public string? ProjectPin { get; }
+
+        /// <summary>The RFC 7662 <c>token_type</c> member, when the AS returned one (e.g. <c>project_key</c>).</summary>
+        public string? TokenType { get; }
+
+        public IntrospectionResult(bool active, string? subject = null, string? scope = null, DateTimeOffset? expiresAt = null,
+            string? projectPin = null, string? tokenType = null)
         {
             Active = active;
             Subject = subject;
             Scope = scope;
             ExpiresAt = expiresAt;
+            ProjectPin = projectPin;
+            TokenType = tokenType;
         }
 
         public static IntrospectionResult Inactive { get; } = new IntrospectionResult(false);

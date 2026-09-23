@@ -133,13 +133,46 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
                     && expProp.TryGetInt64(out var expUnix)
                     ? DateTimeOffset.FromUnixTimeSeconds(expUnix) : (DateTimeOffset?)null;
 
-                result = new IntrospectionResult(true, sub, scope, exp);
+                string? tokenType = root.TryGetProperty("token_type", out var typeProp) && typeProp.ValueKind == JsonValueKind.String
+                    ? typeProp.GetString() : null;
+
+                // Project keys (project-keys contract §3) carry the pin their authority is bound to. A pin
+                // member that is present but not a string / not a well-formed v2 pin is fail-closed: the
+                // token must never be read as an unbound (account-wide) credential.
+                string? projectPin = null;
+                if (root.TryGetProperty(ProjectPinMember, out var pinProp))
+                {
+                    projectPin = pinProp.ValueKind == JsonValueKind.String ? NormalizeProjectPin(pinProp.GetString()) : null;
+                    if (projectPin == null)
+                    {
+                        result = IntrospectionResult.Inactive;
+                        return true;
+                    }
+                }
+
+                result = new IntrospectionResult(true, sub, scope, exp, projectPin, tokenType);
                 return true;
             }
             catch (JsonException)
             {
                 return false;
             }
+        }
+
+        /// <summary>The RFC 7662 extension member carrying a project key's bound pin (contract §3).</summary>
+        public const string ProjectPinMember = "agd_project_pin";
+
+        /// <summary>Lower-cases and validates a v2 project pin (exactly 8 hex chars); null when malformed.</summary>
+        internal static string? NormalizeProjectPin(string? pin)
+        {
+            if (pin == null || pin.Length != 8)
+                return null;
+            foreach (var c in pin)
+            {
+                if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+                    return null;
+            }
+            return pin.ToLowerInvariant();
         }
 
         private static string Hash(string token)

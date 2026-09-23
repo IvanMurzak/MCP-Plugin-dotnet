@@ -141,7 +141,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                             // The pin is re-parsed from the original request path rather than read from
                             // ambient state, so the key never depends on AsyncLocal flow. Malformed pins
                             // were already rejected upstream by McpSessionTokenMiddleware.
-                            McpSessionTokenMiddleware.TryExtractProjectPin(context.Request.Path.Value, out var projectPin);
+                            var pinParse = McpSessionTokenMiddleware.TryExtractProjectPin(context.Request.Path.Value, out var projectPin);
+                            // A project key with no path pin is keyed under its bound pin — the same effective
+                            // pin the middleware routes by (a mismatch never reaches here: it was 403'd).
+                            McpSessionTokenMiddleware.ResolveEffectiveProjectPin(pinParse, projectPin, context.User, out projectPin);
 
                             var reaper = server.Services?.GetService<IMcpSessionReaper>();
                             identityLease = reaper?.Claim(identity?.AccountId, instanceId, projectPin, mcpClientSessionId);
