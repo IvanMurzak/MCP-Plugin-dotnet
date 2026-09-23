@@ -11,7 +11,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 
@@ -24,8 +23,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
     /// <list type="bullet">
     /// <item><see cref="Configure"/> writes EVERY candidate (creating missing files); true only when all succeed.
     /// A failing path is logged and listed in <see cref="FailedConfigPaths"/> — the other files are still written.</item>
-    /// <item><see cref="IsConfigured"/> is true ⇔ at least one candidate file exists AND every candidate that
-    /// exists is correctly configured. A missing file is ignored; an existing stale file fails the check.</item>
+    /// <item><see cref="IsConfigured"/> is true ⇔ EVERY candidate file exists AND is correctly configured — we
+    /// cannot know which file the agent reads, so a missing or stale candidate fails the check.</item>
     /// <item><see cref="Unconfigure"/> removes the entry from every existing candidate; never creates a file.</item>
     /// </list>
     /// <see cref="AiAgentConfig.ConfigPath"/> is a display string listing every path (so a UI or CLI that prints
@@ -100,19 +99,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         public override bool IsDetected() => _configs.Any(c => c.IsDetected());
 
-        public override bool IsConfigured()
-        {
-            var anyExists = false;
-            foreach (var config in _configs)
-            {
-                if (!config.ConfigPaths.Any(File.Exists))
-                    continue;
-                anyExists = true;
-                if (!config.IsConfigured())
-                    return false;
-            }
-            return anyExists;
-        }
+        public override bool IsConfigured() => _configs.All(c => c.IsConfigured());
 
         public override void ApplyHttpAuthorization(bool isRequired, string? token)
         {
