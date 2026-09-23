@@ -21,8 +21,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
     /// <summary>
     /// Antigravity reads its global MCP config from ONE of two unpredictable locations
     /// (<c>~/.gemini/config/mcp_config.json</c> or <c>~/.gemini/antigravity/mcp_config.json</c>), so the
-    /// configurator writes both. Status: configured ⇔ at least one file exists AND every existing file is
-    /// correctly configured. Remove: clean every existing file, never create one.
+    /// configurator writes both. Status: configured ⇔ BOTH files exist AND both are correctly configured.
+    /// Remove: clean every existing file, never create one.
     /// </summary>
     public sealed class AntigravityDualConfigTests : IDisposable
     {
@@ -170,6 +170,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             config.Configure().ShouldBeFalse();
             config.FailedConfigPaths.ShouldBe(new[] { _pathB });
             Entry(_pathA).ShouldNotBeNull(); // the other file was still written
+            // An unwritable candidate keeps the agent out of Configured — we cannot know which file it reads.
+            _c.GetStatus(_settings, TransportMethod.streamableHttp).ShouldBe(ConfiguratorStatus.ReconfigureNeeded);
         }
 
         // ── Status ─────────────────────────────────────────────────────────────
@@ -182,19 +184,37 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         }
 
         [Fact]
-        public void Status_OnlyA_Configured_IsConfigured()
+        public void Status_OnlyA_Configured_IsNotConfigured_AndConfigureCreatesB()
         {
             ConfigureOnly(_pathA);
             File.Exists(_pathB).ShouldBeFalse();
-            _c.IsConfigured(_settings, TransportMethod.streamableHttp).ShouldBeTrue();
+            _c.IsConfigured(_settings, TransportMethod.streamableHttp).ShouldBeFalse();
+            _c.GetStatus(_settings, TransportMethod.streamableHttp).ShouldBe(ConfiguratorStatus.ReconfigureNeeded);
+            Http().Configure().ShouldBeTrue();
+            File.Exists(_pathB).ShouldBeTrue();
+            _c.GetStatus(_settings, TransportMethod.streamableHttp).ShouldBe(ConfiguratorStatus.Configured);
         }
 
         [Fact]
-        public void Status_OnlyB_Configured_IsConfigured()
+        public void Status_OnlyB_Configured_IsNotConfigured_AndConfigureCreatesA()
         {
             ConfigureOnly(_pathB);
             File.Exists(_pathA).ShouldBeFalse();
-            _c.IsConfigured(_settings, TransportMethod.streamableHttp).ShouldBeTrue();
+            _c.IsConfigured(_settings, TransportMethod.streamableHttp).ShouldBeFalse();
+            _c.GetStatus(_settings, TransportMethod.streamableHttp).ShouldBe(ConfiguratorStatus.ReconfigureNeeded);
+            Http().Configure().ShouldBeTrue();
+            File.Exists(_pathA).ShouldBeTrue();
+            _c.GetStatus(_settings, TransportMethod.streamableHttp).ShouldBe(ConfiguratorStatus.Configured);
+        }
+
+        [Fact]
+        public void Status_Stdio_OnlyOneFile_IsReconfigureNeeded()
+        {
+            var single = ((CompositeAiAgentConfig)_c.GetStdioConfig(_settings)).Configs.Single(c => c.ConfigPath == _pathA);
+            single.Configure().ShouldBeTrue();
+            File.Exists(_pathB).ShouldBeFalse();
+            _c.IsConfigured(_settings, TransportMethod.stdio).ShouldBeFalse();
+            _c.GetStatus(_settings, TransportMethod.stdio).ShouldBe(ConfiguratorStatus.ReconfigureNeeded);
         }
 
         [Fact]
