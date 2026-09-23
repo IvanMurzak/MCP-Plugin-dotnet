@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
 using static com.IvanMurzak.McpPlugin.Common.Consts.MCP.Server;
@@ -20,38 +21,62 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
 {
     /// <summary>
     /// Configurator for the Antigravity AI agent (global config, <c>serverUrl</c> for http,
-    /// <c>disabled</c> flag).
+    /// <c>disabled</c> flag). Antigravity reads its global MCP config from ONE of two locations, and which
+    /// one is not predictable per machine/install, so the entry is written to BOTH
+    /// (<see cref="GlobalConfigPaths"/>) through a <see cref="CompositeAiAgentConfig"/>.
     /// </summary>
     public sealed class AntigravityConfigurator : AiAgentConfigurator
     {
+        private readonly string? _userProfileOverride;
+
+        public AntigravityConfigurator() { }
+
+        /// <summary>Test seam: resolve the candidate paths under <paramref name="userProfile"/> instead of the real profile.</summary>
+        internal AntigravityConfigurator(string userProfile) => _userProfileOverride = userProfile;
+
         public override string AgentName => "Antigravity";
         public override string AgentId => "antigravity";
         public override string DownloadUrl => "https://antigravity.google/download";
         public override string? SkillsPath => ".agent/skills";
         public override string? IconName => "antigravity-64.png";
 
-        private static string GlobalConfigPath(AgentConfiguratorSettings s) => Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gemini", "config", "mcp_config.json");
+        /// <summary>
+        /// The candidate global config files, in priority order:
+        /// <c>&lt;UserProfile&gt;/.gemini/config/mcp_config.json</c> and
+        /// <c>&lt;UserProfile&gt;/.gemini/antigravity/mcp_config.json</c>.
+        /// </summary>
+        public IReadOnlyList<string> GlobalConfigPaths()
+        {
+            var home = _userProfileOverride ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            return new[]
+            {
+                Path.Combine(home, ".gemini", "config", "mcp_config.json"),
+                Path.Combine(home, ".gemini", "antigravity", "mcp_config.json")
+            };
+        }
 
         protected override AiAgentConfig CreateStdioConfig(AgentConfiguratorSettings settings, ILogger? logger)
-            => new JsonAiAgentConfig(AgentName, GlobalConfigPath(settings), bodyPath: "mcpServers", logger: logger)
+            => Composite(logger, path => new JsonAiAgentConfig(AgentName, path, bodyPath: "mcpServers", logger: logger)
                 .AddIdentityKey("serverUrl")
                 .SetProperty("disabled", JsonValue.Create(false)!, requiredForConfiguration: true)
                 .SetProperty("command", JsonValue.Create(settings.ExecutableFullPath.Replace('\\', '/'))!, requiredForConfiguration: true, comparison: ValueComparisonMode.Path)
                 .SetProperty("args", AgentConfigBuilders.StdioArgs(settings), requiredForConfiguration: true)
                 .SetPropertyToRemove("url")
                 .SetPropertyToRemove("serverUrl")
-                .SetPropertyToRemove("type");
+                .SetPropertyToRemove("type"));
 
         protected override AiAgentConfig CreateHttpConfig(AgentConfiguratorSettings settings, ILogger? logger)
-            => new JsonAiAgentConfig(AgentName, GlobalConfigPath(settings), bodyPath: "mcpServers", logger: logger)
+            => Composite(logger, path => new JsonAiAgentConfig(AgentName, path, bodyPath: "mcpServers", logger: logger)
                 .AddIdentityKey("serverUrl")
                 .SetProperty("disabled", JsonValue.Create(false)!, requiredForConfiguration: true)
                 .SetProperty("serverUrl", JsonValue.Create(settings.PinnedHttpUrl)!, requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
                 .SetPropertyToRemove("command")
                 .SetPropertyToRemove("args")
                 .SetPropertyToRemove("url")
-                .SetPropertyToRemove("type");
+                .SetPropertyToRemove("type"));
+
+        private CompositeAiAgentConfig Composite(ILogger? logger, Func<string, AiAgentConfig> build)
+            => new CompositeAiAgentConfig(AgentName, GlobalConfigPaths().Select(build).ToArray(), logger);
 
         protected override IReadOnlyList<ConfigurationSection> BuildSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)

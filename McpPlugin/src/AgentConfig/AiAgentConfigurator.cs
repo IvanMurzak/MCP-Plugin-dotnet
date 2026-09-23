@@ -382,14 +382,28 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             var config = transport == Common.Consts.MCP.Server.TransportMethod.stdio
                 ? GetStdioConfig(settings, logger)
                 : GetDisplayHttpConfig(settings, logger);
-            return new[]
+            var paths = config.ConfigPaths;
+            if (paths.Count <= 1)
             {
-                new ConfigurationSection("Configuration", true, new[]
+                return new[]
                 {
-                    ConfigurationItem.Description($"Use the Configure button to write the MCP entry into {AgentName}'s config file."),
-                    ConfigurationItem.ReadOnlyField(config.ExpectedFileContent)
-                })
+                    new ConfigurationSection("Configuration", true, new[]
+                    {
+                        ConfigurationItem.Description($"Use the Configure button to write the MCP entry into {AgentName}'s config file."),
+                        ConfigurationItem.ReadOnlyField(config.ExpectedFileContent)
+                    })
+                };
+            }
+
+            // Multi-file agent: the manual-setup text must name every file the entry belongs in.
+            var items = new List<ConfigurationItem>
+            {
+                ConfigurationItem.Description($"Use the Configure button to write the MCP entry into each of {AgentName}'s config files:")
             };
+            foreach (var path in paths)
+                items.Add(ConfigurationItem.Description($"- {path}"));
+            items.Add(ConfigurationItem.ReadOnlyField(config.ExpectedFileContent));
+            return new[] { new ConfigurationSection("Configuration", true, items) };
         }
 
         /// <summary>
