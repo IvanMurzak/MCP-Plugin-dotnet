@@ -38,12 +38,12 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         private readonly AiAgentConfig[] _configs;
         private readonly string[] _paths;
-        private List<string> _failedConfigPaths = new();
+        private IReadOnlyList<string> _failedConfigPaths = Array.Empty<string>();
 
         /// <summary>The per-file child configs, in priority order.</summary>
         public IReadOnlyList<AiAgentConfig> Configs => _configs;
 
-        /// <summary>The candidate file paths, one per child, in priority order.</summary>
+        /// <summary>Every child's candidate file paths, in priority order.</summary>
         public override IReadOnlyList<string> ConfigPaths => _paths;
 
         /// <summary>The paths whose write failed during the last <see cref="Configure"/> call (empty on success).</summary>
@@ -59,8 +59,12 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             : base(name, configPath: string.Empty, bodyPath: configs[0].BodyPath, logger: logger)
         {
             _configs = configs;
-            _paths = configs.Select(c => c.ConfigPath).ToArray();
+            // Read each child's ConfigPaths, not its ConfigPath: a nested composite's ConfigPath is only a display string.
+            _paths = configs.SelectMany(c => c.ConfigPaths).ToArray();
             ConfigPath = string.Join(PathDisplaySeparator, _paths);
+            // Surface the children's identity keys (e.g. Antigravity's serverUrl) on the composite too.
+            foreach (var key in configs.SelectMany(c => c.IdentityKeys))
+                AddIdentityKey(key);
         }
 
         private static AiAgentConfig[] RequireNonEmpty(IReadOnlyList<AiAgentConfig> configs)
@@ -101,7 +105,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             var anyExists = false;
             foreach (var config in _configs)
             {
-                if (!File.Exists(config.ConfigPath))
+                if (!config.ConfigPaths.Any(File.Exists))
                     continue;
                 anyExists = true;
                 if (!config.IsConfigured())

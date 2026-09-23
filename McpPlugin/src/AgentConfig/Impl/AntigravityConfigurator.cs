@@ -23,7 +23,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
     /// Configurator for the Antigravity AI agent (global config, <c>serverUrl</c> for http,
     /// <c>disabled</c> flag). Antigravity reads its global MCP config from ONE of two locations, and which
     /// one is not predictable per machine/install, so the entry is written to BOTH
-    /// (<see cref="GlobalConfigPaths"/>) through a <see cref="CompositeAiAgentConfig"/>.
+    /// (<c>~/.gemini/config/mcp_config.json</c> and <c>~/.gemini/antigravity/mcp_config.json</c>) through a <see cref="CompositeAiAgentConfig"/>.
     /// </summary>
     public sealed class AntigravityConfigurator : AiAgentConfigurator
     {
