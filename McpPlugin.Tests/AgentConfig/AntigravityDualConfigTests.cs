@@ -21,7 +21,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
     /// <summary>
     /// Antigravity reads its global MCP config from ONE of two unpredictable locations
     /// (<c>~/.gemini/config/mcp_config.json</c> or <c>~/.gemini/antigravity/mcp_config.json</c>), so the
-    /// configurator writes both. Status: configured ⇔ BOTH files exist AND both are correctly configured. Remove: clean every existing file, never create one.
+    /// configurator writes both. Status: configured ⇔ BOTH files exist AND both are correctly configured.
+    /// Remove: clean every existing file, never create one.
     /// </summary>
     public sealed class AntigravityDualConfigTests : IDisposable
     {
