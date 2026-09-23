@@ -117,9 +117,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             var root = ReadDocument(out _);
             if (root?["keys"] is not JsonObject keys)
                 return null;
-            if (keys[EntryName(issuer, pin)] is not JsonObject node)
-                return null;
+            return keys[EntryName(issuer, pin)] is JsonObject node ? ToEntry(node, issuer, pin) : null;
+        }
 
+        private static ProjectKeyEntry? ToEntry(JsonObject node, string issuer, string pin)
+        {
             var key = GetString(node, "key");
             if (string.IsNullOrEmpty(key))
                 return null;
@@ -155,7 +157,19 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// runs under the cross-process <c>credentials.lock</c> (contract §6).
         /// </summary>
         /// <exception cref="IOException">The lock is busy, or the existing file is unreadable (never overwritten).</exception>
-        public void Put(ProjectKeyEntry entry) => PutCore(entry, keepConcurrentWrite: false, keyReadBeforeMint: null);
+        public void Put(ProjectKeyEntry entry) => PutCore(entry, keepConcurrentWrite: false, keyReadBeforeMint: null, out _);
+
+        /// <summary>
+        /// <see cref="Put"/>, returning the entry it overwrote — read under the same lock as the write, so it is
+        /// exactly the key the cache stopped knowing (Regenerate revokes it, contract §7). <c>null</c> when there
+        /// was none.
+        /// </summary>
+        /// <exception cref="IOException">The lock is busy, or the existing file is unreadable (never overwritten).</exception>
+        internal ProjectKeyEntry? PutReturningReplaced(ProjectKeyEntry entry)
+        {
+            PutCore(entry, keepConcurrentWrite: false, keyReadBeforeMint: null, out var replaced);
+            return replaced;
+        }
 
         /// <summary>
         /// Stores a key minted after reading <paramref name="keyReadBeforeMint"/> (null = there was no entry) — UNLESS,
@@ -164,10 +178,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// </summary>
         /// <exception cref="IOException">The lock is busy, or the existing file is unreadable (never overwritten).</exception>
         public string PutUnlessConcurrentlyReplaced(ProjectKeyEntry entry, string? keyReadBeforeMint)
-            => PutCore(entry, keepConcurrentWrite: true, keyReadBeforeMint);
+            => PutCore(entry, keepConcurrentWrite: true, keyReadBeforeMint, out _);
 
-        private string PutCore(ProjectKeyEntry entry, bool keepConcurrentWrite, string? keyReadBeforeMint)
+        private string PutCore(ProjectKeyEntry entry, bool keepConcurrentWrite, string? keyReadBeforeMint, out ProjectKeyEntry? replaced)
         {
+            replaced = null;
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
             if (string.IsNullOrEmpty(entry.Key))
@@ -199,6 +214,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 node = new JsonObject();
                 keys[name] = node;
             }
+            else
+                replaced = ToEntry(node, issuer, pin);
 
             node["key"] = entry.Key;
             SetOrRemove(node, "keyId", entry.KeyId);
