@@ -32,7 +32,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
     /// <c>GET /api/mcp/project-keys/current</c> accepts it (a transient, non-401 failure of that check also
     /// reuses it); otherwise mint a NEW key with <c>POST /api/mcp/project-keys</c> using the machine access
     /// token, cache it, and return it. No machine login ⇒ <c>null</c>, and the caller keeps the URL-only
-    /// OAuth config. <see cref="RegenerateAsync"/> always mints and overwrites the cache entry.</para>
+    /// OAuth config. <see cref="RegenerateAsync"/> always mints, overwrites the cache entry and revokes the key
+    /// it replaced.</para>
     ///
     /// <para>Typical engine use:
     /// <code>
@@ -189,9 +190,10 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         /// <summary>
         /// "Regenerate key": mints a fresh key for <paramref name="pin"/>, overwrites the cache entry, then
-        /// revokes the previously cached key (<c>DELETE /api/mcp/project-keys/{keyId}</c>, contract §7) with the
-        /// same access token. A failed revoke is logged and never fails the regenerate. Returns <c>null</c> when
-        /// not signed in or the mint fails — the cached entry is then left untouched and nothing is revoked.
+        /// revokes the key that entry held (<c>DELETE /api/mcp/project-keys/{keyId}</c>, contract §7) with the
+        /// same access token. A failed or cancelled revoke is logged and never fails the regenerate. Returns
+        /// <c>null</c> when not signed in or the mint fails — the cached entry is then left untouched and nothing
+        /// is revoked.
         /// </summary>
         public async Task<string?> RegenerateAsync(
             string pin, string engine, string machineName, string? label = null, CancellationToken cancellationToken = default)
@@ -203,13 +205,21 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 var accessToken = await _accessTokenProvider(cancellationToken).ConfigureAwait(false);
                 if (string.IsNullOrEmpty(accessToken) || IsCacheUnreadable())
                     return null;
-                var previous = Store.Get(Issuer, pin);
-                var (key, stored) = await MintAndStoreAsync(accessToken!, ResolveSubject(accessToken!), pin, engine, machineName, label, cancellationToken,
+                var sub = ResolveSubject(accessToken!);
+                var (key, replaced) = await MintAndStoreAsync(accessToken!, sub, pin, engine, machineName, label, cancellationToken,
                     keepConcurrentWrite: false, keyReadBeforeMint: null).ConfigureAwait(false);
-                // Revoke only once the new key is actually cached: a failed cache write leaves the old entry in
-                // place, and revoking it then would strand the cache on a dead key.
-                if (stored && previous is { KeyId: { Length: > 0 } oldKeyId })
-                    await RevokeAsync(accessToken!, oldKeyId, pin, cancellationToken).ConfigureAwait(false);
+                // Revoke exactly the entry the write replaced (read under the cache lock, so a key another process
+                // cached during the mint is not left valid but unknown to the cache — contract §6). A failed cache
+                // write replaces nothing, so the old key stays cached AND valid.
+                if (replaced != null && !string.Equals(replaced.Key, key, StringComparison.Ordinal))
+                {
+                    if (string.IsNullOrEmpty(replaced.KeyId))
+                        _logger?.LogWarning("The replaced project key for pin {Pin} has no key id and cannot be revoked; revoke it from the account page.", pin);
+                    else if (replaced.Sub != null && sub != null && !string.Equals(replaced.Sub, sub, StringComparison.Ordinal))
+                        _logger?.LogWarning("The replaced project key {KeyId} for pin {Pin} belongs to another account and cannot be revoked with this login.", replaced.KeyId, pin);
+                    else
+                        await RevokeAsync(accessToken!, replaced.KeyId!, pin, cancellationToken).ConfigureAwait(false);
+                }
                 return key;
             }
             finally
@@ -291,14 +301,17 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 if (!response.IsSuccessStatusCode)
                     _logger?.LogWarning("Revoking the previous project key {KeyId} for pin {Pin} was refused by {Issuer}: HTTP {Status}.", keyId, pin, Issuer, (int)response.StatusCode);
             }
-            catch (Exception ex) when (!(ex is OperationCanceledException) || !cancellationToken.IsCancellationRequested)
+            catch (Exception ex)
             {
+                // Including cancellation: the new key is already minted and cached, so the regenerate has
+                // succeeded and must still hand it back (contract §7 — a revoke failure never fails it).
                 _logger?.LogWarning("Revoking the previous project key {KeyId} for pin {Pin} could not reach {Issuer}: {Message}", keyId, pin, Issuer, ex.Message);
             }
         }
 
-        /// <returns>The key to use (<c>null</c> when the mint failed) and whether it was written to the cache.</returns>
-        private async Task<(string? Key, bool Stored)> MintAndStoreAsync(
+        /// <returns>The key to use (<c>null</c> when the mint failed) and, for an overwrite
+        /// (<paramref name="keepConcurrentWrite"/> false), the cache entry it replaced.</returns>
+        private async Task<(string? Key, ProjectKeyEntry? Replaced)> MintAndStoreAsync(
             string accessToken, string? sub, string pin, string engine, string machineName, string? label,
             CancellationToken cancellationToken, bool keepConcurrentWrite, string? keyReadBeforeMint)
         {
@@ -325,13 +338,13 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger?.LogWarning("Project key mint for pin {Pin} was refused by {Issuer}: HTTP {Status}.", pin, Issuer, (int)response.StatusCode);
-                    return (null, false);
+                    return (null, null);
                 }
             }
             catch (Exception ex) when (!(ex is OperationCanceledException) || !cancellationToken.IsCancellationRequested)
             {
                 _logger?.LogWarning("Project key mint for pin {Pin} could not reach {Issuer}: {Message}", pin, Issuer, ex.Message);
-                return (null, false);
+                return (null, null);
             }
 
             var json = TryParseObject(body);
@@ -339,7 +352,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             if (string.IsNullOrEmpty(key))
             {
                 _logger?.LogWarning("Project key mint for pin {Pin} returned no key.", pin);
-                return (null, false);
+                return (null, null);
             }
 
             try
@@ -355,17 +368,16 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                     CreatedAt = ProjectKeyStore.GetString(json!, "created_at"),
                 };
                 // Mint happened OUTSIDE the lock; a concurrent writer's fresh entry wins over ours (contract §6).
-                key = keepConcurrentWrite ? Store.PutUnlessConcurrentlyReplaced(minted, keyReadBeforeMint) : minted.Key;
-                if (!keepConcurrentWrite)
-                    Store.Put(minted);
-                return (key, true);
+                if (keepConcurrentWrite)
+                    return (Store.PutUnlessConcurrentlyReplaced(minted, keyReadBeforeMint), null);
+                return (key, Store.PutReturningReplaced(minted));
             }
             catch (Exception ex) when (ex is System.IO.IOException || ex is UnauthorizedAccessException
                 || ex is System.Security.Cryptography.CryptographicException)
             {
                 // The key is valid either way; a cache write failure only costs a re-mint next time.
                 _logger?.LogWarning("Project key cache write failed: {Message}", ex.Message);
-                return (key, false);
+                return (key, null);
             }
         }
 

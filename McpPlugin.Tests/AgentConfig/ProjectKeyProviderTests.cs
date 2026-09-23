@@ -56,6 +56,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             public string CurrentPin = Pin;
             public HttpStatusCode RevokeStatus = HttpStatusCode.NoContent;
             public Exception? RevokeThrows;
+            public Action? OnRevoke;
             private int _minted;
 
             protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -86,6 +87,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
                 }
                 if (request.Method == HttpMethod.Delete && request.RequestUri.AbsolutePath.StartsWith(ProjectKeyProvider.MintPath + "/"))
                 {
+                    OnRevoke?.Invoke();
                     if (RevokeThrows != null)
                         throw RevokeThrows;
                     return new HttpResponseMessage(RevokeStatus);
@@ -99,9 +101,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
 
         private ProjectKeyStore Store => new ProjectKeyStore(_baseDir);
 
-        private void SeedCache(string key, string sub) => Store.Put(new ProjectKeyEntry
+        private void SeedCache(string key, string sub, string? keyId = "pk_old") => Store.Put(new ProjectKeyEntry
         {
-            Key = key, KeyId = "pk_old", Pin = Pin, Issuer = "https://ai-game.dev", Sub = sub, Engine = "unity",
+            Key = key, KeyId = keyId, Pin = Pin, Issuer = "https://ai-game.dev", Sub = sub, Engine = "unity",
         });
 
         [Fact]
@@ -331,6 +333,81 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             (await Provider(server, () => Jwt("usr_1")).RegenerateAsync(Pin, "unity", "PC")).ShouldBeNull();
             server.Requests.ShouldNotContain(r => r.Method == HttpMethod.Delete);
             Store.Get("https://ai-game.dev", Pin)!.Key.ShouldBe("agd_pk_cached");
+        }
+
+        [Fact]
+        public async Task Regenerate_RevokesOnlyOnceTheNewKeyIsCached()
+        {
+            SeedCache("agd_pk_cached", "usr_1");
+            var server = new FakeServer();
+            string? cachedAtRevoke = null;
+            server.OnRevoke = () => cachedAtRevoke = Store.Get("https://ai-game.dev", Pin)?.Key;
+
+            (await Provider(server, () => Jwt("usr_1")).RegenerateAsync(Pin, "unity", "PC")).ShouldBe("agd_pk_minted_1");
+            cachedAtRevoke.ShouldBe("agd_pk_minted_1");
+        }
+
+        [Fact]
+        public async Task Regenerate_CacheWriteFails_RevokesNothing_AndStillReturnsTheNewKey()
+        {
+            // The cache becomes unreadable during the mint, so the write is refused and the old entry is not
+            // replaced: revoking it would leave the cache (and every config reading it) on a dead key.
+            SeedCache("agd_pk_cached", "usr_1");
+            var server = new FakeServer();
+            server.OnMint = () => File.WriteAllBytes(Store.FilePath, new byte[] { 0x7b, 0x00, 0xff, 0x13 });
+
+            (await Provider(server, () => Jwt("usr_1")).RegenerateAsync(Pin, "unity", "PC")).ShouldBe("agd_pk_minted_1");
+            server.Requests.ShouldNotContain(r => r.Method == HttpMethod.Delete);
+        }
+
+        [Fact]
+        public async Task Regenerate_ConcurrentWriterDuringMint_RevokesTheKeyActuallyReplaced()
+        {
+            // Another process caches a key for the pin while our mint is in flight. Regenerate overwrites it, so
+            // THAT key is the one the cache stops knowing — revoking the stale pre-mint entry would leave it valid
+            // and unrevocable (contract §6).
+            SeedCache("agd_pk_cached", "usr_1");
+            var server = new FakeServer();
+            server.OnMint = () => SeedCache("agd_pk_theirs", "usr_1", keyId: "pk_theirs");
+
+            (await Provider(server, () => Jwt("usr_1")).RegenerateAsync(Pin, "unity", "PC")).ShouldBe("agd_pk_minted_1");
+            server.Requests.Single(r => r.Method == HttpMethod.Delete).Path.ShouldBe(ProjectKeyProvider.MintPath + "/pk_theirs");
+        }
+
+        [Fact]
+        public async Task Regenerate_CancelledDuringRevoke_StillReturnsTheNewKey()
+        {
+            SeedCache("agd_pk_cached", "usr_1");
+            using var cts = new CancellationTokenSource();
+            var server = new FakeServer();
+            server.OnRevoke = () =>
+            {
+                cts.Cancel();
+                throw new OperationCanceledException(cts.Token);
+            };
+
+            (await Provider(server, () => Jwt("usr_1")).RegenerateAsync(Pin, "unity", "PC", cancellationToken: cts.Token)).ShouldBe("agd_pk_minted_1");
+            Store.Get("https://ai-game.dev", Pin)!.Key.ShouldBe("agd_pk_minted_1");
+        }
+
+        [Fact]
+        public async Task Regenerate_ReplacedKeyOfAnotherAccount_IsNotRevoked()
+        {
+            SeedCache("agd_pk_other_account", "usr_OTHER");
+            var server = new FakeServer();
+
+            (await Provider(server, () => Jwt("usr_1")).RegenerateAsync(Pin, "unity", "PC")).ShouldBe("agd_pk_minted_1");
+            server.Requests.ShouldNotContain(r => r.Method == HttpMethod.Delete);
+        }
+
+        [Fact]
+        public async Task Regenerate_ReplacedKeyWithoutKeyId_IsNotRevoked()
+        {
+            SeedCache("agd_pk_legacy", "usr_1", keyId: null);
+            var server = new FakeServer();
+
+            (await Provider(server, () => Jwt("usr_1")).RegenerateAsync(Pin, "unity", "PC")).ShouldBe("agd_pk_minted_1");
+            server.Requests.ShouldNotContain(r => r.Method == HttpMethod.Delete);
         }
 
         [Fact]
