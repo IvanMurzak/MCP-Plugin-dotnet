@@ -76,7 +76,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
 
             return LooksLikeJwt(token, out var header, out var payload, out var signature)
                 ? ValidateJwtAsync(header, payload, signature, plane, cancellationToken)
-                : ValidateOpaqueAsync(token, cancellationToken);
+                : ValidateOpaqueAsync(token, plane, cancellationToken);
         }
 
         // A JWT is exactly three non-empty base64url segments whose header decodes to a JSON object
@@ -193,8 +193,25 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
             }
         }
 
-        private async Task<OAuthValidationResult> ValidateOpaqueAsync(string token, CancellationToken cancellationToken)
+        /// <summary>The raw-value prefix of a project key (project-keys contract §1).</summary>
+        public const string ProjectKeyPrefix = "agd_pk_";
+
+        /// <summary>The <c>token_type</c> the AS reports for a project key (contract §3).</summary>
+        public const string ProjectKeyTokenType = "project_key";
+
+        private const string ProjectKeyOnPluginPlane = "project key is not valid on the plugin plane";
+
+        private async Task<OAuthValidationResult> ValidateOpaqueAsync(string token, TokenValidationPlane plane, CancellationToken cancellationToken)
         {
+            // A project key is recognised by ANY of its three markers, so the plane / pin rules below can
+            // never be skipped by an AS response that omits one of them.
+            var looksLikeProjectKey = token.StartsWith(ProjectKeyPrefix, StringComparison.Ordinal);
+
+            // Plane restriction (contract §4): a project key is an AGENT-plane credential only. The prefix check
+            // saves the introspection round-trip; the post-introspection check covers keys recognised by pin/type.
+            if (looksLikeProjectKey && plane == TokenValidationPlane.Plugin)
+                return OAuthValidationResult.Fail("opaque", ProjectKeyOnPluginPlane);
+
             var result = await _introspection.IntrospectAsync(token, cancellationToken).ConfigureAwait(false);
             if (!result.Active)
                 return OAuthValidationResult.Fail("opaque", "inactive token");
@@ -202,7 +219,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
             if (result.ExpiresAt is DateTimeOffset exp && _now() > exp + _config.ClockSkew)
                 return OAuthValidationResult.Fail("opaque", "token expired");
 
-            return OAuthValidationResult.Success("opaque", result.Subject, result.Scope);
+            var isProjectKey = looksLikeProjectKey
+                || result.ProjectPin != null
+                || string.Equals(result.TokenType, ProjectKeyTokenType, StringComparison.Ordinal);
+            if (!isProjectKey)
+                return OAuthValidationResult.Success("opaque", result.Subject, result.Scope);
+
+            if (plane == TokenValidationPlane.Plugin)
+                return OAuthValidationResult.Fail("opaque", ProjectKeyOnPluginPlane);
+
+            // Fail closed: a project key whose pin is missing must never be treated as account-wide.
+            if (result.ProjectPin == null)
+                return OAuthValidationResult.Fail("opaque", "project key without a bound project pin");
+
+            return OAuthValidationResult.SuccessForProjectKey("opaque", result.Subject, result.Scope, result.ProjectPin);
         }
 
         /// <summary>

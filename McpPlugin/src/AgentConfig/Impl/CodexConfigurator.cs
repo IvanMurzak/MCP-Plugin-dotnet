@@ -18,8 +18,9 @@ using static com.IvanMurzak.McpPlugin.Common.Consts.MCP.Server;
 namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
 {
     /// <summary>
-    /// Configurator for the Codex AI agent — the only TOML-based agent. HTTP auth is injected
-    /// via a <c>bearer_token_env_var</c> indirection rather than an inline header.
+    /// Configurator for the Codex AI agent — the only TOML-based agent. A Cloud project key is written as a
+    /// static <c>http_headers</c> inline table; a local token-mode secret / PAT goes through the
+    /// <c>bearer_token_env_var</c> indirection so it never lands in the file.
     /// </summary>
     public sealed class CodexConfigurator : AiAgentConfigurator
     {
@@ -58,18 +59,23 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
 
         protected override void ApplyHttpAuthorization(AiAgentConfig config, AgentConfiguratorSettings settings, HttpCredentialMode credentialMode)
         {
-            base.ApplyHttpAuthorization(config, settings, credentialMode);
-
             var tomlConfig = config as TomlAiAgentConfig
                 ?? throw new InvalidCastException($"Expected TomlAiAgentConfig for Codex HTTP configuration but got {config.GetType().Name}");
 
-            // Advanced PAT path only (mcp-authorize b6): Codex reads the token from the
-            // GAME_DEV_AUTH_TOKEN env var, so the secret never lands in the config file (the
-            // preferred placement). The default OAuth path writes neither the indirection nor a token.
-            if (credentialMode == HttpCredentialMode.AccessToken && !string.IsNullOrEmpty(settings.Token))
+            // Local token-mode secret / explicit PAT (mcp-authorize b6): Codex reads it from the GAME_DEV_AUTH_TOKEN
+            // env var, so that secret never lands in the file. Everything else — the Cloud project key (a static
+            // http_headers inline table, project-keys contract §7) and the credential-free OAuth shape — is the
+            // shared writer's job.
+            if (credentialMode == HttpCredentialMode.AccessToken && !settings.HasProjectKey && !string.IsNullOrEmpty(settings.Token))
+            {
+                tomlConfig.SetPropertyToRemove(TomlAiAgentConfig.HttpHeadersKey);
                 tomlConfig.SetProperty(EnvVarNameBearerToken, EnvVarNameAuthToken, requiredForConfiguration: true);
+            }
             else
+            {
+                base.ApplyHttpAuthorization(config, settings, credentialMode);
                 tomlConfig.SetPropertyToRemove(EnvVarNameBearerToken);
+            }
         }
 
         protected override IReadOnlyList<ConfigurationSection> BuildSections(
@@ -78,10 +84,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
             var addStdio = $"codex mcp add {AiAgentConfig.DefaultMcpServerName} \"{settings.ExecutableFullPath}\" port={settings.Port} plugin-timeout={settings.TimeoutMs} client-transport=stdio";
             var addHttp = $"codex mcp add {AiAgentConfig.DefaultMcpServerName} --url {settings.Host}";
             if (settings.IsHttpAuthRequired)
-            {
                 addStdio += $" --bearer-token-env-var={EnvVarNameAuthToken}";
+            // Only when the written HTTP config actually uses the env-var bearer (local token mode / PAT) —
+            // a Cloud OAuth config is URL-only and must not be described as needing the variable.
+            if (settings.WritesHttpBearer)
                 addHttp += $" --bearer-token-env-var={EnvVarNameAuthToken}";
-            }
 
             if (transport == TransportMethod.stdio)
             {
@@ -105,8 +112,23 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
                 };
             }
 
+            if (settings.HasProjectKey)
+            {
+                // Cloud project key: the written config carries a static Authorization header
+                // (http_headers), which `codex mcp add` cannot express — so the manual path is the TOML
+                // snippet (key redacted in the preview), never the env-var flow below.
+                return new[]
+                {
+                    new ConfigurationSection("Configuration", true, new[]
+                    {
+                        ConfigurationItem.Description($"Use the Configure button to write the MCP entry, including this project's key, into '.codex/config.toml'."),
+                        ConfigurationItem.ReadOnlyField(GetDisplayHttpConfig(settings, logger).ExpectedFileContent)
+                    })
+                };
+            }
+
             var items = new List<ConfigurationItem>();
-            if (settings.IsHttpAuthRequired)
+            if (settings.WritesHttpBearer)
             {
                 items.Add(ConfigurationItem.Warning($"Authorization is enabled. Set the '{EnvVarNameAuthToken}' environment variable before starting Codex in terminal."));
                 items.Add(settings.IsWindows

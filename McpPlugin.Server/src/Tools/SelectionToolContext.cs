@@ -33,12 +33,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
         /// <summary>The raw bearer credential (JWT or PAT) forwarded verbatim to the AS on enroll. Never logged.</summary>
         public string? Bearer { get; }
 
-        public SelectionToolContext(string? accountId, string? sessionId, string? projectPin, string? bearer)
+        /// <summary>The pin a project-key credential is bound to (see <see cref="ConnectionIdentity.BoundProjectPin"/>); null for account-wide credentials.</summary>
+        public string? BoundProjectPin { get; }
+
+        public SelectionToolContext(string? accountId, string? sessionId, string? projectPin, string? bearer, string? boundProjectPin = null)
         {
             AccountId = accountId;
             SessionId = sessionId;
             ProjectPin = projectPin;
             Bearer = bearer;
+            BoundProjectPin = boundProjectPin;
         }
 
         /// <summary>Snapshot the current request's ambient session context.</summary>
@@ -47,6 +51,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 McpSessionTokenContext.CurrentIdentity?.AccountId,
                 McpSessionTokenContext.CurrentSessionId,
                 McpSessionTokenContext.CurrentProjectPin,
-                McpSessionTokenContext.CurrentToken);
+                McpSessionTokenContext.CurrentToken,
+                McpSessionTokenContext.CurrentIdentity?.BoundProjectPin);
     }
 }

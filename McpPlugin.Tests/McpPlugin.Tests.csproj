@@ -48,6 +48,9 @@
          (unified-machine-auth 04 §1, task x1) — byte-identical copy of
          cli-core/test/golden-vectors/MachineCredentials.GoldenVectors.json. -->
     <None Include="../McpPlugin/src/AgentConfig/MachineCredentials.GoldenVectors.json" Link="MachineCredentials.GoldenVectors.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Cross-language golden vectors for the project-key cache (project-keys contract §6) — AUTHORED here
+         and vendored byte-identical into cli-core. -->
+    <None Include="../McpPlugin/src/AgentConfig/project-keys.golden.json" Link="project-keys.golden.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -69,6 +69,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
 
         public IServiceProvider Services => _app.Services;
 
+        /// <summary>The loopback base URL (<c>http://127.0.0.1:&lt;port&gt;</c>) — for requests on routes other than <c>/mcp</c>.</summary>
+        public string BaseUrl => _baseUrl;
+
         /// <summary>The account subject the DEFAULT bearer token carries.</summary>
         public string AccountId { get; private set; } = string.Empty;
 

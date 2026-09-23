@@ -78,8 +78,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public const int RenameRetryDelayMs = 250;
 
         // 0600 (owner rw) and 0700 (owner rwx) as binary bit-patterns — C# has no octal literals.
-        private const uint PosixFilePermissions = 0b110_000_000;      // rw- --- ---
-        private const uint PosixDirectoryPermissions = 0b111_000_000; // rwx --- ---
+        internal const uint PosixFilePermissions = 0b110_000_000;      // rw- --- ---
+        internal const uint PosixDirectoryPermissions = 0b111_000_000; // rwx --- ---
         private const int CRYPTPROTECT_UI_FORBIDDEN = 0x1;
 
         private static readonly JsonSerializerOptions SerializerOptions = new JsonSerializerOptions
@@ -357,7 +357,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// before the rename leaves the destination untouched (plus a stray <c>*.tmp</c> sibling the
         /// reader ignores).
         /// </summary>
-        private void WriteFileAtomic(string destinationPath, byte[] bytes)
+        internal static void WriteFileAtomic(string destinationPath, byte[] bytes)
         {
             var directory = Path.GetDirectoryName(destinationPath);
             if (string.IsNullOrEmpty(directory))
@@ -418,7 +418,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             throw new IOException("Atomic rename retry loop exited unexpectedly for: " + destinationPath);
         }
 
-        private static byte[] ReadAllBytesWithRetry(string path)
+        internal static byte[] ReadAllBytesWithRetry(string path)
         {
             const int readAttempts = 3;
             for (var attempt = 1; ; attempt++)
@@ -457,7 +457,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         private static bool IsWindows => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
-        private static void SetPosixPermissions(string path, uint mode)
+        internal static void SetPosixPermissions(string path, uint mode)
         {
 #if NET8_0_OR_GREATER
             // OperatingSystem.IsWindows() is recognised by the platform-compatibility analyzer as a

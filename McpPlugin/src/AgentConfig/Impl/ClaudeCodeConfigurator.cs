@@ -42,7 +42,6 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         protected override IReadOnlyList<ConfigurationSection> BuildSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
         {
-            var isAuthRequired = settings.IsHttpAuthRequired;
             var token = !string.IsNullOrEmpty(settings.Token) ? settings.Token! : "<token>";
 
             if (transport == TransportMethod.stdio)
@@ -70,7 +69,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
                 };
             }
 
-            var authHeader = isAuthRequired ? $" --header \"Authorization: Bearer {token}\"" : string.Empty;
+            // The manual command must match what Configure writes: a bearer header only when the written
+            // config carries one (Cloud project key, local token mode). A Cloud OAuth config is URL-only.
+            var authHeader = settings.WritesHttpBearer ? $" --header \"Authorization: Bearer {settings.HttpBearerToken}\"" : string.Empty;
             // B8: the displayed "manual" command must use the SAME pinned URL that Configure writes into
             // .mcp.json (settings.PinnedHttpUrl, i.e. .../mcp/p/<pin>), not the bare unpinned host — an
             // unpinned URL only routes when the account has a single instance.

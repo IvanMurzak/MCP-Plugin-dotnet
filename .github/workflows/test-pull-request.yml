@@ -210,11 +210,11 @@ jobs:
       - name: Build
         run: dotnet build McpPlugin.Tests/McpPlugin.Tests.csproj --no-restore --configuration Release
 
-      - name: Golden-vector parity (C# ProjectIdentity reference)
+      - name: Golden-vector parity (C# ProjectIdentity + project-keys reference)
         run: >-
           dotnet test McpPlugin.Tests/McpPlugin.Tests.csproj
           --no-build --configuration Release --verbosity normal
-          --filter "FullyQualifiedName~ProjectIdentityGoldenVector"
+          --filter "FullyQualifiedName~ProjectIdentityGoldenVector|FullyQualifiedName~ProjectKeysGoldenVector"
           -- RunConfiguration.TreatNoTestsAsError=true
 
       - name: chain leg record

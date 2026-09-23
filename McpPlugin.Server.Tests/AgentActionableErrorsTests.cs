@@ -77,6 +77,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             text.ShouldNotContain("install"); // never suggests re-installing
         }
 
+        [Fact]
+        public void PinnedNoMatch_ForAProjectKey_NeverListsASiblingProject()
+        {
+            // Project-keys contract §5: a key bound to project A must not learn project B exists.
+            var registry = new AccountInstances();
+            registry.Register("acc-1", Meta("i-godot", engine: "godot", project: "OtherGame", pathHash: HashB, machine: "PC-2"), "conn-2");
+
+            var text = AgentActionableErrors.PinnedNoMatch(registry, "acc-1", boundProjectPin: PinA);
+
+            text.ShouldContain("not connected");
+            text.ShouldNotContain("OtherGame");
+            text.ShouldContain("Other connected instances: (none).");
+        }
+
         // ─────────────────────────── Strategy resolution → variant ───────────────────────────
 
         [Fact]

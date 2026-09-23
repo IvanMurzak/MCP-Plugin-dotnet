@@ -41,14 +41,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
             string? requestPath,
             CancellationToken cancellationToken = default)
         {
-            if (TryGetCached(bearerToken))
+            var cacheKey = CacheKey(AgentPlane, bearerToken);
+            if (TryGetCached(cacheKey))
                 return true;
 
             var result = await _inner.AuthorizeAiAgentAsync(
                 connectionId, bearerToken, remoteIpAddress, userAgent, requestPath, cancellationToken);
 
             if (result)
-                SetCached(bearerToken);
+                SetCached(cacheKey);
 
             return result;
         }
@@ -63,7 +64,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
             string? userAgent = null,
             string? requestPath = null)
         {
-            if (TryGetCached(bearerToken))
+            var cacheKey = CacheKey(PluginPlane, bearerToken);
+            if (TryGetCached(cacheKey))
                 return true;
 
             var result = await _inner.AuthorizePluginAsync(
@@ -71,10 +73,18 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
                 cancellationToken, remoteIpAddress, userAgent, requestPath);
 
             if (result)
-                SetCached(bearerToken);
+                SetCached(cacheKey);
 
             return result;
         }
+
+        // An allow is cached PER PLANE (project-keys contract §4): a credential the backend authorized on the
+        // agent plane (e.g. a project key) must still face the backend's plugin-plane check on the hub.
+        const string AgentPlane = "agent";
+        const string PluginPlane = "plugin";
+
+        static string? CacheKey(string plane, string? bearerToken) =>
+            bearerToken == null ? null : plane + "\0" + bearerToken;
 
         bool TryGetCached(string? bearerToken)
         {

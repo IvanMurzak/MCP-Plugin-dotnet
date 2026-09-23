@@ -82,7 +82,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
         // scoped (never cross-sub); only the project BASENAME is ever emitted, never a full path.
         ResponseCallTool HandleList(SelectionToolContext context)
         {
-            var instances = _instances.GetInstances(context.AccountId);
+            var instances = VisibleInstances(context);
             if (instances.Count == 0)
             {
                 return ResponseCallTool.Success(
@@ -161,7 +161,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             if (string.IsNullOrEmpty(context.SessionId))
                 return ResponseCallTool.Error("Cannot set a selection without an active MCP session.", ResponseErrorKind.BadRequest);
 
-            var instances = _instances.GetInstances(context.AccountId);
+            var instances = VisibleInstances(context);
             if (instances.Count == 0)
                 return ResponseCallTool.Error("No engine instances are connected for your account. Use enroll_engine_plugin to set one up.", ResponseErrorKind.Unavailable);
 
@@ -200,9 +200,25 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             return ResponseCallTool.Success($"Selected {target.Engine}:{target.ProjectName} ({target.InstanceId}) for this session.");
         }
 
+        /// <summary>
+        /// The account's instances this credential may see: all of them for an account-wide credential, only the
+        /// bound project's for a project key (contract §5) — so a key never lists or selects a sibling project.
+        /// </summary>
+        IReadOnlyList<PluginInstance> VisibleInstances(SelectionToolContext context)
+        {
+            var instances = _instances.GetInstances(context.AccountId);
+            return string.IsNullOrEmpty(context.BoundProjectPin)
+                ? instances
+                : instances.Where(i => i.MatchesPin(context.BoundProjectPin)).ToList();
+        }
+
         // ─────────────────────────────── enroll_engine_plugin ────────────────────────────────
         async Task<ResponseCallTool> HandleEnrollAsync(IReadOnlyDictionary<string, JsonElement> arguments, SelectionToolContext context, CancellationToken cancellationToken)
         {
+            // Enrollment mints a PLUGIN-plane credential; a project key is agent-plane only (contract §4).
+            if (!string.IsNullOrEmpty(context.BoundProjectPin))
+                return ResponseCallTool.Error("A project key cannot enroll engine plugins. Sign in on this machine instead.", ResponseErrorKind.BadRequest);
+
             var engine = (GetStringArg(arguments, "engine") ?? string.Empty).Trim().ToLowerInvariant();
             if (engine != "unity" && engine != "godot" && engine != "unreal")
                 return ResponseCallTool.Error("Argument 'engine' is required and must be one of: unity, godot, unreal.", ResponseErrorKind.BadRequest);

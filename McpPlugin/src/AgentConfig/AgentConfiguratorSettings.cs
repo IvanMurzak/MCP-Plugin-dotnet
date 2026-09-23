@@ -250,17 +250,75 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// (mcp-authorize g5/g6). A LOCAL server in the offline <c>token</c> mode is Bearer-gated, so
         /// its client config MUST carry the <c>Authorization: Bearer &lt;local-secret&gt;</c> header
         /// (<see cref="HttpCredentialMode.AccessToken"/>). Every other case — <c>none</c>, <c>oauth</c>,
-        /// and Cloud — keeps the default credential-free OAuth path (URL-only; the client authorizes
-        /// natively against the server URL). Single source of truth shared across engines so Unity /
+        /// and Cloud WITHOUT a <see cref="ProjectKey"/> — keeps the default credential-free OAuth path (URL-only;
+        /// the client authorizes natively against the server URL). Cloud WITH a project key is
+        /// <see cref="HttpCredentialMode.AccessToken"/> for every agent (project-keys contract §7). Single source of truth shared across engines so Unity /
         /// Godot / Unreal resolve the credential mode identically — the "expected" config a status
         /// check builds always matches what Configure writes. Pure; hoisted from Unity's former
         /// <c>AiAgentConfiguratorView.ResolveHttpCredentialMode</c> (mcp-authorize i1).
         /// </summary>
         public HttpCredentialMode ResolveHttpCredentialMode() =>
-            ConnectionMode == ConnectionMode.Local
-            && AuthOption == Consts.MCP.Server.AuthOption.token
+            (ConnectionMode == ConnectionMode.Local && AuthOption == Consts.MCP.Server.AuthOption.token)
+            || HasProjectKey
                 ? HttpCredentialMode.AccessToken
                 : HttpCredentialMode.Oauth;
+
+        /// <summary>
+        /// The Cloud <b>project key</b> (<c>agd_pk_…</c>, project-keys contract §1/§7): a non-expiring,
+        /// revocable credential strictly bound to <see cref="ProjectPin"/>, obtained from
+        /// <see cref="ProjectKeyProvider.GetOrMintAsync"/>. Set it with <see cref="WithProjectKey"/>. In
+        /// <see cref="ConnectionMode.Cloud"/> a non-empty key makes <see cref="ResolveHttpCredentialMode"/>
+        /// return <see cref="HttpCredentialMode.AccessToken"/> for EVERY agent (owner ruling 2026-09-23), so
+        /// the written config carries <c>Authorization: Bearer agd_pk_…</c>. <c>null</c> (no machine login,
+        /// mint failed) keeps the URL-only OAuth config. Ignored in <see cref="ConnectionMode.Local"/>.
+        /// </summary>
+        public string? ProjectKey { get; private set; }
+
+        /// <summary>True when this is a Cloud snapshot carrying a non-empty <see cref="ProjectKey"/>.</summary>
+        public bool HasProjectKey => ConnectionMode == ConnectionMode.Cloud && !string.IsNullOrEmpty(ProjectKey);
+
+        /// <summary>
+        /// The secret the HTTP writers put in <c>Authorization: Bearer &lt;secret&gt;</c> when the credential
+        /// mode is <see cref="HttpCredentialMode.AccessToken"/>: the <see cref="ProjectKey"/> when
+        /// <see cref="HasProjectKey"/>, otherwise <see cref="Token"/> (the local-server secret or an
+        /// explicitly supplied PAT — unchanged behaviour).
+        /// </summary>
+        public string? HttpBearerToken => HasProjectKey ? ProjectKey : Token;
+
+        /// <summary>
+        /// Returns a copy of these settings carrying <paramref name="projectKey"/> as <see cref="ProjectKey"/>.
+        /// Engines call <c>settings.WithProjectKey(await ProjectKeyProvider.GetOrMintAsync(...))</c> and then
+        /// use the ordinary <c>GetHttpConfig(settings, credentialMode: settings.ResolveHttpCredentialMode())</c>
+        /// path — nothing else changes. A <c>null</c>/empty key yields the OAuth (URL-only) shape.
+        /// </summary>
+        public AgentConfiguratorSettings WithProjectKey(string? projectKey)
+        {
+            // Memberwise: every setting (and the cached identity, which depends only on ProjectRootPath) carries over.
+            var copy = (AgentConfiguratorSettings)MemberwiseClone();
+            copy.ProjectKey = projectKey;
+            return copy;
+        }
+
+        /// <summary>
+        /// True when the HTTP config the writers produce for these settings (credential mode resolved via
+        /// <see cref="ResolveHttpCredentialMode"/>) carries an <c>Authorization: Bearer</c> credential. The
+        /// single predicate manual-step text must use so the displayed commands never contradict the written
+        /// file (unlike <see cref="IsHttpAuthRequired"/>, which is true for every Cloud snapshot, including the
+        /// URL-only OAuth one).
+        /// </summary>
+        public bool WritesHttpBearer =>
+            ResolveHttpCredentialMode() == HttpCredentialMode.AccessToken && !string.IsNullOrEmpty(HttpBearerToken);
+
+        /// <summary>Placeholder rendered instead of the real project key in user-visible previews.</summary>
+        public const string ProjectKeyDisplayPlaceholder = "agd_pk_REDACTED"; // ASCII-safe: JSON writers escape < and >
+
+        /// <summary>
+        /// A copy safe to render in a user-visible preview: the <see cref="ProjectKey"/> (if any) is replaced by
+        /// <see cref="ProjectKeyDisplayPlaceholder"/>, so the preview shows the SAME shape Configure writes (the
+        /// <c>Authorization</c> header is present) without exposing the secret.
+        /// </summary>
+        public AgentConfiguratorSettings ForDisplay() =>
+            HasProjectKey ? WithProjectKey(ProjectKeyDisplayPlaceholder) : this;
 
         /// <summary>Convenience: <see cref="OperatingSystem"/> is <see cref="OperatingSystemKind.Windows"/>.</summary>
         public bool IsWindows => OperatingSystem == OperatingSystemKind.Windows;
