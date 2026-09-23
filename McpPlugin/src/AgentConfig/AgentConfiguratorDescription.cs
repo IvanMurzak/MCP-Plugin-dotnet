@@ -112,7 +112,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         NotConfigured,
         /// <summary>A config entry is present and matches the current settings.</summary>
         Configured,
-        /// <summary>A config entry is present but is outdated — it no longer matches the current settings.</summary>
+        /// <summary>
+        /// A config entry is present but is outdated — it no longer matches the current settings. For a
+        /// multi-file config (<see cref="CompositeAiAgentConfig"/>) this also covers a correct entry in one
+        /// candidate file while another candidate is missing or stale; Configure writes every candidate.
+        /// </summary>
         ReconfigureNeeded
     }
 
@@ -138,7 +142,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// <summary>
         /// The three-state configuration status for the described transport (absent /
         /// configured-current / configured-but-stale). <see cref="ConfiguratorStatus.ReconfigureNeeded"/>
-        /// means a config entry exists on disk but no longer matches the current settings.
+        /// means a config entry exists on disk but no longer matches the current settings (or, for a
+        /// multi-file config, not every candidate file carries a matching entry).
         /// </summary>
         public ConfiguratorStatus Status { get; }
 
