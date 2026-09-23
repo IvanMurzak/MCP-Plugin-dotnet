@@ -111,10 +111,10 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         // ── Read / write ──────────────────────────────────────────────────────────────────────────
 
         /// <summary>The cached entry for <paramref name="issuer"/> + <paramref name="pin"/>, or <c>null</c>
-        /// when absent, malformed, or the file is unreadable (a cache miss is always recoverable by minting).</summary>
+        /// when absent, malformed, or the file is unreadable (see <see cref="IsUnreadable"/> to tell those apart).</summary>
         public ProjectKeyEntry? Get(string issuer, string pin)
         {
-            var root = ReadDocument();
+            var root = ReadDocument(out _);
             if (root?["keys"] is not JsonObject keys)
                 return null;
             if (keys[EntryName(issuer, pin)] is not JsonObject node)
@@ -137,10 +137,36 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         }
 
         /// <summary>
-        /// Writes <paramref name="entry"/> under <c>&lt;entry.Issuer origin&gt;#&lt;entry.Pin&gt;</c>, replacing the
-        /// known fields of any existing entry and keeping everything else in the file.
+        /// True when the cache file EXISTS but cannot be read (DPAPI failure, corrupt content). Such a file is
+        /// never overwritten (contract §6) — callers fall back to the URL-only config and surface the error.
         /// </summary>
-        public void Put(ProjectKeyEntry entry)
+        public bool IsUnreadable
+        {
+            get
+            {
+                ReadDocument(out var unreadable);
+                return unreadable;
+            }
+        }
+
+        /// <summary>
+        /// Writes <paramref name="entry"/> under <c>&lt;entry.Issuer origin&gt;#&lt;entry.Pin&gt;</c>, replacing the
+        /// known fields of any existing entry and keeping everything else in the file. The read-modify-write
+        /// runs under the cross-process <c>credentials.lock</c> (contract §6).
+        /// </summary>
+        /// <exception cref="IOException">The lock is busy, or the existing file is unreadable (never overwritten).</exception>
+        public void Put(ProjectKeyEntry entry) => PutCore(entry, keepConcurrentWrite: false, keyReadBeforeMint: null);
+
+        /// <summary>
+        /// Stores a key minted after reading <paramref name="keyReadBeforeMint"/> (null = there was no entry) — UNLESS,
+        /// once the lock is held, the entry for the same issuer/pin/account now carries a DIFFERENT key: another
+        /// process minted concurrently, and contract §6 says keep theirs. Returns the key that is cached afterwards.
+        /// </summary>
+        /// <exception cref="IOException">The lock is busy, or the existing file is unreadable (never overwritten).</exception>
+        public string PutUnlessConcurrentlyReplaced(ProjectKeyEntry entry, string? keyReadBeforeMint)
+            => PutCore(entry, keepConcurrentWrite: true, keyReadBeforeMint);
+
+        private string PutCore(ProjectKeyEntry entry, bool keepConcurrentWrite, string? keyReadBeforeMint)
         {
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
@@ -150,7 +176,16 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             var issuer = NormalizeIssuerOrigin(entry.Issuer);
             var pin = NormalizePin(entry.Pin);
 
-            var root = ReadDocument() ?? new JsonObject();
+            using var _ = AcquireLock();
+            var root = ReadDocumentForWrite() ?? new JsonObject();
+            if (keepConcurrentWrite
+                && root["keys"] is JsonObject current
+                && current[issuer + "#" + pin] is JsonObject theirs
+                && GetString(theirs, "key") is string theirKey && theirKey.Length > 0
+                && !string.Equals(theirKey, keyReadBeforeMint, StringComparison.Ordinal)
+                && string.Equals(GetString(theirs, "sub"), entry.Sub, StringComparison.Ordinal))
+                return theirKey;
+
             root["version"] = Math.Max(CurrentVersion, GetInt(root, "version"));
             if (root["keys"] is not JsonObject keys)
             {
@@ -174,13 +209,16 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             SetOrRemove(node, "createdAt", entry.CreatedAt);
 
             WriteDocument(root);
+            return entry.Key;
         }
 
         /// <summary>Removes the entry for <paramref name="issuer"/> + <paramref name="pin"/>. Returns whether one existed.</summary>
         public bool Remove(string issuer, string pin)
         {
-            var root = ReadDocument();
-            if (root?["keys"] is not JsonObject keys || !keys.Remove(EntryName(issuer, pin)))
+            var name = EntryName(issuer, pin);
+            using var _ = AcquireLock();
+            var root = ReadDocumentForWrite();
+            if (root?["keys"] is not JsonObject keys || !keys.Remove(name))
                 return false;
             WriteDocument(root);
             return true;
@@ -194,8 +232,14 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         // ── Internals ─────────────────────────────────────────────────────────────────────────────
 
-        private JsonObject? ReadDocument()
+        /// <summary>
+        /// Reads the document. <c>null</c> with <paramref name="unreadable"/> false = no file (or an empty one);
+        /// <c>null</c> with <paramref name="unreadable"/> true = the file exists but cannot be decoded (DPAPI key
+        /// lost, corrupt, not a JSON object) — a cache MISS for reads, but never an empty document to write over.
+        /// </summary>
+        private JsonObject? ReadDocument(out bool unreadable)
         {
+            unreadable = false;
             if (!File.Exists(FilePath))
                 return null;
             try
@@ -203,16 +247,35 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 var raw = MachineCredentialStore.ReadAllBytesWithRetry(FilePath);
                 if (raw.Length == 0)
                     return null;
-                return JsonNode.Parse(Encoding.UTF8.GetString(Decode(raw))) as JsonObject;
+                var root = JsonNode.Parse(Encoding.UTF8.GetString(Decode(raw))) as JsonObject;
+                unreadable = root == null;
+                return root;
+            }
+            catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
+            {
+                return null; // deleted between the existence check and the open
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException
                 || ex is CryptographicException || ex is JsonException)
             {
-                // Unreadable (DPAPI key lost, corrupt, concurrently deleted): a cache miss. The next Put
-                // rewrites a fresh document — every key in it is re-mintable and stays valid server-side.
+                unreadable = true;
                 return null;
             }
         }
+
+        /// <summary>The document to modify, or <c>null</c> when there is none; throws when the file is unreadable.</summary>
+        private JsonObject? ReadDocumentForWrite()
+        {
+            var root = ReadDocument(out var unreadable);
+            if (unreadable)
+                throw new IOException("Refusing to overwrite an unreadable project-key cache: " + FilePath);
+            return root;
+        }
+
+        /// <summary>Holds the cross-process <c>credentials.lock</c> for one read-modify-write (contract §6).</summary>
+        private MachineCredentialLockHandle AcquireLock() =>
+            new MachineCredentialLock(_baseDirectory).TryAcquire()
+            ?? throw new IOException("The machine credential lock is busy; the project-key cache was not written.");
 
         private void WriteDocument(JsonObject root) =>
             WriteBytes(Encoding.UTF8.GetBytes(root.ToJsonString(WriteOptions)));

@@ -62,12 +62,17 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         private readonly HttpClient _http;
         private readonly ILogger? _logger;
 
+        // Single-flight: concurrent get-or-mint / regenerate calls on one provider (e.g. "configure every agent")
+        // must not each miss the cache and mint their own key.
+        private readonly SemaphoreSlim _gate = new SemaphoreSlim(1, 1);
+
         /// <param name="accessTokenProvider">Returns the signed-in machine account's MCP-plane OAuth access
         /// token (agent or plugin family), or <c>null</c> when signed out.</param>
         /// <param name="issuer">Issuer / server base URL; normalised to its origin.</param>
         /// <param name="store">The local cache; defaults to <c>~/.ai-game-dev/project-keys.json</c>.</param>
         /// <param name="httpClient">Optional client (tests inject a fake handler).</param>
-        /// <param name="subjectFallback">Account <c>sub</c> to use when the access token is not a JWT.</param>
+        /// <param name="subjectFallback">The signed-in account's <c>sub</c> as the credential records it; preferred
+        /// over the access token's own <c>sub</c> claim (contract §6).</param>
         /// <param name="logger">Optional diagnostics sink. Never receives a secret.</param>
         public ProjectKeyProvider(
             Func<CancellationToken, Task<string?>> accessTokenProvider,
@@ -114,20 +119,28 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// not refresh — an expired login yields <c>null</c> (fall back to the OAuth config) until the engine
         /// or the app refreshes it.
         /// </summary>
+        /// <param name="issuer">Issuer override; when <c>null</c>, the origin of the stored credential's
+        /// <c>serverTarget</c> (contract §2 — a local-stack login never mints against production), else
+        /// <see cref="DefaultIssuer"/>.</param>
         public static ProjectKeyProvider FromMachineCredentials(
-            string issuer = DefaultIssuer,
+            string? issuer = null,
             MachineCredentialStore? credentialStore = null,
             ProjectKeyStore? store = null,
             HttpClient? httpClient = null,
             ILogger? logger = null)
         {
             var credentials = credentialStore ?? new MachineCredentialStore();
+            issuer ??= IssuerFromServerTarget(credentials.Read()?.ServerTarget);
             string? subject = null;
             return new ProjectKeyProvider(
                 _ =>
                 {
                     var read = credentials.Read();
-                    subject = read?.Subject;
+                    // Contract §6 account identity: credential subject, else the agent-family token's sub, else
+                    // the plugin-family token's (a plugin-only machine must still reuse its cached key).
+                    subject = read?.Subject
+                        ?? TryGetJwtSubject(read?.Families?.Agent?.AccessToken)
+                        ?? TryGetJwtSubject(read?.Families?.Plugin?.AccessToken);
                     return Task.FromResult(SelectUsableAccessToken(read, DateTimeOffset.UtcNow));
                 },
                 issuer, store ?? new ProjectKeyStore(credentials.BaseDirectory), httpClient, () => subject, logger);
@@ -146,20 +159,31 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             string pin, string engine, string machineName, string? label = null, CancellationToken cancellationToken = default)
         {
             pin = ProjectKeyStore.NormalizePin(pin);
-            var accessToken = await _accessTokenProvider(cancellationToken).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(accessToken))
-                return null; // no machine login: cannot mint, and a cached key cannot be attributed to anyone.
-
-            var sub = ResolveSubject(accessToken!);
-            var cached = Store.Get(Issuer, pin);
-            if (cached != null && sub != null && string.Equals(cached.Sub, sub, StringComparison.Ordinal))
+            await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                var validity = await ValidateAsync(cached.Key, pin, cancellationToken).ConfigureAwait(false);
-                if (validity != KeyValidity.Invalid)
-                    return cached.Key; // valid, or unverifiable right now (transient) — reuse (contract §6).
-            }
+                var accessToken = await _accessTokenProvider(cancellationToken).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(accessToken))
+                    return null; // no machine login: cannot mint, and a cached key cannot be attributed to anyone.
+                if (IsCacheUnreadable())
+                    return null;
 
-            return await MintAndStoreAsync(accessToken!, sub, pin, engine, machineName, label, cancellationToken).ConfigureAwait(false);
+                var sub = ResolveSubject(accessToken!);
+                var cached = Store.Get(Issuer, pin);
+                if (cached != null && sub != null && string.Equals(cached.Sub, sub, StringComparison.Ordinal))
+                {
+                    var validity = await ValidateAsync(cached.Key, pin, cancellationToken).ConfigureAwait(false);
+                    if (validity != KeyValidity.Invalid)
+                        return cached.Key; // valid, or unverifiable right now (transient) — reuse (contract §6).
+                }
+
+                return await MintAndStoreAsync(accessToken!, sub, pin, engine, machineName, label, cancellationToken,
+                    keepConcurrentWrite: true, keyReadBeforeMint: cached?.Key).ConfigureAwait(false);
+            }
+            finally
+            {
+                _gate.Release();
+            }
         }
 
         /// <summary>
@@ -171,10 +195,45 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             string pin, string engine, string machineName, string? label = null, CancellationToken cancellationToken = default)
         {
             pin = ProjectKeyStore.NormalizePin(pin);
-            var accessToken = await _accessTokenProvider(cancellationToken).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(accessToken))
-                return null;
-            return await MintAndStoreAsync(accessToken!, ResolveSubject(accessToken!), pin, engine, machineName, label, cancellationToken).ConfigureAwait(false);
+            await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var accessToken = await _accessTokenProvider(cancellationToken).ConfigureAwait(false);
+                if (string.IsNullOrEmpty(accessToken) || IsCacheUnreadable())
+                    return null;
+                return await MintAndStoreAsync(accessToken!, ResolveSubject(accessToken!), pin, engine, machineName, label, cancellationToken,
+                    keepConcurrentWrite: false, keyReadBeforeMint: null).ConfigureAwait(false);
+            }
+            finally
+            {
+                _gate.Release();
+            }
+        }
+
+        /// <summary>
+        /// An existing-but-unreadable cache is never overwritten (contract §6), so a key minted now could not be
+        /// cached and every call would mint another one: fall back to the URL-only config and surface the error.
+        /// </summary>
+        private bool IsCacheUnreadable()
+        {
+            if (!Store.IsUnreadable)
+                return false;
+            _logger?.LogWarning("The project-key cache {Path} exists but cannot be read; it is left untouched and the URL-only config is used.", Store.FilePath);
+            return true;
+        }
+
+        internal static string IssuerFromServerTarget(string? serverTarget)
+        {
+            if (string.IsNullOrWhiteSpace(serverTarget))
+                return DefaultIssuer;
+            try
+            {
+                return ProjectKeyStore.NormalizeIssuerOrigin(serverTarget!);
+            }
+            catch (ArgumentException)
+            {
+                return DefaultIssuer;
+            }
         }
 
         // ── Internals ─────────────────────────────────────────────────────────────────────────────
@@ -189,9 +248,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
                 using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
-                if (response.StatusCode == HttpStatusCode.Unauthorized
-                    || response.StatusCode == HttpStatusCode.Forbidden
-                    || response.StatusCode == HttpStatusCode.NotFound)
+                // Only 401 means revoked/unknown (contract §2/§6); every other failure is transient — reuse.
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
                     return KeyValidity.Invalid;
 
                 if (!response.IsSuccessStatusCode)
@@ -217,17 +275,17 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         private async Task<string?> MintAndStoreAsync(
             string accessToken, string? sub, string pin, string engine, string machineName, string? label,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken, bool keepConcurrentWrite, string? keyReadBeforeMint)
         {
             engine = NormalizeEngine(engine);
             var payload = new JsonObject
             {
                 ["project_pin"] = pin,
                 ["engine"] = engine,
-                ["machine_name"] = machineName ?? string.Empty,
+                ["machine_name"] = Head(machineName ?? string.Empty),
             };
             if (!string.IsNullOrEmpty(label))
-                payload["label"] = label;
+                payload["label"] = Tail(label!); // a folder path's tail is its distinguishing part (contract §2)
 
             string body;
             try
@@ -261,7 +319,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
             try
             {
-                Store.Put(new ProjectKeyEntry
+                var minted = new ProjectKeyEntry
                 {
                     Key = key!,
                     KeyId = ProjectKeyStore.GetString(json!, "key_id"),
@@ -270,9 +328,14 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                     Sub = sub,
                     Engine = engine,
                     CreatedAt = ProjectKeyStore.GetString(json!, "created_at"),
-                });
+                };
+                // Mint happened OUTSIDE the lock; a concurrent writer's fresh entry wins over ours (contract §6).
+                key = keepConcurrentWrite ? Store.PutUnlessConcurrentlyReplaced(minted, keyReadBeforeMint) : minted.Key;
+                if (!keepConcurrentWrite)
+                    Store.Put(minted);
             }
-            catch (Exception ex) when (ex is System.IO.IOException || ex is UnauthorizedAccessException)
+            catch (Exception ex) when (ex is System.IO.IOException || ex is UnauthorizedAccessException
+                || ex is System.Security.Cryptography.CryptographicException)
             {
                 // The key is valid either way; a cache write failure only costs a re-mint next time.
                 _logger?.LogWarning("Project key cache write failed: {Message}", ex.Message);
@@ -280,7 +343,14 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             return key;
         }
 
-        private string? ResolveSubject(string accessToken) => TryGetJwtSubject(accessToken) ?? _subjectFallback?.Invoke();
+        // Contract §6: the credential's recorded subject, else the access token's own sub claim.
+        private string? ResolveSubject(string accessToken) => _subjectFallback?.Invoke() ?? TryGetJwtSubject(accessToken);
+
+        /// <summary>The server stores <c>machine_name</c> / <c>label</c> in at most this many chars (contract §2).</summary>
+        public const int MaxDisplayFieldLength = 120;
+
+        private static string Head(string s) => s.Length <= MaxDisplayFieldLength ? s : s.Substring(0, MaxDisplayFieldLength);
+        private static string Tail(string s) => s.Length <= MaxDisplayFieldLength ? s : s.Substring(s.Length - MaxDisplayFieldLength);
 
         internal static string NormalizeEngine(string? engine)
         {
@@ -290,9 +360,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         /// <summary>The <c>sub</c> claim of a JWT (payload decoded WITHOUT verification — used only to tell
         /// which account a cached key belongs to), or <c>null</c> for an opaque token.</summary>
-        internal static string? TryGetJwtSubject(string token)
+        internal static string? TryGetJwtSubject(string? token)
         {
-            var parts = token.Split('.');
+            if (string.IsNullOrEmpty(token))
+                return null;
+            var parts = token!.Split('.');
             if (parts.Length != 3)
                 return null;
             try

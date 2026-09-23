@@ -72,8 +72,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                 var resolution = accountStrategy.ResolveCurrentSession();
                 if (resolution.Kind != InstanceResolutionKind.Resolved)
                 {
-                    var accountId = McpSessionTokenContext.CurrentIdentity?.AccountId;
-                    var actionable = AgentActionableErrors.ForResolution(resolution, accountStrategy.Instances, accountId);
+                    var identity = McpSessionTokenContext.CurrentIdentity;
+                    var actionable = AgentActionableErrors.ForResolution(resolution, accountStrategy.Instances, identity?.AccountId, identity?.BoundProjectPin);
                     logger.Trace("Call '{0}': no instance resolved ({1}); returning agent-actionable error.", request.Params.Name, resolution.Kind);
                     return new CallToolResult().SetError(actionable);
                 }

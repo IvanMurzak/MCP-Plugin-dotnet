@@ -393,10 +393,6 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         }
 
         /// <summary>
-        /// Resolves a (possibly project-relative) skills path to an absolute filesystem path,
-        /// mirroring the Unity editor's resolution but operating on the supplied value.
-        /// </summary>
-        /// <summary>
         /// The HTTP config a user-visible preview renders. Must not EXPOSE a secret (mcp-authorize i1 / BUG-A), so a
         /// PAT / local-secret snapshot renders the credential-free OAuth shape; a Cloud project-key snapshot renders
         /// the SAME shape Configure writes (header present), key redacted via <see cref="AgentConfiguratorSettings.ForDisplay"/>.
@@ -406,6 +402,10 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 ? GetHttpConfig(settings.ForDisplay(), logger, HttpCredentialMode.AccessToken)
                 : GetHttpConfig(settings, logger);
 
+        /// <summary>
+        /// Resolves a (possibly project-relative) skills path to an absolute filesystem path,
+        /// mirroring the Unity editor's resolution but operating on the supplied value.
+        /// </summary>
         protected static string ResolveAbsoluteSkillsPath(string projectRootPath, string folder)
         {
             if (string.IsNullOrEmpty(folder))

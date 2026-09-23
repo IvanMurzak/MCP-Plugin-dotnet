@@ -35,11 +35,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
         /// <summary>
         /// The text for a pinned session whose project's editor is closed while the account HAS other
         /// live instances (design 04 step 5, first variant). Lists the other connected instances and
-        /// never suggests re-installing.
+        /// never suggests re-installing. A project-key session (<paramref name="boundProjectPin"/> set) sees only
+        /// its own project's instances (project-keys contract §5) — never a sibling project of the account.
         /// </summary>
-        public static string PinnedNoMatch(AccountInstances instances, string? accountId)
+        public static string PinnedNoMatch(AccountInstances instances, string? accountId, string? boundProjectPin = null)
         {
             var others = instances.GetInstances(accountId);
+            if (!string.IsNullOrEmpty(boundProjectPin))
+                others = others.Where(i => i.MatchesPin(boundProjectPin)).ToList();
             var list = others.Count == 0
                 ? "(none)"
                 : string.Join(", ", others.Select(i => $"{i.Engine}:{i.ProjectName} on {i.MachineName}"));
@@ -48,10 +51,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
         }
 
         /// <summary>Maps an unresolved <see cref="InstanceResolution"/> to its agent-actionable text.</summary>
-        public static string ForResolution(InstanceResolution resolution, AccountInstances instances, string? accountId)
+        public static string ForResolution(InstanceResolution resolution, AccountInstances instances, string? accountId, string? boundProjectPin = null)
         {
             return resolution.Kind == InstanceResolutionKind.NoMatchPinned
-                ? PinnedNoMatch(instances, accountId)
+                ? PinnedNoMatch(instances, accountId, boundProjectPin)
                 : AccountEmpty;
         }
     }

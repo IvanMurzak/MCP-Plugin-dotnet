@@ -10,6 +10,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -51,6 +52,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             public Func<HttpStatusCode> CurrentStatus = () => HttpStatusCode.OK;
             public Exception? CurrentThrows;
             public HttpStatusCode MintStatus = HttpStatusCode.Created;
+            public Action? OnMint;
             public string CurrentPin = Pin;
             private int _minted;
 
@@ -70,6 +72,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
                 }
                 if (request.Method == HttpMethod.Post && request.RequestUri.AbsolutePath == ProjectKeyProvider.MintPath)
                 {
+                    OnMint?.Invoke();
                     if (MintStatus != HttpStatusCode.Created)
                         return new HttpResponseMessage(MintStatus) { Content = new StringContent("{\"error\":\"nope\"}") };
                     var pin = (string)JsonNode.Parse(body!)!["project_pin"]!;
@@ -170,6 +173,57 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             server.Requests.ShouldAllBe(r => r.Method == HttpMethod.Get);
         }
 
+        [Theory]
+        [InlineData(HttpStatusCode.Forbidden)]
+        [InlineData(HttpStatusCode.NotFound)]
+        public async Task CachedKey_Non401Failure_IsReused(HttpStatusCode status)
+        {
+            // Contract §6: only a 401 means revoked — any other failure is transient and must not mint a new key.
+            SeedCache("agd_pk_cached", "usr_1");
+            var server = new FakeServer { CurrentStatus = () => status };
+
+            (await Provider(server, () => Jwt("usr_1")).GetOrMintAsync(Pin, "unity", "PC")).ShouldBe("agd_pk_cached");
+            server.Requests.ShouldAllBe(r => r.Method == HttpMethod.Get);
+        }
+
+        [Fact]
+        public async Task UnreadableCache_ReturnsNull_WithoutMinting_AndLeavesTheFileUntouched()
+        {
+            Directory.CreateDirectory(_baseDir);
+            var corrupt = new byte[] { 0x7b, 0x00, 0xff, 0x13 };
+            File.WriteAllBytes(Store.FilePath, corrupt);
+            var server = new FakeServer();
+
+            (await Provider(server, () => Jwt("usr_1")).GetOrMintAsync(Pin, "unity", "PC")).ShouldBeNull();
+            (await Provider(server, () => Jwt("usr_1")).RegenerateAsync(Pin, "unity", "PC")).ShouldBeNull();
+            server.Requests.ShouldBeEmpty();
+            File.ReadAllBytes(Store.FilePath).ShouldBe(corrupt);
+        }
+
+        [Fact]
+        public async Task ConcurrentGetOrMint_OnOneProvider_MintsOnce()
+        {
+            var server = new FakeServer();
+            var provider = Provider(server, () => Jwt("usr_1"));
+
+            var keys = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => provider.GetOrMintAsync(Pin, "unity", "PC")));
+
+            keys.ShouldAllBe(k => k == "agd_pk_minted_1");
+            server.Requests.Count(r => r.Method == HttpMethod.Post).ShouldBe(1);
+        }
+
+        [Fact]
+        public void FromMachineCredentials_Issuer_IsTheCredentialsServerTargetOrigin()
+        {
+            ProjectKeyProvider.IssuerFromServerTarget("http://agd.localhost/some/path").ShouldBe("http://agd.localhost");
+            ProjectKeyProvider.IssuerFromServerTarget(null).ShouldBe(ProjectKeyProvider.DefaultIssuer);
+            ProjectKeyProvider.IssuerFromServerTarget("not a url").ShouldBe(ProjectKeyProvider.DefaultIssuer);
+
+            var creds = new MachineCredentialStore(_baseDir);
+            creds.Write(new MachineCredentials { ServerTarget = "http://agd.localhost:8080/" });
+            ProjectKeyProvider.FromMachineCredentials(credentialStore: creds).Issuer.ShouldBe("http://agd.localhost:8080");
+        }
+
         [Fact]
         public async Task CachedKey_NetworkFailure_IsReused()
         {
@@ -251,6 +305,77 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         [InlineData(null, "unknown")]
         public void Engine_IsNormalisedToTheServersEnum(string? input, string expected)
             => ProjectKeyProvider.NormalizeEngine(input).ShouldBe(expected);
+
+        [Fact]
+        public async Task ConcurrentWriterMintedMeanwhile_TheirEntryIsKept_AndReturned()
+        {
+            // Another process (another editor, the app) mints and caches a key for the same pin WHILE our mint
+            // is in flight (the mint runs outside the lock). Contract §6: keep theirs — every config then agrees.
+            var server = new FakeServer();
+            server.OnMint = () => SeedCache("agd_pk_theirs", "usr_1");
+
+            (await Provider(server, () => Jwt("usr_1")).GetOrMintAsync(Pin, "unity", "PC")).ShouldBe("agd_pk_theirs");
+            Store.Get("https://ai-game.dev", Pin)!.Key.ShouldBe("agd_pk_theirs");
+        }
+
+        [Fact]
+        public async Task ConcurrentWriterOfAnotherAccount_IsOverwritten_Control()
+        {
+            // Control for the test above: "keep theirs" applies only to the SAME account's entry.
+            var server = new FakeServer();
+            server.OnMint = () => SeedCache("agd_pk_other_account", "usr_OTHER");
+
+            (await Provider(server, () => Jwt("usr_1")).GetOrMintAsync(Pin, "unity", "PC")).ShouldBe("agd_pk_minted_1");
+            Store.Get("https://ai-game.dev", Pin)!.Key.ShouldBe("agd_pk_minted_1");
+        }
+
+        [Fact]
+        public async Task Regenerate_OverwritesEvenAConcurrentEntry()
+        {
+            var server = new FakeServer();
+            server.OnMint = () => SeedCache("agd_pk_theirs", "usr_1");
+
+            (await Provider(server, () => Jwt("usr_1")).RegenerateAsync(Pin, "unity", "PC")).ShouldBe("agd_pk_minted_1");
+            Store.Get("https://ai-game.dev", Pin)!.Key.ShouldBe("agd_pk_minted_1");
+        }
+
+        [Fact]
+        public async Task NoStoredSubject_OpaqueTokenInUse_SubFromThePluginFamilyJwt_ReusesTheCachedKey()
+        {
+            // No credential subject, and the token actually USED is opaque (the plugin JWT has expired), so the
+            // token's own claim cannot name the account: only the §6 chain (…else the plugin-family token's sub)
+            // does. Without it every call would mint a fresh key.
+            var creds = new MachineCredentialStore(_baseDir);
+            creds.Write(new MachineCredentials
+            {
+                Families = new MachineCredentialFamilies
+                {
+                    Plugin = new MachineCredentialFamily { AccessToken = Jwt("usr_plugin_only"), ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-5) },
+                    Agent = new MachineCredentialFamily { AccessToken = "opaque-agent-token", ExpiresAt = DateTimeOffset.UtcNow.AddHours(1) },
+                },
+            });
+            SeedCache("agd_pk_cached", "usr_plugin_only");
+            var server = new FakeServer();
+            var provider = ProjectKeyProvider.FromMachineCredentials(credentialStore: creds, httpClient: new HttpClient(server));
+
+            (await provider.GetOrMintAsync(Pin, "unity", "PC")).ShouldBe("agd_pk_cached");
+            server.Requests.ShouldAllBe(r => r.Method == HttpMethod.Get);
+        }
+
+        [Fact]
+        public async Task LongMachineNameAndLabel_AreClippedTo120_LabelKeepsItsTail()
+        {
+            var server = new FakeServer();
+            var label = "/Users/someone/" + new string('x', 200) + "/MyGame";
+
+            await Provider(server, () => Jwt("usr_1")).GetOrMintAsync(Pin, "unity", new string('m', 300), label);
+
+            var body = JsonNode.Parse(server.Requests[0].Body!)!;
+            ((string)body["machine_name"]!).Length.ShouldBe(ProjectKeyProvider.MaxDisplayFieldLength);
+            var sentLabel = (string)body["label"]!;
+            sentLabel.Length.ShouldBe(ProjectKeyProvider.MaxDisplayFieldLength);
+            sentLabel.ShouldEndWith("/MyGame");
+        }
 
         [Fact]
         public void JwtSubject_IsReadFromThePayload_OpaqueTokensHaveNone()

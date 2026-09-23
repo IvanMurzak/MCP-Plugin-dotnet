@@ -364,5 +364,36 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             (await Get($"/p/{PinA}/api/tools", PinA)).ShouldBe("instance-A");
             await app.StopAsync();
         }
+
+        // ── Contract §4: the webhook allow-cache is keyed by PLANE ──
+
+        sealed class PlaneRecordingWebhook : com.IvanMurzak.McpPlugin.Server.Webhooks.Services.IAuthorizationWebhookService
+        {
+            public int AgentCalls, PluginCalls;
+            public Task<bool> AuthorizeAiAgentAsync(string connectionId, string? bearerToken, string? remoteIpAddress, string? userAgent, string? requestPath, CancellationToken cancellationToken = default)
+            {
+                AgentCalls++;
+                return Task.FromResult(true);
+            }
+            public Task<bool> AuthorizePluginAsync(string connectionId, string? bearerToken, string? clientName, string? clientVersion, CancellationToken cancellationToken = default, string? remoteIpAddress = null, string? userAgent = null, string? requestPath = null)
+            {
+                PluginCalls++;
+                return Task.FromResult(false); // the backend refuses a project key on the plugin plane
+            }
+        }
+
+        [Fact]
+        public async Task WebhookCache_AnAgentPlaneAllow_NeverSkipsThePluginPlaneCheck()
+        {
+            var inner = new PlaneRecordingWebhook();
+            var cached = new com.IvanMurzak.McpPlugin.Server.Webhooks.Services.CachedAuthorizationWebhookService(inner, TimeSpan.FromMinutes(1));
+
+            (await cached.AuthorizeAiAgentAsync("c1", "agd_pk_x", null, null, null)).ShouldBeTrue();
+            (await cached.AuthorizeAiAgentAsync("c2", "agd_pk_x", null, null, null)).ShouldBeTrue();
+            inner.AgentCalls.ShouldBe(1); // control: the agent-plane allow IS cached
+
+            (await cached.AuthorizePluginAsync("c3", "agd_pk_x", "unity", "1.0")).ShouldBeFalse();
+            inner.PluginCalls.ShouldBe(1);
+        }
     }
 }

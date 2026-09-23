@@ -95,15 +95,25 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         }
 
         [Fact]
-        public void CorruptFile_ReadsAsMiss_AndPutRecovers()
+        public void CorruptFile_ReadsAsMiss_AndIsNeverOverwritten()
         {
+            // Contract §6: a file that EXISTS but cannot be decoded is UNREADABLE, not empty — never overwrite it.
             Directory.CreateDirectory(_baseDir);
             var store = new ProjectKeyStore(_baseDir);
-            File.WriteAllBytes(store.FilePath, new byte[] { 0x7b, 0x00, 0xff, 0x13 });
+            var corrupt = new byte[] { 0x7b, 0x00, 0xff, 0x13 };
+            File.WriteAllBytes(store.FilePath, corrupt);
 
             store.Get("https://ai-game.dev", "aabbccdd").ShouldBeNull();
-            store.Put(Entry());
-            store.Get("https://ai-game.dev", "aabbccdd")!.Key.ShouldBe("agd_pk_secret-value");
+            store.IsUnreadable.ShouldBeTrue();
+            Should.Throw<IOException>(() => store.Put(Entry()));
+            Should.Throw<IOException>(() => store.Remove("https://ai-game.dev", "aabbccdd"));
+            File.ReadAllBytes(store.FilePath).ShouldBe(corrupt);
+        }
+
+        [Fact]
+        public void MissingFile_IsNotUnreadable()
+        {
+            new ProjectKeyStore(_baseDir).IsUnreadable.ShouldBeFalse();
         }
 
         [Fact]
