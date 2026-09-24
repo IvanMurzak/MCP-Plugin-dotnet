@@ -271,8 +271,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             using var cts = new CancellationTokenSource();
             var connectTask = cm.Connect(cts.Token);
 
-            // (1) It keeps retrying while the caller still waits.
-            await WaitUntilAsync(() => cm.AttemptCount > 5 || connectTask.IsCompleted, TimeSpan.FromSeconds(60),
+            // (1) It keeps retrying while the caller still waits. 50 attempts, not 5: the old 2 s
+            // window (~80 attempts at the 25 ms backoff) also caught a small self-imposed cap on
+            // the explicit-token path; an attempt COUNT keeps that power without a wall clock.
+            await WaitUntilAsync(() => cm.AttemptCount > 50 || connectTask.IsCompleted, TimeSpan.FromSeconds(60),
                 "an explicit-token Connect must keep retrying the unreachable endpoint the whole time");
             connectTask.IsCompleted.ShouldBeFalse(
                 "the awaited Connect(token) must still be running while its token is live — an " +
