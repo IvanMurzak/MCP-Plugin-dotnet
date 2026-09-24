@@ -128,92 +128,131 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         /// Replacing the atomic temp-sibling+rename write with a direct in-place write
         /// (<c>File.WriteAllBytes</c>, the pre-v2 behaviour) turns this RED: readers sample the
         /// truncate-then-write window and decode partial content.
+        /// <para>
+        /// The READER sets the pace: the writer rewrites until the reader has made its quota, so
+        /// no wall-clock budget decides the verdict (a fixed 120-write window flaked on saturated
+        /// runners); the hang guard is the only timeout.
+        /// </para>
         /// </summary>
         [Fact]
         public async Task ConcurrentReaders_NeverObserveATruncatedDocument()
         {
-            const int writes = 120;
+            const int requiredReads = 100;
+            const int requiredWrites = 20;
+            const int hangGuardSeconds = 60;
             var store = NewStore();
 
             // Padding widens the on-disk document so an in-place truncate-then-write window is
             // reliably observable; carried as an unknown field to also exercise preservation.
-            using var padding = JsonDocument.Parse(
-                JsonSerializer.Serialize(new string('x', 64 * 1024)));
+            // Immutable, shared by every write.
+            var paddingElement = JsonSerializer.SerializeToElement(new string('x', 64 * 1024));
 
             MachineCredentials Payload(int i)
             {
                 var credentials = Credentials("AT-" + i, "RT-" + i);
                 credentials.ExtensionData = new Dictionary<string, JsonElement>
                 {
-                    ["padding"] = padding.RootElement.Clone(),
+                    ["padding"] = paddingElement,
                 };
                 return credentials;
             }
 
             store.Write(Payload(0));
 
-            var writer = Task.Run(() =>
+            using var stopWriting = new CancellationTokenSource();
+            var writesCompleted = 0;
+            // LongRunning = a dedicated thread, not a pool worker: the writer now runs for the whole
+            // read phase, and on a saturated runner a queued pool item can start late (see the
+            // Windows retry test above) while holding a pool thread starves parallel tests.
+            var writer = Task.Factory.StartNew(() =>
             {
-                for (var i = 1; i <= writes; i++)
+                for (var i = 1; !stopWriting.IsCancellationRequested; i++)
+                {
                     store.Write(Payload(i));
-            });
+                    Interlocked.Increment(ref writesCompleted);
+                }
+            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
 
             var violations = new List<string>();
+            string? firstGeneration = null;
+            var sawGenerationChange = false;
             var successfulReads = 0;
+            var elapsed = Stopwatch.StartNew();
 
-            while (!writer.IsCompleted)
+            // try/finally: the writer is unbounded, so ANY exception escaping this loop must still
+            // stop it — otherwise it rewrites (and fsyncs) forever for the rest of the test host.
+            try
             {
-                byte[] raw;
-                try
+                // Read until BOTH quotas are met; the writer is still running at every read.
+                while ((successfulReads < requiredReads || Volatile.Read(ref writesCompleted) < requiredWrites)
+                       && violations.Count < 5 // enough evidence
+                       && !writer.IsCompleted  // a faulted writer ends the run; awaited below
+                       && elapsed.Elapsed < TimeSpan.FromSeconds(hangGuardSeconds))
                 {
-                    // FileShare.ReadWrite | Delete: observe the file without ever blocking the
-                    // writer's rename — this reader adds no synchronization of its own.
-                    using var streamRead = new FileStream(
-                        store.CredentialsPath, FileMode.Open, FileAccess.Read,
-                        FileShare.ReadWrite | FileShare.Delete);
-                    using var buffer = new MemoryStream();
-                    streamRead.CopyTo(buffer);
-                    raw = buffer.ToArray();
+                    byte[] raw;
+                    try
+                    {
+                        // FileShare.ReadWrite | Delete: observe the file without ever blocking the
+                        // writer's rename — this reader adds no synchronization of its own.
+                        using var streamRead = new FileStream(
+                            store.CredentialsPath, FileMode.Open, FileAccess.Read,
+                            FileShare.ReadWrite | FileShare.Delete);
+                        using var buffer = new MemoryStream();
+                        streamRead.CopyTo(buffer);
+                        raw = buffer.ToArray();
+                    }
+                    // UnauthorizedAccessException too: Windows reports an open that lands on the
+                    // rename's delete-pending destination as ACCESS DENIED — the store's own
+                    // TryRead and rename retry treat it as transient for exactly that reason.
+                    catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException)
+                    {
+                        Thread.Sleep(1); // no hot spin if opens keep failing until the hang guard
+                        continue; // transient open failure during a rename — not a torn read
+                    }
+
+                    try
+                    {
+                        if (raw.Length == 0)
+                            throw new InvalidDataException("observed an empty credential file");
+
+                        var json = Encoding.UTF8.GetString(MachineCredentialStore.UnprotectBytes(raw));
+                        using var doc = JsonDocument.Parse(json);
+
+                        var plugin = doc.RootElement.GetProperty("families").GetProperty("plugin");
+                        var accessToken = plugin.GetProperty("accessToken").GetString()!;
+                        var refreshToken = plugin.GetProperty("refreshToken").GetString()!;
+
+                        // Both fields must carry the SAME generation — a mixed pair is a torn document.
+                        accessToken.ShouldStartWith("AT-");
+                        refreshToken.ShouldBe("RT-" + accessToken.Substring(3));
+
+                        doc.RootElement.GetProperty("padding").GetString()!.Length.ShouldBe(64 * 1024);
+                        sawGenerationChange |= (firstGeneration ??= accessToken) != accessToken;
+                        successfulReads++;
+                    }
+                    catch (Exception ex)
+                    {
+                        violations.Add(ex.GetType().Name + ": " + ex.Message);
+                    }
+
+                    Thread.Sleep(1);
                 }
-                catch (IOException)
-                {
-                    continue; // transient open failure during a rename — not a torn read
-                }
-
-                try
-                {
-                    if (raw.Length == 0)
-                        throw new InvalidDataException("observed an empty credential file");
-
-                    var json = Encoding.UTF8.GetString(MachineCredentialStore.UnprotectBytes(raw));
-                    using var doc = JsonDocument.Parse(json);
-
-                    var plugin = doc.RootElement.GetProperty("families").GetProperty("plugin");
-                    var accessToken = plugin.GetProperty("accessToken").GetString()!;
-                    var refreshToken = plugin.GetProperty("refreshToken").GetString()!;
-
-                    // Both fields must carry the SAME generation — a mixed pair is a torn document.
-                    accessToken.ShouldStartWith("AT-");
-                    refreshToken.ShouldBe("RT-" + accessToken.Substring(3));
-
-                    doc.RootElement.GetProperty("padding").GetString()!.Length.ShouldBe(64 * 1024);
-                    successfulReads++;
-                }
-                catch (Exception ex)
-                {
-                    violations.Add(ex.GetType().Name + ": " + ex.Message);
-                    if (violations.Count >= 5)
-                        break; // enough evidence
-                }
-
-                Thread.Sleep(1);
+            }
+            finally
+            {
+                stopWriting.Cancel();
             }
 
             await writer; // propagate any writer failure
 
             violations.ShouldBeEmpty();
-            // Anti-vacuity: the assertion above proves nothing if no read ever succeeded.
-            successfulReads.ShouldBeGreaterThanOrEqualTo(25);
+            // Anti-vacuity: the loop ends short of its quotas only at the hang guard.
+            (successfulReads >= requiredReads && writesCompleted >= requiredWrites).ShouldBeTrue(
+                $"quotas not met within the {hangGuardSeconds}s hang guard: " +
+                $"reads={successfulReads}/{requiredReads}, writes={writesCompleted}/{requiredWrites}");
+            sawGenerationChange.ShouldBeTrue(
+                "the reader must have observed the document change under it — otherwise it never " +
+                "sampled a write at all");
         }
 
         [Fact]

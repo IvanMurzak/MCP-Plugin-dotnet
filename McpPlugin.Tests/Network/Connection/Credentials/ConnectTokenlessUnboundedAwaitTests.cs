@@ -196,6 +196,14 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
                 "pass 1 must have reached the reconnect loop (i.e. we are inside its Connect await)");
             refresher.Requests.Count.ShouldBe(1, "pass 1 refreshed the credential");
 
+            // Pass 1 must RETURN (releasing the gate in its finally) while the loop keeps retrying.
+            // Wait for that return rather than racing it: the first outcome resumes pass 1
+            // asynchronously, so "attempt 2 happened" does not imply the gate is released yet —
+            // on a saturated runner pass 2 could otherwise arrive first and see a busy gate.
+            (await BoundedAsync(firstPass,
+                "pass 1 must return to its caller instead of awaiting the unbounded reconnect loop"))
+                .ShouldBeTrue("pass 1 refreshed and handed off to the (background) reconnect loop");
+
             // Pass 2: a later rejection burst. It MUST be able to run — before the fix the
             // SemaphoreSlim(1,1) taken by pass 1 was never released, so WaitAsync(0) failed and
             // this returned false without even attempting a refresh, forever.
@@ -209,7 +217,6 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
                 "before it, which is exactly how the recovery path dies silently");
 
             await cm.Disconnect();
-            await BoundedAsync(firstPass, "pass 1 must settle once the loop is stopped");
         }
 
         // ───────────────────────────────────────────────────────────────────────────────────────
@@ -258,19 +265,27 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         {
             await using var cm = new FailingLoopConnectionManager(_testVersion, DummyHubProvider().Object);
 
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-            var sw = Stopwatch.StartNew();
-            var result = await BoundedAsync(cm.Connect(cts.Token),
-                "an explicit 2s token must itself bound the loop");
-            sw.Stop();
+            // The TEST cancels the token, and only after retries are observed — no timer, so no
+            // wall-clock budget decides the verdict (a 2 s CancelAfter + "> 5 attempts" flaked
+            // on saturated runners). The timeouts below are hang guards only.
+            using var cts = new CancellationTokenSource();
+            var connectTask = cm.Connect(cts.Token);
 
-            result.ShouldBeFalse();
-            cts.Token.IsCancellationRequested.ShouldBeTrue(
-                "an EXPLICIT token keeps the unlimited-retry contract: only the token stops the loop");
-            sw.Elapsed.ShouldBeGreaterThan(TimeSpan.FromMilliseconds(1500),
-                "the awaited Connect(token) must still run until its token cancels, not return early");
-            cm.AttemptCount.ShouldBeGreaterThan(5,
-                "and it must have kept retrying the unreachable endpoint the whole time");
+            // (1) It keeps retrying while the caller still waits. 50 attempts, not 5: the old 2 s
+            // window (~80 attempts at the 25 ms backoff) also caught a small self-imposed cap on
+            // the explicit-token path; an attempt COUNT keeps that power without a wall clock.
+            await WaitUntilAsync(() => cm.AttemptCount > 50 || connectTask.IsCompleted, TimeSpan.FromSeconds(60),
+                "an explicit-token Connect must keep retrying the unreachable endpoint the whole time");
+            connectTask.IsCompleted.ShouldBeFalse(
+                "the awaited Connect(token) must still be running while its token is live — an " +
+                "EXPLICIT token keeps the unlimited-retry contract; returning on the first failed " +
+                "attempt is the token-less behaviour leaking onto every caller");
+
+            // (2) Only the token stops it: cancelling releases the caller with a failed outcome.
+            cts.Cancel();
+            (await BoundedAsync(connectTask,
+                "cancelling the explicit token must release the awaited Connect", seconds: 30))
+                .ShouldBeFalse();
         }
 
         /// <summary>
