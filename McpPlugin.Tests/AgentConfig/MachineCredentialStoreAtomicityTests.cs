@@ -128,11 +128,21 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         /// Replacing the atomic temp-sibling+rename write with a direct in-place write
         /// (<c>File.WriteAllBytes</c>, the pre-v2 behaviour) turns this RED: readers sample the
         /// truncate-then-write window and decode partial content.
+        /// <para>
+        /// The READER sets the pace, not the writer. An earlier form ran a fixed 120 writes and
+        /// then required ≥ 25 successful reads inside that window — a fixed budget against a
+        /// load-dependent cost, which went red on a saturated hosted runner (20 reads) with the
+        /// store fully atomic. Now the writer rewrites continuously until the reader has made
+        /// its quota of reads, so every read overlaps writing and the quota is always reachable;
+        /// the timeout only guards against a hang.
+        /// </para>
         /// </summary>
         [Fact]
         public async Task ConcurrentReaders_NeverObserveATruncatedDocument()
         {
-            const int writes = 120;
+            const int requiredReads = 100;
+            const int requiredWrites = 20;
+            var hangGuard = TimeSpan.FromSeconds(120);
             var store = NewStore();
 
             // Padding widens the on-disk document so an in-place truncate-then-write window is
@@ -152,16 +162,29 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
 
             store.Write(Payload(0));
 
+            using var stopWriting = new CancellationTokenSource();
+            var writesCompleted = 0;
             var writer = Task.Run(() =>
             {
-                for (var i = 1; i <= writes; i++)
+                for (var i = 1; !stopWriting.IsCancellationRequested; i++)
+                {
                     store.Write(Payload(i));
+                    Interlocked.Increment(ref writesCompleted);
+                }
             });
 
             var violations = new List<string>();
+            var generationsSeen = new HashSet<string>();
             var successfulReads = 0;
+            var elapsed = Stopwatch.StartNew();
 
-            while (!writer.IsCompleted)
+            // Keep reading until BOTH quotas are met: enough reads to sample the write window,
+            // and enough writes that those reads genuinely overlapped rewriting. The writer is
+            // still running at every read, so no read here is a quiet-file read.
+            while ((successfulReads < requiredReads || Volatile.Read(ref writesCompleted) < requiredWrites)
+                   && violations.Count < 5 // enough evidence
+                   && !writer.IsCompleted  // a faulted writer ends the run; awaited below
+                   && elapsed.Elapsed < hangGuard)
             {
                 byte[] raw;
                 try
@@ -197,23 +220,31 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
                     refreshToken.ShouldBe("RT-" + accessToken.Substring(3));
 
                     doc.RootElement.GetProperty("padding").GetString()!.Length.ShouldBe(64 * 1024);
+                    generationsSeen.Add(accessToken);
                     successfulReads++;
                 }
                 catch (Exception ex)
                 {
                     violations.Add(ex.GetType().Name + ": " + ex.Message);
-                    if (violations.Count >= 5)
-                        break; // enough evidence
                 }
 
                 Thread.Sleep(1);
             }
 
+            stopWriting.Cancel();
             await writer; // propagate any writer failure
 
             violations.ShouldBeEmpty();
-            // Anti-vacuity: the assertion above proves nothing if no read ever succeeded.
-            successfulReads.ShouldBeGreaterThanOrEqualTo(25);
+            // Anti-vacuity: the assertion above proves nothing unless reads actually succeeded
+            // while the document was being rewritten. Both quotas are reachable at any load —
+            // the loop above only ends early on a violation, a writer fault, or the hang guard.
+            successfulReads.ShouldBeGreaterThanOrEqualTo(requiredReads,
+                $"the reader must complete its quota within the {hangGuard.TotalSeconds:0}s hang guard");
+            writesCompleted.ShouldBeGreaterThanOrEqualTo(requiredWrites,
+                "the reads must have overlapped real rewriting");
+            generationsSeen.Count.ShouldBeGreaterThan(1,
+                "the reader must have observed the document change under it — otherwise it never " +
+                "sampled a write at all");
         }
 
         [Fact]

@@ -258,19 +258,31 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         {
             await using var cm = new FailingLoopConnectionManager(_testVersion, DummyHubProvider().Object);
 
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-            var sw = Stopwatch.StartNew();
-            var result = await BoundedAsync(cm.Connect(cts.Token),
-                "an explicit 2s token must itself bound the loop");
-            sw.Stop();
+            // The token is cancelled by the TEST, only after the loop has demonstrably retried —
+            // never by a timer. An earlier form used a 2 s CancelAfter and then asserted
+            // "AttemptCount > 5": that counted how many 25 ms retries fit in 2 s of wall clock, a
+            // fixed budget against a load-dependent cost, and it went red on a saturated hosted
+            // runner (4 attempts) with the contract fully intact. Ordering events instead of
+            // timing them asserts the same two properties with no clock in the verdict.
+            using var cts = new CancellationTokenSource();
+            var connectTask = cm.Connect(cts.Token);
 
-            result.ShouldBeFalse();
-            cts.Token.IsCancellationRequested.ShouldBeTrue(
-                "an EXPLICIT token keeps the unlimited-retry contract: only the token stops the loop");
-            sw.Elapsed.ShouldBeGreaterThan(TimeSpan.FromMilliseconds(1500),
-                "the awaited Connect(token) must still run until its token cancels, not return early");
+            // (1) It keeps retrying: several failed attempts happen while the caller still waits.
+            // The timeout is only a hang guard for a regressed loop, not a pacing assumption.
+            await WaitUntilAsync(() => cm.AttemptCount > 5 || connectTask.IsCompleted, TimeSpan.FromSeconds(60),
+                "an explicit-token Connect must keep retrying the unreachable endpoint");
+            connectTask.IsCompleted.ShouldBeFalse(
+                "the awaited Connect(token) must still be running while its token is live — an " +
+                "EXPLICIT token keeps the unlimited-retry contract; returning on the first failed " +
+                "attempt is the token-less behaviour leaking onto every caller");
             cm.AttemptCount.ShouldBeGreaterThan(5,
                 "and it must have kept retrying the unreachable endpoint the whole time");
+
+            // (2) Only the token stops it: cancelling releases the caller with a failed outcome.
+            cts.Cancel();
+            var result = await BoundedAsync(connectTask,
+                "cancelling the explicit token must release the awaited Connect", seconds: 30);
+            result.ShouldBeFalse();
         }
 
         /// <summary>
