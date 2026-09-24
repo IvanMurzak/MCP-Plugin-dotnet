@@ -129,12 +129,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         /// (<c>File.WriteAllBytes</c>, the pre-v2 behaviour) turns this RED: readers sample the
         /// truncate-then-write window and decode partial content.
         /// <para>
-        /// The READER sets the pace, not the writer. An earlier form ran a fixed 120 writes and
-        /// then required ≥ 25 successful reads inside that window — a fixed budget against a
-        /// load-dependent cost, which went red on a saturated hosted runner (20 reads) with the
-        /// store fully atomic. Now the writer rewrites continuously until the reader has made
-        /// its quota of reads, so every read overlaps writing and the quota is always reachable;
-        /// the timeout only guards against a hang.
+        /// The READER sets the pace: the writer rewrites until the reader has made its quota, so
+        /// no wall-clock budget decides the verdict (a fixed 120-write window flaked on saturated
+        /// runners); the hang guard is the only timeout.
         /// </para>
         /// </summary>
         [Fact]
@@ -142,7 +139,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         {
             const int requiredReads = 100;
             const int requiredWrites = 20;
-            var hangGuard = TimeSpan.FromSeconds(120);
+            const int hangGuardSeconds = 60;
             var store = NewStore();
 
             // Padding widens the on-disk document so an in-place truncate-then-write window is
@@ -150,12 +147,14 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             using var padding = JsonDocument.Parse(
                 JsonSerializer.Serialize(new string('x', 64 * 1024)));
 
+            var paddingElement = padding.RootElement.Clone(); // immutable, shared by every write
+
             MachineCredentials Payload(int i)
             {
                 var credentials = Credentials("AT-" + i, "RT-" + i);
                 credentials.ExtensionData = new Dictionary<string, JsonElement>
                 {
-                    ["padding"] = padding.RootElement.Clone(),
+                    ["padding"] = paddingElement,
                 };
                 return credentials;
             }
@@ -174,17 +173,16 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             });
 
             var violations = new List<string>();
-            var generationsSeen = new HashSet<string>();
+            string? firstGeneration = null;
+            var sawGenerationChange = false;
             var successfulReads = 0;
             var elapsed = Stopwatch.StartNew();
 
-            // Keep reading until BOTH quotas are met: enough reads to sample the write window,
-            // and enough writes that those reads genuinely overlapped rewriting. The writer is
-            // still running at every read, so no read here is a quiet-file read.
+            // Read until BOTH quotas are met; the writer is still running at every read.
             while ((successfulReads < requiredReads || Volatile.Read(ref writesCompleted) < requiredWrites)
                    && violations.Count < 5 // enough evidence
                    && !writer.IsCompleted  // a faulted writer ends the run; awaited below
-                   && elapsed.Elapsed < hangGuard)
+                   && elapsed.Elapsed < TimeSpan.FromSeconds(hangGuardSeconds))
             {
                 byte[] raw;
                 try
@@ -200,6 +198,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
                 }
                 catch (IOException)
                 {
+                    Thread.Sleep(1); // no hot spin if opens keep failing until the hang guard
                     continue; // transient open failure during a rename — not a torn read
                 }
 
@@ -220,7 +219,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
                     refreshToken.ShouldBe("RT-" + accessToken.Substring(3));
 
                     doc.RootElement.GetProperty("padding").GetString()!.Length.ShouldBe(64 * 1024);
-                    generationsSeen.Add(accessToken);
+                    sawGenerationChange |= (firstGeneration ??= accessToken) != accessToken;
                     successfulReads++;
                 }
                 catch (Exception ex)
@@ -235,14 +234,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             await writer; // propagate any writer failure
 
             violations.ShouldBeEmpty();
-            // Anti-vacuity: the assertion above proves nothing unless reads actually succeeded
-            // while the document was being rewritten. Both quotas are reachable at any load —
-            // the loop above only ends early on a violation, a writer fault, or the hang guard.
-            successfulReads.ShouldBeGreaterThanOrEqualTo(requiredReads,
-                $"the reader must complete its quota within the {hangGuard.TotalSeconds:0}s hang guard");
-            writesCompleted.ShouldBeGreaterThanOrEqualTo(requiredWrites,
-                "the reads must have overlapped real rewriting");
-            generationsSeen.Count.ShouldBeGreaterThan(1,
+            // Anti-vacuity: the loop ends short of its quotas only at the hang guard.
+            (successfulReads >= requiredReads && writesCompleted >= requiredWrites).ShouldBeTrue(
+                $"quotas not met within the {hangGuardSeconds}s hang guard: " +
+                $"reads={successfulReads}/{requiredReads}, writes={writesCompleted}/{requiredWrites}");
+            sawGenerationChange.ShouldBeTrue(
                 "the reader must have observed the document change under it — otherwise it never " +
                 "sampled a write at all");
         }
