@@ -1,0 +1,21 @@
+McpPlugin/src/AgentConfig/Impl/ClaudeDesktopConfigurator.cs
+  s_94cae3b80679a2::t_ed3c32c73a7b2f 28-30,32
+McpPlugin/src/AgentConfig/Impl/ClineConfigurator.cs
+  s_94cae3b80679a2::t_45e6cea7944cf6 39-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "a5968d768730fe2f8f1706e50e94d1987e9c341b",
+  "prompts": {},
+  "sessions": {
+    "s_94cae3b80679a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d15dc434-a705-4009-9c19-05eae0bfc388",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+Directory.Build.props
+  h_9a61b2ff2f3edc 3
+  69baa013e49a37d9 1-2,4-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "ddd93a74be344ae30902b92bbb9afd1ed4978e16",
+  "prompts": {
+    "69baa013e49a37d9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c77aa5a-f8c7-4042-ae61-dc5cf011eb99",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 21,
+      "overriden_lines": 1
+    }
+  },
+  "humans": {
+    "h_9a61b2ff2f3edc": {
+      "author": "Ivan Murzak"
+    }
+  }
+}

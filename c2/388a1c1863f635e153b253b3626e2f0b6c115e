@@ -1,0 +1,19 @@
+McpPlugin.Tests/AgentConfig/MachineCredentialStoreAtomicityTests.cs
+  s_887efbfc81dc0f::t_df80f80419bf4e 94,104-107,109,114,119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c2388a1c1863f635e153b253b3626e2f0b6c115e",
+  "prompts": {},
+  "sessions": {
+    "s_887efbfc81dc0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "556ed732-8c84-4c19-bfb0-6231e40ac140",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

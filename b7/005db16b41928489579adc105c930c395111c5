@@ -1,0 +1,47 @@
+McpPlugin/src/AgentConfig/MachineCredentials.cs
+  s_887efbfc81dc0f::t_e36cf490c9d9bb 94
+  s_887efbfc81dc0f::t_db806763eba7ac 13-14,25,28-42,48-54,56,58-63,67,71,82-93,95-148
+McpPlugin/src/AgentConfig/MachineCredentialReadResult.cs
+  s_887efbfc81dc0f::t_cb8620de253dc9 1-79
+McpPlugin/src/AgentConfig/MachineCredentialFamilies.cs
+  s_887efbfc81dc0f::t_de178d07c69844 47
+  s_887efbfc81dc0f::t_e3872211e97a60 1-46,48-50
+McpPlugin/src/AgentConfig/MachineCredentialStore.cs
+  s_887efbfc81dc0f::t_9f5792deb22562 19,25-27,39-54,69-79,116-120,125-138,140,143-161,164,187-197,199-204,209-212,221,223,227-232,236-254,259-262,285-321,323-381,383-425,454-491,494-495
+  s_887efbfc81dc0f::t_c18f1627208074 382
+  s_887efbfc81dc0f::t_426a18f4c64111 166-183
+  s_887efbfc81dc0f::t_beb628b06caefd 322
+  s_887efbfc81dc0f::t_2b930e4f1824e6 165
+McpPlugin.Tests/AgentConfig/MachineCredentialStoreV2Tests.cs
+  s_887efbfc81dc0f::t_363aff9f918329 1-452
+McpPlugin.Tests/AgentConfig/MachineCredentialStoreTests.cs
+  s_887efbfc81dc0f::t_2671dfce9be7b3 76-82
+McpPlugin/src/AgentConfig/MachineCredentialFamily.cs
+  s_887efbfc81dc0f::t_3d1155492d533e 1-54,56-58
+  s_887efbfc81dc0f::t_d9e58d0644bbdd 55
+.github/workflows/test-pull-request.yml
+  s_887efbfc81dc0f::t_0be184b5a7de28 10-17
+  s_887efbfc81dc0f::t_e7054f8c011811 46-47,49,57
+McpPlugin.Tests/AgentConfig/MachineCredentialStoreAtomicityTests.cs
+  s_887efbfc81dc0f::t_6012fe411310af 94
+  s_887efbfc81dc0f::t_6edc6477b464df 114
+  s_887efbfc81dc0f::t_e7431bcdf8d5fb 128
+  s_887efbfc81dc0f::t_7f15221f82bc19 207
+  s_887efbfc81dc0f::t_3d9177aa280a59 1-93,95-113,115-127,129-206,208-243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "b7005db16b41928489579adc105c930c395111c5",
+  "prompts": {},
+  "sessions": {
+    "s_887efbfc81dc0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "556ed732-8c84-4c19-bfb0-6231e40ac140",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

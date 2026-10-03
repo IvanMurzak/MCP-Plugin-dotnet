@@ -1,0 +1,31 @@
+McpPlugin/McpPlugin.csproj
+  s_887efbfc81dc0f::t_e560ac8f2973e4 5
+McpPlugin/src/AgentConfig/MachineCredentialStore.cs
+  s_887efbfc81dc0f::t_c5aa0eec9626e5 184
+  s_887efbfc81dc0f::t_b28dc3ca9f70b7 315
+  s_887efbfc81dc0f::t_3b2896fc7ebc2b 94,102-116,121
+  s_887efbfc81dc0f::t_e87bc83293c00a 347
+McpPlugin.Tests.RefreshHarness/McpPlugin.Tests.RefreshHarness.csproj
+  s_887efbfc81dc0f::t_93f559988b2baa 1-26
+McpPlugin.Tests.RefreshHarness/Program.cs
+  s_887efbfc81dc0f::t_43f37fe389d99b 1-307
+McpPlugin.sln
+  s_887efbfc81dc0f::t_702466fbe940b6 130-141
+  s_887efbfc81dc0f::t_98a886a53d7880 22-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "41e646c186bece5b4c2c373ab562912a8a9c9438",
+  "prompts": {},
+  "sessions": {
+    "s_887efbfc81dc0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "556ed732-8c84-4c19-bfb0-6231e40ac140",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

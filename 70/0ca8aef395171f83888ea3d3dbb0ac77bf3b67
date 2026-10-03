@@ -1,0 +1,19 @@
+McpPlugin/src/McpPlugin/Network/Connection/Provider/HubConnectionProvider.cs
+  s_3c149407cdd5d4::t_9022e9dca6e615 60-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "700ca8aef395171f83888ea3d3dbb0ac77bf3b67",
+  "prompts": {},
+  "sessions": {
+    "s_3c149407cdd5d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "845aef5f-a4aa-4844-b9e6-479df3530c09",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+McpPlugin.Server/src/Transport/StreamableHttpTransportLayer.cs
+  1d2b78b82826c558 148-149,154-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.4",
+  "base_commit_sha": "cdea211a9e17a897bda0f69c8d707466933c6f37",
+  "prompts": {
+    "1d2b78b82826c558": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "997bee3e-bd5e-4e51-b0a5-d28fb499e829",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 12,
+      "total_deletions": 4,
+      "accepted_lines": 8,
+      "overriden_lines": 0
+    }
+  }
+}

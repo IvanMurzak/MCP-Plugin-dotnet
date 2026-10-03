@@ -1,0 +1,35 @@
+McpPlugin.Server/src/Auth/TokenAuthenticationHandler.cs
+  s_f430d1cbaa4aff::t_375b2695087156 14-15
+  s_f430d1cbaa4aff::t_061cbc9199e25e 12,79-85,87,168-175,177,203,208-229
+McpPlugin.Server/src/Webhooks/Services/AuthorizationWebhookService.cs
+  s_f430d1cbaa4aff::t_a5274c0ef2ef2b 56,70-73,82-85
+  s_f430d1cbaa4aff::t_11581b33be9147 129-132,150-154,164-167,174-177,191-205
+McpPlugin.Server.Tests/BaseHubAuthorizationTests.cs
+  s_f430d1cbaa4aff::t_cbfd8478d9705f 98-99,118-119,138-139,165-166,193-194,207-208,219-220,233-234,280-281,311-312,362-363,386-387
+McpPlugin.Server/src/Hub/BaseHub.cs
+  s_f430d1cbaa4aff::t_cd52c56bf04dbc 51-53,71-72,95-97,103-104,165-180
+McpPlugin.Server/src/Webhooks/Models/AuthorizationRequest.cs
+  s_f430d1cbaa4aff::t_a2afe6ec14cff9 35-37
+McpPlugin.Server/src/Webhooks/Services/CachedAuthorizationWebhookService.cs
+  s_f430d1cbaa4aff::t_2da1ae323794bd 61-64,70-71
+McpPlugin.Server/src/Webhooks/Services/IAuthorizationWebhookService.cs
+  s_f430d1cbaa4aff::t_cd60624be0367c 31-34
+McpPlugin.Server/src/Webhooks/Services/NoOpAuthorizationWebhookService.cs
+  s_f430d1cbaa4aff::t_d37e2289149538 34-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "52e384bf0af7e9f88bc7465f0feb7f2ded1f8307",
+  "prompts": {},
+  "sessions": {
+    "s_f430d1cbaa4aff": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f38d6-8f2c-7053-b1a2-8b5209af1c9f",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
