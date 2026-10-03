@@ -41,7 +41,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [InlineData(ResponseErrorKind.Unavailable, HttpStatusCode.ServiceUnavailable)]
         [InlineData(ResponseErrorKind.Timeout, HttpStatusCode.GatewayTimeout)]
         [InlineData(ResponseErrorKind.Internal, HttpStatusCode.InternalServerError)]
-        [InlineData(ResponseErrorKind.ToolError, HttpStatusCode.UnprocessableEntity)]
         public async Task ToolCall_MapsErrorKindToHttpStatus(ResponseErrorKind errorKind, HttpStatusCode expectedStatus)
         {
             var toolResponse = ResponseData<ResponseCallTool>.Error("request-1", "mapped error", errorKind)
@@ -68,7 +67,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public async Task ToolCall_ToolOwnErrorMessage_Is422WithErrorBody()
+        public async Task ToolCall_ToolOwnErrorMessage_Is400WithErrorBody()
         {
             // A tool that declines a request with its own message, built the way a plugin builds it:
             // ResponseCallTool.Error(message) with no explicit kind, packed the way McpToolManager packs it.
@@ -78,7 +77,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             var response = await PostJsonAsync(client, "/api/tools/test");
 
-            response.StatusCode.ShouldBe((HttpStatusCode)422);
+            response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
             using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             body.RootElement.EnumerateObject().Select(p => p.Name).ShouldBe(new[] { "error" });
             body.RootElement.GetProperty("error").GetString().ShouldBe("No Renderers found");
@@ -121,7 +120,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public async Task SystemToolCall_ToolOwnErrorMessage_Is422WithErrorBody()
+        public async Task SystemToolCall_ToolOwnErrorMessage_Is400WithErrorBody()
         {
             var toolResponse = ResponseCallTool.Error("No Renderers found").Pack("request-1");
             await using var host = await StartHostAsync(systemToolResponse: toolResponse);
@@ -129,7 +128,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             var response = await PostJsonAsync(client, "/api/system-tools/test");
 
-            response.StatusCode.ShouldBe((HttpStatusCode)422);
+            response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
             using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
             body.RootElement.GetProperty("error").GetString().ShouldBe("No Renderers found");
         }
@@ -152,7 +151,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [InlineData(ResponseErrorKind.Unavailable, HttpStatusCode.ServiceUnavailable)]
         [InlineData(ResponseErrorKind.Timeout, HttpStatusCode.GatewayTimeout)]
         [InlineData(ResponseErrorKind.Internal, HttpStatusCode.InternalServerError)]
-        [InlineData(ResponseErrorKind.ToolError, HttpStatusCode.UnprocessableEntity)]
         public async Task SystemToolCall_MapsErrorKindToHttpStatus(ResponseErrorKind errorKind, HttpStatusCode expectedStatus)
         {
             var toolResponse = ResponseData<ResponseCallTool>.Error("request-1", "mapped error", errorKind)

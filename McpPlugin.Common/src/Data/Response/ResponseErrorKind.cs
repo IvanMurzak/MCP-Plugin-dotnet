@@ -18,7 +18,6 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         Conflict,
         Timeout,
         Unavailable,
-        Internal,
-        ToolError
+        Internal
     }
 }

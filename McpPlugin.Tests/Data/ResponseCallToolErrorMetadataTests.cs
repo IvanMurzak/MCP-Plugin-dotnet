@@ -9,7 +9,6 @@
 */
 
 using System;
-using System.Text.Json;
 using System.Text.Json.Nodes;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using Shouldly;
@@ -20,12 +19,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
     public class ResponseCallToolErrorMetadataTests
     {
         [Fact]
-        public void Error_WithMessage_DefaultsToToolError()
+        public void Error_WithMessage_DefaultsToBadRequest()
         {
             var response = ResponseCallTool.Error("Invalid input.");
 
             response.Status.ShouldBe(ResponseStatus.Error);
-            response.ErrorKind.ShouldBe(ResponseErrorKind.ToolError);
+            response.ErrorKind.ShouldBe(ResponseErrorKind.BadRequest);
             response.HttpStatusCode.ShouldBeNull();
         }
 
@@ -38,39 +37,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
         }
 
         [Fact]
-        public void ResponseErrorKind_ExistingMembersKeepTheirNumericValues()
+        public void ResponseErrorKind_NamesAndValuesAreUnchanged()
         {
-            ((int)ResponseErrorKind.None).ShouldBe(0);
-            ((int)ResponseErrorKind.BadRequest).ShouldBe(1);
-            ((int)ResponseErrorKind.NotFound).ShouldBe(2);
-            ((int)ResponseErrorKind.Conflict).ShouldBe(3);
-            ((int)ResponseErrorKind.Timeout).ShouldBe(4);
-            ((int)ResponseErrorKind.Unavailable).ShouldBe(5);
-            ((int)ResponseErrorKind.Internal).ShouldBe(6);
-            // New members are appended, never inserted.
-            ((int)ResponseErrorKind.ToolError).ShouldBe(7);
-        }
-
-        [Theory]
-        [InlineData(ResponseErrorKind.None, 0)]
-        [InlineData(ResponseErrorKind.BadRequest, 1)]
-        [InlineData(ResponseErrorKind.NotFound, 2)]
-        [InlineData(ResponseErrorKind.Conflict, 3)]
-        [InlineData(ResponseErrorKind.Timeout, 4)]
-        [InlineData(ResponseErrorKind.Unavailable, 5)]
-        [InlineData(ResponseErrorKind.Internal, 6)]
-        [InlineData(ResponseErrorKind.ToolError, 7)]
-        public void ResponseErrorKind_SerializesAsStableNumber_AndRoundTrips(ResponseErrorKind kind, int wireValue)
-        {
-            var original = new ResponseData { Status = ResponseStatus.Error, ErrorKind = kind };
-
-            var json = JsonSerializer.Serialize(original);
-            JsonNode.Parse(json)!["ErrorKind"]!.GetValue<int>().ShouldBe(wireValue);
-
-            // A payload written by an older build (numeric values 0-6) still reads back as the same member.
-            var fromWire = JsonSerializer.Deserialize<ResponseData>($"{{\"ErrorKind\":{wireValue}}}");
-            fromWire!.ErrorKind.ShouldBe(kind);
-            JsonSerializer.Deserialize<ResponseData>(json)!.ErrorKind.ShouldBe(kind);
+            // The kind travels by NAME (JsonStringEnumConverter) and servers in the field predate this
+            // change: the enum must not grow a member a deployed server cannot deserialize.
+            Enum.GetNames(typeof(ResponseErrorKind)).ShouldBe(
+                new[] { "None", "BadRequest", "NotFound", "Conflict", "Timeout", "Unavailable", "Internal" });
         }
 
         [Fact]

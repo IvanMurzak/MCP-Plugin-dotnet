@@ -17,7 +17,7 @@ using Xunit;
 namespace com.IvanMurzak.McpPlugin.Server.Tests
 {
     /// <summary>
-    /// A tool's own error result answers the direct REST channel with 422, but on the MCP channel it
+    /// A tool's own error result answers the direct REST channel with 400, but on the MCP channel it
     /// must stay an ordinary tool result with <c>isError: true</c> — the error kind only picks an HTTP status.
     /// </summary>
     public class ToolOwnErrorMcpChannelTests

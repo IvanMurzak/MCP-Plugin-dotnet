@@ -157,7 +157,7 @@ implementation; the rules it encodes are:
   only `type` and `text` — its `MimeType` does not reach the wire. `image` / `audio` record `data`
   (base64) and `mimeType`. `resource` records `{uri, mimeType?, text|blob}`, text preferred over blob.
 * `errorKind` is the `ResponseErrorKind` member NAME — `None`, `BadRequest`, `NotFound`, `Conflict`,
-  `Timeout`, `Unavailable`, `Internal`, `ToolError` — recorded on every call, success included. Parsing is
+  `Timeout`, `Unavailable`, `Internal` — recorded on every call, success included. Parsing is
   case-insensitive on replay, with `Internal` as the fallback for an unknown value.
 * Write the lines in any order with any key order: `canonicalize` sorts, masks, caps and computes
   `args_hash`. A raw dump is F1-**shaped**, not canonical.
