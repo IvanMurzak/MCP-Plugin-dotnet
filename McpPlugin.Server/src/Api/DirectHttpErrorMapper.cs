@@ -27,6 +27,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
                 ResponseErrorKind.Unavailable => 503,
                 ResponseErrorKind.Timeout => 504,
                 ResponseErrorKind.Internal => 500,
+                ResponseErrorKind.ToolError => 422,
                 _ => fallbackStatusCode
             };
         }
