@@ -19,13 +19,30 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
     public class ResponseCallToolErrorMetadataTests
     {
         [Fact]
-        public void Error_WithMessage_DefaultsToInternal()
+        public void Error_WithMessage_DefaultsToBadRequest()
         {
             var response = ResponseCallTool.Error("Invalid input.");
 
             response.Status.ShouldBe(ResponseStatus.Error);
-            response.ErrorKind.ShouldBe(ResponseErrorKind.Internal);
+            response.ErrorKind.ShouldBe(ResponseErrorKind.BadRequest);
             response.HttpStatusCode.ShouldBeNull();
+        }
+
+        [Fact]
+        public void Error_WithExplicitInternal_StaysInternal()
+        {
+            var response = ResponseCallTool.Error("Broken.", ResponseErrorKind.Internal);
+
+            response.ErrorKind.ShouldBe(ResponseErrorKind.Internal);
+        }
+
+        [Fact]
+        public void ResponseErrorKind_NamesAndValuesAreUnchanged()
+        {
+            // The kind travels by NAME (JsonStringEnumConverter) and servers in the field predate this
+            // change: the enum must not grow a member a deployed server cannot deserialize.
+            Enum.GetNames(typeof(ResponseErrorKind)).ShouldBe(
+                new[] { "None", "BadRequest", "NotFound", "Conflict", "Timeout", "Unavailable", "Internal" });
         }
 
         [Fact]
