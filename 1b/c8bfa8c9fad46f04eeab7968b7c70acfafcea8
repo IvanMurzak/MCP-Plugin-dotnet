@@ -1,0 +1,30 @@
+McpPlugin.Common/src/Data/Response/ResponseErrorKind.cs
+  s_c318ff925a6f98::t_3808c6224147cf 21-22
+McpPlugin.Server.Tests/DirectToolEndpointErrorStatusTests.cs
+  s_c318ff925a6f98::t_9b8c13e013e5b9 15,44,70-136,155
+McpPlugin.Server.Tests/ToolOwnErrorMcpChannelTests.cs
+  s_c318ff925a6f98::t_6876a39cc3e5ed 1-49
+McpPlugin.Common/src/Data/Response/Tool/Call/ResponseCallTool.Static.cs
+  s_c318ff925a6f98::t_3808c6224147cf 25
+McpPlugin.Server/src/Api/DirectHttpErrorMapper.cs
+  s_c318ff925a6f98::t_3808c6224147cf 30
+McpPlugin.Tests/Data/ResponseCallToolErrorMetadataTests.cs
+  s_c318ff925a6f98::t_6bbfc4399ef5d2 12
+  s_c318ff925a6f98::t_ebe11d1ae97017 23,28,32-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1bc8bfa8c9fad46f04eeab7968b7c70acfafcea8",
+  "prompts": {},
+  "sessions": {
+    "s_c318ff925a6f98": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f18f0a3d-5bea-4017-a8c1-2c4000dad348",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
