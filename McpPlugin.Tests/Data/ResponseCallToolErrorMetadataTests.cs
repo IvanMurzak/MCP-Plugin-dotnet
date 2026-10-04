@@ -28,31 +28,30 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data
             response.HttpStatusCode.ShouldBeNull();
         }
 
-        [Fact]
-        public void Error_WithExplicitInternal_StaysInternal()
+        // Every kind except the BadRequest default, so a factory that ignored its errorKind argument fails.
+        [Theory]
+        [InlineData(ResponseErrorKind.None)]
+        [InlineData(ResponseErrorKind.NotFound)]
+        [InlineData(ResponseErrorKind.Conflict)]
+        [InlineData(ResponseErrorKind.Timeout)]
+        [InlineData(ResponseErrorKind.Unavailable)]
+        [InlineData(ResponseErrorKind.Internal)]
+        public void Error_WithExplicitKind_OverridesDefault(ResponseErrorKind errorKind)
         {
-            var response = ResponseCallTool.Error("Broken.", ResponseErrorKind.Internal);
+            var response = ResponseCallTool.Error("Declined.", errorKind);
 
-            response.ErrorKind.ShouldBe(ResponseErrorKind.Internal);
+            response.Status.ShouldBe(ResponseStatus.Error);
+            response.ErrorKind.ShouldBe(errorKind);
+            response.HttpStatusCode.ShouldBeNull();
         }
 
         [Fact]
-        public void ResponseErrorKind_NamesAndValuesAreUnchanged()
+        public void ResponseErrorKind_NamesAreUnchanged()
         {
             // The kind travels by NAME (JsonStringEnumConverter) and servers in the field predate this
             // change: the enum must not grow a member a deployed server cannot deserialize.
             Enum.GetNames(typeof(ResponseErrorKind)).ShouldBe(
                 new[] { "None", "BadRequest", "NotFound", "Conflict", "Timeout", "Unavailable", "Internal" });
-        }
-
-        [Fact]
-        public void Error_WithExplicitBadRequest_PreservesBadRequest()
-        {
-            var response = ResponseCallTool.Error("Invalid input.", ResponseErrorKind.BadRequest);
-
-            response.Status.ShouldBe(ResponseStatus.Error);
-            response.ErrorKind.ShouldBe(ResponseErrorKind.BadRequest);
-            response.HttpStatusCode.ShouldBeNull();
         }
 
         [Fact]

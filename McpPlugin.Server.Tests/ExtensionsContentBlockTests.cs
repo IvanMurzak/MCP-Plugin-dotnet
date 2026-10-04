@@ -280,6 +280,24 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // Assert
             result.IsError.ShouldBe(true);
+            result.Content.ShouldHaveSingleItem().ShouldBeOfType<TextContentBlock>().Text.ShouldBe("something went wrong");
+        }
+
+        // The error kind only picks an HTTP status on the direct REST channel; on the MCP channel every
+        // kind must stay an ordinary tool result with isError: true.
+        [Theory]
+        [InlineData(ResponseErrorKind.None)]
+        [InlineData(ResponseErrorKind.BadRequest)]
+        [InlineData(ResponseErrorKind.NotFound)]
+        [InlineData(ResponseErrorKind.Conflict)]
+        [InlineData(ResponseErrorKind.Timeout)]
+        [InlineData(ResponseErrorKind.Unavailable)]
+        [InlineData(ResponseErrorKind.Internal)]
+        public void ToCallToolResult_ErrorOfAnyKind_SetsIsError(ResponseErrorKind errorKind)
+        {
+            var result = ResponseCallTool.Error("declined", errorKind).ToCallToolResult();
+
+            result.IsError.ShouldBe(true);
         }
 
         [Fact]
