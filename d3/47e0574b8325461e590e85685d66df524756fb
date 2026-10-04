@@ -1,0 +1,23 @@
+McpPlugin.Server.Tests/Webhooks/WebhookEventCollectorTests.cs
+  eed5a3168817406b 13,332-488
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "d347e0574b8325461e590e85685d66df524756fb",
+  "prompts": {
+    "eed5a3168817406b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "daa8ab3e-7f1d-4bbb-b972-ac37158816e7",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 684,
+      "total_deletions": 532,
+      "accepted_lines": 243,
+      "overriden_lines": 0
+    }
+  }
+}

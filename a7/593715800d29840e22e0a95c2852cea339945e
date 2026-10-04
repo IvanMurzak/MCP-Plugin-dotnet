@@ -1,0 +1,78 @@
+McpPlugin.Server/src/Strategy/AccountMcpStrategy.cs
+  s_50edd0e0346255::t_88fa2218547adc 1-198
+McpPlugin.Server/src/Strategy/NotificationTarget.cs
+  s_50edd0e0346255::t_1139d8eae29170 11-12,19-21,33-38
+  s_0f2bcef66588c0::t_b76a6af7525312 44-49,53,56-57,62-79,83-87
+McpPlugin.Server.Tests/AccountMcpStrategyTests.cs
+  s_50edd0e0346255::t_457f9bd7cd3744 1-376
+McpPlugin.Server/src/Hub/McpServerHub.cs
+  s_50edd0e0346255::t_b82de0ce1114fc 20-21,25,40,53-54,65,75-78
+  s_50edd0e0346255::t_160f5a3a080648 73-74
+  s_0f2bcef66588c0::t_439584b82cdaf7 85-155
+McpPlugin.Server/src/Auth/McpSessionTokenContext.cs
+  s_50edd0e0346255::t_6ef7db328dd84d 25-27,35,46,57
+  s_50edd0e0346255::t_1a4ee49de51ca0 36-38,43-45
+  s_50edd0e0346255::t_7572f6469611d8 47-49,54-56
+  s_50edd0e0346255::t_eb11b571fea206 58-60
+  s_0f2bcef66588c0::t_714512ecb34157 39-42,50-53,61-66
+McpPlugin.Server/src/Auth/ConnectionIdentity.cs
+  s_50edd0e0346255::t_11cad3ccd3c07a 1-120
+McpPlugin.Server.Tests/ConnectionIdentityAndPinTests.cs
+  s_50edd0e0346255::t_049c4447ec418e 1-98
+McpPlugin.Server.Tests/AccountInstancesTests.cs
+  s_50edd0e0346255::t_ce6b9cea3c11de 1-358
+McpPlugin.Server/src/Strategy/AccountInstances.cs
+  s_50edd0e0346255::t_3b35e0bbe762d5 1-267
+McpPlugin.Server.Tests/OAuth/OAuthResourceServerTests.cs
+  s_cb41aadbde3305::t_b242e7e3030534 74-75,77,84,99
+McpPlugin.Server/src/McpServerService.cs
+  s_4d68fcead85c12::t_b64e514dc9f4ef 134-137,161-164,182-193,195-203
+McpPlugin.Common/src/Utils/Consts.MCP.cs
+  s_0f2bcef66588c0::t_135ce041cc349c 69-88
+McpPlugin.Common/src/Utils/DataArguments.cs
+  s_0f2bcef66588c0::t_68853ac7bd469b 31-33,69-76,264-269
+McpPlugin.Server/src/Auth/McpSessionTokenMiddleware.cs
+  s_0f2bcef66588c0::t_490d283e9da89d 53-60,87-125,127
+McpPlugin.Server/src/Strategy/McpStrategyFactory.cs
+  s_0f2bcef66588c0::t_33bec0a4eee73e 29-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "a7593715800d29840e22e0a95c2852cea339945e",
+  "prompts": {},
+  "sessions": {
+    "s_0f2bcef66588c0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-acbff124a598d5f38",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_4d68fcead85c12": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e554db1e-8d99-4f43-8cb8-319a6b2dfb3c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_50edd0e0346255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2164075-e554-49e6-8a57-fdc35f7f7e9d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_cb41aadbde3305": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e52f295f-a887-4d28-a18e-567076052857",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

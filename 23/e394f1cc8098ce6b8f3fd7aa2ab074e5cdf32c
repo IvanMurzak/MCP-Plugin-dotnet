@@ -1,0 +1,23 @@
+McpPlugin.Server/src/Transport/StreamableHttpTransportLayer.cs
+  d32149eeff594c01 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.4",
+  "base_commit_sha": "23e394f1cc8098ce6b8f3fd7aa2ab074e5cdf32c",
+  "prompts": {
+    "d32149eeff594c01": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "bd62de46-d6c0-451e-8cf6-bf642fa4bd2b",
+        "model": "copilot/gemini-3-pro-preview"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 74,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}

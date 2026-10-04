@@ -1,0 +1,50 @@
+McpPlugin.Server.Tests/PromptListDegradationOverHttpTests.cs
+  s_579fea4af35458::t_301a4f47e07fcb 24-25
+  s_579fea4af35458::t_0d2529b038f54b 61-68,76
+  s_579fea4af35458::t_f7b6d33e8cc89b 311-319,323-324,326,328-332,337-338
+  s_579fea4af35458::t_1053046f4de9d4 161-162
+  s_579fea4af35458::t_dfa7984645b2e4 96-99
+  s_579fea4af35458::t_b710c07c6695d5 174,177-178,181-182,184-185,187,192
+  s_579fea4af35458::t_122fa6370523da 60,305,307-310,320-321,325,327,333-336,339-340
+  s_579fea4af35458::t_da2e0fa130103d 141-150,152-160,163-164
+  s_579fea4af35458::t_cb90c41e2c71d1 151
+  s_579fea4af35458::t_9da85a72a962af 220,224-232
+  s_579fea4af35458::t_a3a99d99235a15 28-30,33
+  s_7066a9e9ae90ec::t_046d94c7ad42de 343-344
+McpPlugin.Server/src/Mcp/Prompt/PromptRouter.List.cs
+  s_579fea4af35458::t_4f91c27e5ffbbd 82
+  s_579fea4af35458::t_0d5acfac64f08f 88
+McpPlugin.Server.Tests/ListSetErrorDegradationTests.cs
+  s_579fea4af35458::t_fd954e3000d269 120-121
+  s_579fea4af35458::t_00c98b5056f902 103
+  s_579fea4af35458::t_7f11149e6d7647 35-40
+McpPlugin.Server/src/Extension/ExtensionsPrompt.cs
+  s_579fea4af35458::t_4b1494e778c1c4 41,44
+  s_579fea4af35458::t_eb5c0b9b04b6bc 42-43
+docs/architecture-transport-auth.md
+  s_579fea4af35458::t_4828374148f338 170-178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "572bb815216f40250aaf853b4ca0f3b3035ab962",
+  "prompts": {},
+  "sessions": {
+    "s_579fea4af35458": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eacfef39-2743-4edb-bfbd-27dd7b843ba2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_7066a9e9ae90ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a7fe3a0e6f0d71c65",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

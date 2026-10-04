@@ -1,0 +1,80 @@
+McpPlugin/src/AgentConfig/Impl/OpenCodeConfigurator.cs
+  s_94cae3b80679a2::t_594979680ba279 1-75
+McpPlugin/src/AgentConfig/Impl/RiderConfigurator.cs
+  s_94cae3b80679a2::t_4f9ed2d5695170 1-56
+McpPlugin/src/AgentConfig/AgentConfiguratorSettings.cs
+  s_94cae3b80679a2::t_10885c5ebbf14b 1-109
+McpPlugin/src/AgentConfig/AgentConfiguratorDescription.cs
+  s_94cae3b80679a2::t_99a1270e815a26 1-134
+McpPlugin/src/AgentConfig/Impl/CursorConfigurator.cs
+  s_94cae3b80679a2::t_d4b7eff5ccb18d 1-38,40-41
+  s_94cae3b80679a2::t_053c3def2f8bde 39
+McpPlugin/src/AgentConfig/Impl/ZooCodeConfigurator.cs
+  s_94cae3b80679a2::t_9ce5061d0a6d00 1-40
+McpPlugin.Tests/AgentConfig/AiAgentConfiguratorTests.cs
+  s_94cae3b80679a2::t_8e876a6f939b13 1-153
+McpPlugin/src/AgentConfig/Impl/GitHubCopilotCliConfigurator.cs
+  s_94cae3b80679a2::t_fbfe8786dc9cad 1-47
+McpPlugin/src/AgentConfig/JsonAiAgentConfig.cs
+  s_94cae3b80679a2::t_e7c6e052bc7336 1-517
+McpPlugin/src/AgentConfig/Impl/UnityAiConfigurator.cs
+  s_94cae3b80679a2::t_01856542a890ca 1-39
+McpPlugin/src/AgentConfig/Impl/VisualStudioCodeCopilotConfigurator.cs
+  s_94cae3b80679a2::t_bb32f203bba599 1-41
+McpPlugin/src/AgentConfig/AgentConfigBuilders.cs
+  s_94cae3b80679a2::t_b8f9fd6e920814 1-71
+McpPlugin/src/AgentConfig/Impl/GeminiConfigurator.cs
+  s_94cae3b80679a2::t_cfcc2687370db4 1-40
+McpPlugin/src/AgentConfig/Impl/AntigravityConfigurator.cs
+  s_94cae3b80679a2::t_1c6e26ed20defa 1-60
+McpPlugin/src/AgentConfig/AiAgentConfiguratorRegistry.cs
+  s_94cae3b80679a2::t_c48839f5ce6537 1-102
+McpPlugin/src/AgentConfig/Impl/ClaudeCodeConfigurator.cs
+  s_94cae3b80679a2::t_062f8e2e1164e6 14
+  s_94cae3b80679a2::t_69aeb6832155ac 1-13,15-32,38-94
+  s_94cae3b80679a2::t_323c138feacf4e 33-37
+McpPlugin.Tests/AgentConfig/TomlAiAgentConfigTests.cs
+  s_94cae3b80679a2::t_1bb52debf047cf 1-445
+McpPlugin.Tests/AgentConfig/JsonAiAgentConfigCommandArrayTests.cs
+  s_94cae3b80679a2::t_a2450d626ed234 1-167
+McpPlugin/src/AgentConfig/Impl/ClaudeDesktopConfigurator.cs
+  s_94cae3b80679a2::t_7c711fb9365790 1-42
+McpPlugin/src/AgentConfig/Impl/CustomConfigurator.cs
+  s_94cae3b80679a2::t_487f523d213708 1-78
+McpPlugin/src/AgentConfig/AiAgentConfigurator.cs
+  s_94cae3b80679a2::t_25b7c42ea0d06a 1-161,185-197
+  s_94cae3b80679a2::t_281f02d89c9fbc 162-184
+McpPlugin/src/AgentConfig/AiAgentConfig.cs
+  s_94cae3b80679a2::t_9668e75971ab3d 1-103
+McpPlugin/src/AgentConfig/Impl/KiloCodeConfigurator.cs
+  s_94cae3b80679a2::t_fe99f7f172ac89 1-40
+McpPlugin/src/AgentConfig/Impl/CodexConfigurator.cs
+  s_94cae3b80679a2::t_ebb25dae303b0a 1-136
+McpPlugin/src/AgentConfig/TomlAiAgentConfig.cs
+  s_94cae3b80679a2::t_9bd37ffc32b0ee 1-857
+McpPlugin.Tests/AgentConfig/JsonAiAgentConfigTests.cs
+  s_94cae3b80679a2::t_99b94b09f0a0de 1-388
+McpPlugin.Tests/AgentConfig/AiAgentConfigTestBase.cs
+  s_94cae3b80679a2::t_7e005aa8af1c63 1-46
+McpPlugin/src/AgentConfig/Impl/ClineConfigurator.cs
+  s_94cae3b80679a2::t_c5145cb20a3a24 54
+  s_94cae3b80679a2::t_ffeb80244606b8 1-53,55-64
+McpPlugin/src/AgentConfig/Impl/VisualStudioCopilotConfigurator.cs
+  s_94cae3b80679a2::t_fe094f01fc6885 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "e9f32ff9edb08dc25103d800981b103279565b74",
+  "prompts": {},
+  "sessions": {
+    "s_94cae3b80679a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d15dc434-a705-4009-9c19-05eae0bfc388",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

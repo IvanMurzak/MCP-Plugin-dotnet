@@ -1,0 +1,22 @@
+McpPlugin/src/AgentConfig/MachineCredentials.GoldenVectors.json
+  s_887efbfc81dc0f::t_d46d01035c5415 15
+  s_887efbfc81dc0f::t_5752297495f4a1 2
+McpPlugin.Tests/AgentConfig/MachineCredentialsGoldenVectorTests.cs
+  s_887efbfc81dc0f::t_f347ea6f0dd61e 133-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2a07df61354e303b1575e65a48a71d315af9e1fd",
+  "prompts": {},
+  "sessions": {
+    "s_887efbfc81dc0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "556ed732-8c84-4c19-bfb0-6231e40ac140",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

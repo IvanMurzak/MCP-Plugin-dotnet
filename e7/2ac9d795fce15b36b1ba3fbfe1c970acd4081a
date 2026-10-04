@@ -1,0 +1,30 @@
+McpPlugin.Tests/AgentConfig/MachineCredentialDpapiCrossImplementationTests.cs
+  s_887efbfc81dc0f::t_1f863c506a337d 1-140
+McpPlugin.Tests/McpPlugin.Tests.csproj
+  s_887efbfc81dc0f::t_d7af054025d0df 35-38
+McpPlugin/src/AgentConfig/MachineCredentialStore.cs
+  s_887efbfc81dc0f::t_cb43a303993694 316-324
+McpPlugin.Tests/AgentConfig/MachineCredentialsCohortTests.cs
+  s_887efbfc81dc0f::t_0d02faddcf16af 1-120
+McpPlugin.Tests/AgentConfig/MachineCredentialsGoldenVectorTests.cs
+  s_887efbfc81dc0f::t_29de0995f4140b 1-104,115-186
+  s_887efbfc81dc0f::t_69525191afa312 105-114
+McpPlugin/src/AgentConfig/MachineCredentials.GoldenVectors.json
+  s_887efbfc81dc0f::t_d6578e7a96bba8 1-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "e72ac9d795fce15b36b1ba3fbfe1c970acd4081a",
+  "prompts": {},
+  "sessions": {
+    "s_887efbfc81dc0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "556ed732-8c84-4c19-bfb0-6231e40ac140",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
