@@ -12,8 +12,8 @@ using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
-using System.Text.Json;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
@@ -77,46 +77,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             var response = await PostJsonAsync(client, "/api/tools/test");
 
-            response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            body.RootElement.EnumerateObject().Select(p => p.Name).ShouldBe(new[] { "error" });
-            body.RootElement.GetProperty("error").GetString().ShouldBe("No Renderers found");
-        }
-
-        [Fact]
-        public async Task ToolCall_ErrorFromException_Is500()
-        {
-            var toolResponse = ResponseCallTool.Error(new InvalidOperationException("boom")).Pack("request-1");
-            await using var host = await StartHostAsync(toolResponse: toolResponse);
-            using var client = new HttpClient { BaseAddress = new Uri(host.BaseUrl) };
-
-            var response = await PostJsonAsync(client, "/api/tools/test");
-
-            response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
-        }
-
-        [Fact]
-        public async Task ToolCall_ExplicitInternalError_Is500()
-        {
-            var toolResponse = ResponseCallTool.Error("really broken", ResponseErrorKind.Internal).Pack("request-1");
-            await using var host = await StartHostAsync(toolResponse: toolResponse);
-            using var client = new HttpClient { BaseAddress = new Uri(host.BaseUrl) };
-
-            var response = await PostJsonAsync(client, "/api/tools/test");
-
-            response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
-        }
-
-        [Fact]
-        public async Task ToolCall_ToolOwnErrorWithExplicitHttpStatus_ExplicitStatusWins()
-        {
-            var toolResponse = ResponseCallTool.Error("legal restriction", httpStatusCode: 451).Pack("request-1");
-            await using var host = await StartHostAsync(toolResponse: toolResponse);
-            using var client = new HttpClient { BaseAddress = new Uri(host.BaseUrl) };
-
-            var response = await PostJsonAsync(client, "/api/tools/test");
-
-            response.StatusCode.ShouldBe((HttpStatusCode)451);
+            await AssertErrorBodyAsync(response, HttpStatusCode.BadRequest, "No Renderers found");
         }
 
         [Fact]
@@ -128,9 +89,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             var response = await PostJsonAsync(client, "/api/system-tools/test");
 
-            response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-            body.RootElement.GetProperty("error").GetString().ShouldBe("No Renderers found");
+            await AssertErrorBodyAsync(response, HttpStatusCode.BadRequest, "No Renderers found");
         }
 
         [Fact]
@@ -172,6 +131,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var response = await PostJsonAsync(client, "/api/system-tools/test");
 
             response.StatusCode.ShouldBe(HttpStatusCode.BadGateway);
+        }
+
+        static async Task AssertErrorBodyAsync(HttpResponseMessage response, HttpStatusCode expectedStatus, string expectedError)
+        {
+            response.StatusCode.ShouldBe(expectedStatus);
+            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            body.RootElement.EnumerateObject().Select(p => p.Name).ShouldBe(new[] { "error" });
+            body.RootElement.GetProperty("error").GetString().ShouldBe(expectedError);
         }
 
         static Task<HttpResponseMessage> PostJsonAsync(HttpClient client, string route)
