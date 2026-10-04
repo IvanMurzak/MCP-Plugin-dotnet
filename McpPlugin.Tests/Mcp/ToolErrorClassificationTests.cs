@@ -88,6 +88,20 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             response.ErrorKind.ShouldBe(ResponseErrorKind.Internal);
         }
 
+        // ResponseCallTool.Error(string) defaults to BadRequest, so each exception catch in RunTool must
+        // name Internal itself. The named-argument path is pinned above; this pins the positional one.
+        [Fact]
+        public async Task RunTool_PositionalRun_ToolExecutionFailure_IsInternal()
+        {
+            var method = typeof(ReflectedThrowingTool).GetMethod(nameof(ReflectedThrowingTool.ThrowStatic));
+            var tool = RunTool.CreateFromStaticMethod(new Reflector(), NullLogger.Instance, "reflected-throw", method!);
+
+            var response = await tool.Run("request-1", CancellationToken.None);
+
+            response.Status.ShouldBe(ResponseStatus.Error);
+            response.ErrorKind.ShouldBe(ResponseErrorKind.Internal);
+        }
+
         [Fact]
         public async Task RunSystemTool_UnknownTool_IsNotFound()
         {
@@ -175,6 +189,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         sealed class ReflectedThrowingTool
         {
             public string Throw() => throw new ApplicationException("reflected tool failed");
+
+            public static string ThrowStatic() => throw new ApplicationException("reflected tool failed");
         }
     }
 }

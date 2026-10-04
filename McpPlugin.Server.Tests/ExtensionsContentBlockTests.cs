@@ -283,8 +283,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             result.Content.ShouldHaveSingleItem().ShouldBeOfType<TextContentBlock>().Text.ShouldBe("something went wrong");
         }
 
-        // The error kind only picks an HTTP status on the direct REST channel; on the MCP channel every
-        // kind must stay an ordinary tool result with isError: true.
+        // The error kind only picks an HTTP status on the direct REST channel. Server-native tools reach
+        // the MCP client through ToCallToolResult, where every kind must stay a result with isError: true.
+        // Remote tools take ToolRouter.Call instead: see ToolOwnErrorMcpChannelTests.
         [Theory]
         [InlineData(ResponseErrorKind.None)]
         [InlineData(ResponseErrorKind.BadRequest)]
