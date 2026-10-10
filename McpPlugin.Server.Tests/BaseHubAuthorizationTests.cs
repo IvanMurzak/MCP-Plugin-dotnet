@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Server;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
 using Microsoft.AspNetCore.Http;
@@ -86,6 +87,39 @@ namespace McpPlugin.Server.Tests
             hub.Context = mockContext.Object;
             hub.Clients = new Mock<IHubCallerClients<IClientDisconnectable>>().Object;
             return hub;
+        }
+
+        [Fact]
+        public async Task OnConnectedAsync_WebhookUnavailable_AbortsWithoutPermanentRejection_ThenReconnects()
+        {
+            var webhook = new Mock<IAuthorizationWebhookService>();
+            webhook.SetupSequence(x => x.AuthorizePluginAsync(
+                    It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
+                .ThrowsAsync(new AuthorizationUnavailableException("Backend unavailable"))
+                .ReturnsAsync(true);
+            var strategy = new Mock<IMcpConnectionStrategy>();
+            var caller = new Mock<IClientDisconnectable>();
+            var clients = new Mock<IHubCallerClients<IClientDisconnectable>>();
+            clients.Setup(x => x.Caller).Returns(caller.Object);
+            var context = CreateMockHubCallerContext("same-token");
+            var hub = CreateTestHub(context, webhook, strategy);
+            hub.Clients = clients.Object;
+
+            await hub.OnConnectedAsync();
+            hub.ConnectionRejectedFlag.ShouldBeTrue();
+            context.Verify(x => x.Abort(), Times.Once);
+            caller.Verify(x => x.ForceDisconnect(It.IsAny<string?>()), Times.Never);
+            strategy.Verify(x => x.OnPluginConnected(It.IsAny<Type>(), It.IsAny<string>(), It.IsAny<string?>(),
+                It.IsAny<ILogger>(), It.IsAny<Action<string, string?>>()), Times.Never);
+
+            var nextContext = CreateMockHubCallerContext("same-token");
+            var reconnected = CreateTestHub(nextContext, webhook, strategy);
+            await reconnected.OnConnectedAsync();
+            reconnected.ConnectionRejectedFlag.ShouldBeFalse();
+            nextContext.Verify(x => x.Abort(), Times.Never);
+            strategy.Verify(x => x.OnPluginConnected(It.IsAny<Type>(), nextContext.Object.ConnectionId, "same-token",
+                It.IsAny<ILogger>(), It.IsAny<Action<string, string?>>()), Times.Once);
         }
 
         [Fact]

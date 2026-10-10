@@ -23,7 +23,7 @@ using R3;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public partial class McpPlugin : IMcpPlugin, IDisposable
+    public partial class McpPlugin : IMcpPlugin, IConnectionRecovery, IDisposable
     {
         private readonly ILogger<McpPlugin> _logger;
         private readonly IMcpManagerHub _mcpManagerHub;
@@ -38,6 +38,8 @@ namespace com.IvanMurzak.McpPlugin
         public ILogger Logger => _logger;
         public IMcpManager McpManager { get; private set; }
         public IMcpManagerHub McpManagerHub => _mcpManagerHub;
+        public Observable<Unit> OnDisconnectRequested => (_mcpManagerHub as IConnectionRecovery)?.OnDisconnectRequested
+            ?? Observable.Empty<Unit>();
         public Common.Version Version => _version;
         public VersionHandshakeResponse? VersionHandshakeStatus => _mcpManagerHub?.VersionHandshakeStatus;
         public ulong ToolCallsCount => McpManager.ToolManager?.ToolCallsCount ?? 0;
@@ -295,6 +297,11 @@ namespace com.IvanMurzak.McpPlugin
                 return Task.CompletedTask;
             return _mcpManagerHub.Disconnect(cancellationToken);
         }
+
+        public Task<bool> ConnectForRecovery(CancellationToken cancellationToken)
+            => _isDisposed.Value ? Task.FromResult(false)
+                : (_mcpManagerHub as IConnectionRecovery)?.ConnectForRecovery(cancellationToken)
+                    ?? _mcpManagerHub.Connect(cancellationToken);
 
         public void DisconnectImmediate()
         {

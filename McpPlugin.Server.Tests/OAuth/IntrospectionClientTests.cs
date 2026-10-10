@@ -13,6 +13,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Server.Auth.OAuth;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using Shouldly;
 using Xunit;
 
@@ -36,6 +37,24 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.OAuth
                     throw new InvalidOperationException("network");
                 return Task.FromResult(Response);
             };
+        }
+
+
+        [Fact]
+        public async Task OutageThenRecovery_RechecksSameCredential_ThenCachesDefinitiveDenial()
+        {
+            var post = new CountingPost { Response = null };
+            var now = Start;
+            var client = new IntrospectionClient(post.Delegate, () => now);
+            await Should.ThrowAsync<AuthorizationUnavailableException>(() => client.IntrospectAsync("same-token", CancellationToken.None));
+            post.Response = "{\"active\":true,\"sub\":\"u1\"}";
+            (await client.IntrospectAsync("same-token", CancellationToken.None)).Active.ShouldBeTrue();
+            post.Calls.ShouldBe(2);
+            now = Start.AddSeconds(61);
+            post.Response = "{\"active\":false}";
+            (await client.IntrospectAsync("same-token", CancellationToken.None)).Active.ShouldBeFalse();
+            (await client.IntrospectAsync("same-token", CancellationToken.None)).Active.ShouldBeFalse();
+            post.Calls.ShouldBe(3);
         }
 
         [Fact]
@@ -84,8 +103,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.OAuth
             var post = new CountingPost { Response = null }; // simulates non-2xx / transport error
             var client = new IntrospectionClient(post.Delegate, () => Start);
 
-            (await client.IntrospectAsync("t", CancellationToken.None)).Active.ShouldBeFalse();
-            (await client.IntrospectAsync("t", CancellationToken.None)).Active.ShouldBeFalse();
+            await Should.ThrowAsync<AuthorizationUnavailableException>(() => client.IntrospectAsync("t", CancellationToken.None));
+            await Should.ThrowAsync<AuthorizationUnavailableException>(() => client.IntrospectAsync("t", CancellationToken.None));
             post.Calls.ShouldBe(2); // failures are not cached — each call retries
         }
 
@@ -95,9 +114,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.OAuth
             var post = new CountingPost { Throw = true };
             var client = new IntrospectionClient(post.Delegate, () => Start);
 
-            var result = await client.IntrospectAsync("t", CancellationToken.None);
-
-            result.Active.ShouldBeFalse();
+            await Should.ThrowAsync<AuthorizationUnavailableException>(() => client.IntrospectAsync("t", CancellationToken.None));
         }
 
         [Fact]
@@ -106,9 +123,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.OAuth
             var post = new CountingPost { Response = "not json" };
             var client = new IntrospectionClient(post.Delegate, () => Start);
 
-            (await client.IntrospectAsync("t", CancellationToken.None)).Active.ShouldBeFalse();
+            await Should.ThrowAsync<AuthorizationUnavailableException>(() => client.IntrospectAsync("t", CancellationToken.None));
             post.Calls.ShouldBe(1);
-            (await client.IntrospectAsync("t", CancellationToken.None)).Active.ShouldBeFalse();
+            await Should.ThrowAsync<AuthorizationUnavailableException>(() => client.IntrospectAsync("t", CancellationToken.None));
             post.Calls.ShouldBe(2); // malformed responses are not cached
         }
     }

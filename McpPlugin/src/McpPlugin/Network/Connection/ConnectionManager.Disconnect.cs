@@ -38,6 +38,7 @@ namespace com.IvanMurzak.McpPlugin
             }
 
             // Cancel the internal token to stop any ongoing connection attempts
+            _disconnectRequested.OnNext(R3.Unit.Default);
             CancelInternalToken(dispose: false);
             _continueToReconnect.Value = false;
 
@@ -85,6 +86,7 @@ namespace com.IvanMurzak.McpPlugin
             }
 
             // Cancel the internal token to stop any ongoing connection attempts
+            _disconnectRequested.OnNext(R3.Unit.Default);
             CancelInternalToken(dispose: false);
             _continueToReconnect.Value = false;
 

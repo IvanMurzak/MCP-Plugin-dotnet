@@ -21,18 +21,18 @@ using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public abstract class BaseHubConnector : IConnectServerHub, IDisposable
+    public abstract class BaseHubConnector : IConnectServerHub, IConnectionRecovery, IDisposable
     {
         protected readonly ILogger _logger;
         protected readonly Version _apiVersion;
         protected readonly IConnectionManager _connectionManager;
         protected readonly CancellationTokenSource _cancellationTokenSource = new();
 
-        private const int MaxHandshakeFailures = 3;
         private readonly ThreadSafeBool _isDisposed = new(false);
         private readonly ThreadSafeBool _handshakeInFlight = new(false);
         private volatile VersionHandshakeResponse? lastHandshakeResponse = null;
-        private int _consecutiveHandshakeFailures;
+        private int _handshakePending;
+        private CancellationToken _serverEventsToken;
 
         /// <summary>
         /// Disposable for subscription on the HubConnection changes.
@@ -47,6 +47,8 @@ namespace com.IvanMurzak.McpPlugin
         public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _connectionManager.ConnectionState;
         public ReadOnlyReactiveProperty<bool> KeepConnected => _connectionManager.KeepConnected;
         public Observable<Unit> OnAuthorizationRejected => _connectionManager.OnAuthorizationRejected;
+        public Observable<Unit> OnDisconnectRequested => (_connectionManager as IConnectionRecovery)?.OnDisconnectRequested
+            ?? Observable.Empty<Unit>();
         public VersionHandshakeResponse? VersionHandshakeStatus => lastHandshakeResponse;
 
         /// <summary>
@@ -104,6 +106,11 @@ namespace com.IvanMurzak.McpPlugin
                 nameof(Connect), _connectionManager.Endpoint);
             return _connectionManager.Connect(cancellationToken);
         }
+
+        public Task<bool> ConnectForRecovery(CancellationToken cancellationToken)
+            => _isDisposed.Value ? Task.FromResult(false)
+                : (_connectionManager as IConnectionRecovery)?.ConnectForRecovery(cancellationToken)
+                    ?? _connectionManager.Connect(cancellationToken);
 
         public Task Disconnect(CancellationToken cancellationToken = default)
         {
@@ -219,8 +226,13 @@ namespace com.IvanMurzak.McpPlugin
             if (hubConnection == null)
                 return;
 
-            _consecutiveHandshakeFailures = 0;
-
+            var session = new CancellationTokenSource();
+            _serverEventsToken = session.Token;
+            _serverEventsDisposables.Add(Disposable.Create(() =>
+            {
+                session.Cancel();
+                session.Dispose();
+            }));
             OnBeforeSubscribeToServerEvents();
 
             // Register handlers BEFORE StartAsync so the server's immediate
@@ -239,15 +251,25 @@ namespace com.IvanMurzak.McpPlugin
                 return;
             }
 
+            Interlocked.Exchange(ref _handshakePending, 1);
             if (!_handshakeInFlight.TrySetTrue())
             {
-                _logger.LogDebug("{method} Handshake already in flight. Skipping.", nameof(OnConnectionEstablished));
+                _logger.LogDebug("{method} Handshake already in flight; queued transport notification.", nameof(OnConnectionEstablished));
                 return;
             }
 
             try
             {
-                await OnConnectionEstablishedCore();
+                do
+                {
+                    Interlocked.Exchange(ref _handshakePending, 0);
+                    await OnConnectionEstablishedCore();
+                }
+                while (!_isDisposed.Value && Volatile.Read(ref _handshakePending) != 0);
+            }
+            catch (OperationCanceledException)
+            {
+                // Manual stop, transport replacement and disposal end this handshake worker.
             }
             catch (Exception ex)
             {
@@ -256,58 +278,76 @@ namespace com.IvanMurzak.McpPlugin
             finally
             {
                 _handshakeInFlight.TrySetFalse();
+                // A transport event can arrive between the loop's final pending check and
+                // releasing single-flight ownership. Hand that event to a fresh worker.
+                if (!_isDisposed.Value && Interlocked.Exchange(ref _handshakePending, 0) != 0)
+                    OnConnectionEstablished();
             }
         }
 
         private async Task OnConnectionEstablishedCore()
         {
-            var serverEventsCts = _serverEventsDisposables.ToCancellationTokenSource();
-            var cancellationToken = serverEventsCts.Token;
+            using var handshakeCts = CancellationTokenSource.CreateLinkedTokenSource(
+                _serverEventsToken, _cancellationTokenSource.Token, _connectionManager.ConnectionCancellationToken);
+            var cancellationToken = handshakeCts.Token;
+            var failures = 0;
 
             // Perform version handshake after handlers are registered
-            var handshakeResponse = await PerformVersionHandshake(
-                request: new RequestVersionHandshake
-                {
-                    RequestID = Guid.NewGuid().ToString(),
-                    ApiVersion = _apiVersion.Api,
-                    PluginVersion = _apiVersion.Plugin,
-                    Environment = _apiVersion.Environment
-                },
-                cancellationToken: cancellationToken);
-
-            if (cancellationToken.IsCancellationRequested)
-                return;
-
-            lastHandshakeResponse = handshakeResponse;
-
-            if (handshakeResponse == null || handshakeResponse.IsConnectionError)
+            while (!cancellationToken.IsCancellationRequested && _connectionManager.KeepConnected.CurrentValue)
             {
-                _consecutiveHandshakeFailures++;
-                var reason = handshakeResponse?.Message ?? "No response from server";
-                _logger.LogWarning("{class} Version handshake failed ({count}/{max}). Reason: {reason}",
-                    GetType().Name, _consecutiveHandshakeFailures, MaxHandshakeFailures, reason);
+                using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                attemptCts.CancelAfter(HandshakeAttemptTimeout);
+                var handshakeResponse = await PerformVersionHandshake(
+                    request: new RequestVersionHandshake
+                    {
+                        RequestID = Guid.NewGuid().ToString(),
+                        ApiVersion = _apiVersion.Api,
+                        PluginVersion = _apiVersion.Plugin,
+                        Environment = _apiVersion.Environment
+                    },
+                    cancellationToken: attemptCts.Token);
 
-                if (_consecutiveHandshakeFailures >= MaxHandshakeFailures)
+                if (cancellationToken.IsCancellationRequested)
+                    return;
+
+                lastHandshakeResponse = handshakeResponse;
+
+                if (handshakeResponse == null || handshakeResponse.IsConnectionError)
                 {
-                    _logger.LogError("{class} Version handshake failed {count} times consecutively — disconnecting. Reason: {reason}",
-                        GetType().Name, _consecutiveHandshakeFailures, reason);
-                    _connectionManager.DisconnectImmediate();
+                    _logger.LogWarning("{class} Version handshake temporarily failed; retrying while connected. Reason: {reason}",
+                        GetType().Name, handshakeResponse?.Message ?? "No response from server");
+                    if (!IsTransportConnected)
+                        return; // a later transport-connected event owns the next handshake
+                    await WaitBeforeHandshakeRetry(failures++, cancellationToken);
+                    if (!IsTransportConnected)
+                        return;
+                    continue;
                 }
+
+                if (!handshakeResponse.Compatible)
+                {
+                    LogVersionMismatchError(handshakeResponse);
+                    _logger.LogError("{class} Version mismatch — disconnecting. Server: {serverVersion}, API: {apiVersion}, Message: {message}",
+                        GetType().Name, handshakeResponse.ServerVersion, handshakeResponse.ApiVersion, handshakeResponse.Message);
+                    _connectionManager.DisconnectImmediate();
+                    return;
+                }
+
+                _connectionManager.SetConnected();
+                await OnConnectedAsync(cancellationToken);
                 return;
             }
+        }
 
-            if (!handshakeResponse.Compatible)
-            {
-                LogVersionMismatchError(handshakeResponse);
-                _logger.LogError("{class} Version mismatch — disconnecting. Server: {serverVersion}, API: {apiVersion}, Message: {message}",
-                    GetType().Name, handshakeResponse.ServerVersion, handshakeResponse.ApiVersion, handshakeResponse.Message);
-                _connectionManager.DisconnectImmediate();
-                return;
-            }
+        protected virtual bool IsTransportConnected
+            => _connectionManager.HubConnection.CurrentValue?.State == HubConnectionState.Connected;
 
-            _consecutiveHandshakeFailures = 0;
-            _connectionManager.SetConnected();
-            await OnConnectedAsync(cancellationToken);
+        protected virtual TimeSpan HandshakeAttemptTimeout => TimeSpan.FromSeconds(30);
+
+        protected virtual Task WaitBeforeHandshakeRetry(int failures, CancellationToken cancellationToken)
+        {
+            var seconds = Math.Min(60, 5 * Math.Pow(2, Math.Min(failures, 4)));
+            return Task.Delay(TimeSpan.FromSeconds(Math.Min(60, seconds * (0.8 + new Random().NextDouble() * 0.4))), cancellationToken);
         }
 
         private void LogVersionMismatchError(VersionHandshakeResponse handshakeResponse)

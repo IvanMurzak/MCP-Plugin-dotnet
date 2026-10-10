@@ -226,6 +226,93 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             (await Task.WhenAny(connectTask, Task.Delay(TimeSpan.FromSeconds(10)))).ShouldBe(connectTask);
         }
 
+        [Fact]
+        public async Task RepeatedRejections_ImmediateRefresh_StartsFreshCyclesAfterEachStoppedLoop()
+        {
+            SeedStore();
+            var refreshCount = 0;
+            var refresher = new FakeTokenRefresher(_ => TokenRefreshResult.Success(
+                "eyJ.REFRESHED." + Interlocked.Increment(ref refreshCount),
+                expiresAt: DateTimeOffset.UtcNow.AddHours(1)));
+            using var provider = new PluginCredentialProvider(NewStore(), refresher);
+            await using var cm = new ScriptedRejectionConnectionManager(_testVersion, DummyHubProvider().Object, rejectionAttempts: 9);
+            using var coordinator = new ConnectionCredentialCoordinator(cm, provider);
+
+            await cm.Connect();
+
+            await WaitUntilAsync(() => cm.AttemptCount >= 11, TimeSpan.FromSeconds(15),
+                "each of three rejection bursts must refresh and start a new connection cycle");
+            Volatile.Read(ref refreshCount).ShouldBe(3);
+            provider.State.CurrentValue.ShouldBe(AuthState.SignedIn);
+            cm.KeepConnected.CurrentValue.ShouldBeTrue("ordinary failures after the third recovery must keep retrying");
+            await cm.Disconnect();
+        }
+
+        [Fact]
+        public async Task ManualDisconnect_DuringRejectedLoopTeardown_DoesNotRestartAfterRefresh()
+        {
+            SeedStore();
+            var refreshCount = 0;
+            var refresher = new FakeTokenRefresher(_ =>
+            {
+                Interlocked.Increment(ref refreshCount);
+                return TokenRefreshResult.Success("eyJ.REFRESHED.ccc", expiresAt: DateTimeOffset.UtcNow.AddHours(1));
+            });
+            using var provider = new PluginCredentialProvider(NewStore(), refresher);
+            await using var cm = new ScriptedRejectionConnectionManager(_testVersion, DummyHubProvider().Object, rejectionAttempts: 3);
+            using var coordinator = new ConnectionCredentialCoordinator(cm, provider);
+            using var releaseTeardown = new ManualResetEventSlim();
+            var reachedTeardown = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            // Registered after the coordinator: its immediate refresh has already attempted to
+            // join the dying cycle, but the original loop cannot clear its published task yet.
+            using var teardownSubscription = cm.OnAuthorizationRejected.Subscribe(_ =>
+            {
+                reachedTeardown.TrySetResult(true);
+                releaseTeardown.Wait(TimeSpan.FromSeconds(10));
+            });
+
+            var connect = Task.Run(() => cm.Connect());
+            try
+            {
+                await reachedTeardown.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                await WaitUntilAsync(() => Volatile.Read(ref refreshCount) == 1, TimeSpan.FromSeconds(5),
+                    "the credential refresh must finish while the old cycle is still published");
+                Volatile.Read(ref refreshCount).ShouldBe(1);
+                var disconnect = cm.Disconnect(); // cancels recovery before waiting on the loop's gate
+                releaseTeardown.Set();
+                await disconnect.WaitAsync(TimeSpan.FromSeconds(5));
+                await connect.WaitAsync(TimeSpan.FromSeconds(5));
+                await Task.Delay(300);
+                cm.AttemptCount.ShouldBe(3, "manual stop during recovery must not start a successor cycle");
+                cm.KeepConnected.CurrentValue.ShouldBeFalse();
+            }
+            finally
+            {
+                releaseTeardown.Set();
+            }
+        }
+
+        private sealed class ScriptedRejectionConnectionManager : ConnectionManager
+        {
+            readonly int _rejectionAttempts;
+            int _attemptCount;
+            public int AttemptCount => Volatile.Read(ref _attemptCount);
+
+            public ScriptedRejectionConnectionManager(Common.Version version, IHubConnectionProvider provider, int rejectionAttempts)
+                : base(NullLogger.Instance, version, "http://localhost:9999/dummy", provider)
+            {
+                _rejectionAttempts = rejectionAttempts;
+            }
+
+            protected override Task WaitBeforeRetry(CancellationToken cancellationToken)
+                => Task.Delay(TimeSpan.FromMilliseconds(25), cancellationToken);
+
+            protected override Task<ConnectionAttemptResult> AttemptConnection(CancellationToken cancellationToken)
+                => Task.FromResult(Interlocked.Increment(ref _attemptCount) <= _rejectionAttempts
+                    ? ConnectionAttemptResult.AuthRejected
+                    : ConnectionAttemptResult.Failed);
+        }
+
         /// <summary>Real loop, accelerated pacing, every attempt fails for a NON-AUTH reason (unreachable endpoint).</summary>
         private class FailingLoopConnectionManager : ConnectionManager
         {

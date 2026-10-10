@@ -42,6 +42,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
 
         readonly IAuthorizationWebhookService _authorizationWebhookService;
         readonly IOAuthTokenValidator? _oauthValidator;
+        bool _authorizationUnavailable;
         readonly OAuthResourceServerConfig? _oauthConfig;
 
         public TokenAuthenticationHandler(
@@ -60,6 +61,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
 
         protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
         {
+            if (_authorizationUnavailable)
+            {
+                Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                Response.Headers.RetryAfter = "5";
+                Response.Headers.Remove("WWW-Authenticate");
+                await Response.WriteAsJsonAsync(new
+                {
+                    error = "temporarily_unavailable",
+                    error_description = "Authorization service is temporarily unavailable. Retry with the same credentials."
+                });
+                return;
+            }
+
             Response.StatusCode = 401;
 
             if (Options.OAuthMode && _oauthConfig != null)
@@ -150,6 +164,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         // ── OAuth resource-server path (mcp-authorize b2) ─────────────────────────────────────────
         async Task<AuthenticateResult> HandleOAuthAuthenticateAsync()
         {
+            try
+            {
+                return await AuthenticateOAuthCoreAsync();
+            }
+            catch (AuthorizationUnavailableException ex)
+            {
+                _authorizationUnavailable = true;
+                Logger.LogWarning(ex, "MCP authorization dependency unavailable; refusing access for retry.");
+                return AuthenticateResult.Fail(ex);
+            }
+        }
+
+        async Task<AuthenticateResult> AuthenticateOAuthCoreAsync()
+        {
             if (!TryGetBearerToken(out var token))
             {
                 // No/empty/non-Bearer credential. On the hub path stay silent (BaseHub does its own
@@ -161,7 +189,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             if (_oauthValidator == null)
             {
                 Logger.LogError("OAuth mode is enabled but no token validator is configured.");
-                return IsHubPath() ? AuthenticateResult.NoResult() : AuthenticateResult.Fail("OAuth validator not configured.");
+                throw new AuthorizationUnavailableException("OAuth validator not configured.");
             }
 
             var validation = await _oauthValidator.ValidateAsync(token, Context.RequestAborted);

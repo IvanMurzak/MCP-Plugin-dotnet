@@ -12,6 +12,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
@@ -66,15 +67,27 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
 
             // Check authorization webhook
-            var allowed = await _authorizationWebhookService.AuthorizePluginAsync(
-                connectionId: Context.ConnectionId,
-                bearerToken: token,
-                clientName: null,
-                clientVersion: null,
-                remoteIpAddress: remoteIpAddress,
-                userAgent: userAgent,
-                requestPath: requestPath,
-                cancellationToken: Context.ConnectionAborted);
+            bool allowed;
+            try
+            {
+                allowed = await _authorizationWebhookService.AuthorizePluginAsync(
+                    connectionId: Context.ConnectionId,
+                    bearerToken: token,
+                    clientName: null,
+                    clientVersion: null,
+                    remoteIpAddress: remoteIpAddress,
+                    userAgent: userAgent,
+                    requestPath: requestPath,
+                    cancellationToken: Context.ConnectionAborted);
+            }
+            catch (AuthorizationUnavailableException ex)
+            {
+                _connectionRejected = true;
+                _logger.LogWarning(ex, "Authorization temporarily unavailable. Closing connection for retry. ConnectionId: {connectionId}.", Context.ConnectionId);
+                // Do not send ForceDisconnect: older clients interpret that as permanent rejection.
+                Context.Abort();
+                return;
+            }
 
             if (!allowed)
             {

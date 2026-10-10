@@ -197,6 +197,22 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         }
 
         [Fact]
+        public async Task SignedInEdge_DoesNotResume_AfterManualDisconnectWhileSignInRequired()
+        {
+            var refresher = RefresherReturning(TokenRefreshResult.Failure("revoked", TokenRefreshFailureKind.InvalidGrant));
+            using var provider = SeededProvider(refresher.Object);
+            using var connection = new FakeConnection(keepConnected: true);
+            using var coordinator = new ConnectionCredentialCoordinator(connection, provider);
+
+            (await provider.RefreshAsync()).ShouldBeFalse();
+            (await connection.WaitForNextDisconnectAsync(TimeSpan.FromSeconds(5))).ShouldBeTrue();
+            await connection.Disconnect();
+            provider.Adopt(FreshCredentials());
+
+            connection.ConnectCount.ShouldBe(0);
+        }
+
+        [Fact]
         public async Task SignedInEdge_DoesNotConnect_WhenIntentWasOff()
         {
             // Identical fixture to SignedInEdge_ResumesConnect... (the same-fixture positive
@@ -268,6 +284,86 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             ServerTarget = "https://ai-game.dev",
         };
 
+        [Fact]
+        public async Task TransientRefreshFailures_RecoverWithoutSigningInAgain()
+        {
+            var refresher = new Mock<ITokenRefresher>();
+            refresher.SetupSequence(r => r.RefreshAsync(It.IsAny<TokenRefreshRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(TokenRefreshResult.Failure("HTTP 502", TokenRefreshFailureKind.Transient))
+                .ThrowsAsync(new System.Net.Http.HttpRequestException("offline"))
+                .ReturnsAsync(TokenRefreshResult.Success(RefreshedAccessToken, expiresAt: DateTimeOffset.UtcNow.AddHours(1)));
+            using var provider = SeededProvider(refresher.Object);
+            using var connection = new FakeConnection(keepConnected: false); // legacy server already stopped transport
+            var delays = 0;
+            using var coordinator = new ConnectionCredentialCoordinator(connection, provider, null, (retry, token) =>
+            {
+                retry.ShouldBe(delays++);
+                provider.State.CurrentValue.ShouldBe(AuthState.SignedIn);
+                NewStore().TryRead().Credentials!.RefreshToken.ShouldBe(SeededRefreshToken);
+                return Task.CompletedTask;
+            });
+
+            (await coordinator.HandleRejectionAsync()).ShouldBeTrue();
+
+            delays.ShouldBe(2);
+            connection.ConnectCount.ShouldBe(1);
+            connection.RecoveryConnectCount.ShouldBe(1);
+            provider.State.CurrentValue.ShouldBe(AuthState.SignedIn);
+            (await provider.GetAccessTokenAsync()).ShouldBe(RefreshedAccessToken);
+        }
+
+        [Theory]
+        [InlineData("disconnect")]
+        [InlineData("dispose")]
+        [InlineData("cancel")]
+        [InlineData("sign-out")]
+        public async Task PendingRecovery_StopsWhenConsumerStops(string stop)
+        {
+            var refresher = RefresherReturning(TokenRefreshResult.Failure("HTTP 503", TokenRefreshFailureKind.Transient));
+            using var provider = SeededProvider(refresher.Object);
+            using var connection = new FakeConnection(keepConnected: false);
+            using var cancellation = new CancellationTokenSource();
+            var waiting = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var coordinator = new ConnectionCredentialCoordinator(connection, provider, null, (retry, token) =>
+            {
+                waiting.TrySetResult(true);
+                return Task.Delay(Timeout.Infinite, token);
+            });
+            var recovery = coordinator.HandleRejectionAsync(cancellation.Token);
+            await waiting.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            (await coordinator.HandleRejectionAsync()).ShouldBeFalse("overlapping rejection must not start another recovery");
+
+            switch (stop)
+            {
+                case "disconnect": await connection.Disconnect(); break;
+                case "dispose": coordinator.Dispose(); break;
+                case "cancel": cancellation.Cancel(); break;
+                case "sign-out": provider.SignOut(); break;
+            }
+
+            (await recovery.WaitAsync(TimeSpan.FromSeconds(5))).ShouldBeFalse();
+            connection.ConnectCount.ShouldBe(0);
+            refresher.Verify(r => r.RefreshAsync(It.IsAny<TokenRefreshRequest>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task TransientThenRevoked_StopsRecoveryAndRequiresSignIn()
+        {
+            var refresher = new Mock<ITokenRefresher>();
+            refresher.SetupSequence(r => r.RefreshAsync(It.IsAny<TokenRefreshRequest>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(TokenRefreshResult.Failure("HTTP 502", TokenRefreshFailureKind.Transient))
+                .ReturnsAsync(TokenRefreshResult.Failure("revoked", TokenRefreshFailureKind.InvalidGrant));
+            using var provider = SeededProvider(refresher.Object);
+            using var connection = new FakeConnection(keepConnected: false);
+            using var coordinator = new ConnectionCredentialCoordinator(connection, provider, null, (_, token) => Task.CompletedTask);
+
+            (await coordinator.HandleRejectionAsync()).ShouldBeFalse();
+
+            provider.State.CurrentValue.ShouldBe(AuthState.SignInRequired);
+            connection.ConnectCount.ShouldBe(0);
+            connection.DisconnectCount.ShouldBe(1);
+        }
+
         /// <summary>
         /// A minimal <see cref="IConnection"/> test double: exposes a rejection signal to fire, records
         /// connect/disconnect passes, and signals each via a task so tests can await the fire-and-forget
@@ -276,13 +372,14 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         /// intent capture and loop-live check read it. <see cref="HoldDisconnects"/> keeps the Disconnect
         /// task pending so a flapping fixture can prove the stop pass is single-flight.
         /// </summary>
-        sealed class FakeConnection : IConnection
+        sealed class FakeConnection : IConnection, IConnectionRecovery
         {
             readonly ReactiveProperty<bool> _keepConnected;
             readonly ReactiveProperty<HubConnectionState> _state = new ReactiveProperty<HubConnectionState>(HubConnectionState.Disconnected);
             readonly ReadOnlyReactiveProperty<bool> _keepConnectedRo;
             readonly ReadOnlyReactiveProperty<HubConnectionState> _stateRo;
             readonly Subject<Unit> _authRejected = new Subject<Unit>();
+            readonly Subject<Unit> _disconnectRequested = new Subject<Unit>();
             readonly object _sync = new object();
             // Single-shot: completes on the FIRST Connect and stays completed, so a waiter registered
             // before OR after the fire-and-forget handler runs observes it (no TCS-replacement race).
@@ -299,6 +396,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
 
             public int ConnectCount { get; private set; }
             public int DisconnectCount { get; private set; }
+            public int RecoveryConnectCount { get; private set; }
+            public Observable<Unit> OnDisconnectRequested => _disconnectRequested;
 
             public ReadOnlyReactiveProperty<bool> KeepConnected => _keepConnectedRo;
             public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _stateRo;
@@ -353,6 +452,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
 
             public Task Disconnect(CancellationToken cancellationToken = default)
             {
+                _disconnectRequested.OnNext(Unit.Default);
                 Task pending;
                 lock (_sync)
                 {
@@ -366,11 +466,18 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             }
 
             public void DisconnectImmediate() { }
+            public Task<bool> ConnectForRecovery(CancellationToken cancellationToken)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                RecoveryConnectCount++;
+                return Connect(cancellationToken);
+            }
             public bool WaitForImmediateTeardown(TimeSpan timeout) => true;
 
             public void Dispose()
             {
                 _authRejected.Dispose();
+                _disconnectRequested.Dispose();
                 _keepConnectedRo.Dispose();
                 _stateRo.Dispose();
                 _keepConnected.Dispose();

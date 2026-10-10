@@ -22,7 +22,13 @@ namespace com.IvanMurzak.McpPlugin
 {
     public partial class ConnectionManager : IConnectionManager, IAsyncDisposable
     {
-        public async Task<bool> Connect(CancellationToken cancellationToken = default)
+        public Task<bool> Connect(CancellationToken cancellationToken = default)
+            => ConnectAsync(cancellationToken, firstOutcomeOnly: false);
+
+        public Task<bool> ConnectForRecovery(CancellationToken cancellationToken)
+            => ConnectAsync(cancellationToken, firstOutcomeOnly: true);
+
+        private async Task<bool> ConnectAsync(CancellationToken cancellationToken, bool firstOutcomeOnly)
         {
             if (_isDisposed.Value)
             {
@@ -76,12 +82,21 @@ namespace com.IvanMurzak.McpPlugin
 
             if (ongoingTask != null)
             {
+                // The rejection signal fires before the rejected cycle's cleanup finishes.
+                // Recovery must wait for that dying cycle, then start a fresh one; joining its
+                // already-failed first outcome would silently lose a fast token refresh.
+                if (firstOutcomeOnly && !_continueToReconnect.CurrentValue)
+                {
+                    await WaitForConnectionCompletion(ongoingTask, cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    return await ConnectAsync(cancellationToken, firstOutcomeOnly: true);
+                }
                 // A joiner that cannot cancel must attach to the FIRST DECIDED OUTCOME, never to
                 // the full attempt: with the default (unlimited) reconnect cap the leader's loop
                 // has no terminating condition, so awaiting its completion with a token that can
                 // never fire would be an await that can never complete. Same reasoning as the
                 // leader's own release below.
-                var joinTarget = !cancellationToken.CanBeCanceled && ongoingFirstOutcome != null
+                var joinTarget = (firstOutcomeOnly || !cancellationToken.CanBeCanceled) && ongoingFirstOutcome != null
                     ? ongoingFirstOutcome
                     : ongoingTask;
                 return await WaitForConnectionCompletion(joinTarget, cancellationToken);
@@ -144,12 +159,12 @@ namespace com.IvanMurzak.McpPlugin
             // A caller that supplied a REAL token keeps the historical contract exactly: it awaits
             // the whole loop and is released when its own token cancels (godotengine/godot#78513,
             // pinned by ConnectionManagerRejectionTests.Connect_RetriesUnlimited_ByDefault_WhenNotOptedIn).
-            if (!cancellationToken.CanBeCanceled)
+            if (firstOutcomeOnly || !cancellationToken.CanBeCanceled)
             {
                 var background = RunAttemptAsync();
                 // Fire-and-forget: observe faults so an unobserved exception can never escape.
                 _ = background.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
-                return await firstOutcome!.Task;
+                return await WaitForConnectionCompletion(firstOutcome!.Task, cancellationToken);
             }
 
             return await RunAttemptAsync();

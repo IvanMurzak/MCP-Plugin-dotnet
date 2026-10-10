@@ -28,7 +28,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
     /// <summary>Posts the token to the introspection endpoint; returns the raw JSON body, or <c>null</c> on any transport/HTTP error.</summary>
     public delegate Task<string?> IntrospectionPost(string token, CancellationToken cancellationToken);
 
-    /// <summary>Outcome of an introspection call. <see cref="Active"/> is <c>false</c> for inactive tokens AND fail-closed errors.</summary>
+    /// <summary>Outcome of an introspection call. <see cref="Active"/> is <c>false</c> for definitive inactive-token answers; dependency errors throw <see cref="AuthorizationUnavailableException"/>.</summary>
     public sealed class IntrospectionResult
     {
         public bool Active { get; }

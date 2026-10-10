@@ -16,6 +16,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Server.Webhooks.Models;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
@@ -130,18 +131,23 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
                         response.StatusCode, request.EventType, request.ConnectionId,
                         request.ClientType, request.RemoteIpAddress, request.UserAgent,
                         request.RequestPath, request.TokenFingerprint);
-                    return _options.AuthorizationFailOpen;
+                    return Unavailable();
                 }
 
                 var responseBody = await response.Content.ReadAsStringAsync(cts.Token);
                 var authResponse = JsonSerializer.Deserialize<AuthorizationResponse>(responseBody, _jsonOptions);
 
-                if (authResponse == null)
+                using var responseDocument = JsonDocument.Parse(responseBody);
+                var hasAllowed = responseDocument.RootElement.ValueKind == JsonValueKind.Object
+                    && System.Linq.Enumerable.Any(responseDocument.RootElement.EnumerateObject(),
+                        property => string.Equals(property.Name, "allowed", StringComparison.OrdinalIgnoreCase)
+                            && (property.Value.ValueKind == JsonValueKind.True || property.Value.ValueKind == JsonValueKind.False));
+                if (authResponse == null || !hasAllowed)
                 {
                     _logger.LogWarning(
                         "Authorization webhook response could not be parsed for {EventType}",
                         request.EventType);
-                    return _options.AuthorizationFailOpen;
+                    return Unavailable();
                 }
 
                 if (!authResponse.Allowed)
@@ -165,7 +171,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
                     request.EventType, request.ConnectionId, request.ClientType,
                     request.RemoteIpAddress, request.UserAgent, request.RequestPath,
                     request.TokenFingerprint);
-                return _options.AuthorizationFailOpen;
+                return Unavailable();
+            }
+            catch (AuthorizationUnavailableException)
+            {
+                throw;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception exception)
             {
@@ -175,8 +189,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
                     request.EventType, request.ConnectionId, request.ClientType,
                     request.RemoteIpAddress, request.UserAgent, request.RequestPath,
                     request.TokenFingerprint);
-                return _options.AuthorizationFailOpen;
+                return Unavailable();
             }
+        }
+
+        bool Unavailable()
+        {
+            if (_options.AuthorizationFailOpen)
+                return true;
+            throw new AuthorizationUnavailableException("Authorization webhook is unavailable.");
         }
 
         static string ComputeHmacSha256(string payload, string secret)

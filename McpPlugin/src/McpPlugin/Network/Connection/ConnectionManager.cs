@@ -19,7 +19,7 @@ using Version = com.IvanMurzak.McpPlugin.Common.Version;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public partial class ConnectionManager : IConnectionManager, IAsyncDisposable
+    public partial class ConnectionManager : IConnectionManager, IConnectionRecovery, IAsyncDisposable
     {
         protected readonly string _guid = Guid.NewGuid().ToString();
         protected readonly ILogger _logger;
@@ -30,6 +30,7 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly ReactiveProperty<HubConnection?> _hubConnection = new();
         protected readonly ReactiveProperty<HubConnectionState> _connectionState = new(HubConnectionState.Disconnected);
         private readonly Subject<Unit> _authorizationRejected = new();
+        private readonly Subject<Unit> _disconnectRequested = new();
         private readonly Subject<Unit> _transportConnected = new();
         protected readonly CompositeDisposable _disposables = new();
         protected readonly CancellationTokenSource _cancellationTokenSource;
@@ -68,6 +69,7 @@ namespace com.IvanMurzak.McpPlugin
         public ReadOnlyReactiveProperty<HubConnection?> HubConnection => _hubConnectionReadOnly;
         public ReadOnlyReactiveProperty<bool> KeepConnected => _keepConnectedReadOnly;
         public Observable<Unit> OnAuthorizationRejected => _authorizationRejected;
+        public Observable<Unit> OnDisconnectRequested => _disconnectRequested;
         public Observable<Unit> OnTransportConnected => _transportConnected;
         public string Endpoint => _endpoint;
 
@@ -284,6 +286,8 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         private void DisposeCommonSync()
         {
+            _disconnectRequested.OnNext(Unit.Default);
+            _disconnectRequested.Dispose();
             CancelInternalToken(dispose: true);
             _disposables.Dispose();
 

@@ -21,9 +21,9 @@ namespace com.IvanMurzak.McpPlugin
     /// Wires the connection layer's authorization-rejection signal to the account credential provider
     /// (mcp-authorize b7, design 03 Flow B / design 06): when the server rejects the connection repeatedly
     /// (the <c>IConnection.OnAuthorizationRejected</c> 3-strike signal — an invalid or expired JWT), refresh
-    /// the token and reconnect. If the refresh fails, the <see cref="PluginCredentialProvider"/> has already
-    /// surfaced <see cref="AuthState.SignInRequired"/>, so this coordinator simply stops — the editor UI
-    /// prompts the user to sign in again.
+    /// the token and reconnect. Temporary refresh failures retain the credential and retry with backoff.
+    /// A definitive credential failure surfaces <see cref="AuthState.SignInRequired"/> and stops recovery
+    /// until the user signs in again.
     /// <para>
     /// Stop/resume (oauth-client-error-hygiene 02 §C3): a dead credential must not be re-presented
     /// to the hub every retry period, so <see cref="PluginCredentialProvider.OnSignInRequired"/> —
@@ -49,7 +49,11 @@ namespace com.IvanMurzak.McpPlugin
         readonly ILogger? _logger;
         readonly CompositeDisposable _disposables = new CompositeDisposable();
         readonly SemaphoreSlim _handleGate = new SemaphoreSlim(1, 1);
+        readonly CancellationTokenSource _lifetime = new CancellationTokenSource();
+        readonly Func<int, CancellationToken, Task> _retryDelay;
+        readonly AsyncLocal<bool> _credentialStopContext = new AsyncLocal<bool>();
         volatile bool _disposed;
+        int _pendingRejection;
 
         /// <summary>Single-flight guard for the OnSignInRequired→Disconnect pass (a flapping state must not stack Disconnects).</summary>
         int _stopInFlight;
@@ -76,10 +80,24 @@ namespace com.IvanMurzak.McpPlugin
         AuthState _lastAuthState;
 
         public ConnectionCredentialCoordinator(IConnection connection, PluginCredentialProvider credentials, ILogger? logger = null)
+            : this(connection, credentials, logger, DelayRecoveryAsync)
+        {
+        }
+
+        internal ConnectionCredentialCoordinator(IConnection connection, PluginCredentialProvider credentials,
+            ILogger? logger, Func<int, CancellationToken, Task> retryDelay)
         {
             _connection = connection ?? throw new ArgumentNullException(nameof(connection));
             _credentials = credentials ?? throw new ArgumentNullException(nameof(credentials));
             _logger = logger;
+            _retryDelay = retryDelay ?? throw new ArgumentNullException(nameof(retryDelay));
+
+            if (_connection is IConnectionRecovery recoverable)
+                recoverable.OnDisconnectRequested.Subscribe(_ =>
+                {
+                    if (!_credentialStopContext.Value)
+                        _resumeOnSignedIn = false;
+                }).AddTo(_disposables);
 
             // The 3-strike auth-rejection signal is already aggregated by the ConnectionManager (it fires
             // once per rejection burst). Fire-and-forget the async handler; HandleRejectionAsync collapses
@@ -105,12 +123,15 @@ namespace com.IvanMurzak.McpPlugin
         // Fire-and-forget bridge from the R3 subscription to the async handler (the discard here is a true
         // discard, not the Unit lambda parameter). HandleRejectionAsync observes its own faults.
         void OnAuthorizationRejected()
-            => _ = HandleRejectionAsync();
+        {
+            Interlocked.Exchange(ref _pendingRejection, 1);
+            _ = HandleRejectionAsync();
+        }
 
         /// <summary>
-        /// Refresh the credential then reconnect. Returns true when the refresh succeeded and a reconnect
-        /// was attempted; false when the refresh failed (sign-in-required is surfaced by the provider) or a
-        /// handling pass is already in flight. Public so engines/tests can invoke it directly.
+        /// Refresh the credential then reconnect. Transient refresh failures retry with backoff while
+        /// the credential remains signed in. Stops on a definitive credential failure, sign-out,
+        /// cancellation, disposal, or an explicit disconnect. Only one recovery pass runs at a time.
         /// </summary>
         public async Task<bool> HandleRejectionAsync(CancellationToken cancellationToken = default)
         {
@@ -120,21 +141,45 @@ namespace com.IvanMurzak.McpPlugin
             // Collapse overlapping rejection bursts — only one refresh+reconnect at a time.
             if (!await _handleGate.WaitAsync(0, cancellationToken).ConfigureAwait(false))
                 return false;
+            Interlocked.Exchange(ref _pendingRejection, 0);
+            using var recovery = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _lifetime.Token);
+            using var disconnectSubscription = (_connection as IConnectionRecovery)?.OnDisconnectRequested
+                .Subscribe(_ => recovery.Cancel());
+            using var authSubscription = _credentials.State.Subscribe(state =>
+            {
+                if (state != AuthState.SignedIn)
+                    recovery.Cancel();
+            });
             try
             {
                 _rejectionHandlingInFlight = true;
                 _logger?.LogInformation("Authorization rejected — attempting token refresh + reconnect.");
 
-                var refreshed = await _credentials.RefreshAsync(cancellationToken).ConfigureAwait(false);
-                if (!refreshed)
+                var retry = 0;
+                while (!recovery.IsCancellationRequested)
                 {
-                    _logger?.LogWarning("Token refresh failed after authorization rejection; staying disconnected (sign-in required).");
-                    return false;
-                }
+                    var refreshed = await _credentials.RefreshAsync(recovery.Token).ConfigureAwait(false);
+                    recovery.Token.ThrowIfCancellationRequested();
+                    if (refreshed)
+                    {
+                        _logger?.LogInformation("Token refreshed — reconnecting with the new credential.");
+                        var connected = _connection is IConnectionRecovery recoverable
+                            ? await recoverable.ConnectForRecovery(recovery.Token).ConfigureAwait(false)
+                            : await _connection.Connect(recovery.Token).ConfigureAwait(false);
+                        recovery.Token.ThrowIfCancellationRequested();
+                        if (connected || _connection.KeepConnected.CurrentValue)
+                            return true;
+                        // Another rejection can exhaust the new cycle before this pass releases
+                        // its gate. Continue here rather than dropping that rejection burst.
+                        Interlocked.Exchange(ref _pendingRejection, 0);
+                    }
+                    if (_credentials.State.CurrentValue != AuthState.SignedIn)
+                        return false;
 
-                _logger?.LogInformation("Token refreshed — reconnecting with the new credential.");
-                await _connection.Connect(cancellationToken).ConfigureAwait(false);
-                return true;
+                    _logger?.LogWarning("Token refresh temporarily unavailable after authorization rejection; keeping the credential and retrying recovery.");
+                    await _retryDelay(retry++, recovery.Token).ConfigureAwait(false);
+                }
+                return false;
             }
             catch (OperationCanceledException)
             {
@@ -149,7 +194,19 @@ namespace com.IvanMurzak.McpPlugin
             {
                 _rejectionHandlingInFlight = false;
                 _handleGate.Release();
+                if (Interlocked.Exchange(ref _pendingRejection, 0) != 0
+                    && !recovery.IsCancellationRequested && !_disposed
+                    && _credentials.State.CurrentValue == AuthState.SignedIn)
+                    _ = HandleRejectionAsync();
             }
+        }
+
+        static Task DelayRecoveryAsync(int retry, CancellationToken cancellationToken)
+        {
+            // Bounded exponential backoff plus jitter avoids reconnect storms after a deploy.
+            var seconds = Math.Min(60, 5 * Math.Pow(2, Math.Min(retry, 4)));
+            var jitter = 0.8 + new Random().NextDouble() * 0.4;
+            return Task.Delay(TimeSpan.FromSeconds(Math.Min(60, seconds * jitter)), cancellationToken);
         }
 
         /// <summary>
@@ -184,6 +241,7 @@ namespace com.IvanMurzak.McpPlugin
                 if (_disposed)
                     return;
                 _logger?.LogInformation("Sign-in required — stopping reconnection so the dead credential is not re-presented (02 §C3.1). Reconnection resumes on the next sign-in.");
+                _credentialStopContext.Value = true;
                 await _connection.Disconnect().ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -192,6 +250,7 @@ namespace com.IvanMurzak.McpPlugin
             }
             finally
             {
+                _credentialStopContext.Value = false;
                 Interlocked.Exchange(ref _stopInFlight, 0);
             }
         }
@@ -248,8 +307,12 @@ namespace com.IvanMurzak.McpPlugin
             if (_disposed)
                 return;
             _disposed = true;
+            _lifetime.Cancel();
             _disposables.Dispose();
-            _handleGate.Dispose();
+            // An in-flight pass still releases the gate in finally; disposing it here races that
+            // release. SemaphoreSlim without AvailableWaitHandle owns no native resource.
+            // The cancelled lifetime source likewise stays available to a pass that just acquired
+            // the gate. Its linked registrations are disposed by that pass; no timer is allocated.
         }
     }
 }
