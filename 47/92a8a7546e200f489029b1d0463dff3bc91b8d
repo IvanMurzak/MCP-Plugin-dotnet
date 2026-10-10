@@ -1,0 +1,91 @@
+McpPlugin/src/McpPlugin/McpPlugin.cs
+  s_8047d5689981d2::t_f05341c81cf0a3 26,41,301-304
+  s_8047d5689981d2::t_e26130d379cea0 42,305
+McpPlugin/src/McpPlugin/Interfaces/IConnectionRecovery.cs
+  s_8047d5689981d2::t_f05341c81cf0a3 1-29
+McpPlugin.Tests/Network/Connection/Credentials/ConnectionCredentialCoordinatorTests.cs
+  s_8047d5689981d2::t_1c4f42f98d6f29 199,287-366,375,382,399-400,455,469-474,480
+  s_8047d5689981d2::t_a825cac9c1672a 200-214
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionManager.Connect.cs
+  s_8047d5689981d2::t_f05341c81cf0a3 25-31,99,162,167
+  s_8047d5689981d2::t_b5eef13580d9c0 85-93
+McpPlugin.Tests/Network/Connection/Credentials/CoordinatorStopResumeHarnessTests.cs
+  s_8047d5689981d2::t_2aa24997d6ae1b 278-279
+  s_8047d5689981d2::t_f25027d5ff42bf 229-277,280-315
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionManager.cs
+  s_8047d5689981d2::t_e26130d379cea0 22,33,72
+  s_8047d5689981d2::t_8b35c698a2af5c 289-290
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionManager.Disconnect.cs
+  s_8047d5689981d2::t_e26130d379cea0 41,89
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/ConnectionCredentialCoordinator.cs
+  s_8047d5689981d2::t_cc7d515803dd73 56,126-129,144,166-174,197-200
+  s_8047d5689981d2::t_f05341c81cf0a3 146
+  s_8047d5689981d2::t_8b35c698a2af5c 52-53,83-88,93-94,132-134,145,147-152,158-159,161-165,175-177,179-182,204-208,210-211,310,312-313
+  s_8047d5689981d2::t_0aa27f007f961c 24-26,54,95-100,209,244,253,314-315
+McpPlugin/src/McpPlugin/Network/Client/BaseHubConnector.cs
+  s_8047d5689981d2::t_51ddca95cc427f 34,254,263-268,281-284,290,292-293,296-297,300,310-311,313,315-325,327,329-331,333,336-337,340,342-343,346-349
+  s_8047d5689981d2::t_e26130d379cea0 51,114,314,341
+  s_8047d5689981d2::t_1521627a185232 298-299,308,345
+  s_8047d5689981d2::t_db88440b295ea9 350
+  s_8047d5689981d2::t_f05341c81cf0a3 24,50,110-113
+  s_8047d5689981d2::t_c9521c1d66e71f 35,229-235,257,269-272,291,301-307
+McpPlugin.Tests/Network/Connection/BaseHubConnectorRecoveryTests.cs
+  s_8047d5689981d2::t_4547f1805e178b 1-45,67-184,186-192,194-207
+  s_8047d5689981d2::t_e8b10881e0722a 46-66,185,193
+McpPlugin.Common/McpPlugin.Common.csproj
+  s_8047d5689981d2::t_d1404a155458da 14
+McpPlugin.Common/src/Utils/Consts.cs
+  s_8047d5689981d2::t_d4b5eb79ba677c 15
+McpPlugin.Server.Tests/AuthorizationOutageRecoveryTests.cs
+  s_8047d5689981d2::t_72e9891268efff 1-232
+McpPlugin.Server.Tests/BaseHubAuthorizationTests.cs
+  s_8047d5689981d2::t_3c530a3f13b1ee 17,92-124
+McpPlugin.Server.Tests/OAuth/IntrospectionClientTests.cs
+  s_8047d5689981d2::t_7e9a907891a7ac 16,42-59,106-107,117,126,128
+McpPlugin.Server.Tests/OAuth/JwksKeyProviderTests.cs
+  s_8047d5689981d2::t_3ef85f7bc47564 18,56-75,102,108-112
+McpPlugin.Server.Tests/Webhooks/AuthorizationWebhookServiceTests.cs
+  s_8047d5689981d2::t_772d0a8f0109f6 18,183,192,197-198,225,238,243-244,275,307,312-313,360,377,382-383
+McpPlugin.Server/McpPlugin.Server.csproj
+  s_8047d5689981d2::t_c6d38bce79fc46 14
+McpPlugin.Server/server.json
+  s_8047d5689981d2::t_a2e99372b6ab1a 11,17
+McpPlugin.Server/src/Auth/AuthorizationUnavailableException.cs
+  s_8047d5689981d2::t_12a6fc51016bab 1-26
+McpPlugin.Server/src/Auth/OAuth/AccessTokenValidator.cs
+  s_8047d5689981d2::t_089379f9f8ca2a 34-35
+McpPlugin.Server/src/Auth/OAuth/IIntrospectionClient.cs
+  s_8047d5689981d2::t_14b3c955bad967 31
+McpPlugin.Server/src/Auth/OAuth/IntrospectionClient.cs
+  s_8047d5689981d2::t_21b5ca8f866524 27,74,77,81,84,119-122
+McpPlugin.Server/src/Auth/OAuth/JwksKeyProvider.cs
+  s_8047d5689981d2::t_37d58140bef78f 47,92-95,106,113,120
+McpPlugin.Server/src/Auth/TokenAuthenticationHandler.cs
+  s_8047d5689981d2::t_7d740765010780 45,64-76,166-179,192
+McpPlugin.Server/src/Hub/BaseHub.cs
+  s_8047d5689981d2::t_a1641711f99dbb 15,70-90
+McpPlugin.Server/src/Hub/McpServerHub.cs
+  s_8047d5689981d2::t_173ac38d02db05 78-79,123-128
+McpPlugin.Server/src/Webhooks/Services/AuthorizationWebhookService.cs
+  s_8047d5689981d2::t_1b4b26472d7f83 19,134,140-145,150,174-182,192,196-202
+McpPlugin.Server/src/Webhooks/Services/IAuthorizationWebhookService.cs
+  s_8047d5689981d2::t_cb0cc693b00716 16-20
+McpPlugin/McpPlugin.csproj
+  s_8047d5689981d2::t_437252f736cd61 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4792a8a7546e200f489029b1d0463dff3bc91b8d",
+  "prompts": {},
+  "sessions": {
+    "s_8047d5689981d2": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1230c-c6bd-7aa3-94b2-24a9267b7698",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
