@@ -7,26 +7,23 @@
 │  See the LICENSE file in the project root for more information.        │
 └────────────────────────────────────────────────────────────────────────┘
 */
-namespace com.IvanMurzak.McpPlugin.Common
+
+using R3;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace com.IvanMurzak.McpPlugin
 {
-    public static partial class Consts
+    /// <summary>
+    /// Optional connection lifecycle signal for cancelling credential recovery even when the
+    /// transport is already disconnected. Implemented by the built-in connection and plugin.
+    /// </summary>
+    public interface IConnectionRecovery
     {
-        public const string ApiVersion = "2.0.0";
-        public const string PluginVersion = "8.7.0";
+        Observable<Unit> OnDisconnectRequested { get; }
 
-        public static class Guid
-        {
-            public const string Zero = "00000000-0000-0000-0000-000000000000";
-        }
-
-        public static partial class Command
-        {
-            public static partial class ResponseCode
-            {
-                public const string Success = "[Success]";
-                public const string Error = "[Error]";
-                public const string Cancel = "[Cancel]";
-            }
-        }
+        /// <summary>Starts a cancellable connection cycle but returns its first attempt outcome,
+        /// leaving transport retries running. A later rejection can start a new credential recovery.</summary>
+        Task<bool> ConnectForRecovery(CancellationToken cancellationToken);
     }
 }

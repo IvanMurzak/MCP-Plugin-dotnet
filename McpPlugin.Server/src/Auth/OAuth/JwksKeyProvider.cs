@@ -44,6 +44,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
         private readonly SemaphoreSlim _gate = new SemaphoreSlim(1, 1);
 
         private JsonWebKeySet? _current;
+        private bool _lastRefreshUnavailable;
         private DateTimeOffset _loadedAt;
         private DateTimeOffset _lastRefetchAttempt = DateTimeOffset.MinValue;
 
@@ -88,7 +89,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
                 if (now - _lastRefetchAttempt >= _unknownKidMinRefetchInterval)
                     await RefreshAsync(now, cancellationToken).ConfigureAwait(false);
 
-                return _current != null ? _current.CreateEcdsa(kid) : null;
+                var key = _current != null ? _current.CreateEcdsa(kid) : null;
+                if (key == null && _lastRefreshUnavailable)
+                    throw new AuthorizationUnavailableException("Signing keys are temporarily unavailable.");
+                return key;
             }
             finally
             {
@@ -99,19 +103,21 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
         private async Task RefreshAsync(DateTimeOffset now, CancellationToken cancellationToken)
         {
             _lastRefetchAttempt = now;
+            _lastRefreshUnavailable = true;
 
             string? json = null;
             try
             {
                 json = await _fetch(cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception ex) when (!(ex is OperationCanceledException))
+            catch (Exception ex) when (!(ex is OperationCanceledException) || !cancellationToken.IsCancellationRequested)
             {
                 _logger?.LogWarning(ex, "JWKS fetch failed; falling back to the disk cache (offline grace).");
             }
 
             if (json != null && JsonWebKeySet.TryParse(json, out var fresh))
             {
+                _lastRefreshUnavailable = false;
                 _current = fresh;
                 _loadedAt = now;
                 try

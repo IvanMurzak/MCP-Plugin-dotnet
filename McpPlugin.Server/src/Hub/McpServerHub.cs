@@ -75,6 +75,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             // account) and its instance metadata registered into the account+instance pairing plane
             // BEFORE we compute the account-scoped initial client data below.
             await TryRegisterOAuthInstanceAsync();
+            if (_connectionRejected)
+                return;
 
             var allActiveClients = _strategy.GetAllClientData(Context.ConnectionId, _sessionTracker);
             _logger.LogDebug("{method}. {guid}. Sending initial client data. Count: {count}",
@@ -118,7 +120,12 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "{guid} oauth plugin token validation threw — not registered. ConnectionId: {connectionId}.", _guid, Context.ConnectionId);
+                // Any failed validation attempt is unavailable evidence, not a definitive denial.
+                // Close the unregistered hub so it cannot remain silently unroutable after recovery.
+                _logger.LogWarning(ex, "{guid} oauth plugin validation unavailable; closing for retry. ConnectionId: {connectionId}.", _guid, Context.ConnectionId);
+                _strategy.OnPluginDisconnected(GetType(), Context.ConnectionId, _logger);
+                _connectionRejected = true;
+                Context.Abort();
                 return;
             }
 

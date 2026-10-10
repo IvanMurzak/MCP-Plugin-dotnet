@@ -7,26 +7,20 @@
 │  See the LICENSE file in the project root for more information.        │
 └────────────────────────────────────────────────────────────────────────┘
 */
-namespace com.IvanMurzak.McpPlugin.Common
+
+using System;
+
+namespace com.IvanMurzak.McpPlugin.Server.Auth
 {
-    public static partial class Consts
+    /// <summary>
+    /// Authorization could not be checked because a dependency is unavailable. This fails closed,
+    /// but must not be treated as evidence that a credential is invalid or revoked.
+    /// </summary>
+    public sealed class AuthorizationUnavailableException : Exception
     {
-        public const string ApiVersion = "2.0.0";
-        public const string PluginVersion = "8.7.0";
-
-        public static class Guid
+        public AuthorizationUnavailableException(string message, Exception? innerException = null)
+            : base(message, innerException)
         {
-            public const string Zero = "00000000-0000-0000-0000-000000000000";
-        }
-
-        public static partial class Command
-        {
-            public static partial class ResponseCode
-            {
-                public const string Success = "[Success]";
-                public const string Error = "[Error]";
-                public const string Cancel = "[Cancel]";
-            }
         }
     }
 }

@@ -15,6 +15,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Server.Webhooks;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Webhooks.Models;
 using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
 using Microsoft.Extensions.Logging;
@@ -179,7 +180,7 @@ namespace McpPlugin.Server.Tests.Webhooks
         }
 
         [Fact]
-        public async Task NonSuccessStatusCode_FailOpenFalse_ReturnsFalse()
+        public async Task NonSuccessStatusCode_FailOpenFalse_ThrowsUnavailable()
         {
             using var response = new HttpResponseMessage(HttpStatusCode.InternalServerError);
             var (factory, httpClient) = CreateMockHttpClientFactory(response);
@@ -188,14 +189,14 @@ namespace McpPlugin.Server.Tests.Webhooks
                 var options = CreateOptions(failOpen: false);
                 var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
 
-                var result = await service.AuthorizeAiAgentAsync(
+                await Should.ThrowAsync<AuthorizationUnavailableException>(() => service.AuthorizeAiAgentAsync(
                     connectionId: "conn123",
                     bearerToken: "token123",
                     remoteIpAddress: null,
                     userAgent: null,
-                    requestPath: null);
+                    requestPath: null));
 
-                result.ShouldBeFalse();
+
             }
         }
 
@@ -221,7 +222,7 @@ namespace McpPlugin.Server.Tests.Webhooks
         }
 
         [Fact]
-        public async Task InvalidJsonResponse_FailOpenFalse_ReturnsFalse()
+        public async Task InvalidJsonResponse_FailOpenFalse_ThrowsUnavailable()
         {
             using var response = new HttpResponseMessage(HttpStatusCode.OK)
             {
@@ -234,14 +235,14 @@ namespace McpPlugin.Server.Tests.Webhooks
                 var options = CreateOptions(failOpen: false);
                 var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
 
-                var result = await service.AuthorizeAiAgentAsync(
+                await Should.ThrowAsync<AuthorizationUnavailableException>(() => service.AuthorizeAiAgentAsync(
                     connectionId: "conn123",
                     bearerToken: "token123",
                     remoteIpAddress: null,
                     userAgent: null,
-                    requestPath: null);
+                    requestPath: null));
 
-                result.ShouldBeFalse();
+
             }
         }
 
@@ -271,7 +272,7 @@ namespace McpPlugin.Server.Tests.Webhooks
         }
 
         [Fact]
-        public async Task TimeoutOccurs_FailOpenFalse_ReturnsFalse()
+        public async Task TimeoutOccurs_FailOpenFalse_ThrowsUnavailable()
         {
             var handler = new Mock<HttpMessageHandler>();
             handler.Protected()
@@ -303,14 +304,14 @@ namespace McpPlugin.Server.Tests.Webhooks
 
             var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
 
-            var result = await service.AuthorizeAiAgentAsync(
+            await Should.ThrowAsync<AuthorizationUnavailableException>(() => service.AuthorizeAiAgentAsync(
                 connectionId: "conn123",
                 bearerToken: "token123",
                 remoteIpAddress: null,
                 userAgent: null,
-                requestPath: null);
+                requestPath: null));
 
-            result.ShouldBeFalse();
+
         }
 
         [Fact]
@@ -356,7 +357,7 @@ namespace McpPlugin.Server.Tests.Webhooks
         }
 
         [Fact]
-        public async Task NetworkException_FailOpenFalse_ReturnsFalse()
+        public async Task NetworkException_FailOpenFalse_ThrowsUnavailable()
         {
             var handler = new Mock<HttpMessageHandler>();
             handler.Protected()
@@ -373,14 +374,14 @@ namespace McpPlugin.Server.Tests.Webhooks
             var options = CreateOptions(failOpen: false);
             var service = new AuthorizationWebhookService(options, factory.Object, CreateMockLogger());
 
-            var result = await service.AuthorizeAiAgentAsync(
+            await Should.ThrowAsync<AuthorizationUnavailableException>(() => service.AuthorizeAiAgentAsync(
                 connectionId: "conn123",
                 bearerToken: "token123",
                 remoteIpAddress: null,
                 userAgent: null,
-                requestPath: null);
+                requestPath: null));
 
-            result.ShouldBeFalse();
+
         }
 
         [Fact]

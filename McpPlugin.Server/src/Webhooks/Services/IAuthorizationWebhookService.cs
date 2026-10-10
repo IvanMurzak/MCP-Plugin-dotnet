@@ -13,6 +13,11 @@ using System.Threading.Tasks;
 
 namespace com.IvanMurzak.McpPlugin.Server.Webhooks.Services
 {
+    /// <summary>
+    /// Returns false only for a definitive denial. Dependency failures must throw
+    /// <see cref="com.IvanMurzak.McpPlugin.Server.Auth.AuthorizationUnavailableException"/>
+    /// so clients can retry without discarding credentials. Caller cancellation must propagate.
+    /// </summary>
     public interface IAuthorizationWebhookService
     {
         Task<bool> AuthorizeAiAgentAsync(

@@ -24,7 +24,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
     /// Default <see cref="IIntrospectionClient"/> (mcp-authorize b2). Caches active/inactive
     /// answers for <see cref="_cacheTtl"/> (60 s) keyed by a SHA-256 of the token (the raw token is
     /// never used as a dictionary key), and fails closed: any transport/HTTP/parse error yields
-    /// <see cref="IntrospectionResult.Inactive"/> and is NOT cached, so a transient outage self-heals
+    /// <see cref="AuthorizationUnavailableException"/> and is NOT cached, so a transient outage self-heals
     /// on the next request.
     /// </summary>
     public sealed class IntrospectionClient : IIntrospectionClient
@@ -71,17 +71,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
             {
                 json = await _post(token, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception ex) when (!(ex is OperationCanceledException))
+            catch (Exception ex) when (!(ex is OperationCanceledException) || !cancellationToken.IsCancellationRequested)
             {
                 _logger?.LogWarning(ex, "Token introspection failed; failing closed.");
-                return IntrospectionResult.Inactive; // fail closed, not cached
+                throw new AuthorizationUnavailableException("Token introspection is unavailable.", ex);
             }
 
             if (json == null)
-                return IntrospectionResult.Inactive; // transport/HTTP error, not cached
+                throw new AuthorizationUnavailableException("Token introspection returned no response.");
 
             if (!TryParse(json, out var result))
-                return IntrospectionResult.Inactive; // malformed response, not cached
+                throw new AuthorizationUnavailableException("Token introspection returned a malformed response.");
 
             // Bound the cache: opportunistically drop expired entries when full, and if it is still
             // full (extreme churn within one TTL window) skip caching this result — correctness is
@@ -116,8 +116,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
                 if (root.ValueKind != JsonValueKind.Object)
                     return false;
 
-                var active = root.TryGetProperty("active", out var activeProp)
-                    && activeProp.ValueKind == JsonValueKind.True;
+                if (!root.TryGetProperty("active", out var activeProp)
+                    || (activeProp.ValueKind != JsonValueKind.True && activeProp.ValueKind != JsonValueKind.False))
+                    return false;
+                var active = activeProp.ValueKind == JsonValueKind.True;
 
                 if (!active)
                 {

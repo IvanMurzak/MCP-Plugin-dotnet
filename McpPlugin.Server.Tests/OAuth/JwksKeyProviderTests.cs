@@ -15,6 +15,7 @@ using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Server.Auth.OAuth;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using Shouldly;
 using Xunit;
 
@@ -52,6 +53,26 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.OAuth
                 return key != null;
         }
 
+
+        [Fact]
+        public async Task UnknownKidDuringOutage_IsUnavailable_WhileKnownCachedKeyStillValidates()
+        {
+            using var key = TestJwt.CreateKey();
+            var now = Start;
+            var fetch = new CountingFetch { Current = TestJwt.BuildJwks(key, Kid1) };
+            var provider = new JwksKeyProvider(fetch.Delegate, new InMemoryJwksDiskCache(), () => now);
+            (await Resolves(provider, Kid1)).ShouldBeTrue();
+            now = Start.AddSeconds(61);
+            fetch.Fail = true;
+            await Should.ThrowAsync<AuthorizationUnavailableException>(() => Resolves(provider, Kid2));
+            await Should.ThrowAsync<AuthorizationUnavailableException>(() => Resolves(provider, Kid2));
+            fetch.Calls.ShouldBe(2);
+            (await Resolves(provider, Kid1)).ShouldBeTrue();
+            now = Start.AddSeconds(122);
+            fetch.Fail = false;
+            (await Resolves(provider, Kid2)).ShouldBeFalse(); // a fresh authoritative key set definitively lacks kid2
+        }
+
         [Fact]
         public async Task FetchSuccess_ResolvesKey_AndWritesDiskCache()
         {
@@ -78,13 +99,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.OAuth
         }
 
         [Fact]
-        public async Task OfflineWithoutCache_ReturnsNull()
+        public async Task OfflineWithoutCache_ThrowsUnavailable_ThenRecovers()
         {
             var cache = new InMemoryJwksDiskCache();
             var fetch = new CountingFetch { Fail = true };
             var provider = new JwksKeyProvider(fetch.Delegate, cache, () => Start);
 
-            (await Resolves(provider, Kid1)).ShouldBeFalse();
+            await Should.ThrowAsync<AuthorizationUnavailableException>(() => Resolves(provider, Kid1));
+            using var key = TestJwt.CreateKey();
+            fetch.Fail = false;
+            fetch.Current = TestJwt.BuildJwks(key, Kid1);
+            (await Resolves(provider, Kid1)).ShouldBeTrue();
         }
 
         [Fact]

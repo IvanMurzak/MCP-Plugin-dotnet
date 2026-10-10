@@ -31,7 +31,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
     ///         audience <c>urn:agd:hub</c> (auth-fixes B11) — and <c>exp</c>/<c>nbf</c> with ±5 min skew.</item>
     ///   <item><b>Opaque tokens</b> — routed to introspection (fail-closed).</item>
     /// </list>
-    /// Every failure path returns <see cref="OAuthValidationResult.Fail"/>; nothing throws.
+    /// Credential failures return <see cref="OAuthValidationResult.Fail"/>; dependency outages throw
+    /// <see cref="AuthorizationUnavailableException"/> so callers can fail closed without revoking credentials.
     /// </summary>
     public sealed class AccessTokenValidator : IOAuthTokenValidator
     {
