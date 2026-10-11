@@ -205,6 +205,6 @@ conflict between this constitution and any other guidance, the constitution take
   re-verified after Phase 1 design.
 - Complexity violations (extra packages, deviation from established patterns) MUST be documented
   in the Complexity Tracking table of plan.md.
-- Use `CLAUDE.md` as the runtime development guidance file for day-to-day coding instructions.
+- Use `AGENTS.md` as the runtime development guidance file for day-to-day coding instructions.
 
 **Version**: 1.1.0 | **Ratified**: 2026-02-28 | **Last Amended**: 2026-03-01
