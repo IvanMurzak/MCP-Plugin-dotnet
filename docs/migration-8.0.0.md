@@ -8,7 +8,7 @@ gained a `CancellationToken` parameter. Callers keep compiling (the parameter is
 > **The version constant is not bumped by this document.** `<Version>` in
 > `McpPlugin/McpPlugin.csproj` is the single source of truth for all three packages, and pushing a
 > new value to `main` is what triggers `release.yml` to publish to NuGet (see
-> `docs/claude/release.md`). The bump to `8.0.0` is therefore made by the release run, via
+> `docs/agents/release.md`). The bump to `8.0.0` is therefore made by the release run, via
 > `commands/bump-version.ps1 8.0.0`, not by a feature PR.
 
 ## What changed
