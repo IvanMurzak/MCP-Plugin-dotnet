@@ -12,7 +12,7 @@ Mirrors the behavior of scripts/bash/update-agent-context.sh:
  5. Multi-Agent Support (claude, gemini, copilot, cursor-agent, qwen, opencode, codex, windsurf, kilocode, auggie, roo, codebuddy, amp, shai, q, agy, bob, qodercli)
 
 .PARAMETER AgentType
-Optional agent key to update a single agent. If omitted, updates all existing agent files (creating a default Claude file if none exist).
+Optional agent key to update a single agent. If omitted, updates all existing agent files (creating a default AGENTS.md if none exist).
 
 .EXAMPLE
 ./update-agent-context.ps1 -AgentType claude
@@ -44,7 +44,7 @@ $IMPL_PLAN     = $envData.IMPL_PLAN
 $NEW_PLAN = $IMPL_PLAN
 
 # Agent file paths
-$CLAUDE_FILE   = Join-Path $REPO_ROOT 'CLAUDE.md'
+$CLAUDE_FILE   = Join-Path $REPO_ROOT 'AGENTS.md'  # Claude Code reads AGENTS.md; a CLAUDE.md would hide it
 $GEMINI_FILE   = Join-Path $REPO_ROOT 'GEMINI.md'
 $COPILOT_FILE  = Join-Path $REPO_ROOT '.github/agents/copilot-instructions.md'
 $CURSOR_FILE   = Join-Path $REPO_ROOT '.cursor/rules/specify-rules.mdc'
