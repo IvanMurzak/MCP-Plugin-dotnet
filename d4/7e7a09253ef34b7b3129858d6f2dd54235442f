@@ -1,0 +1,30 @@
+McpPlugin.Server/src/Client/ClientUtils.cs
+  s_2c60e57835cca1::t_45f8ace7d3cfb8 168,180,215-218,229-230,240-244
+McpPlugin.Server/src/Extension/ExtensionsTask.cs
+  s_2c60e57835cca1::t_45f8ace7d3cfb8 26-27,30-32,35,37-38,45-46
+McpPlugin.Server.Tests/ExtensionsTaskTests.cs
+  s_2c60e57835cca1::t_e2d6996ada0241 1-84
+McpPlugin.Server/src/Client/RequestTrackingService.cs
+  s_2c60e57835cca1::t_ad912ed54e84e4 53-54,74-78,185
+McpPlugin.Server.Tests/ClientUtilsCancellationTests.cs
+  s_2c60e57835cca1::t_e2d6996ada0241 1-64,67-110
+  s_2c60e57835cca1::t_434558d32bde9a 65-66
+McpPlugin.Server.Tests/RequestTrackingCancellationTests.cs
+  s_2c60e57835cca1::t_f2a93bc9796eb6 1-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d47e7a09253ef34b7b3129858d6f2dd54235442f",
+  "prompts": {},
+  "sessions": {
+    "s_2c60e57835cca1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a13249-98d2-7d90-a73d-5852850f2cf4",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
