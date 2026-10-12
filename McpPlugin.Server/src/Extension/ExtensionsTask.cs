@@ -23,31 +23,26 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public static async Task<bool> WaitWithTimeout(this Task task, TimeSpan timeout, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             try
             {
-                var completedTask = await Task.WhenAny(task, Task.Delay(timeout, cancellationToken));
+                var completedTask = await Task.WhenAny(task, Task.Delay(timeout, timeoutCts.Token));
+                // A cancelled delay also wins WhenAny immediately. It is not an elapsed timeout.
+                cancellationToken.ThrowIfCancellationRequested();
                 return completedTask == task;
             }
-            catch (OperationCanceledException)
+            finally
             {
-                return false; // Task was cancelled
+                // Release the timer and caller-token registration when the invocation finishes first.
+                timeoutCts.Cancel();
             }
         }
 
         public static Task<bool> WaitWithTimeout<T>(this Task<T> task, int timeoutMs = DefaultTimeoutMs, CancellationToken cancellationToken = default)
             => WaitWithTimeout(task, TimeSpan.FromMilliseconds(timeoutMs), cancellationToken);
 
-        public static async Task<bool> WaitWithTimeout<T>(this Task<T> task, TimeSpan timeout, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var completedTask = await Task.WhenAny(task, Task.Delay(timeout, cancellationToken));
-                return completedTask == task;
-            }
-            catch (OperationCanceledException)
-            {
-                return false; // Task was cancelled
-            }
-        }
+        public static Task<bool> WaitWithTimeout<T>(this Task<T> task, TimeSpan timeout, CancellationToken cancellationToken = default)
+            => ((Task)task).WaitWithTimeout(timeout, cancellationToken);
     }
 }

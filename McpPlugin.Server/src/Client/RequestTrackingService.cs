@@ -50,6 +50,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (string.IsNullOrEmpty(requestId))
                 throw new ArgumentException("RequestId cannot be null or empty", nameof(requestId));
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             _logger.LogTrace("Tracking request: {RequestId} with timeout: {timeout}", requestId, timeout);
 
             var pendingRequest = new PendingRequest(requestId, timeout);
@@ -68,6 +70,11 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                 var finalResult = await pendingRequest.WaitForCompletion(cancellationToken);
                 return finalResult;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogDebug("Request {RequestId} cancelled by the caller", requestId);
+                throw;
             }
             catch (Exception ex)
             {
@@ -175,7 +182,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    return ResponseCallTool.Error("Request was canceled", ResponseErrorKind.Timeout).SetRequestID(RequestId);
+                    throw;
                 }
                 catch (OperationCanceledException) when (TimeoutCts.Token.IsCancellationRequested)
                 {
