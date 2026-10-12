@@ -165,6 +165,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (logger.IsEnabled(LogLevel.Trace))
                 {
                     var allConnections = string.Join(", ", AllConnections);
@@ -176,6 +177,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 var sawTimeout = false;
                 while (retryCount < maxRetries)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     retryCount++;
 
                     var connectionId = strategy.ResolveConnectionId(token, retryCount - 1);
@@ -210,10 +212,13 @@ namespace com.IvanMurzak.McpPlugin.Server
                             LastSuccessfulClients[typeof(McpServerHub)] = connectionId!;
                             return result;
                         }
+                        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                        {
+                            throw;
+                        }
                         catch (Exception ex)
                         {
                             logger.LogError(ex, $"Invoke '{methodName}': Error invoking '{request}' on client '{connectionId}': {ex.Message}");
-                            // RemoveCurrentClient(client);
                             await Task.Delay(50, cancellationToken); // Wait before retrying
                             continue;
                         }
@@ -221,8 +226,8 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                     // Timeout occurred
                     sawTimeout = true;
-                    logger.LogWarning($"Invoke '{methodName}': Timeout: Client '{connectionId}' did not respond in {dataArguments.PluginTimeoutMs} ms. Removing from ConnectedClients.");
-                    // RemoveCurrentClient(client);
+                    logger.LogWarning("Invoke '{methodName}': Timeout: Client '{connectionId}' did not respond in {timeoutMs} ms. Retrying [{retryCount}/{maxRetries}].",
+                        methodName, connectionId, dataArguments.PluginTimeoutMs, retryCount, maxRetries);
                     await Task.Delay(retryDelayMs, cancellationToken); // Wait before retrying
                     // Restart the loop to try again with a new client
                 }
@@ -231,6 +236,11 @@ namespace com.IvanMurzak.McpPlugin.Server
                     : sawClient ? ResponseErrorKind.Internal : ResponseErrorKind.Unavailable;
                 return ResponseData<TResponse>.Error(request.RequestID, $"Invoke '{methodName}': Failed to invoke '{request}' after {retryCount} retries.", errorKind)
                     .Log(logger);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                logger.LogDebug("Invoke '{methodName}': Request cancelled by the caller.", methodName);
+                throw;
             }
             catch (Exception ex)
             {
