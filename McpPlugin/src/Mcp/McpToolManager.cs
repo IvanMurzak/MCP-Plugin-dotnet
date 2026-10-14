@@ -155,10 +155,22 @@ namespace com.IvanMurzak.McpPlugin
                     _logger.LogInformation(message);
                 }
 
-                var result = await runner.Run(data.RequestID, data.Arguments, cancellationToken);
+                var arguments = data.Arguments;
+                var presentation = ToolPresentation.Current;
+                if (presentation != null && arguments != null)
+                {
+                    var rejected = presentation.Arguments(runner, arguments, out var converted);
+                    if (rejected != null)
+                        return ResponseCallTool.Error(rejected).Pack(data.RequestID);
+                    arguments = converted;
+                }
+
+                var result = await runner.Run(data.RequestID, arguments, cancellationToken);
                 if (result == null)
                     return ResponseData<ResponseCallTool>.Error(data.RequestID, $"Tool '{data.Name}' returned null result.", ResponseErrorKind.Internal)
                         .Log(_logger);
+                if (presentation != null)
+                    result = presentation.Result(runner, result);
 
                 result.Log(_logger);
 
@@ -221,6 +233,12 @@ namespace com.IvanMurzak.McpPlugin
                             return response;
 
                         response.OutputSchema = jn.ToJsonElement();
+                        return response;
+                    })
+                    .Select(response =>
+                    {
+                        if (ToolPresentation.Current is IToolPresentation presentation && _tools.TryGetValue(response.Name, out var tool))
+                            presentation.List(tool, response);
                         return response;
                     })
                     .ToArray();
