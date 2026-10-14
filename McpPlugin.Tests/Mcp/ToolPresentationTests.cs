@@ -70,6 +70,20 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             response.Value!.Content.Single().Text!.ShouldContain("Hello bob");
         }
 
+        [Theory]
+        [InlineData(ToolTextEscaping.Minimal, "a+b<c \"q\" \\ \n é", "\"a+b<c \\\"q\\\" \\\\ \\n é\"")]
+        [InlineData(ToolTextEscaping.Ascii, "a+b é", "\"a+b \\u00e9\"")]
+        [InlineData(ToolTextEscaping.Json, "a+b", "\"a\\u002Bb\"")]
+        public void Quote_EscapesPerMode(ToolTextEscaping escaping, string text, string expected)
+            => ToolPresentation.Quote(text, escaping).ShouldBe(expected);
+
+        [Fact]
+        public void Quote_EscapesLoneSurrogatesButKeepsPairs()
+        {
+            ToolPresentation.Quote("x\ud800y", ToolTextEscaping.Minimal).ShouldBe("\"x\\ud800y\"");
+            ToolPresentation.Quote("😀", ToolTextEscaping.Minimal).ShouldBe("\"😀\"");
+        }
+
         static McpToolManager Manager()
         {
             GreetTool.Calls = 0;
