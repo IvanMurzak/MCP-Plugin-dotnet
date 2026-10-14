@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
@@ -72,6 +73,23 @@ namespace com.IvanMurzak.McpPlugin
 
         public MethodInfo Method => _methodInfo;
 
+        // EXPERIMENTAL tool binding (IToolBinding): the agent-facing signature comes from the binding when one is active.
+        private (IToolBinding binding, ToolSignature? signature)? _bound;
+
+        private ToolSignature? BoundSignature()
+        {
+            var binding = ToolBinding.Current;
+            if (binding == null) return null;
+            if (_bound is { } b && ReferenceEquals(b.binding, binding)) return b.signature;
+            var signature = binding.Describe(Name, Method, base.Description);
+            _bound = (binding, signature);
+            return signature;
+        }
+
+        string? IRunTool.Description => BoundSignature() is { } s ? s.Description : Description;
+        JsonNode? IRunTool.InputSchema => BoundSignature() is { } s ? s.InputSchema : InputSchema;
+        JsonNode? IRunTool.OutputSchema => BoundSignature() is { } s ? s.OutputSchema : OutputSchema;
+
         protected string? RequestID { get; set; }
 
         /// <summary>
@@ -115,6 +133,14 @@ namespace com.IvanMurzak.McpPlugin
                 return RequestID;
             }
 
+            if (ToolBinding.Current is IToolBinding binding
+                && paramInfo.Name != null
+                && namedParameters != null
+                && namedParameters.TryGetValue(paramInfo.Name, out var raw)
+                && raw is JsonElement element
+                && binding.TryConvert(Method, paramInfo, element, out var converted))
+                return converted;
+
             return FixEnumConversion(paramInfo, base.GetParameterValue(reflector, paramInfo, namedParameters));
         }
         protected override object? GetDefaultParameterValue(Reflector reflector, ParameterInfo methodParameter)
@@ -144,6 +170,9 @@ namespace com.IvanMurzak.McpPlugin
 
         protected ResponseCallTool ProcessInvokeResult(string requestId, object? result)
         {
+            if (ToolBinding.Current?.Result(Method, result) is ResponseCallTool bound)
+                return bound.SetRequestID(requestId);
+
             if (result is ResponseCallTool response)
                 return response.SetRequestID(requestId);
 
