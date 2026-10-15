@@ -56,7 +56,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
 
         /// <summary>True when <paramref name="name"/> is one of the server-native tool names.</summary>
         public static bool IsServerNativeTool(string? name)
-            => name == ListInstances || name == SelectInstance || name == EnrollPlugin;
+            => _descriptors.Any(tool => string.Equals(tool.Name, name, StringComparison.Ordinal));
 
         /// <summary>Dispatches a server-native tool call. The caller guarantees <see cref="IsServerNativeTool"/>.</summary>
         public Task<ResponseCallTool> HandleAsync(string name, IReadOnlyDictionary<string, JsonElement> arguments, SelectionToolContext context, CancellationToken cancellationToken = default)
