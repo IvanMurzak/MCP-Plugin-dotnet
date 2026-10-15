@@ -79,6 +79,25 @@ namespace com.IvanMurzak.McpPlugin
             .Where(kvp => kvp.Value.Enabled)
             .Sum(kvp => kvp.Value.SkillMetadataTokenCount);
 
+        private IToolBinding? _toolBinding;
+
+        /// <summary>
+        /// EXPERIMENTAL. The data layer of this manager's reflected tools (<see cref="RunTool.Binding"/>); null = ReflectorNet.
+        /// Applied to every <see cref="RunTool"/> held now and added later; a change re-announces the tool list.
+        /// </summary>
+        public IToolBinding? ToolBinding
+        {
+            get => _toolBinding;
+            set
+            {
+                if (ReferenceEquals(_toolBinding, value)) return;
+                _toolBinding = value;
+                foreach (var runTool in _tools.Values.OfType<RunTool>())
+                    runTool.Binding = value;
+                _onToolsUpdated.OnNext(Unit.Default);
+            }
+        }
+
         public bool HasTool(string name) => _tools.ContainsKey(name);
         public bool AddTool(string name, IRunTool runner)
         {
@@ -88,6 +107,8 @@ namespace com.IvanMurzak.McpPlugin
                 return false;
             }
 
+            if (runner is RunTool runTool)
+                runTool.Binding = _toolBinding;
             _tools[name] = runner;
             _onToolsUpdated.OnNext(Unit.Default);
             return true;
@@ -155,22 +176,10 @@ namespace com.IvanMurzak.McpPlugin
                     _logger.LogInformation(message);
                 }
 
-                var arguments = data.Arguments;
-                var presentation = ToolPresentation.Current;
-                if (presentation != null && arguments != null)
-                {
-                    var rejected = presentation.Arguments(runner, arguments, out var converted);
-                    if (rejected != null)
-                        return ResponseCallTool.Error(rejected).Pack(data.RequestID);
-                    arguments = converted;
-                }
-
-                var result = await runner.Run(data.RequestID, arguments, cancellationToken);
+                var result = await runner.Run(data.RequestID, data.Arguments, cancellationToken);
                 if (result == null)
                     return ResponseData<ResponseCallTool>.Error(data.RequestID, $"Tool '{data.Name}' returned null result.", ResponseErrorKind.Internal)
                         .Log(_logger);
-                if (presentation != null)
-                    result = presentation.Result(runner, result);
 
                 result.Log(_logger);
 
@@ -233,12 +242,6 @@ namespace com.IvanMurzak.McpPlugin
                             return response;
 
                         response.OutputSchema = jn.ToJsonElement();
-                        return response;
-                    })
-                    .Select(response =>
-                    {
-                        if (ToolPresentation.Current is IToolPresentation presentation && _tools.TryGetValue(response.Name, out var tool))
-                            presentation.List(tool, response);
                         return response;
                     })
                     .ToArray();

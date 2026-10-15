@@ -19,7 +19,8 @@ namespace com.IvanMurzak.McpPlugin
     /// <summary>
     /// EXPERIMENTAL. Replaces ReflectorNet as the data layer of reflected tools (<see cref="RunTool"/>): what the agent
     /// sees (description, input / output schema), how each argument becomes the parameter's .NET value, and how a returned
-    /// value becomes the response. The tool methods are unchanged. Null (<see cref="ToolBinding.Current"/>) = ReflectorNet.
+    /// value becomes the response. The tool methods are unchanged. Set per tool manager
+    /// (<see cref="IToolManager.ToolBinding"/>, applied to every <see cref="RunTool"/> it holds); null = ReflectorNet.
     /// </summary>
     public interface IToolBinding
     {
@@ -49,11 +50,5 @@ namespace com.IvanMurzak.McpPlugin
         public string? Description { get; }
         public JsonNode InputSchema { get; }
         public JsonNode? OutputSchema { get; }
-    }
-
-    /// <summary>EXPERIMENTAL. The active <see cref="IToolBinding"/>; null = ReflectorNet.</summary>
-    public static class ToolBinding
-    {
-        public static IToolBinding? Current { get; set; }
     }
 }

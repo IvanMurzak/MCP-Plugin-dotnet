@@ -75,7 +75,9 @@ namespace com.IvanMurzak.McpPlugin
         {
             try
             {
-                return ToolTokenCount.Calculate(Name, Title, Description, SkillDescription, SkillBody, InputSchema, OutputSchema);
+                // What the agent receives: the bound signature when a binding is set.
+                var self = (IRunTool)this;
+                return ToolTokenCount.Calculate(Name, Title, self.Description, SkillDescription, SkillBody, self.InputSchema, self.OutputSchema);
             }
             catch (Exception ex)
             {
@@ -93,7 +95,8 @@ namespace com.IvanMurzak.McpPlugin
         {
             try
             {
-                return ToolTokenCount.CalculateSkillMetadata(Name, Title, Description, SkillDescription, SkillBody, InputSchema, OutputSchema);
+                var self = (IRunTool)this;
+                return ToolTokenCount.CalculateSkillMetadata(Name, Title, self.Description, SkillDescription, SkillBody, self.InputSchema, self.OutputSchema);
             }
             catch (Exception ex)
             {

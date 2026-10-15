@@ -73,18 +73,35 @@ namespace com.IvanMurzak.McpPlugin
 
         public MethodInfo Method => _methodInfo;
 
-        // EXPERIMENTAL tool binding (IToolBinding): the agent-facing signature comes from the binding when one is active.
-        private (IToolBinding binding, ToolSignature? signature)? _bound;
-
-        private ToolSignature? BoundSignature()
+        // EXPERIMENTAL tool binding (IToolBinding): when set, the agent-facing signature, argument conversion and result come
+        // from it. One immutable holder swapped as a whole, so a reader never sees a binding with another binding's signature.
+        private sealed class Bound
         {
-            var binding = ToolBinding.Current;
-            if (binding == null) return null;
-            if (_bound is { } b && ReferenceEquals(b.binding, binding)) return b.signature;
-            var signature = binding.Describe(Name, Method, base.Description);
-            _bound = (binding, signature);
-            return signature;
+            public Bound(IToolBinding binding, System.Func<ToolSignature?> describe)
+            {
+                Binding = binding;
+                Signature = new System.Lazy<ToolSignature?>(describe, System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+            }
+            public readonly IToolBinding Binding;
+            public readonly System.Lazy<ToolSignature?> Signature;
         }
+
+        private volatile Bound? _bound;
+
+        /// <summary>EXPERIMENTAL. The data layer of this tool; null = ReflectorNet. Usually set through <see cref="IToolManager.ToolBinding"/>.</summary>
+        public IToolBinding? Binding
+        {
+            get => _bound?.Binding;
+            set
+            {
+                if (ReferenceEquals(_bound?.Binding, value)) return;
+                _bound = value == null ? null : new Bound(value, () => value.Describe(Name, Method, base.Description));
+                _cachedTokenCount = null;               // the agent-facing catalogue changed
+                _cachedSkillMetadataTokenCount = null;
+            }
+        }
+
+        private ToolSignature? BoundSignature() => _bound?.Signature.Value;
 
         string? IRunTool.Description => BoundSignature() is { } s ? s.Description : Description;
         JsonNode? IRunTool.InputSchema => BoundSignature() is { } s ? s.InputSchema : InputSchema;
@@ -133,7 +150,7 @@ namespace com.IvanMurzak.McpPlugin
                 return RequestID;
             }
 
-            if (ToolBinding.Current is IToolBinding binding
+            if (_bound?.Binding is IToolBinding binding
                 && paramInfo.Name != null
                 && namedParameters != null
                 && namedParameters.TryGetValue(paramInfo.Name, out var raw)
@@ -170,7 +187,7 @@ namespace com.IvanMurzak.McpPlugin
 
         protected ResponseCallTool ProcessInvokeResult(string requestId, object? result)
         {
-            if (ToolBinding.Current?.Result(Method, result) is ResponseCallTool bound)
+            if (_bound?.Binding.Result(Method, result) is ResponseCallTool bound)
                 return bound.SetRequestID(requestId);
 
             if (result is ResponseCallTool response)

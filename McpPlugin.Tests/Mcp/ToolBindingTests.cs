@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.ReflectorNet;
 using Microsoft.Extensions.Logging.Abstractions;
+using R3;
 using Shouldly;
 using Xunit;
 
@@ -55,14 +56,14 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 value is Size s ? ResponseCallTool.Success($"{s.Width}x{s.Height}") : null;
         }
 
-        static McpToolManager Manager()
+        static McpToolManager Manager(IToolBinding? binding = null)
         {
             var reflector = new Reflector();
             var tools = new ToolRunnerCollection(reflector, NullLogger.Instance)
             {
                 [Tool] = RunTool.CreateFromStaticMethod(reflector, NullLogger.Instance, Tool, typeof(ScaleTool).GetMethod(nameof(ScaleTool.Scale))!),
             };
-            return new McpToolManager(NullLogger<McpToolManager>.Instance, reflector, tools);
+            return new McpToolManager(NullLogger<McpToolManager>.Instance, reflector, tools) { ToolBinding = binding };
         }
 
         static IReadOnlyDictionary<string, JsonElement> Args(string json) => JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
@@ -70,52 +71,77 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         [Fact]
         public async Task BoundToolsListTheBindingsSignature()
         {
-            ToolBinding.Current = new Binding();
-            try
-            {
-                var listed = (await Manager().RunListTool(new RequestListTool())).Value!.Single();
-                listed.Description!.ShouldStartWith("bound: ");
-                listed.InputSchema.GetProperty("properties").GetProperty("size").GetProperty("type").GetString().ShouldBe("string");
-                listed.OutputSchema.ShouldBeNull();
-            }
-            finally { ToolBinding.Current = null; }
+            var listed = (await Manager(new Binding()).RunListTool(new RequestListTool())).Value!.Single();
+            listed.Description!.ShouldStartWith("bound: ");
+            listed.InputSchema.GetProperty("properties").GetProperty("size").GetProperty("type").GetString().ShouldBe("string");
+            listed.OutputSchema.ShouldBeNull();
         }
 
         [Fact]
         public async Task BoundArgumentsAndResultsSkipReflectorNet()
         {
-            ToolBinding.Current = new Binding();
-            try
-            {
-                var r = (await Manager().RunCallTool(new RequestCallTool("r1", Tool, Args("{\"size\": \"3x4\", \"factor\": 10}")))).Value!;
-                r.Status.ShouldBe(ResponseStatus.Success);
-                r.Content.Single().Text.ShouldBe("30x40");   // factor (int) still converted by ReflectorNet: the binding declined it
-            }
-            finally { ToolBinding.Current = null; }
+            var r = (await Manager(new Binding()).RunCallTool(new RequestCallTool("r1", Tool, Args("{\"size\": \"3x4\", \"factor\": 10}")))).Value!;
+            r.Status.ShouldBe(ResponseStatus.Success);
+            r.Content.Single().Text.ShouldBe("30x40");   // factor (int) still converted by ReflectorNet: the binding declined it
         }
 
         [Fact]
         public async Task ABindingRejectionIsABadRequest()
         {
-            ToolBinding.Current = new Binding();
-            try
-            {
-                var r = (await Manager().RunCallTool(new RequestCallTool("r1", Tool, Args("{\"size\": \"wide\"}")))).Value!;
-                r.Status.ShouldBe(ResponseStatus.Error);
-                r.Content.Single().Text!.ShouldContain("size must be WxH");
-            }
-            finally { ToolBinding.Current = null; }
+            var r = (await Manager(new Binding()).RunCallTool(new RequestCallTool("r1", Tool, Args("{\"size\": \"wide\"}")))).Value!;
+            r.Status.ShouldBe(ResponseStatus.Error);
+            r.Content.Single().Text!.ShouldContain("size must be WxH");
         }
 
         [Fact]
         public async Task WithoutABindingReflectorNetIsUsed()
         {
-            ToolBinding.Current = null;
-            var listed = (await Manager().RunListTool(new RequestListTool())).Value!.Single();
+            var manager = Manager();
+            var listed = (await manager.RunListTool(new RequestListTool())).Value!.Single();
             listed.InputSchema.GetRawText().ShouldContain("$defs");
-            var r = (await Manager().RunCallTool(new RequestCallTool("r1", Tool, Args("{\"size\": {\"Width\": 1, \"Height\": 2}}")))).Value!;
+            var r = (await manager.RunCallTool(new RequestCallTool("r1", Tool, Args("{\"size\": {\"Width\": 1, \"Height\": 2}}")))).Value!;
             r.Status.ShouldBe(ResponseStatus.Success);
             r.StructuredContent!.ToJsonString().ShouldContain("\"Width\":2");
+        }
+
+        [Fact]
+        public async Task BindingsArePerManager()
+        {
+            // Two plugins in one process: one bound, one on ReflectorNet — no global state between them.
+            var bound = (await Manager(new Binding()).RunListTool(new RequestListTool())).Value!.Single();
+            var plain = (await Manager().RunListTool(new RequestListTool())).Value!.Single();
+            bound.Description!.ShouldStartWith("bound: ");
+            plain.Description!.ShouldNotStartWith("bound: ");
+        }
+
+        [Fact]
+        public void SwitchingTheBindingAppliesToEveryToolAndTheTokenCount()
+        {
+            var manager = Manager();
+            var tool = (RunTool)manager.GetAllTools().Single();
+            var updates = 0;
+            using var _ = manager.OnToolsUpdated.Subscribe(__ => updates++);
+            var plainTokens = tool.TokenCount;
+
+            manager.ToolBinding = new Binding();
+            tool.Binding.ShouldBeSameAs(manager.ToolBinding);
+            ((IRunTool)tool).Description!.ShouldStartWith("bound: ");
+            tool.TokenCount.ShouldNotBe(plainTokens);   // counted from what the agent receives
+            updates.ShouldBe(1);
+
+            manager.ToolBinding = null;
+            tool.Binding.ShouldBeNull();
+            tool.TokenCount.ShouldBe(plainTokens);
+        }
+
+        [Fact]
+        public void ToolsAddedLaterGetTheBinding()
+        {
+            var manager = Manager(new Binding());
+            var reflector = new Reflector();
+            var added = RunTool.CreateFromStaticMethod(reflector, NullLogger.Instance, "later", typeof(ScaleTool).GetMethod(nameof(ScaleTool.Scale))!);
+            manager.AddTool("later", added).ShouldBeTrue();
+            added.Binding.ShouldBeSameAs(manager.ToolBinding);
         }
     }
 }
