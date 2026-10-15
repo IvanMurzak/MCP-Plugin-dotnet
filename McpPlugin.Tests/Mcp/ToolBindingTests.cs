@@ -134,6 +134,21 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             tool.TokenCount.ShouldBe(plainTokens);
         }
 
+        sealed class ThrowingBinding : IToolBinding
+        {
+            public ToolSignature? Describe(string toolName, MethodInfo method, string? description) => throw new InvalidOperationException("boom");
+            public bool TryConvert(MethodInfo method, ParameterInfo parameter, JsonElement value, out object? converted) { converted = null; return false; }
+            public ResponseCallTool? Result(MethodInfo method, object? value) => null;
+        }
+
+        [Fact]
+        public async Task AThrowingDescribeKeepsReflectorNetsSignatureAndTheListing()
+        {
+            var response = await Manager(new ThrowingBinding()).RunListTool(new RequestListTool());
+            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Value!.Single().InputSchema.GetRawText().ShouldContain("$defs");
+        }
+
         [Fact]
         public void ToolsAddedLaterGetTheBinding()
         {
