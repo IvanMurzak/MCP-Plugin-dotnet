@@ -47,9 +47,8 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// The portion of <see cref="TokenCount"/> contributed by this tool's published skill metadata
         /// (<see cref="SkillDescription"/> / <see cref="SkillBody"/>), including its JSON key overhead.
-        /// Cached on first read, like <see cref="TokenCount"/>, and for the same reason: both inputs are read
-        /// from attributes on the underlying <c>Method</c>, which this type never rebinds, so no cache
-        /// invalidation is required.
+        /// Cached on first read, like <see cref="TokenCount"/>; both caches are reset when <see cref="Binding"/>
+        /// changes, since the agent-facing signature they are counted from comes from the binding.
         /// </summary>
         public int SkillMetadataTokenCount
         {
@@ -75,7 +74,9 @@ namespace com.IvanMurzak.McpPlugin
         {
             try
             {
-                return ToolTokenCount.Calculate(Name, Title, Description, SkillDescription, SkillBody, InputSchema, OutputSchema);
+                // What the agent receives: the bound signature when a binding is set.
+                var self = (IRunTool)this;
+                return ToolTokenCount.Calculate(Name, Title, self.Description, SkillDescription, SkillBody, self.InputSchema, self.OutputSchema);
             }
             catch (Exception ex)
             {
@@ -93,7 +94,8 @@ namespace com.IvanMurzak.McpPlugin
         {
             try
             {
-                return ToolTokenCount.CalculateSkillMetadata(Name, Title, Description, SkillDescription, SkillBody, InputSchema, OutputSchema);
+                var self = (IRunTool)this;
+                return ToolTokenCount.CalculateSkillMetadata(Name, Title, self.Description, SkillDescription, SkillBody, self.InputSchema, self.OutputSchema);
             }
             catch (Exception ex)
             {

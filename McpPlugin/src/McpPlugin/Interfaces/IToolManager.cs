@@ -21,6 +21,12 @@ namespace com.IvanMurzak.McpPlugin
         int EnabledToolsCount { get; }
         int TotalToolsCount { get; }
         ulong ToolCallsCount => 0;
+
+        /// <summary>
+        /// EXPERIMENTAL. The data layer of the reflected tools (<see cref="IToolBinding"/>): agent-facing schemas, argument
+        /// conversion and results; null = ReflectorNet. Managers that do not support bindings ignore it.
+        /// </summary>
+        IToolBinding? ToolBinding { get => null; set { } }
         
         /// <summary>
         /// Gets the total token count for all enabled tools.

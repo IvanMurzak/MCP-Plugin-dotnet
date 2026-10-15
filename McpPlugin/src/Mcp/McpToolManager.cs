@@ -79,6 +79,25 @@ namespace com.IvanMurzak.McpPlugin
             .Where(kvp => kvp.Value.Enabled)
             .Sum(kvp => kvp.Value.SkillMetadataTokenCount);
 
+        private IToolBinding? _toolBinding;
+
+        /// <summary>
+        /// EXPERIMENTAL. The data layer of this manager's reflected tools (<see cref="RunTool.Binding"/>); null = ReflectorNet.
+        /// Applied to every <see cref="RunTool"/> held now and added later; a change re-announces the tool list.
+        /// </summary>
+        public IToolBinding? ToolBinding
+        {
+            get => _toolBinding;
+            set
+            {
+                if (ReferenceEquals(_toolBinding, value)) return;
+                _toolBinding = value;
+                foreach (var runTool in _tools.Values.OfType<RunTool>())
+                    runTool.Binding = value;
+                _onToolsUpdated.OnNext(Unit.Default);
+            }
+        }
+
         public bool HasTool(string name) => _tools.ContainsKey(name);
         public bool AddTool(string name, IRunTool runner)
         {
@@ -88,6 +107,8 @@ namespace com.IvanMurzak.McpPlugin
                 return false;
             }
 
+            if (runner is RunTool runTool)
+                runTool.Binding = _toolBinding;
             _tools[name] = runner;
             _onToolsUpdated.OnNext(Unit.Default);
             return true;

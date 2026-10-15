@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
@@ -72,6 +73,66 @@ namespace com.IvanMurzak.McpPlugin
 
         public MethodInfo Method => _methodInfo;
 
+        // EXPERIMENTAL tool binding (IToolBinding): when set, the agent-facing signature, argument conversion and result come
+        // from it. One immutable holder swapped as a whole, so a reader never sees a binding with another binding's signature.
+        private sealed class Bound
+        {
+            public Bound(IToolBinding binding, System.Func<ToolSignature?> describe)
+            {
+                Binding = binding;
+                Signature = new System.Lazy<ToolSignature?>(describe, System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+            }
+            public readonly IToolBinding Binding;
+            public readonly System.Lazy<ToolSignature?> Signature;
+        }
+
+        private volatile Bound? _bound;
+
+        /// <summary>EXPERIMENTAL. The data layer of this tool; null = ReflectorNet. Usually set through <see cref="IToolManager.ToolBinding"/>.</summary>
+        public IToolBinding? Binding
+        {
+            get => _bound?.Binding;
+            set
+            {
+                if (ReferenceEquals(_bound?.Binding, value)) return;
+                _bound = value == null ? null : new Bound(value, () => Describe(value));
+                _cachedTokenCount = null;               // the agent-facing catalogue changed
+                _cachedSkillMetadataTokenCount = null;
+            }
+        }
+
+        // A throwing Describe must not break tools/list for every tool (RunListTool fails as a whole) nor stay cached as an
+        // exception in the Lazy: log it and keep ReflectorNet's signature for this tool.
+        private ToolSignature? Describe(IToolBinding binding)
+        {
+            try
+            {
+                return binding.Describe(Name, Method, base.Description);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Tool binding failed to describe tool '{0}'. Keeping the ReflectorNet signature.", Name);
+                return null;
+            }
+        }
+
+        private ToolSignature? BoundSignature() => _bound?.Signature.Value;
+
+        private bool TryBindingConvert(ParameterInfo paramInfo, object? raw, out object? converted)
+        {
+            converted = null;
+            if (_bound?.Binding is not IToolBinding binding || raw is not JsonElement element)
+                return false;
+            if (!binding.TryConvert(Method, paramInfo, element, out var value))
+                return false;
+            converted = FixEnumConversion(paramInfo, value);
+            return true;
+        }
+
+        string? IRunTool.Description => BoundSignature() is { } s ? s.Description : Description;
+        JsonNode? IRunTool.InputSchema => BoundSignature() is { } s ? s.InputSchema : InputSchema;
+        JsonNode? IRunTool.OutputSchema => BoundSignature() is { } s ? s.OutputSchema : OutputSchema;
+
         protected string? RequestID { get; set; }
 
         /// <summary>
@@ -105,6 +166,8 @@ namespace com.IvanMurzak.McpPlugin
                 _logger?.LogTrace("Injecting RequestID parameter: {RequestID}", RequestID);
                 return RequestID;
             }
+            if (TryBindingConvert(paramInfo, value, out var converted))
+                return converted;
             return FixEnumConversion(paramInfo, base.GetParameterValue(reflector, paramInfo, value));
         }
         protected override object? GetParameterValue(Reflector reflector, ParameterInfo paramInfo, IReadOnlyDictionary<string, object?>? namedParameters)
@@ -114,6 +177,12 @@ namespace com.IvanMurzak.McpPlugin
                 _logger?.LogTrace("Injecting RequestID parameter: {RequestID}", RequestID);
                 return RequestID;
             }
+
+            if (paramInfo.Name != null
+                && namedParameters != null
+                && namedParameters.TryGetValue(paramInfo.Name, out var raw)
+                && TryBindingConvert(paramInfo, raw, out var converted))
+                return converted;
 
             return FixEnumConversion(paramInfo, base.GetParameterValue(reflector, paramInfo, namedParameters));
         }
@@ -143,7 +212,15 @@ namespace com.IvanMurzak.McpPlugin
         }
 
         protected ResponseCallTool ProcessInvokeResult(string requestId, object? result)
+            => ProcessInvokeResult(requestId, result, _bound?.Binding);
+
+        // binding: the one the call started with, so a binding switched while the tool ran does not render a result
+        // whose arguments another binding converted.
+        private ResponseCallTool ProcessInvokeResult(string requestId, object? result, IToolBinding? binding)
         {
+            if (binding?.Result(Method, result) is ResponseCallTool bound)
+                return bound.SetRequestID(requestId);
+
             if (result is ResponseCallTool response)
                 return response.SetRequestID(requestId);
 
@@ -173,11 +250,12 @@ namespace com.IvanMurzak.McpPlugin
                 return validationResult;
 
             RequestID = requestId;
+            var binding = _bound?.Binding;
             try
             {
                 // Invoke the method (static or instance)
                 var result = await Invoke(cancellationToken, parameters);
-                return ProcessInvokeResult(requestId, result);
+                return ProcessInvokeResult(requestId, result, binding);
             }
             catch (ArgumentException ex)
             {
@@ -220,13 +298,14 @@ namespace com.IvanMurzak.McpPlugin
                 return validationResult;
 
             RequestID = requestId;
+            var binding = _bound?.Binding;
             try
             {
                 var finalParameters = ConvertNamedParameters(namedParameters);
 
                 // Invoke the method (static or instance)
                 var result = await InvokeDict(finalParameters, cancellationToken);
-                return ProcessInvokeResult(requestId, result);
+                return ProcessInvokeResult(requestId, result, binding);
             }
             catch (ArgumentException ex)
             {
