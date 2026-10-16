@@ -19,6 +19,7 @@ using System.Net.Sockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
@@ -81,6 +82,64 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         const string InstanceB = "instance-beta";
         const string ProjectB = "BetaProject";
         const string HashB = "bbbbbbbb1111222233334444555566667777888899990000aaaabbbbccccdddd";
+
+        [Theory]
+        [InlineData("/api/tools")]
+        [InlineData("/p/aaaaaaaa/api/tools")]
+        public async Task NativeTools_AdvertisedByMcp_AreCallableThroughRest(string prefix)
+        {
+            await using var host = await StartOAuthHostAsync();
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
+            var sessionId = await host.InitializeAsync(client);
+            // Empty account: discovery and listing must work without a connected plugin.
+            using var catalog = await host.RestAsync(client, sessionId, prefix, null);
+            catalog.StatusCode.ShouldBe(HttpStatusCode.OK);
+            var catalogText = await catalog.Content.ReadAsStringAsync();
+            var (mcpCatalog, _) = await host.PostAsync(client, sessionId, new
+            {
+                jsonrpc = "2.0", id = 98, method = "tools/list", @params = new { }
+            });
+            using var mcpCatalogDoc = JsonDocument.Parse(Unwrap(mcpCatalog));
+            var names = mcpCatalogDoc.RootElement.GetProperty("result").GetProperty("tools")
+                .EnumerateArray().Select(tool => tool.GetProperty("name").GetString()).ToArray();
+            foreach (var name in new[] { ServerNativeTools.ListInstances, ServerNativeTools.SelectInstance, ServerNativeTools.EnrollPlugin })
+            {
+                catalogText.ShouldContain(name);
+                names.ShouldContain(name);
+            }
+            using var empty = await host.RestAsync(client, sessionId, prefix + "/" + ServerNativeTools.ListInstances, new { });
+            empty.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await empty.Content.ReadAsStringAsync()).ShouldContain("enroll_engine_plugin");
+
+            host.RegisterInstance(InstanceA, "unity", ProjectA, HashA, "MACHINE-A");
+            host.RegisterInstance(InstanceB, "unity", ProjectB, HashB, "MACHINE-B");
+            using var list = await host.RestAsync(client, sessionId, prefix + "/" + ServerNativeTools.ListInstances, new { });
+            list.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await list.Content.ReadAsStringAsync()).ShouldContain(InstanceA);
+            using var select = await host.RestAsync(client, sessionId, prefix + "/" + ServerNativeTools.SelectInstance, new { instance_id = InstanceA });
+            select.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await select.Content.ReadAsStringAsync()).ShouldContain(InstanceA);
+            // The same session selection is visible through the MCP transport.
+            var mcpList = await host.CallToolAsync(client, sessionId, ServerNativeTools.ListInstances, new { });
+            mcpList.IsError.ShouldBeFalse();
+            mcpList.Text.Split('\n').Single(line => line.StartsWith("- " + InstanceA + ":", StringComparison.Ordinal))
+                .ShouldContain("(selected)");
+            using var enroll = await host.RestAsync(client, sessionId, prefix + "/" + ServerNativeTools.EnrollPlugin, new { engine = "unity" });
+            enroll.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await enroll.Content.ReadAsStringAsync()).ShouldContain("TEST-ENROLL-CODE");
+
+            if (prefix.StartsWith("/p/", StringComparison.Ordinal))
+            {
+                using var sibling = await host.RestAsync(client, sessionId, prefix + "/" + ServerNativeTools.SelectInstance, new { instance_id = InstanceB });
+                sibling.IsSuccessStatusCode.ShouldBeFalse("a pinned REST request must not select a sibling project");
+            }
+        }
+
+        sealed class TestEnrollment : IEnrollmentClient
+        {
+            public Task<EnrollmentResult> CreateAsync(string engine, string bearer, CancellationToken cancellationToken = default)
+                => Task.FromResult(EnrollmentResult.Ok("TEST-ENROLL-CODE"));
+        }
 
         /// <summary>
         /// The regression: after <c>select_engine_instance</c> picks A, the NEXT tool call on the same
@@ -236,6 +295,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // Hermetic: serve the signing key from memory instead of fetching the AS over HTTP.
             // Registered AFTER the production wiring so this singleton is the resolved one.
             builder.Services.AddSingleton<IJwksKeyProvider>(new FakeJwksKeyProvider().Add(Kid, key));
+            builder.Services.AddSingleton<IEnrollmentClient>(new TestEnrollment());
 
             var app = builder.Build();
             app.Urls.Add($"http://127.0.0.1:{port}");
@@ -262,6 +322,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 _baseUrl = baseUrl;
                 _token = token;
                 _key = key;
+            }
+
+            public async Task<HttpResponseMessage> RestAsync(HttpClient client, string sessionId, string route, object? arguments)
+            {
+                using var request = new HttpRequestMessage(arguments == null ? HttpMethod.Get : HttpMethod.Post, _baseUrl + route);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _token);
+                request.Headers.TryAddWithoutValidation("Mcp-Session-Id", sessionId);
+                if (arguments != null)
+                    request.Content = new StringContent(JsonSerializer.Serialize(arguments), Encoding.UTF8, "application/json");
+                return await client.SendAsync(request);
             }
 
             AccountMcpStrategy Strategy

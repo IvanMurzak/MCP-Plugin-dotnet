@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
@@ -19,6 +20,7 @@ using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Webhooks;
+using com.IvanMurzak.McpPlugin.Server.Tools;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -134,15 +136,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
             var toolHub = context.RequestServices.GetRequiredService<IClientToolHub>();
             var request = new RequestListTool();
             var response = await toolHub.RunListTool(request, context.RequestAborted);
+            var nativeTools = context.RequestServices.GetService<ServerNativeTools>()?.Descriptors;
 
-            if (response == null)
+            if (response == null && nativeTools == null)
             {
                 context.Response.StatusCode = 502;
                 await context.Response.WriteAsJsonAsync(new { error = "Tool hub returned a null response." });
                 return;
             }
 
-            if (response.Status == ResponseStatus.Error)
+            if (response?.Status == ResponseStatus.Error && nativeTools == null)
             {
                 context.Response.StatusCode = DirectHttpErrorMapper.GetStatusCode(response, 500);
                 await context.Response.WriteAsJsonAsync(new { error = response.Message ?? "Failed to list tools." });
@@ -150,9 +153,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
             }
 
             var tools = new List<JsonObject>();
-            if (response.Value != null)
+            var descriptors = response?.Status == ResponseStatus.Success && response.Value != null
+                ? response.Value.ToList() : new List<ResponseListTool>();
+            if (nativeTools != null)
+                descriptors.AddRange(nativeTools.Select(tool => new ResponseListTool
+                {
+                    Name = tool.Name,
+                    Title = tool.Annotations?.Title,
+                    Description = tool.Description,
+                    InputSchema = tool.InputSchema,
+                    OutputSchema = tool.OutputSchema
+                }));
+            if (descriptors.Count > 0)
             {
-                foreach (var tool in response.Value)
+                foreach (var tool in descriptors)
                 {
                     if (tool == null) continue;
 
@@ -184,7 +198,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
         /// </summary>
         static async Task CallToolHandler(HttpContext context)
         {
-            var toolHub = context.RequestServices.GetRequiredService<IClientToolHub>();
             var name = context.Request.RouteValues["name"]?.ToString() ?? string.Empty;
 
             if (string.IsNullOrWhiteSpace(name))
@@ -255,7 +268,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
             }
 
             var requestData = new RequestCallTool(name, arguments);
-            var response = await toolHub.RunCallTool(requestData);
+            var response = await ToolDispatcher.CallAsync(context.RequestServices, requestData, context.RequestAborted);
 
             // ── Fire webhook ────────────────────────────────────────────
             if (webhookOptions?.IsToolEnabled == true)
