@@ -92,8 +92,7 @@ namespace com.IvanMurzak.McpPlugin
                     .ConfigureLogging(logging =>
                     {
                         logging.ClearProviders();
-                        logging.AddProvider(new ForwardLoggerProvider(_logger,
-                            additionalErrorMessage: "To stop seeing the error, please <b>Stop</b> the connection to MCP server in <b>AI Game Developer</b> window."));
+                        logging.AddProvider(CreateForwardLoggerProvider(_logger, connectionConfig));
                         logging.SetMinimumLevel(LogLevel.Trace);
                     });
 
@@ -111,5 +110,12 @@ namespace com.IvanMurzak.McpPlugin
                 throw;
             }
         }
+
+        /// <summary>
+        /// Builds the logger provider that forwards SignalR's internal logs to the host logger, appending
+        /// the host-supplied <see cref="ConnectionConfig.ConnectionErrorHint"/> (if any) after errors.
+        /// </summary>
+        internal static ForwardLoggerProvider CreateForwardLoggerProvider(ILogger logger, ConnectionConfig connectionConfig)
+            => new ForwardLoggerProvider(logger, additionalErrorMessage: connectionConfig.ConnectionErrorHint);
     }
 }

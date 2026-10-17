@@ -54,7 +54,7 @@ namespace com.IvanMurzak.McpPlugin
 
                 _logger.Log(logLevel, eventId, (object)message, exception, (s, e) => s?.ToString() ?? string.Empty);
 
-                if (logLevel >= LogLevel.Error)
+                if (logLevel >= LogLevel.Error && !string.IsNullOrWhiteSpace(_additionalErrorMessage))
                     _logger.Log(logLevel, _additionalErrorMessage);
             }
         }
