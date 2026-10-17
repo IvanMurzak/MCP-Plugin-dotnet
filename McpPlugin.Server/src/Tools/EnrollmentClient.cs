@@ -13,6 +13,7 @@ using System;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tools
@@ -25,18 +26,26 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
         /// <summary>The one-time enrollment code when <see cref="Success"/>; else null.</summary>
         public string? EnrollCode { get; }
 
+        /// <summary>
+        /// Optional install instructions from the authorization server (its <c>install_hint</c>), which owns the
+        /// engine-specific wording; may contain a <c>{code}</c> placeholder. Null when the server sent none.
+        /// </summary>
+        public string? InstallHint { get; }
+
         /// <summary>An agent-facing failure reason when not <see cref="Success"/>; else null. Never carries the credential.</summary>
         public string? Error { get; }
 
-        EnrollmentResult(bool success, string? enrollCode, string? error)
+        EnrollmentResult(bool success, string? enrollCode, string? installHint, string? error)
         {
             Success = success;
             EnrollCode = enrollCode;
+            InstallHint = installHint;
             Error = error;
         }
 
-        public static EnrollmentResult Ok(string enrollCode) => new EnrollmentResult(true, enrollCode, null);
-        public static EnrollmentResult Fail(string error) => new EnrollmentResult(false, null, error);
+        public static EnrollmentResult Ok(string enrollCode) => new EnrollmentResult(true, enrollCode, null, null);
+        public static EnrollmentResult Ok(string enrollCode, string? installHint) => new EnrollmentResult(true, enrollCode, installHint, null);
+        public static EnrollmentResult Fail(string error) => new EnrollmentResult(false, null, null, error);
     }
 
     /// <summary>
@@ -78,8 +87,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
 
         public async Task<EnrollmentResult> CreateAsync(string engine, string bearer, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(engine))
-                return EnrollmentResult.Fail("An engine (unity|godot|unreal) is required to enroll.");
+            if (!EngineId.IsValid(engine))
+                return EnrollmentResult.Fail($"An engine identifier is required to enroll; it must be {EngineId.FormatDescription}.");
             if (string.IsNullOrEmpty(bearer))
                 return EnrollmentResult.Fail("No session credential is available to enroll with.");
 
@@ -111,7 +120,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 {
                     var code = codeEl.GetString();
                     if (!string.IsNullOrEmpty(code))
-                        return EnrollmentResult.Ok(code!);
+                    {
+                        // Optional and additive: an older authorization server omits it (generic fallback text).
+                        string? installHint = null;
+                        if (doc.RootElement.TryGetProperty("install_hint", out var hintEl) && hintEl.ValueKind == JsonValueKind.String)
+                        {
+                            installHint = hintEl.GetString();
+                            if (string.IsNullOrWhiteSpace(installHint))
+                                installHint = null;
+                        }
+                        return EnrollmentResult.Ok(code!, installHint);
+                    }
                 }
                 return EnrollmentResult.Fail("The authorization server response did not contain an enrollment code.");
             }

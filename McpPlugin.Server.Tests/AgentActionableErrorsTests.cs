@@ -59,7 +59,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         public void AccountEmpty_Text_NamesEnrollAndCli()
         {
             AgentActionableErrors.AccountEmpty.ShouldContain("enroll_engine_plugin");
-            AgentActionableErrors.AccountEmpty.ShouldContain("unity-mcp-cli install-plugin --enroll");
+            AgentActionableErrors.AccountEmpty.ShouldNotContain("unity"); // engine-neutral: no hard-coded engine/CLI
             AgentActionableErrors.AccountEmpty.ShouldContain("No game engine is connected");
         }
 
@@ -104,6 +104,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 AgentActionableErrors.ForResolution(resolution, strategy.Instances, "acc-1")
                     .ShouldBe(AgentActionableErrors.AccountEmpty);
             }
+        }
+
+        [Fact]
+        public void ForResolution_ProjectKeySession_EmptyAccount_DoesNotSuggestEnroll()
+        {
+            // A project key cannot call enroll_engine_plugin (contract §4): it must be told to open its project.
+            var strategy = new AccountMcpStrategy();
+            var text = AgentActionableErrors.ForResolution(InstanceResolution.AccountEmpty(), strategy.Instances, "acc-1", boundProjectPin: PinA);
+            text.ShouldNotContain("enroll_engine_plugin");
+            text.ShouldContain("open the project in your editor");
         }
 
         [Fact]

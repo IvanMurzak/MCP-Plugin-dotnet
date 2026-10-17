@@ -24,13 +24,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
     {
         /// <summary>
         /// The <c>enroll_engine_plugin</c>-first recovery text for an account with NO live instances
-        /// (design 04 step 5, second variant). Uses unity as the illustrative CLI and names
-        /// <c>enroll_engine_plugin</c> for the godot/unreal path.
+        /// (design 04 step 5, second variant). Engine-neutral: the install steps come from
+        /// <c>enroll_engine_plugin</c>, whose instructions the authorization server supplies.
         /// </summary>
         public const string AccountEmpty =
-            "No game engine is connected for your account. To set up: run " +
-            "'npx unity-mcp-cli install-plugin --enroll <code>' in the project folder " +
-            "(also for godot/unreal via enroll_engine_plugin), then open the project in the editor.";
+            "No game engine is connected for your account. To set up: call enroll_engine_plugin with your " +
+            "engine's identifier, follow the returned install instructions, then open the project in the editor.";
 
         /// <summary>
         /// The text for a pinned session whose project's editor is closed while the account HAS other
@@ -50,10 +49,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                    $"Other connected instances: {list}.";
         }
 
-        /// <summary>Maps an unresolved <see cref="InstanceResolution"/> to its agent-actionable text.</summary>
+        /// <summary>
+        /// Maps an unresolved <see cref="InstanceResolution"/> to its agent-actionable text. A project-key session
+        /// (<paramref name="boundProjectPin"/> set) never gets <see cref="AccountEmpty"/>: it cannot call
+        /// <c>enroll_engine_plugin</c> (contract §4), so it is told to open its project instead.
+        /// </summary>
         public static string ForResolution(InstanceResolution resolution, AccountInstances instances, string? accountId, string? boundProjectPin = null)
         {
-            return resolution.Kind == InstanceResolutionKind.NoMatchPinned
+            return resolution.Kind == InstanceResolutionKind.NoMatchPinned || !string.IsNullOrEmpty(boundProjectPin)
                 ? PinnedNoMatch(instances, accountId, boundProjectPin)
                 : AccountEmpty;
         }

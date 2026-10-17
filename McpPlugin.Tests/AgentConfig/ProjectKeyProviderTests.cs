@@ -456,10 +456,30 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         [InlineData("unity", "unity")]
         [InlineData("GODOT", "godot")]
         [InlineData(" unreal ", "unreal")]
-        [InlineData("cryengine", "unknown")]
+        [InlineData("brutal", "brutal")]
+        [InlineData(" BRUTAL ", "brutal")]
+        [InlineData("cryengine", "cryengine")] // any well-formed id passes through: no allow-list
+        [InlineData("my-engine.v2_x", "my-engine.v2_x")]
+        [InlineData("a", "a")]
+        [InlineData("abcdefghijklmnopqrstuvwxyz012345", "abcdefghijklmnopqrstuvwxyz012345")] // 32 chars
+        [InlineData("abcdefghijklmnopqrstuvwxyz0123456", "unknown")] // 33 chars
+        [InlineData("-engine", "unknown")]
+        [InlineData(".engine", "unknown")]
+        [InlineData("has space", "unknown")]
+        [InlineData("slash/engine", "unknown")]
+        [InlineData("engine\n", "engine")] // trimmed
+        [InlineData("", "unknown")]
+        [InlineData("   ", "unknown")]
         [InlineData(null, "unknown")]
-        public void Engine_IsNormalisedToTheServersEnum(string? input, string expected)
+        public void Engine_IsFormatNormalised_NotAllowListed(string? input, string expected)
             => ProjectKeyProvider.NormalizeEngine(input).ShouldBe(expected);
+
+        [Theory]
+        [InlineData("engine\n")]
+        [InlineData("Unity")]
+        [InlineData(" unity")]
+        public void EngineId_IsValid_RequiresAnExactNormalisedSlug(string input)
+            => com.IvanMurzak.McpPlugin.Common.EngineId.IsValid(input).ShouldBeFalse();
 
         [Fact]
         public async Task ConcurrentWriterMintedMeanwhile_TheirEntryIsKept_AndReturned()
