@@ -55,6 +55,8 @@ namespace com.IvanMurzak.McpPlugin
         /// <c>Authorization</c> header (never a query param) — see <see cref="HubConnectionProvider"/>.
         /// Hosts wire this to <c>PluginCredentialProvider.AsAccessTokenProvider()</c> (machine-store
         /// auto-adopt + refresh); leaving it null keeps the anonymous local-server behaviour.
+        /// For a Custom (self-hosted) connection in <c>oauth</c> mode, route the account token through
+        /// <see cref="CustomOAuthCredentialPolicy.ResolveAsync"/>: it reaches loopback hosts only.
         /// </summary>
         public virtual Func<Task<string?>>? CredentialProvider { get; set; }
 
