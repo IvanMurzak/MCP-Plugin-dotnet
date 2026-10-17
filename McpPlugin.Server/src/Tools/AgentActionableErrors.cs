@@ -49,10 +49,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                    $"Other connected instances: {list}.";
         }
 
-        /// <summary>Maps an unresolved <see cref="InstanceResolution"/> to its agent-actionable text.</summary>
+        /// <summary>
+        /// Maps an unresolved <see cref="InstanceResolution"/> to its agent-actionable text. A project-key session
+        /// (<paramref name="boundProjectPin"/> set) never gets <see cref="AccountEmpty"/>: it cannot call
+        /// <c>enroll_engine_plugin</c> (contract §4), so it is told to open its project instead.
+        /// </summary>
         public static string ForResolution(InstanceResolution resolution, AccountInstances instances, string? accountId, string? boundProjectPin = null)
         {
-            return resolution.Kind == InstanceResolutionKind.NoMatchPinned
+            return resolution.Kind == InstanceResolutionKind.NoMatchPinned || !string.IsNullOrEmpty(boundProjectPin)
                 ? PinnedNoMatch(instances, accountId, boundProjectPin)
                 : AccountEmpty;
         }

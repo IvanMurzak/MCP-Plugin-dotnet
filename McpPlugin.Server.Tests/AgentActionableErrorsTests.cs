@@ -107,6 +107,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
+        public void ForResolution_ProjectKeySession_EmptyAccount_DoesNotSuggestEnroll()
+        {
+            // A project key cannot call enroll_engine_plugin (contract §4): it must be told to open its project.
+            var strategy = new AccountMcpStrategy();
+            var text = AgentActionableErrors.ForResolution(InstanceResolution.AccountEmpty(), strategy.Instances, "acc-1", boundProjectPin: PinA);
+            text.ShouldNotContain("enroll_engine_plugin");
+            text.ShouldContain("open the project in your editor");
+        }
+
+        [Fact]
         public void ResolveCurrentSession_PinnedNoMatch_WhenPinnedProjectEditorClosed()
         {
             var strategy = new AccountMcpStrategy();

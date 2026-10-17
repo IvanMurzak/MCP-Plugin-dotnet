@@ -13,6 +13,7 @@ using System;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tools
@@ -86,8 +87,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
 
         public async Task<EnrollmentResult> CreateAsync(string engine, string bearer, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(engine))
-                return EnrollmentResult.Fail("An engine identifier is required to enroll.");
+            if (!EngineId.IsValid(engine))
+                return EnrollmentResult.Fail($"An engine identifier is required to enroll; it must be {EngineId.FormatDescription}.");
             if (string.IsNullOrEmpty(bearer))
                 return EnrollmentResult.Fail("No session credential is available to enroll with.");
 
