@@ -108,27 +108,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             }
         }
 
-        [Theory]
-        [InlineData("unity", "unity-mcp-cli")]
-        [InlineData("godot", "godot-cli")]
-        [InlineData("unreal", "unreal-mcp-cli")]
-        public void CliPackage_MapsEngineToPublishedCli(string engine, string expected)
-            => ServerNativeTools.CliPackage(engine).ShouldBe(expected);
-
-        [Theory]
-        [InlineData("brutal")]    // no public CLI: installed via the AI Game Developer App
-        [InlineData("cryengine")] // not a known engine
-        public void CliPackage_NoPublicCli_ReturnsNull(string engine)
-            => ServerNativeTools.CliPackage(engine).ShouldBeNull();
-
         [Fact]
-        public void EnrollDescriptor_EngineEnum_ListsEveryKnownEngine()
+        public void EnrollDescriptor_EngineIsAFreeString_WithoutEnum()
         {
             var (tools, _, _, _, _) = NewTools();
             var enroll = tools.Descriptors.Single(d => d.Name == ServerNativeTools.EnrollPlugin);
-            var values = enroll.InputSchema.GetProperty("properties").GetProperty("engine").GetProperty("enum")
-                .EnumerateArray().Select(e => e.GetString()).ToArray();
-            values.ShouldBe(new[] { "unity", "godot", "unreal", "brutal" });
+            var engine = enroll.InputSchema.GetProperty("properties").GetProperty("engine");
+            engine.GetProperty("type").GetString().ShouldBe("string");
+            engine.TryGetProperty("enum", out _).ShouldBeFalse();
+            engine.GetProperty("description").GetString()
+                .ShouldBe("Identifier of the engine plugin to enroll, as the plugin's host documents it.");
         }
 
         [Fact]
@@ -399,7 +388,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         // ─────────────────────────────── enroll_engine_plugin ───────────────────────────────
 
         [Fact]
-        public async Task Enroll_ValidEngine_ReturnsReadyToRunInstallCommand()
+        public async Task Enroll_ValidEngine_ForwardsToProxy_AndReturnsTheCode()
         {
             var (tools, _, _, enroll, _) = NewTools();
             enroll.Result = EnrollmentResult.Ok("ONE-TIME-CODE");
@@ -407,49 +396,77 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var response = await tools.HandleAsync(ServerNativeTools.EnrollPlugin, Args(("engine", "godot")), Ctx());
 
             response.Status.ShouldBe(ResponseStatus.Success);
-            Text(response).ShouldContain("npx godot-cli install-plugin --enroll ONE-TIME-CODE");
+            Text(response).ShouldContain("ONE-TIME-CODE");
             // The session credential was forwarded verbatim to the enroll proxy.
             enroll.SeenBearer.ShouldBe("bearer-token");
             enroll.SeenEngine.ShouldBe("godot");
         }
 
         [Theory]
-        [InlineData("unity", "unity-mcp-cli")]
-        [InlineData("godot", "godot-cli")]
-        [InlineData("unreal", "unreal-mcp-cli")]
-        public async Task Enroll_EmitsCorrectCliPerEngine(string engine, string cli)
+        [InlineData("unity", "unity")]
+        [InlineData("brutal", "brutal")]
+        [InlineData(" Brutal ", "brutal")]
+        [InlineData("my-engine.v2_x", "my-engine.v2_x")] // any well-formed slug: the library has no engine list
+        public async Task Enroll_AcceptsAnyWellFormedEngineId(string engine, string expected)
         {
             var (tools, _, _, enroll, _) = NewTools();
             enroll.Result = EnrollmentResult.Ok("C0DE");
             var response = await tools.HandleAsync(ServerNativeTools.EnrollPlugin, Args(("engine", engine)), Ctx());
             response.Status.ShouldBe(ResponseStatus.Success);
-            Text(response).ShouldContain($"npx {cli} install-plugin --enroll C0DE");
+            enroll.SeenEngine.ShouldBe(expected);
         }
 
         [Theory]
-        [InlineData("brutal")]
-        [InlineData(" Brutal ")]
-        public async Task Enroll_Brutal_ReturnsAppInstallHint_NotAnNpxCommand(string engine)
+        [InlineData("-leading-dash")]
+        [InlineData("has space")]
+        [InlineData("slash/engine")]
+        [InlineData("waytoolongengineidentifier-abcdefgh")] // 35 chars
+        public async Task Enroll_MalformedEngineId_ReturnsFormatError_WithoutCallingTheProxy(string engine)
         {
             var (tools, _, _, enroll, _) = NewTools();
-            enroll.Result = EnrollmentResult.Ok("C0DE");
             var response = await tools.HandleAsync(ServerNativeTools.EnrollPlugin, Args(("engine", engine)), Ctx());
-            response.Status.ShouldBe(ResponseStatus.Success);
+            response.Status.ShouldBe(ResponseStatus.Error);
             var text = Text(response);
-            text.ShouldContain("AI Game Developer App");
-            text.ShouldContain("C0DE");
-            text.ShouldNotContain("npx");
-            enroll.SeenEngine.ShouldBe("brutal");
+            text.ShouldContain("1-32 characters");
+            foreach (var name in new[] { "unity", "godot", "unreal", "brutal" })
+                text.ShouldNotContain(name);
+            enroll.SeenEngine.ShouldBeNull(); // proxy not called
         }
 
         [Fact]
-        public async Task Enroll_InvalidEngine_ReturnsError()
+        public async Task Enroll_ServerHintWithPlaceholder_SubstitutesTheCode()
         {
             var (tools, _, _, enroll, _) = NewTools();
-            var response = await tools.HandleAsync(ServerNativeTools.EnrollPlugin, Args(("engine", "cryengine")), Ctx());
-            response.Status.ShouldBe(ResponseStatus.Error);
-            Text(response).ShouldContain("unity, godot, unreal, brutal");
-            enroll.SeenEngine.ShouldBeNull(); // proxy not called
+            enroll.Result = EnrollmentResult.Ok("C0DE", "Run `npx some-cli install-plugin --enroll {code}` in the project folder.");
+            var response = await tools.HandleAsync(ServerNativeTools.EnrollPlugin, Args(("engine", "unity")), Ctx());
+            response.Status.ShouldBe(ResponseStatus.Success);
+            Text(response).ShouldBe("Run `npx some-cli install-plugin --enroll C0DE` in the project folder.");
+        }
+
+        [Fact]
+        public async Task Enroll_ServerHintWithoutPlaceholder_AppendsTheCode()
+        {
+            var (tools, _, _, enroll, _) = NewTools();
+            enroll.Result = EnrollmentResult.Ok("C0DE", "Open the App and install the plugin.");
+            var response = await tools.HandleAsync(ServerNativeTools.EnrollPlugin, Args(("engine", "brutal")), Ctx());
+            response.Status.ShouldBe(ResponseStatus.Success);
+            var text = Text(response);
+            text.ShouldStartWith("Open the App and install the plugin.");
+            text.ShouldEndWith("C0DE");
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("   ")]
+        public async Task Enroll_NoServerHint_FallsBackToGenericMessage(string? hint)
+        {
+            var (tools, _, _, enroll, _) = NewTools();
+            enroll.Result = EnrollmentResult.Ok("C0DE", hint);
+            var response = await tools.HandleAsync(ServerNativeTools.EnrollPlugin, Args(("engine", "unity")), Ctx());
+            response.Status.ShouldBe(ResponseStatus.Success);
+            Text(response).ShouldBe(
+                "Enrollment code: C0DE. Give it to your engine plugin's installer " +
+                "(for example the AI Game Developer App or the engine's CLI `install-plugin --enroll C0DE`).");
         }
 
         [Fact]

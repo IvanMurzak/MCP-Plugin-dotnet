@@ -221,8 +221,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 return ResponseCallTool.Error("A project key cannot enroll engine plugins. Sign in on this machine instead.", ResponseErrorKind.BadRequest);
 
             var engine = (GetStringArg(arguments, "engine") ?? string.Empty).Trim().ToLowerInvariant();
-            if (!KnownEngineIds.IsKnown(engine))
-                return ResponseCallTool.Error($"Argument 'engine' is required and must be one of: {string.Join(", ", KnownEngineIds.Ids)}.", ResponseErrorKind.BadRequest);
+            if (!EngineId.IsValid(engine))
+                return ResponseCallTool.Error($"Argument 'engine' is required and must be {EngineId.FormatDescription}.", ResponseErrorKind.BadRequest);
 
             if (string.IsNullOrEmpty(context.Bearer))
                 return ResponseCallTool.Error("No session credential is available to enroll with. Sign in first.", ResponseErrorKind.BadRequest);
@@ -231,23 +231,29 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             if (!result.Success || string.IsNullOrEmpty(result.EnrollCode))
                 return ResponseCallTool.Error(result.Error ?? "Enrollment failed.", ResponseErrorKind.Unavailable);
 
-            var cliPackage = CliPackage(engine);
-            if (cliPackage == null)
-                return ResponseCallTool.Success(
-                    $"The {engine} plugin has no public CLI: install it with the AI Game Developer App. " +
-                    $"Open the App, add your {engine} project, and enter this enroll code when asked:\n\n{result.EnrollCode}");
-
-            var command = $"npx {cliPackage} install-plugin --enroll {result.EnrollCode}";
-            return ResponseCallTool.Success(
-                $"Run this in your {engine} project folder, then open the project in the editor:\n\n{command}");
+            return ResponseCallTool.Success(EnrollInstructions(result.EnrollCode!, result.InstallHint));
         }
 
+        /// <summary>Placeholder an authorization-server install hint may contain for the enrollment code.</summary>
+        public const string EnrollCodePlaceholder = "{code}";
+
         /// <summary>
-        /// Maps an engine to its published CLI npm package (design 04 step 5 / workspace CLIs), from
-        /// <see cref="KnownEngineIds"/>. <c>null</c> when the engine has no public CLI (its plugin is installed
-        /// via the AI Game Developer App, e.g. <c>brutal</c>) or is not a known engine.
+        /// The agent-facing install instructions for a minted <paramref name="enrollCode"/>. Engine-specific
+        /// wording comes ONLY from the authorization server's <paramref name="installHint"/> (this library has no
+        /// engine knowledge): <see cref="EnrollCodePlaceholder"/> in the hint is replaced by the code, otherwise the
+        /// code is appended. Without a hint a generic, engine-neutral message is returned.
         /// </summary>
-        public static string? CliPackage(string engine) => KnownEngineIds.Find(engine)?.CliPackage;
+        public static string EnrollInstructions(string enrollCode, string? installHint)
+        {
+            if (string.IsNullOrWhiteSpace(installHint))
+                return $"Enrollment code: {enrollCode}. Give it to your engine plugin's installer " +
+                       $"(for example the AI Game Developer App or the engine's CLI `install-plugin --enroll {enrollCode}`).";
+
+            var hint = installHint!.Trim();
+            return hint.Contains(EnrollCodePlaceholder)
+                ? hint.Replace(EnrollCodePlaceholder, enrollCode)
+                : $"{hint}\n\nEnrollment code: {enrollCode}";
+        }
 
         static string? GetStringArg(IReadOnlyDictionary<string, JsonElement> arguments, string key)
         {
@@ -280,8 +286,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 new Tool
                 {
                     Name = EnrollPlugin,
-                    Description = "Start connecting a new game engine to your account. Returns a ready-to-run 'npx <engine>-cli install-plugin --enroll <code>' command to run in the project folder, or, for an engine without a public CLI, an enroll code to enter in the AI Game Developer App.",
-                    InputSchema = Schema("{\"type\":\"object\",\"properties\":{\"engine\":{\"type\":\"string\",\"enum\":" + JsonSerializer.Serialize(KnownEngineIds.Ids) + ",\"description\":\"The engine to enroll.\"}},\"required\":[\"engine\"],\"additionalProperties\":false}"),
+                    Description = "Start connecting a new game engine to your account. Returns a one-time enrollment code with instructions for installing the engine plugin.",
+                    InputSchema = Schema("{\"type\":\"object\",\"properties\":{\"engine\":{\"type\":\"string\",\"description\":\"Identifier of the engine plugin to enroll, as the plugin's host documents it.\"}},\"required\":[\"engine\"],\"additionalProperties\":false}"),
                     Annotations = new ToolAnnotations { Title = "Enroll engine plugin", ReadOnlyHint = false, OpenWorldHint = true }
                 }
             };

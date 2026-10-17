@@ -61,6 +61,42 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
+        public async Task CreateAsync_ParsesOptionalInstallHint()
+        {
+            var result = await WithResponse("{\"enroll_code\":\"XYZ789\",\"expires_in\":300,\"install_hint\":\"Paste {code} into the installer.\"}")
+                .CreateAsync("brutal", "token", CancellationToken.None);
+
+            result.Success.ShouldBeTrue();
+            result.EnrollCode.ShouldBe("XYZ789");
+            result.InstallHint.ShouldBe("Paste {code} into the installer.");
+        }
+
+        [Theory]
+        [InlineData("{\"enroll_code\":\"XYZ789\",\"expires_in\":300}")]                       // older AS: no hint
+        [InlineData("{\"enroll_code\":\"XYZ789\",\"expires_in\":300,\"install_hint\":null}")] // unknown engine
+        [InlineData("{\"enroll_code\":\"XYZ789\",\"install_hint\":\"  \"}")]
+        [InlineData("{\"enroll_code\":\"XYZ789\",\"install_hint\":42}")]
+        public async Task CreateAsync_ToleratesMissingOrInvalidInstallHint(string json)
+        {
+            var result = await WithResponse(json).CreateAsync("unity", "token", CancellationToken.None);
+
+            result.Success.ShouldBeTrue();
+            result.EnrollCode.ShouldBe("XYZ789");
+            result.InstallHint.ShouldBeNull();
+        }
+
+        [Fact]
+        public async Task CreateAsync_ForwardsAnArbitraryEngineId_Verbatim()
+        {
+            string? seenEngine = null;
+            var client = WithResponse("{\"enroll_code\":\"ABC\"}", (b, e, u) => seenEngine = e);
+
+            await client.CreateAsync("my-engine", "token", CancellationToken.None);
+
+            seenEngine.ShouldBe("my-engine");
+        }
+
+        [Fact]
         public async Task CreateAsync_NullResponse_IsFailure()
         {
             var result = await WithResponse(null).CreateAsync("unity", "token", CancellationToken.None);

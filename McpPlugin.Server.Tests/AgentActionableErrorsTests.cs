@@ -59,7 +59,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         public void AccountEmpty_Text_NamesEnrollAndCli()
         {
             AgentActionableErrors.AccountEmpty.ShouldContain("enroll_engine_plugin");
-            AgentActionableErrors.AccountEmpty.ShouldContain("unity-mcp-cli install-plugin --enroll");
+            AgentActionableErrors.AccountEmpty.ShouldNotContain("unity"); // engine-neutral: no hard-coded engine/CLI
             AgentActionableErrors.AccountEmpty.ShouldContain("No game engine is connected");
         }
 

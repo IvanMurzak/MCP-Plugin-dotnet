@@ -10,7 +10,6 @@
 
 #nullable enable
 using System;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -54,10 +53,6 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         /// <summary>Validation endpoint path, relative to the issuer origin (contract §2).</summary>
         public const string CurrentPath = "/api/mcp/project-keys/current";
-
-        /// <summary>Engine ids the server accepts (contract §2); anything else is sent as <c>unknown</c>.
-        /// Derived from <see cref="KnownEngineIds"/> plus the <see cref="KnownEngineIds.Unknown"/> sentinel.</summary>
-        public static readonly string[] KnownEngines = KnownEngineIds.Ids.Append(KnownEngineIds.Unknown).ToArray();
 
         private static readonly HttpClient SharedHttpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
 
@@ -156,7 +151,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// signed in, auth rejected, server unreachable while nothing usable is cached).
         /// </summary>
         /// <param name="pin">The v2 routing pin (8 hex chars) — the key is strictly bound to it.</param>
-        /// <param name="engine"><c>unity</c> | <c>godot</c> | <c>unreal</c> (anything else is sent as <c>unknown</c>).</param>
+        /// <param name="engine">Engine identifier supplied by the plugin host (opaque to this library); an empty or malformed id is sent as <c>unknown</c>.</param>
         /// <param name="machineName">Display name of this machine (e.g. <see cref="Environment.MachineName"/>).</param>
         /// <param name="label">Optional display label, e.g. the project folder path.</param>
         public async Task<string?> GetOrMintAsync(
@@ -393,7 +388,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         private static string Head(string s) => s.Length <= MaxDisplayFieldLength ? s : s.Substring(0, MaxDisplayFieldLength);
         private static string Tail(string s) => s.Length <= MaxDisplayFieldLength ? s : s.Substring(s.Length - MaxDisplayFieldLength);
 
-        internal static string NormalizeEngine(string? engine) => KnownEngineIds.Normalize(engine);
+        /// <summary>Format-only normalisation (<see cref="EngineId.Normalize"/>); no engine allow-list is applied.</summary>
+        internal static string NormalizeEngine(string? engine) => EngineId.Normalize(engine);
 
         /// <summary>The <c>sub</c> claim of a JWT (payload decoded WITHOUT verification — used only to tell
         /// which account a cached key belongs to), or <c>null</c> for an opaque token.</summary>

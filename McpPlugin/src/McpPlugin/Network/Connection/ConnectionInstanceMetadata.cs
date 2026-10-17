@@ -31,7 +31,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>GUID minted per editor session (engine-side). Stable across reconnects of the same editor.</summary>
         public string InstanceId { get; }
 
-        /// <summary>The engine identifier, one of <see cref="com.IvanMurzak.McpPlugin.Common.KnownEngineIds"/>: <c>"unity"</c> | <c>"godot"</c> | <c>"unreal"</c> | <c>"brutal"</c>.</summary>
+        /// <summary>Engine identifier supplied by the plugin host (opaque to this library), e.g. <c>"unity"</c>.</summary>
         public string Engine { get; }
 
         /// <summary>Human-facing project name, e.g. <c>"MyGame"</c>.</summary>

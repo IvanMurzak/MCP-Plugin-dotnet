@@ -24,13 +24,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
     {
         /// <summary>
         /// The <c>enroll_engine_plugin</c>-first recovery text for an account with NO live instances
-        /// (design 04 step 5, second variant). Uses unity as the illustrative CLI and names
-        /// <c>enroll_engine_plugin</c> for the godot/unreal path.
+        /// (design 04 step 5, second variant). Engine-neutral: the install steps come from
+        /// <c>enroll_engine_plugin</c>, whose instructions the authorization server supplies.
         /// </summary>
         public const string AccountEmpty =
-            "No game engine is connected for your account. To set up: run " +
-            "'npx unity-mcp-cli install-plugin --enroll <code>' in the project folder " +
-            "(also for godot/unreal via enroll_engine_plugin), then open the project in the editor.";
+            "No game engine is connected for your account. To set up: call enroll_engine_plugin with your " +
+            "engine's identifier, follow the returned install instructions, then open the project in the editor.";
 
         /// <summary>
         /// The text for a pinned session whose project's editor is closed while the account HAS other
