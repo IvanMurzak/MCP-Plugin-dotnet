@@ -49,15 +49,17 @@ namespace com.IvanMurzak.McpPlugin
             {
                 if (!IsEnabled(logLevel)) return;
 
-                // var message = $"[{_categoryName}] {formatter(state, exception)}";
+                var message = formatter(state, exception);
 
-                var message = $"{formatter(state, exception)}";
+                _logger.Log(logLevel, eventId, (object)message, exception, RawMessage);
 
-                _logger.Log(logLevel, eventId, (object)message, exception, (s, e) => s?.ToString() ?? string.Empty);
-
+                // Forward the consumer-supplied hint verbatim too: the message-template overload would parse
+                // any '{...}' in it as structured-logging placeholders.
                 if (_additionalErrorMessage != null && logLevel >= LogLevel.Error)
-                    _logger.Log(logLevel, _additionalErrorMessage);
+                    _logger.Log(logLevel, default, (object)_additionalErrorMessage, null, RawMessage);
             }
+
+            static string RawMessage(object? state, Exception? exception) => state?.ToString() ?? string.Empty;
         }
     }
 }

@@ -77,8 +77,8 @@ namespace com.IvanMurzak.McpPlugin
         /// Error/Critical log produced by the SignalR hub connection — e.g. how the user can stop the
         /// connection in the host's UI. <c>null</c> or whitespace (the default) appends nothing: this library
         /// is engine/UI-agnostic and does not know whether the host has any UI to point at. Hosts with a UI
-        /// supply their own wording (and markup, if their log sink renders it).
-        /// Runtime-only; never serialized to the on-disk connection config.
+        /// supply their own wording (and markup, if their log sink renders it). Read when each HubConnection is
+        /// built, so set it before connecting. Runtime-only; never serialized to the on-disk connection config.
         /// </summary>
         [JsonIgnore]
         public virtual string? ConnectionErrorHint { get; set; }
