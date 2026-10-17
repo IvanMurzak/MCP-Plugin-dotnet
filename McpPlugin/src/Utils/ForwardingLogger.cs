@@ -21,7 +21,8 @@ namespace com.IvanMurzak.McpPlugin
         public ForwardLoggerProvider(ILogger logger, string? additionalErrorMessage = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _additionalErrorMessage = additionalErrorMessage;
+            // A blank hint means "no hint": normalise once so the per-log check is a null test.
+            _additionalErrorMessage = string.IsNullOrWhiteSpace(additionalErrorMessage) ? null : additionalErrorMessage;
         }
 
         public ILogger CreateLogger(string categoryName) => new ForwardingLogger(_logger, categoryName, _additionalErrorMessage);
@@ -54,7 +55,7 @@ namespace com.IvanMurzak.McpPlugin
 
                 _logger.Log(logLevel, eventId, (object)message, exception, (s, e) => s?.ToString() ?? string.Empty);
 
-                if (logLevel >= LogLevel.Error && !string.IsNullOrWhiteSpace(_additionalErrorMessage))
+                if (_additionalErrorMessage != null && logLevel >= LogLevel.Error)
                     _logger.Log(logLevel, _additionalErrorMessage);
             }
         }

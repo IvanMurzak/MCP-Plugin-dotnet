@@ -23,23 +23,23 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
     public sealed class ConnectionErrorHintTests
     {
         [Fact]
-        public void Default_HasNoHint_AndAppendsNothingAfterErrors()
+        public void Default_HasNoHint()
+            => new ConnectionConfig().ConnectionErrorHint.ShouldBeNull();
+
+        // The exact single-entry match also proves the library appends no engine/UI wording of its own.
+        [Theory]
+        [InlineData(null, LogLevel.Error)]       // default: no hint
+        [InlineData("", LogLevel.Error)]         // blank hints append nothing
+        [InlineData("   ", LogLevel.Critical)]
+        [InlineData("hint", LogLevel.Warning)]   // a hint is never appended below Error
+        public void OnlyTheOriginalEntryIsLogged_WhenNoHintApplies(string? hint, LogLevel level)
         {
-            var config = new ConnectionConfig();
-            config.ConnectionErrorHint.ShouldBeNull();
+            var config = new ConnectionConfig { ConnectionErrorHint = hint };
 
             var sink = new CapturingLogger();
-            LogThroughHubLoggerProvider(sink, config, LogLevel.Error, "connection failed");
+            LogThroughHubLoggerProvider(sink, config, level, "connection failed");
 
-            sink.Entries.Count.ShouldBe(1);
-            sink.Entries[0].Message.ShouldBe("connection failed");
-            foreach (var (_, message) in sink.Entries)
-            {
-                message.ShouldNotContain("Unity", Case.Insensitive);
-                message.ShouldNotContain("AI Game Developer", Case.Insensitive);
-                message.ShouldNotContain("window", Case.Insensitive);
-                message.ShouldNotContain("<b>");
-            }
+            sink.Entries.ShouldHaveSingleItem().ShouldBe((level, "connection failed"));
         }
 
         [Theory]
@@ -56,30 +56,6 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             sink.Entries.Count.ShouldBe(2);
             sink.Entries[0].ShouldBe((level, "connection failed"));
             sink.Entries[1].ShouldBe((level, hint));
-        }
-
-        [Fact]
-        public void CustomHint_IsNotAppendedBelowErrorLevel()
-        {
-            var config = new ConnectionConfig { ConnectionErrorHint = "hint" };
-
-            var sink = new CapturingLogger();
-            LogThroughHubLoggerProvider(sink, config, LogLevel.Warning, "retrying");
-
-            sink.Entries.ShouldHaveSingleItem().ShouldBe((LogLevel.Warning, "retrying"));
-        }
-
-        [Theory]
-        [InlineData("")]
-        [InlineData("   ")]
-        public void BlankHint_AppendsNothing(string hint)
-        {
-            var config = new ConnectionConfig { ConnectionErrorHint = hint };
-
-            var sink = new CapturingLogger();
-            LogThroughHubLoggerProvider(sink, config, LogLevel.Error, "connection failed");
-
-            sink.Entries.ShouldHaveSingleItem().ShouldBe((LogLevel.Error, "connection failed"));
         }
 
         [Fact]
