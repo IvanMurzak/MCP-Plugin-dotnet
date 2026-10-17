@@ -114,7 +114,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
 
         [Fact]
         public void RefusalMessage_ShowsHostAndPort()
-            => CredentialScopeException.BuildMessage("http://evil.com:9000/x", "X_MCP_TOKEN")
+            => new CredentialScopeException("http://evil.com:9000/x", "X_MCP_TOKEN").Message
                 .ShouldBe("Refusing to send your ai-game.dev account token to evil.com:9000; set X_MCP_TOKEN or use a localhost server.");
     }
 }

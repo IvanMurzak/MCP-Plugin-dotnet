@@ -66,19 +66,11 @@ namespace com.IvanMurzak.McpPlugin
     /// </summary>
     public sealed class CredentialScopeException : InvalidOperationException
     {
-        /// <summary>The refused host as configured (may be null or malformed).</summary>
-        public string? Host { get; }
-
         /// <summary>Creates the refusal for <paramref name="host"/>; <paramref name="tokenSettingName"/> names the token setting.</summary>
         public CredentialScopeException(string? host, string tokenSettingName)
-            : base(BuildMessage(host, tokenSettingName))
+            : base($"Refusing to send your ai-game.dev account token to {DescribeHost(host)}; set {tokenSettingName} or use a localhost server.")
         {
-            Host = host;
         }
-
-        /// <summary>The actionable refusal text.</summary>
-        public static string BuildMessage(string? host, string tokenSettingName)
-            => $"Refusing to send your ai-game.dev account token to {DescribeHost(host)}; set {tokenSettingName} or use a localhost server.";
 
         static string DescribeHost(string? host)
         {
