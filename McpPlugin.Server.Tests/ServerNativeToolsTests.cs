@@ -115,6 +115,22 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         public void CliPackage_MapsEngineToPublishedCli(string engine, string expected)
             => ServerNativeTools.CliPackage(engine).ShouldBe(expected);
 
+        [Theory]
+        [InlineData("brutal")]    // no public CLI: installed via the AI Game Developer App
+        [InlineData("cryengine")] // not a known engine
+        public void CliPackage_NoPublicCli_ReturnsNull(string engine)
+            => ServerNativeTools.CliPackage(engine).ShouldBeNull();
+
+        [Fact]
+        public void EnrollDescriptor_EngineEnum_ListsEveryKnownEngine()
+        {
+            var (tools, _, _, _, _) = NewTools();
+            var enroll = tools.Descriptors.Single(d => d.Name == ServerNativeTools.EnrollPlugin);
+            var values = enroll.InputSchema.GetProperty("properties").GetProperty("engine").GetProperty("enum")
+                .EnumerateArray().Select(e => e.GetString()).ToArray();
+            values.ShouldBe(new[] { "unity", "godot", "unreal", "brutal" });
+        }
+
         [Fact]
         public void IsServerNativeTool_RecognizesTheThreeNames()
         {
@@ -410,12 +426,30 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             Text(response).ShouldContain($"npx {cli} install-plugin --enroll C0DE");
         }
 
+        [Theory]
+        [InlineData("brutal")]
+        [InlineData(" Brutal ")]
+        public async Task Enroll_Brutal_ReturnsAppInstallHint_NotAnNpxCommand(string engine)
+        {
+            var (tools, _, _, enroll, _) = NewTools();
+            enroll.Result = EnrollmentResult.Ok("C0DE");
+            var response = await tools.HandleAsync(ServerNativeTools.EnrollPlugin, Args(("engine", engine)), Ctx());
+            response.Status.ShouldBe(ResponseStatus.Success);
+            var text = Text(response);
+            text.ShouldContain("AI Game Developer App");
+            text.ShouldContain("C0DE");
+            text.ShouldNotContain("npx");
+            enroll.SeenEngine.ShouldBe("brutal");
+        }
+
         [Fact]
         public async Task Enroll_InvalidEngine_ReturnsError()
         {
-            var (tools, _, _, _, _) = NewTools();
+            var (tools, _, _, enroll, _) = NewTools();
             var response = await tools.HandleAsync(ServerNativeTools.EnrollPlugin, Args(("engine", "cryengine")), Ctx());
             response.Status.ShouldBe(ResponseStatus.Error);
+            Text(response).ShouldContain("unity, godot, unreal, brutal");
+            enroll.SeenEngine.ShouldBeNull(); // proxy not called
         }
 
         [Fact]

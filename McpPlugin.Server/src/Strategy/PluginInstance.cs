@@ -21,7 +21,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
     /// </summary>
     public sealed record PluginInstanceMetadata(
         string InstanceId,       // GUID minted per editor session (engine-side)
-        string Engine,           // "unity" | "godot" | "unreal"
+        string Engine,           // a KnownEngineIds id: "unity" | "godot" | "unreal" | "brutal"
         string ProjectName,      // e.g. "MyGame"
         string ProjectPathHash,  // v2 hash: stable id across editor restarts (sha256 hex of v2-normalized path)
         string MachineName,
@@ -44,7 +44,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         /// <summary>GUID minted per editor session (engine-side). Stable across reconnects of the same editor.</summary>
         public string InstanceId { get; }
 
-        /// <summary>"unity" | "godot" | "unreal".</summary>
+        /// <summary>A <see cref="com.IvanMurzak.McpPlugin.Common.KnownEngineIds"/> id: "unity" | "godot" | "unreal" | "brutal".</summary>
         public string Engine { get; }
 
         /// <summary>Human-facing project name, e.g. "MyGame".</summary>

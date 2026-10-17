@@ -10,6 +10,7 @@
 
 #nullable enable
 using System;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -18,6 +19,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.AgentConfig
@@ -53,8 +55,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// <summary>Validation endpoint path, relative to the issuer origin (contract §2).</summary>
         public const string CurrentPath = "/api/mcp/project-keys/current";
 
-        /// <summary>Engine ids the server accepts (contract §2); anything else is sent as <c>unknown</c>.</summary>
-        public static readonly string[] KnownEngines = { "unity", "godot", "unreal", "unknown" };
+        /// <summary>Engine ids the server accepts (contract §2); anything else is sent as <c>unknown</c>.
+        /// Derived from <see cref="KnownEngineIds"/> plus the <see cref="KnownEngineIds.Unknown"/> sentinel.</summary>
+        public static readonly string[] KnownEngines = KnownEngineIds.Ids.Append(KnownEngineIds.Unknown).ToArray();
 
         private static readonly HttpClient SharedHttpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
 
@@ -390,11 +393,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         private static string Head(string s) => s.Length <= MaxDisplayFieldLength ? s : s.Substring(0, MaxDisplayFieldLength);
         private static string Tail(string s) => s.Length <= MaxDisplayFieldLength ? s : s.Substring(s.Length - MaxDisplayFieldLength);
 
-        internal static string NormalizeEngine(string? engine)
-        {
-            var e = (engine ?? string.Empty).Trim().ToLowerInvariant();
-            return Array.IndexOf(KnownEngines, e) >= 0 ? e : "unknown";
-        }
+        internal static string NormalizeEngine(string? engine) => KnownEngineIds.Normalize(engine);
 
         /// <summary>The <c>sub</c> claim of a JWT (payload decoded WITHOUT verification — used only to tell
         /// which account a cached key belongs to), or <c>null</c> for an opaque token.</summary>

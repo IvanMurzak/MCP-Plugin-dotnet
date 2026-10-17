@@ -456,10 +456,17 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         [InlineData("unity", "unity")]
         [InlineData("GODOT", "godot")]
         [InlineData(" unreal ", "unreal")]
+        [InlineData("brutal", "brutal")]
+        [InlineData(" BRUTAL ", "brutal")]
         [InlineData("cryengine", "unknown")]
+        [InlineData("", "unknown")]
         [InlineData(null, "unknown")]
         public void Engine_IsNormalisedToTheServersEnum(string? input, string expected)
             => ProjectKeyProvider.NormalizeEngine(input).ShouldBe(expected);
+
+        [Fact]
+        public void KnownEngines_IsDerivedFromKnownEngineIds_PlusUnknownSentinel()
+            => ProjectKeyProvider.KnownEngines.ShouldBe(new[] { "unity", "godot", "unreal", "brutal", "unknown" });
 
         [Fact]
         public async Task ConcurrentWriterMintedMeanwhile_TheirEntryIsKept_AndReturned()
