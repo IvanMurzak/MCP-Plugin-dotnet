@@ -1,0 +1,45 @@
+.specify/memory/constitution.md
+  7e5499aadda0bb57 140
+McpPlugin.Tests/Mcp/McpBuilderTests_ListTool.cs
+  7e5499aadda0bb57 92
+McpPlugin.Tests/Mcp/Resource/RunResourceContentTests.cs
+  7e5499aadda0bb57 474-475,490-491,505-506
+McpPlugin.Tests/src/Mcp/McpResourceManagerTests.cs
+  7e5499aadda0bb57 61-62
+McpPlugin.Tests/Skills/SkillFileGeneratorTests.cs
+  7e5499aadda0bb57 179,317,427,433,592,633
+McpPlugin.Tests/McpPlugin.Tests.csproj
+  7e5499aadda0bb57 18
+McpPlugin.Tests/Mcp/McpBuilderIgnoreTests.cs
+  7e5499aadda0bb57 96-97,180-181,292-293,358-359,467-468,483-484,499-500
+McpPlugin.Tests/Mcp/McpBuilderTests.cs
+  7e5499aadda0bb57 59-60,76-77,93-94,112-113,129-130
+McpPlugin.Tests/Data/ResponseDataTests.cs
+  7e5499aadda0bb57 53-54
+McpPlugin.Tests/Mcp/McpBuilderTests_ToolAnnotations.cs
+  7e5499aadda0bb57 71
+McpPlugin.Tests/Mcp/McpBuilderTests_SkillFileGenerator.cs
+  7e5499aadda0bb57 36,47-49,62,73-75,85,98-100,111-113,126-127,138-139
+McpPlugin.Tests/Network/Connection/ConnectionManagerTests.cs
+  7e5499aadda0bb57 754,792,1030
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.6",
+  "base_commit_sha": "3ce4c6368ca8141a6b3f57f67736f9f6df34b170",
+  "prompts": {
+    "7e5499aadda0bb57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bfd62a62-6c71-4047-b2fa-30ce96187844",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 267,
+      "total_deletions": 262,
+      "accepted_lines": 140,
+      "overriden_lines": 0
+    }
+  }
+}

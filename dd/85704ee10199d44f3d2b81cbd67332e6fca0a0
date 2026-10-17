@@ -1,0 +1,38 @@
+README.md
+  s_c4ba4f2232a1f2::t_33bb9a360b6188 137,154-155,157-158
+McpPlugin/src/McpPlugin/Builder/McpPluginBuilder.AttributeScanner.cs
+  s_c4ba4f2232a1f2::t_bf604736afdf50 13
+  s_c4ba4f2232a1f2::t_e0d5289571068e 195-199
+  s_c4ba4f2232a1f2::t_b24368d88aa94d 143-151,153-156,162-169,175-182
+  s_c4ba4f2232a1f2::t_b4a40959edb21f 230-233
+McpPlugin/src/Mcp/Prompt/RunPrompt.cs
+  s_c4ba4f2232a1f2::t_ce1679101d8a87 223
+  s_c4ba4f2232a1f2::t_edf354b1bed258 77,83,89,92-98
+McpPlugin/src/McpPlugin/Builder/McpPluginBuilder.cs
+  s_c4ba4f2232a1f2::t_5dc3528f7b4b24 107-111
+  s_c4ba4f2232a1f2::t_3bf97376ac92ba 159-163
+  s_c4ba4f2232a1f2::t_2123b76f33f144 198-202
+McpPlugin.Tests/Data/Annotations/MixedAliasAttributeClass.cs
+  s_c4ba4f2232a1f2::t_10ed360ef2b376 74-117
+McpPlugin/src/Mcp/Tool/RunTool.cs
+  s_c4ba4f2232a1f2::t_d7507e53141ec1 13
+  s_c4ba4f2232a1f2::t_276096382535f5 45-50,52-54,61-65,67-69
+McpPlugin.Tests/Mcp/AttributeAliasDiscoveryTests.cs
+  s_c4ba4f2232a1f2::t_9735269b1abadb 190-279
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "dd85704ee10199d44f3d2b81cbd67332e6fca0a0",
+  "prompts": {},
+  "sessions": {
+    "s_c4ba4f2232a1f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "edabced4-fdfb-411e-9881-8f7d605edc3b",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
