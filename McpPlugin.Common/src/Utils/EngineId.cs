@@ -41,9 +41,14 @@ namespace com.IvanMurzak.McpPlugin.Common
         /// <summary>Trims and lower-cases <paramref name="engine"/> (invariant culture); returns it when it matches
         /// <see cref="Pattern"/>, else <see cref="Unknown"/>.</summary>
         public static string Normalize(string? engine)
+            => TryNormalize(engine, out var normalized) ? normalized : Unknown;
+
+        /// <summary>Trims and lower-cases <paramref name="engine"/> (invariant culture) into <paramref name="normalized"/>;
+        /// returns whether the result matches <see cref="Pattern"/>.</summary>
+        public static bool TryNormalize(string? engine, out string normalized)
         {
-            var e = (engine ?? string.Empty).Trim().ToLowerInvariant();
-            return IsValid(e) ? e : Unknown;
+            normalized = (engine ?? string.Empty).Trim().ToLowerInvariant();
+            return IsValid(normalized);
         }
     }
 }

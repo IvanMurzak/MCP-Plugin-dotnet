@@ -220,8 +220,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             if (!string.IsNullOrEmpty(context.BoundProjectPin))
                 return ResponseCallTool.Error("A project key cannot enroll engine plugins. Sign in on this machine instead.", ResponseErrorKind.BadRequest);
 
-            var engine = (GetStringArg(arguments, "engine") ?? string.Empty).Trim().ToLowerInvariant();
-            if (!EngineId.IsValid(engine))
+            if (!EngineId.TryNormalize(GetStringArg(arguments, "engine"), out var engine))
                 return ResponseCallTool.Error($"Argument 'engine' is required and must be {EngineId.FormatDescription}.", ResponseErrorKind.BadRequest);
 
             if (string.IsNullOrEmpty(context.Bearer))
