@@ -21,7 +21,8 @@ namespace com.IvanMurzak.McpPlugin
         public ForwardLoggerProvider(ILogger logger, string? additionalErrorMessage = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _additionalErrorMessage = additionalErrorMessage;
+            // A blank hint means "no hint": normalise once so the per-log check is a null test.
+            _additionalErrorMessage = string.IsNullOrWhiteSpace(additionalErrorMessage) ? null : additionalErrorMessage;
         }
 
         public ILogger CreateLogger(string categoryName) => new ForwardingLogger(_logger, categoryName, _additionalErrorMessage);
@@ -48,15 +49,17 @@ namespace com.IvanMurzak.McpPlugin
             {
                 if (!IsEnabled(logLevel)) return;
 
-                // var message = $"[{_categoryName}] {formatter(state, exception)}";
+                var message = formatter(state, exception);
 
-                var message = $"{formatter(state, exception)}";
+                _logger.Log(logLevel, eventId, (object)message, exception, RawMessage);
 
-                _logger.Log(logLevel, eventId, (object)message, exception, (s, e) => s?.ToString() ?? string.Empty);
-
-                if (logLevel >= LogLevel.Error)
-                    _logger.Log(logLevel, _additionalErrorMessage);
+                // Forward the consumer-supplied hint verbatim too: the message-template overload would parse
+                // any '{...}' in it as structured-logging placeholders.
+                if (_additionalErrorMessage != null && logLevel >= LogLevel.Error)
+                    _logger.Log(logLevel, default, (object)_additionalErrorMessage, null, RawMessage);
             }
+
+            static string RawMessage(object? state, Exception? exception) => state?.ToString() ?? string.Empty;
         }
     }
 }
