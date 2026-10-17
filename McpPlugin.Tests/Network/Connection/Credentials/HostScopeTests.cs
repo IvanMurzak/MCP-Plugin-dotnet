@@ -113,6 +113,16 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         }
 
         [Fact]
+        public void ConnectionManager_FindsRefusal_InsideAggregateAndInnerExceptions()
+        {
+            var refusal = new CredentialScopeException("https://evil.com", "X_MCP_TOKEN");
+            ConnectionManager.FindCredentialScopeRefusal(new System.AggregateException(new System.Exception("wrap", refusal))).ShouldBeSameAs(refusal);
+            ConnectionManager.FindCredentialScopeRefusal(refusal).ShouldBeSameAs(refusal);
+            ConnectionManager.FindCredentialScopeRefusal(new System.InvalidOperationException("other")).ShouldBeNull();
+            ConnectionManager.FindCredentialScopeRefusal(null).ShouldBeNull();
+        }
+
+        [Fact]
         public void RefusalMessage_ShowsHostAndPort()
             => new CredentialScopeException("http://evil.com:9000/x", "X_MCP_TOKEN").Message
                 .ShouldBe("Refusing to send your ai-game.dev account token to evil.com:9000; set X_MCP_TOKEN or use a localhost server.");

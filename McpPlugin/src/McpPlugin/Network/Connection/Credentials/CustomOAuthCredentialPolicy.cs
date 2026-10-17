@@ -32,7 +32,9 @@ namespace com.IvanMurzak.McpPlugin
         ///   Without an explicit token this throws <see cref="CredentialScopeException"/>.</item>
         /// </list>
         /// </summary>
-        /// <param name="host">The Custom server URL the connection dials.</param>
+        /// <param name="host">The Custom server URL the connection dials. Capture it when the credential provider is
+        /// handed to the connection (McpPlugin reads <c>ConnectionConfig.CredentialProvider</c> once per HubConnection
+        /// build): reading a live, editable host would let a reconnect of an old remote link see a newer loopback host.</param>
         /// <param name="accountToken">Reads the stored account access token (may return null when signed out).</param>
         /// <param name="explicitToken">The user-configured bearer (environment variable or settings), if any.</param>
         /// <param name="tokenSettingName">What the user sets to supply a token, e.g. <c>UNITY_MCP_TOKEN</c>; used in the error.</param>
