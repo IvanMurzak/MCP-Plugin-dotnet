@@ -47,10 +47,42 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         string? WebhookAuthorizationUrl { get; }
         bool WebhookAuthorizationFailOpen { get; }
     }
-    public class DataArguments : IDataArguments
+
+    /// <summary>
+    /// Arguments that carry a separate tool-call timeout. A separate interface rather than a new
+    /// <see cref="IDataArguments"/> member so existing implementations keep compiling; read it
+    /// through <see cref="DataArgumentsExtensions.GetToolTimeoutMs"/>.
+    /// </summary>
+    public interface IToolTimeoutArguments
+    {
+        /// <summary>How long the server waits for one tool call to answer, in milliseconds.</summary>
+        int ToolTimeoutMs { get; }
+    }
+
+    public static class DataArgumentsExtensions
+    {
+        /// <summary>
+        /// The tool-call timeout: <see cref="IToolTimeoutArguments.ToolTimeoutMs"/> when the
+        /// arguments carry a positive one, else the larger of
+        /// <see cref="Consts.Hub.DefaultToolTimeoutMs"/> and <see cref="IDataArguments.PluginTimeoutMs"/>.
+        /// </summary>
+        public static int GetToolTimeoutMs(this IDataArguments dataArguments)
+            => dataArguments is IToolTimeoutArguments { ToolTimeoutMs: > 0 } toolTimeout
+                ? toolTimeout.ToolTimeoutMs
+                : Math.Max(Consts.Hub.DefaultToolTimeoutMs, dataArguments.PluginTimeoutMs);
+    }
+    public class DataArguments : IDataArguments, IToolTimeoutArguments
     {
         public int Port { get; private set; } = 8080;
         public int PluginTimeoutMs { get; private set; }
+
+        /// <summary>
+        /// How long the server waits for one tool call (<c>tool-timeout</c> /
+        /// <c>MCP_PLUGIN_TOOL_TIMEOUT</c>). A tool call is sent once and never retried. When unset it
+        /// is <see cref="Consts.Hub.DefaultToolTimeoutMs"/>, or <see cref="PluginTimeoutMs"/> if that is
+        /// larger, so a deployment that raised <c>plugin-timeout</c> for slow tools keeps working.
+        /// </summary>
+        public int ToolTimeoutMs { get; private set; }
         public int IdleTimeoutSeconds { get; private set; } = Consts.MCP.Server.DefaultIdleTimeoutSeconds;
         public int MaxIdleSessionCount { get; private set; } = Consts.MCP.Server.DefaultMaxIdleSessionCount;
         public Consts.MCP.Server.TransportMethod ClientTransport { get; private set; }
@@ -110,6 +142,8 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             ParseEnvironmentVariables(); // env variables - second priority
             ParseCommandLineArguments(args); // command line args - first priority (override previous values)
 
+            ToolTimeoutMs = this.GetToolTimeoutMs(); // resolves the unset (0) case
+
             // Default to 'none' authorization if not explicitly set
             if (Authorization == Consts.MCP.Server.AuthOption.unknown)
                 Authorization = Consts.MCP.Server.AuthOption.none;
@@ -128,6 +162,10 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var envPluginTimeout = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.PluginTimeout);
             if (envPluginTimeout != null && int.TryParse(envPluginTimeout, out var parsedEnvTimeoutMs))
                 PluginTimeoutMs = parsedEnvTimeoutMs;
+
+            var envToolTimeout = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.ToolTimeout);
+            if (envToolTimeout != null && int.TryParse(envToolTimeout, out var parsedEnvToolTimeoutMs) && parsedEnvToolTimeoutMs > 0)
+                ToolTimeoutMs = parsedEnvToolTimeoutMs;
 
             var envIdleTimeoutSeconds = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.IdleTimeoutSeconds);
             if (envIdleTimeoutSeconds != null && int.TryParse(envIdleTimeoutSeconds, out var parsedEnvIdleTimeoutSeconds) && parsedEnvIdleTimeoutSeconds > 0)
@@ -233,6 +271,10 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var argPluginTimeout = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.PluginTimeout.TrimStart('-'));
             if (argPluginTimeout != null && int.TryParse(argPluginTimeout, out var timeoutMs))
                 PluginTimeoutMs = timeoutMs;
+
+            var argToolTimeout = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.ToolTimeout.TrimStart('-'));
+            if (argToolTimeout != null && int.TryParse(argToolTimeout, out var toolTimeoutMs) && toolTimeoutMs > 0)
+                ToolTimeoutMs = toolTimeoutMs;
 
             var argIdleTimeoutSeconds = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.IdleTimeoutSeconds.TrimStart('-'));
             if (argIdleTimeoutSeconds != null && int.TryParse(argIdleTimeoutSeconds, out var parsedArgIdleTimeoutSeconds) && parsedArgIdleTimeoutSeconds > 0)

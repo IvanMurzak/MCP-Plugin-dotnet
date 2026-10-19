@@ -131,6 +131,7 @@ namespace com.IvanMurzak.McpPlugin
 
             // Tool events -------------------------------------------------------------
 
+            // Tool calls must go through McpManager.ToolHub / SystemToolHub: those run each RequestID once.
             if (_mcpManager.ToolHub != null)
             {
                 hubConnection.On<RequestCallTool, ResponseData<ResponseCallTool>>(nameof(IClientToolHub.RunCallTool), data =>

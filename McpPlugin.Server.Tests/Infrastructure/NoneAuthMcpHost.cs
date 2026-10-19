@@ -61,18 +61,21 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
         /// </summary>
         public string BaseUrl => _baseUrl;
 
+        public IServiceProvider Services => _app.Services;
+
         /// <summary>
         /// Starts the host. <paramref name="registerFakes"/> runs AFTER the production wiring, so a
         /// singleton it registers is the one the routers resolve (same pattern as
-        /// <c>AmbientSessionIdOverHttpTests</c>' <c>FakeJwksKeyProvider</c>).
+        /// <c>AmbientSessionIdOverHttpTests</c>' <c>FakeJwksKeyProvider</c>). <paramref name="extraArgs"/>
+        /// are appended to the server arguments (for example <c>plugin-timeout=1000</c>).
         /// </summary>
-        public static async Task<NoneAuthMcpHost> StartAsync(Action<IServiceCollection>? registerFakes = null)
+        public static async Task<NoneAuthMcpHost> StartAsync(Action<IServiceCollection>? registerFakes = null, params string[] extraArgs)
         {
             var dataArguments = new DataArguments(new[]
             {
                 "client-transport=streamableHttp",
                 "auth=none",
-            });
+            }.Concat(extraArgs).ToArray());
 
             var builder = WebApplication.CreateBuilder();
             builder.Logging.ClearProviders();

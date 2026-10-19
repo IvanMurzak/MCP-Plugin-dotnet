@@ -68,6 +68,8 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                 _logger.LogTrace("Request {RequestId} processing: {Message}", requestId, initialResponse);
 
+                // The deadline for a deferred completion starts now, not when the call was sent.
+                pendingRequest.StartDeadline();
                 var finalResult = await pendingRequest.WaitForCompletion(cancellationToken);
                 return finalResult;
             }
@@ -84,6 +86,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             finally
             {
                 _pendingRequests.TryRemove(requestId, out _);
+                pendingRequest.Dispose();
             }
         }
 
@@ -140,14 +143,15 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             public string RequestId { get; }
             public bool IsCompleted { get; protected set; }
-            protected readonly CancellationTokenSource TimeoutCts;
+            protected readonly CancellationTokenSource TimeoutCts = new();
 
+            readonly TimeSpan _timeout;
             readonly TaskCompletionSource<ResponseCallTool> _completionSource = new();
 
             public PendingRequest(string requestId, TimeSpan timeout)
             {
                 RequestId = requestId;
-                TimeoutCts = new CancellationTokenSource(timeout);
+                _timeout = timeout;
                 IsCompleted = false;
 
                 TimeoutCts.Token.Register(() =>
@@ -155,10 +159,32 @@ namespace com.IvanMurzak.McpPlugin.Server
                     if (!IsCompleted)
                     {
                         IsCompleted = true;
-                        _completionSource.TrySetResult(
-                            ResponseCallTool.Error($"Request {RequestId} timed out after {timeout}", ResponseErrorKind.Timeout).SetRequestID(RequestId));
+                        _completionSource.TrySetResult(TimedOut());
                     }
                 });
+            }
+
+            /// <summary>Starts the wait for a deferred completion: it gets the full timeout from now.</summary>
+            public void StartDeadline() => TryCancelTimeout(_timeout);
+
+            ResponseCallTool TimedOut()
+                => ResponseCallTool.Error($"Request {RequestId} did not complete within {_timeout} after the plugin reported it as processing. " +
+                    "It was not re-sent; the plugin may still be running it.", ResponseErrorKind.Timeout).SetRequestID(RequestId);
+
+            /// <summary>Cancels the timeout now (null) or after a delay. A no-op once disposed (a late completion).</summary>
+            void TryCancelTimeout(TimeSpan? after = null)
+            {
+                try
+                {
+                    if (after.HasValue)
+                        TimeoutCts.CancelAfter(after.Value);
+                    else
+                        TimeoutCts.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // the tracked call already returned
+                }
             }
 
             public void Complete(ResponseCallTool response)
@@ -167,7 +193,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 {
                     IsCompleted = true;
                     _completionSource.TrySetResult(response.SetRequestID(RequestId));
-                    TimeoutCts.Cancel();
+                    TryCancelTimeout();
                 }
             }
 
@@ -186,7 +212,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 }
                 catch (OperationCanceledException) when (TimeoutCts.Token.IsCancellationRequested)
                 {
-                    return ResponseCallTool.Error("Request timed out", ResponseErrorKind.Timeout).SetRequestID(RequestId);
+                    return TimedOut();
                 }
             }
 
@@ -196,7 +222,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 {
                     IsCompleted = true;
                     _completionSource.TrySetCanceled();
-                    TimeoutCts.Cancel();
+                    TryCancelTimeout();
                 }
             }
 

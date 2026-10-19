@@ -55,16 +55,18 @@ namespace com.IvanMurzak.McpPlugin.Server
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
             cancellationToken = linkedCts.Token;
 
+            var toolTimeoutMs = _dataArguments.GetToolTimeoutMs();
             var response = await _requestTrackingService.TrackRequestAsync(
                 request.RequestID,
                 async () =>
                 {
-                    var responseData = await ClientUtils.InvokeAsync<RequestCallTool, ResponseCallTool, McpServerHub>(
+                    // Sent once, never retried: a retry would run the tool a second time.
+                    var responseData = await ClientUtils.InvokeOnceAsync<RequestCallTool, ResponseCallTool, McpServerHub>(
                         logger: _logger,
                         hubContext: _remoteAppContext,
                         methodName: nameof(IClientSystemToolHub.RunSystemTool),
                         request: request,
-                        dataArguments: _dataArguments,
+                        timeoutMs: toolTimeoutMs,
                         strategy: _strategy,
                         token: McpSessionTokenContext.CurrentToken,
                         cancellationToken: cancellationToken);
@@ -79,7 +81,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                     return responseData.Value ?? ResponseCallTool.Error("Response data is null", ResponseErrorKind.Internal);
                 },
-                TimeSpan.FromMinutes(5),
+                TimeSpan.FromMilliseconds(toolTimeoutMs),
                 cancellationToken);
 
             return response.Pack(request.RequestID);
