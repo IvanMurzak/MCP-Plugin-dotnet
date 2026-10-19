@@ -1,0 +1,26 @@
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/HttpTokenRefresher.cs
+  s_8d859c66569e2d::t_8b84e7dfdfff29 270-272
+  s_8d859c66569e2d::t_85a5d054f07694 49-55
+  s_8d859c66569e2d::t_b760f7eb66016a 229-233
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/ITokenRefresher.cs
+  s_8d859c66569e2d::t_a55c874f006447 20-23,39-49
+McpPlugin.Tests/Network/Connection/Credentials/HttpTokenRefresherTests.cs
+  s_8d859c66569e2d::t_a9230c866599af 171-192,273
+  s_8d859c66569e2d::t_e0ff85b45987a5 274-296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "a4e32faa4b77f2e24b85b2e1a24678487cf8c88f",
+  "prompts": {},
+  "sessions": {
+    "s_8d859c66569e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d33093a-57c1-4b45-b2ac-0ca6495e78eb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

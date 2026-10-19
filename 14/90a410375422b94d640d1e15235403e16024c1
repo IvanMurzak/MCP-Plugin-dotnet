@@ -1,0 +1,31 @@
+McpPlugin/src/McpPlugin/Builder/Data/PromptRunnerCollection.cs
+  9ff02dde470545d4 35-37
+McpPlugin/src/McpPlugin/Builder/Data/ToolRunnerCollection.cs
+  9ff02dde470545d4 36,46
+McpPlugin.Tests/Data/Annotations/AnnotatedToolClass.cs
+  9ff02dde470545d4 37-45
+McpPlugin.Tests/Mcp/McpBuilderTests_EnabledAttribute.cs
+  9ff02dde470545d4 1-216
+McpPlugin.Tests/Data/Annotations/AnnotatedPromptClass.cs
+  9ff02dde470545d4 1-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.11",
+  "base_commit_sha": "1490a410375422b94d640d1e15235403e16024c1",
+  "prompts": {
+    "9ff02dde470545d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4f36a31a-7856-41b1-8ab3-a490331debef",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 415,
+      "total_deletions": 165,
+      "accepted_lines": 271,
+      "overriden_lines": 0
+    }
+  }
+}

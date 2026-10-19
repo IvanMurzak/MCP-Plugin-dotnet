@@ -1,0 +1,23 @@
+McpPlugin.Common/src/Utils/Consts.MCP.cs
+  1c38c18de601ee8a 21,27-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "d3c04b8f6276f21aaf38e33ceba5dc2ab3adcd14",
+  "prompts": {
+    "1c38c18de601ee8a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "07ef78ce-6fe1-4cba-b8f7-ee1a0155d207",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 129,
+      "total_deletions": 127,
+      "accepted_lines": 18,
+      "overriden_lines": 0
+    }
+  }
+}

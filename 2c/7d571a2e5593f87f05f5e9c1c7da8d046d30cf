@@ -1,0 +1,52 @@
+McpPlugin.Tests/Network/Connection/Credentials/PluginCredentialProviderTests.cs
+  s_887efbfc81dc0f::t_a510808d3c9eea 166-168,171,174-194,207,214-216,218-219
+McpPlugin.Tests/Network/Connection/Credentials/ConnectionCredentialCoordinatorTests.cs
+  s_887efbfc81dc0f::t_07d6a52f8bc882 97-99
+McpPlugin.Tests/Network/Connection/Credentials/PluginCredentialProviderFamilyRefreshTests.cs
+  s_887efbfc81dc0f::t_91dbcef5ca1121 156-158,162
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/MachineCredentialLoginCommit.cs
+  s_887efbfc81dc0f::t_ac6db0db0da824 148-149
+  s_887efbfc81dc0f::t_ef10d2ee38e326 186
+  s_887efbfc81dc0f::t_5bc4315c27d42a 248-255,257-264,274
+  s_887efbfc81dc0f::t_c4321867661360 45-48,51-55
+  s_887efbfc81dc0f::t_a9f63e7b3876ea 212-216
+  s_887efbfc81dc0f::t_300a2b5150f6d5 272
+  s_887efbfc81dc0f::t_722d92e4fc1746 245,256,265
+  s_887efbfc81dc0f::t_4ea506f81ce04b 290-294
+  s_887efbfc81dc0f::t_2e08db4fa492ae 128-139
+  s_887efbfc81dc0f::t_a59eb4bf0f06f8 239
+  s_887efbfc81dc0f::t_dc5fb228cd9782 167
+  s_887efbfc81dc0f::t_1b184991353a7d 173-176,178,181-185,187-198
+  s_887efbfc81dc0f::t_8a49e8a4fdb1bf 297-298,300-391,393-395,397-409
+  s_887efbfc81dc0f::t_d8bcdaeaa81c03 50,58-61,65-66
+  s_887efbfc81dc0f::t_cc9b122501b909 62-64,67-84
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/PluginCredentialProvider.cs
+  s_887efbfc81dc0f::t_5e2c2a9495a446 173-177
+  s_887efbfc81dc0f::t_c7c98e4cb26351 46-53
+  s_887efbfc81dc0f::t_c6891451da22d9 345-347
+  s_887efbfc81dc0f::t_a119651cbbc8a3 421-426
+McpPlugin.Tests/Network/Connection/Credentials/MachineCredentialLoginCommitTests.cs
+  s_887efbfc81dc0f::t_c8aa76bc298c7a 78-88
+  s_887efbfc81dc0f::t_d8682296afc46f 249,258-262,264-285,287-288,291-298,305-307,309-314,316-317,320-322,342-368,370-374,376-377,384-385,387-389,391,396-405,426
+  s_887efbfc81dc0f::t_ea90bf81c8731a 213,369,375,378-383,386,390,392-395,406-425,427-429
+  s_887efbfc81dc0f::t_c09700af201bcf 263,286,289-290,299-304,308,315,318-319,323-341
+  s_887efbfc81dc0f::t_72031c42eb02fd 178,183-184,187,193-212
+  s_887efbfc81dc0f::t_38fd0e60a3a78f 214
+  s_887efbfc81dc0f::t_57722f99b49726 430
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2c7d571a2e5593f87f05f5e9c1c7da8d046d30cf",
+  "prompts": {},
+  "sessions": {
+    "s_887efbfc81dc0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "556ed732-8c84-4c19-bfb0-6231e40ac140",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
