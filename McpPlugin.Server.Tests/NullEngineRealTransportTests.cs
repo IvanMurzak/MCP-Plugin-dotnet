@@ -357,7 +357,69 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 .ShouldBeTrue("the failure must be reported on stderr. " + engine.Describe());
         }
 
+        /// <summary>
+        /// Regression: a tool slower than <c>plugin-timeout</c> used to be re-sent on every timeout
+        /// (10 attempts), so the plugin ran it up to ten times and the caller still got
+        /// "Failed to invoke ... after 10 retries". A tool call is now sent once and waits for the
+        /// separate tool timeout.
+        /// </summary>
+        [Fact]
+        public async Task ToolSlowerThanPluginTimeout_RunsOnce_AndAnswers()
+        {
+            await using var host = await NoneAuthMcpHost.StartAsync(null, "plugin-timeout=500");
+            using var engine = NullEngineProcess.Start(host.BaseUrl);
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+            engine.WaitForReady(TimeSpan.FromSeconds(45));
+            var sessionId = await host.HandshakeAsync(client, "null-engine-slow-once");
+
+            var slow = await CallToolAsync(host, client, sessionId, 2, "null-engine/slow", new { ms = 2500 });
+
+            slow.IsError.ShouldBeFalse("a tool slower than plugin-timeout must still answer: " + slow.Text);
+            slow.Text.ShouldContain("slept");
+            (await SlowToolRunsAfter(engine, TimeSpan.FromSeconds(1))).ShouldBe(1,
+                "the server must send a tool call once. " + engine.Describe());
+            engine.Kill();
+        }
+
+        /// <summary>
+        /// A tool slower than <c>tool-timeout</c> fails with an explicit timeout as soon as the
+        /// timeout elapses, and is still run only once.
+        /// </summary>
+        [Fact]
+        public async Task ToolSlowerThanToolTimeout_FailsWithTimeout_AndRunsOnce()
+        {
+            await using var host = await NoneAuthMcpHost.StartAsync(null, "plugin-timeout=500", "tool-timeout=1500");
+            using var engine = NullEngineProcess.Start(host.BaseUrl);
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(60) };
+            engine.WaitForReady(TimeSpan.FromSeconds(45));
+            var sessionId = await host.HandshakeAsync(client, "null-engine-slow-timeout");
+
+            var stopwatch = Stopwatch.StartNew();
+            var slow = await CallToolAsync(host, client, sessionId, 2, "null-engine/slow", new { ms = 5000 });
+            stopwatch.Stop();
+
+            slow.IsError.ShouldBeTrue("a tool slower than tool-timeout must fail");
+            slow.Text.ShouldContain("Timeout");
+            slow.Text.ShouldContain("1500 ms");
+            stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(4.5),
+                "the error must come when tool-timeout elapses, not after the tool or a retry ladder");
+            // Wait past the tool's own end, so a re-sent copy would have been logged by now.
+            (await SlowToolRunsAfter(engine, TimeSpan.FromSeconds(5))).ShouldBe(1,
+                "a timed-out tool call must not be re-sent. " + engine.Describe());
+            engine.Kill();
+        }
+
         // ───────────────────────────── helpers ─────────────────────────────
+
+        /// <summary>How many times the engine logged a run of <c>null-engine/slow</c>, after <paramref name="settle"/>.</summary>
+        static async Task<int> SlowToolRunsAfter(NullEngineProcess engine, TimeSpan settle)
+        {
+            await Task.Delay(settle);
+            // The plugin's duplicate guard would hide a re-send from the run count; its warning does not.
+            engine.StdoutLines.ShouldNotContain(line => line.Contains("arrived again", StringComparison.Ordinal),
+                "the server must not send the same tool call twice. " + engine.Describe());
+            return engine.StdoutLines.Count(line => line.Contains("Run tool 'null-engine/slow'", StringComparison.Ordinal));
+        }
 
         static bool HasLogLevelPrefix(string line)
             => LogLevelPrefixes.Any(prefix => line.StartsWith(prefix, StringComparison.Ordinal));

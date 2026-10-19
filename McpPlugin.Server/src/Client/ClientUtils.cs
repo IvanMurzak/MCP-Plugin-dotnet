@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -145,7 +146,14 @@ namespace com.IvanMurzak.McpPlugin.Server
             return ConnectionIdToToken.TryGetValue(connectionId, out var token) ? token : null;
         }
 
-        public static async Task<ResponseData<TResponse>> InvokeAsync<TRequest, TResponse, THub>(
+        /// <summary>
+        /// Invokes an IDEMPOTENT plugin method (tool / prompt / resource listing, prompt get,
+        /// resource read). A missing plugin, an error, or a reply slower than
+        /// <see cref="IDataArguments.PluginTimeoutMs"/> is retried, up to 10 attempts in total.
+        /// Do not use it for tool calls: a retry re-sends a request the plugin may already be
+        /// running, so the tool runs twice. Use <see cref="InvokeOnceAsync{TRequest, TResponse, THub}"/>.
+        /// </summary>
+        public static Task<ResponseData<TResponse>> InvokeAsync<TRequest, TResponse, THub>(
             ILogger logger,
             IHubContext<THub> hubContext,
             string methodName,
@@ -154,6 +162,44 @@ namespace com.IvanMurzak.McpPlugin.Server
             IMcpConnectionStrategy strategy,
             string? token = null,
             CancellationToken cancellationToken = default)
+            where TRequest : IRequestID
+            where THub : Hub
+            => InvokeCoreAsync<TRequest, TResponse, THub>(logger, hubContext, methodName, request,
+                dataArguments.PluginTimeoutMs, retryAfterDelivery: true, strategy, token, cancellationToken);
+
+        /// <summary>
+        /// Invokes a NON-idempotent plugin method (a tool call) at most once. While no plugin is
+        /// connected it waits and retries like <see cref="InvokeAsync{TRequest, TResponse, THub}"/>
+        /// (a Unity domain reload drops the connection for a few seconds). Once the request has been
+        /// sent it is never re-sent: no answer within <paramref name="timeoutMs"/> returns a
+        /// <see cref="ResponseErrorKind.Timeout"/> error, and a disconnect or failure before the
+        /// answer returns <see cref="ResponseErrorKind.Unavailable"/>. In both cases the plugin may
+        /// still be running, or may have partially run, the request.
+        /// </summary>
+        public static Task<ResponseData<TResponse>> InvokeOnceAsync<TRequest, TResponse, THub>(
+            ILogger logger,
+            IHubContext<THub> hubContext,
+            string methodName,
+            TRequest request,
+            int timeoutMs,
+            IMcpConnectionStrategy strategy,
+            string? token = null,
+            CancellationToken cancellationToken = default)
+            where TRequest : IRequestID
+            where THub : Hub
+            => InvokeCoreAsync<TRequest, TResponse, THub>(logger, hubContext, methodName, request,
+                timeoutMs, retryAfterDelivery: false, strategy, token, cancellationToken);
+
+        static async Task<ResponseData<TResponse>> InvokeCoreAsync<TRequest, TResponse, THub>(
+            ILogger logger,
+            IHubContext<THub> hubContext,
+            string methodName,
+            TRequest request,
+            int timeoutMs,
+            bool retryAfterDelivery,
+            IMcpConnectionStrategy strategy,
+            string? token,
+            CancellationToken cancellationToken)
             where TRequest : IRequestID
             where THub : Hub
         {
@@ -188,7 +234,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                     if (client == null)
                     {
                         logger.LogWarning("Invoke '{0}': No connected clients. Retrying [{1}/{2}]...", methodName, retryCount, maxRetries);
-                        await Task.Delay(1000, cancellationToken); // Wait before retrying
+                        await Task.Delay(retryDelayMs, cancellationToken); // Wait before retrying
                         continue;
                     }
                     sawClient = true;
@@ -198,8 +244,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                         var allConnections = string.Join(", ", AllConnections);
                         logger.LogTrace("Invoke '{0}': ConnectionId ='{1}'. RequestData:\n{2}\n{3}", methodName, connectionId, request, allConnections);
                     }
-                    var invokeTask = client.InvokeAsync<ResponseData<TResponse>>(methodName, request, cancellationToken);
-                    var completed = await invokeTask.WaitWithTimeout(dataArguments.PluginTimeoutMs, cancellationToken);
+                    // Own token per attempt: cancelling it releases an invocation this method gave up on.
+                    using var invokeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    var invokeTask = client.InvokeAsync<ResponseData<TResponse>>(methodName, request, invokeCts.Token);
+                    var completed = await invokeTask.WaitWithTimeout(timeoutMs, cancellationToken);
                     if (completed)
                     {
                         try
@@ -216,6 +264,14 @@ namespace com.IvanMurzak.McpPlugin.Server
                         {
                             throw;
                         }
+                        catch (Exception ex) when (!retryAfterDelivery && !IsNotDelivered(ex))
+                        {
+                            return ResponseData<TResponse>.Error(request.RequestID,
+                                    $"Invoke '{methodName}': the plugin connection '{connectionId}' failed after the request was sent ({ex.Message}). " +
+                                    "The request was not re-sent, because the plugin may already have run it.",
+                                    ResponseErrorKind.Unavailable)
+                                .Log(logger, ex: ex);
+                        }
                         catch (Exception ex)
                         {
                             logger.LogError(ex, $"Invoke '{methodName}': Error invoking '{request}' on client '{connectionId}': {ex.Message}");
@@ -225,9 +281,18 @@ namespace com.IvanMurzak.McpPlugin.Server
                     }
 
                     // Timeout occurred
+                    invokeCts.Cancel();
                     sawTimeout = true;
+                    if (!retryAfterDelivery)
+                    {
+                        return ResponseData<TResponse>.Error(request.RequestID,
+                                $"Invoke '{methodName}': Timeout: client '{connectionId}' did not answer within {timeoutMs} ms. " +
+                                "The request was not re-sent, because the plugin may still be running it.",
+                                ResponseErrorKind.Timeout)
+                            .Log(logger);
+                    }
                     logger.LogWarning("Invoke '{methodName}': Timeout: Client '{connectionId}' did not respond in {timeoutMs} ms. Retrying [{retryCount}/{maxRetries}].",
-                        methodName, connectionId, dataArguments.PluginTimeoutMs, retryCount, maxRetries);
+                        methodName, connectionId, timeoutMs, retryCount, maxRetries);
                     await Task.Delay(retryDelayMs, cancellationToken); // Wait before retrying
                     // Restart the loop to try again with a new client
                 }
@@ -248,5 +313,13 @@ namespace com.IvanMurzak.McpPlugin.Server
                     .Log(logger, ex: ex);
             }
         }
+
+        /// <summary>
+        /// True only when SignalR refused the call because the connection was already gone, so the
+        /// request never left the server and sending it again cannot run it twice. Any other
+        /// failure may have happened after delivery.
+        /// </summary>
+        static bool IsNotDelivered(Exception ex)
+            => ex is IOException && ex.Message.Contains("does not exist", StringComparison.Ordinal);
     }
 }

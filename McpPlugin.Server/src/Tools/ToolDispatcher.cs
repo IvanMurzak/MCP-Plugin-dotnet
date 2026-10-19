@@ -50,7 +50,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 }
             }
 
-            return await services.GetRequiredService<IClientToolHub>().RunCallTool(request);
+            // IClientToolHub.RunCallTool has no token (the plugin implements the same interface, so
+            // adding one would break it); the server's own runner takes one, so a caller that goes
+            // away stops the wait.
+            var toolHub = services.GetRequiredService<IClientToolHub>();
+            return toolHub is RemoteToolRunner remoteToolRunner
+                ? await remoteToolRunner.RunCallTool(request, cancellationToken)
+                : await toolHub.RunCallTool(request);
         }
     }
 }

@@ -53,6 +53,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                 {
                     public const string Port = "port";
                     public const string PluginTimeout = "plugin-timeout";
+                    public const string ToolTimeout = "tool-timeout";
                     public const string ClientTransportMethod = "client-transport";
                     public const string Token = "token";
                     public const string Authorization = "authorization";
@@ -106,6 +107,7 @@ namespace com.IvanMurzak.McpPlugin.Common
                 {
                     public const string Port = "MCP_PLUGIN_PORT";
                     public const string PluginTimeout = "MCP_PLUGIN_CLIENT_TIMEOUT";
+                    public const string ToolTimeout = "MCP_PLUGIN_TOOL_TIMEOUT";
                     public const string ClientTransportMethod = "MCP_PLUGIN_CLIENT_TRANSPORT";
                     public const string Token = "MCP_PLUGIN_TOKEN";
                     public const string Authorization = "MCP_AUTHORIZATION";
