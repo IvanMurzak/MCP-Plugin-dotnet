@@ -43,6 +43,8 @@ namespace com.IvanMurzak.McpPlugin
         public Common.Version Version => _version;
         public VersionHandshakeResponse? VersionHandshakeStatus => _mcpManagerHub?.VersionHandshakeStatus;
         public ulong ToolCallsCount => McpManager.ToolManager?.ToolCallsCount ?? 0;
+        /// <inheritdoc cref="IMcpPlugin.RequestActivity"/>
+        public McpRequestActivity? RequestActivity => McpManager.RequestActivity;
         public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _mcpManagerHub?.ConnectionState
             ?? new ReactiveProperty<HubConnectionState>(HubConnectionState.Disconnected);
         public ReadOnlyReactiveProperty<bool> KeepConnected => _mcpManagerHub?.KeepConnected

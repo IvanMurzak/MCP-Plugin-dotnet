@@ -37,5 +37,11 @@ namespace com.IvanMurzak.McpPlugin
         IPromptManager? PromptManager { get; }
         IResourceManager? ResourceManager { get; }
         ISystemToolManager? SystemToolManager { get; }
+
+        /// <summary>
+        /// Requests from the MCP server that are running now and how long the plugin has been idle, for idle
+        /// timers. Null when the implementation does not track activity (<see cref="McpManager"/> always does).
+        /// </summary>
+        McpRequestActivity? RequestActivity => null;
     }
 }

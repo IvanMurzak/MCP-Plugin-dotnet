@@ -33,6 +33,13 @@ namespace com.IvanMurzak.McpPlugin
         ulong ToolCallsCount => 0;
 
         /// <summary>
+        /// Requests from the MCP server that are running now and how long the plugin has been idle: an idle timer
+        /// treats <see cref="McpRequestActivity.InFlightCount"/> &gt; 0 as busy and compares
+        /// <see cref="McpRequestActivity.IdleDuration"/> with its timeout. Null when not tracked.
+        /// </summary>
+        McpRequestActivity? RequestActivity => McpManager.RequestActivity;
+
+        /// <summary>
         /// Unconditionally generates skill markdown files for all registered tools, regardless of
         /// <see cref="ConnectionConfig.GenerateSkillFiles"/>. The resolved output path is determined as
         /// follows: if <see cref="ConnectionConfig.SkillsPath"/> is an absolute path it is used as-is

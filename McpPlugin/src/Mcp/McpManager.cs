@@ -19,7 +19,7 @@ using R3;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public class McpManager : IMcpManager, IClientMcpManager
+    public partial class McpManager : IMcpManager, IClientMcpManager
     {
         protected readonly ILogger _logger;
         protected readonly Reflector _reflector;
@@ -43,10 +43,14 @@ namespace com.IvanMurzak.McpPlugin
         public IResourceManager? ResourceManager => _resources;
         public ISystemToolManager? SystemToolManager => _systemTools;
 
-        public IClientToolHub? ToolHub => _tools;
-        public IClientPromptHub? PromptHub => _prompts;
-        public IClientResourceHub? ResourceHub => _resources;
-        public IClientSystemToolHub? SystemToolHub => _systemTools;
+        /// <inheritdoc cref="IMcpManager.RequestActivity"/>
+        public McpRequestActivity RequestActivity { get; } = new();
+
+        // What the MCP server calls: the managers wrapped so each request is counted in RequestActivity.
+        public IClientToolHub? ToolHub { get; }
+        public IClientPromptHub? PromptHub { get; }
+        public IClientResourceHub? ResourceHub { get; }
+        public IClientSystemToolHub? SystemToolHub { get; }
 
         public IReadOnlyList<McpClientData> ActiveClients => _activeClients;
         public Observable<Unit> OnForceDisconnect => _onForceDisconnect.AsObservable();
@@ -71,6 +75,12 @@ namespace com.IvanMurzak.McpPlugin
             _prompts = prompts;
             _resources = resources;
             _systemTools = systemTools;
+
+            var hubs = new TrackedHubs(this);
+            ToolHub = tools == null ? null : hubs;
+            PromptHub = prompts == null ? null : hubs;
+            ResourceHub = resources == null ? null : hubs;
+            SystemToolHub = systemTools == null ? null : hubs;
         }
 
         public Task OnMcpClientConnected(McpClientData connectedClient, McpClientData[] allActiveClients)
