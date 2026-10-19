@@ -63,6 +63,23 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             result.Status.ShouldBe(ResponseStatus.Error);
             result.ErrorKind.ShouldBe(ResponseErrorKind.Unavailable);
+            result.HttpStatusCode.ShouldBe(502, "a 503 would tell HTTP clients the call was not processed and is safe to retry");
+            VerifySent(client, Times.Once());
+        }
+
+        [Fact]
+        public async Task ToolCall_PluginHandlerThrew_IsSentOnce_AndFailsAsInternal()
+        {
+            var connectionId = NewConnectionId();
+            var client = ClientReturning(Task.FromException<ResponseData<ResponseCallTool>>(
+                new HubException("Client threw an exception.")));
+            var (hub, strategy) = Route(client.Object, connectionId);
+
+            var result = await InvokeToolOnce(hub, strategy, timeoutMs: 10_000).WaitAsync(TimeSpan.FromSeconds(10));
+
+            result.Status.ShouldBe(ResponseStatus.Error);
+            result.ErrorKind.ShouldBe(ResponseErrorKind.Internal, "the plugin answered with an error; the connection did not fail");
+            result.HttpStatusCode.ShouldBeNull();
             VerifySent(client, Times.Once());
         }
 

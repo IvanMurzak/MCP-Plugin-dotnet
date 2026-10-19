@@ -264,12 +264,23 @@ namespace com.IvanMurzak.McpPlugin.Server
                         {
                             throw;
                         }
+                        catch (HubException ex) when (!retryAfterDelivery)
+                        {
+                            // The plugin received the call and its handler threw: it answered, the connection is fine.
+                            return ResponseData<TResponse>.Error(request.RequestID,
+                                    $"Invoke '{methodName}': the plugin failed while handling the request ({ex.Message}).",
+                                    ResponseErrorKind.Internal)
+                                .Log(logger, ex: ex);
+                        }
                         catch (Exception ex) when (!retryAfterDelivery && !IsNotDelivered(ex))
                         {
+                            // 502, not Unavailable's default 503: a 503 tells HTTP clients the request was not
+                            // processed and is safe to retry, which is exactly what is unknown here.
                             return ResponseData<TResponse>.Error(request.RequestID,
                                     $"Invoke '{methodName}': the plugin connection '{connectionId}' failed after the request was sent ({ex.Message}). " +
                                     "The request was not re-sent, because the plugin may already have run it.",
-                                    ResponseErrorKind.Unavailable)
+                                    ResponseErrorKind.Unavailable,
+                                    httpStatusCode: MaybeDeliveredStatusCode)
                                 .Log(logger, ex: ex);
                         }
                         catch (Exception ex)
@@ -282,6 +293,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                     // Timeout occurred
                     invokeCts.Cancel();
+                    ObserveFault(invokeTask); // abandoned: a late connection failure must not surface as unobserved
                     if (!retryAfterDelivery)
                     {
                         return ResponseData<TResponse>.Error(request.RequestID,
@@ -321,5 +333,12 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// </summary>
         static bool IsNotDelivered(Exception ex)
             => ex is IOException && ex.Message.Contains("does not exist", StringComparison.Ordinal);
+
+        /// <summary>HTTP status for a tool call that failed after it may have reached the plugin.</summary>
+        internal const int MaybeDeliveredStatusCode = 502;
+
+        static void ObserveFault(Task task)
+            => task.ContinueWith(static t => _ = t.Exception, CancellationToken.None,
+                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
 }

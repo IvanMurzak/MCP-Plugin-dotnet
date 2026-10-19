@@ -10,6 +10,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -76,7 +77,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         [Fact]
         public async Task Guard_EmptyRequestId_AlwaysRuns_AndExpiredEntries_RunAgain()
         {
-            var guard = new DuplicateRequestGuard<int>(retention: TimeSpan.FromMilliseconds(50));
+            long now = 1;
+            var guard = new DuplicateRequestGuard<int>(retention: TimeSpan.FromSeconds(10), clock: () => now);
             var runs = 0;
             Task<int> Run() => Task.FromResult(Interlocked.Increment(ref runs));
 
@@ -85,9 +87,47 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             runs.ShouldBe(2);
 
             (await guard.Run("x", Run)).ShouldBe(3);
-            (await guard.Run("x", Run)).ShouldBe(3);
-            await Task.Delay(120);
+            now += 9 * Stopwatch.Frequency;
+            (await guard.Run("x", Run)).ShouldBe(3, "inside the retention window the first result is reused");
+            now += 4 * Stopwatch.Frequency; // past retention and past the quarter-window sweep throttle
             (await guard.Run("x", Run)).ShouldBe(4, "an entry older than the retention window is forgotten");
+        }
+
+        [Fact]
+        public async Task Guard_KeepsAtMostTheCap_OfFinishedEntries_AndNeverEvictsRunningOnes()
+        {
+            long now = 1;
+            var guard = new DuplicateRequestGuard<int>(maxCompletedEntries: 2, clock: () => now);
+            var runs = 0;
+            Task<int> Run() => Task.FromResult(Interlocked.Increment(ref runs));
+            var gate = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            var running = guard.Run("running", () => gate.Task);
+            foreach (var id in new[] { "a", "b", "c" })
+            {
+                now++;
+                await guard.Run(id, Run);
+            }
+            runs.ShouldBe(3);
+
+            (await guard.Run("c", Run)).ShouldBe(3, "the newest finished entries are kept");
+            (await guard.Run("b", Run)).ShouldBe(2);
+            (await guard.Run("a", Run)).ShouldBe(4, "the oldest finished entry was evicted past the cap");
+            guard.Run("running", Run).ShouldBeSameAs(running, "a running entry is never evicted");
+
+            gate.SetResult(7);
+            (await running).ShouldBe(7);
+        }
+
+        [Fact]
+        public async Task Guard_CancelledRun_IsForgotten_SoALaterCopyRuns()
+        {
+            var guard = new DuplicateRequestGuard<int>();
+
+            await Should.ThrowAsync<OperationCanceledException>(
+                () => guard.Run("x", () => Task.FromCanceled<int>(new CancellationToken(canceled: true))));
+
+            (await guard.Run("x", () => Task.FromResult(5))).ShouldBe(5);
         }
     }
 }

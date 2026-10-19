@@ -55,6 +55,23 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             result.ErrorKind.ShouldBe(ResponseErrorKind.Timeout);
             result.Status.ShouldBe(ResponseStatus.Error);
+            result.GetMessage().ShouldNotBeNull().ShouldContain("may still be running");
+        }
+
+        [Fact]
+        public async Task DeferredDeadline_StartsWhenProcessingArrives_NotWhenTheCallWasSent()
+        {
+            using var tracker = new RequestTrackingService(new Mock<ILogger<RequestTrackingService>>().Object);
+
+            // The plugin takes longer than the timeout to say Processing, then completes right away.
+            var result = await tracker.TrackRequestAsync("request", async () =>
+            {
+                await Task.Delay(300);
+                tracker.CompleteRequest(ResponseCallTool.Success("done").SetRequestID("request"));
+                return ResponseCallTool.Processing();
+            }, TimeSpan.FromMilliseconds(100)).WaitAsync(TimeSpan.FromSeconds(5));
+
+            result.Status.ShouldBe(ResponseStatus.Success, "the deferred completion gets the full timeout from Processing on");
         }
     }
 }
