@@ -88,15 +88,27 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         public async Task FailedCalls_StillEndTheRequest()
         {
             var tools = new Mock<IToolManager>();
-            tools.Setup(t => t.RunCallTool(It.IsAny<RequestCallTool>())).ThrowsAsync(new InvalidOperationException("async failure"));
             var systemTools = new Mock<ISystemToolManager>();
-            systemTools.Setup(t => t.RunSystemTool(It.IsAny<RequestCallTool>(), It.IsAny<CancellationToken>()))
-                .Throws(new InvalidOperationException("sync failure"));
             var manager = CreateManager(tools: tools.Object, systemTools: systemTools.Object);
+            var seen = new List<int>();
+            tools.Setup(t => t.RunCallTool(It.IsAny<RequestCallTool>()))
+                .Returns(async () =>
+                {
+                    seen.Add(manager.RequestActivity.InFlightCount);
+                    await Task.Yield();
+                    throw new InvalidOperationException("async failure");
+                });
+            systemTools.Setup(t => t.RunSystemTool(It.IsAny<RequestCallTool>(), It.IsAny<CancellationToken>()))
+                .Returns(() =>
+                {
+                    seen.Add(manager.RequestActivity.InFlightCount);
+                    throw new InvalidOperationException("sync failure");
+                });
 
             await Should.ThrowAsync<InvalidOperationException>(() => manager.ToolHub!.RunCallTool(Call("broken")));
             await Should.ThrowAsync<InvalidOperationException>(() => manager.SystemToolHub!.RunSystemTool(Call("broken")));
 
+            seen.ShouldBe(new[] { 1, 1 });
             manager.RequestActivity.InFlightCount.ShouldBe(0);
         }
 
@@ -187,18 +199,28 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var plugin = builder.Build(new Reflector());
 
             plugin.RequestActivity.ShouldBeSameAs(plugin.McpManager.RequestActivity);
+            TestToolClass.Probe = () => plugin.RequestActivity!.InFlightCount;
 
             var hub = ((IClientMcpManager)plugin.McpManager).ToolHub!;
             var response = await hub.RunCallTool(Call("testTool"));
 
             response.Status.ShouldBe(ResponseStatus.Success);
             plugin.ToolCallsCount.ShouldBe(1UL);
+            TestToolClass.InFlightSeen.ShouldBe(1);
             plugin.RequestActivity!.InFlightCount.ShouldBe(0);
         }
 
         private class TestToolClass
         {
-            public string TestMethod() => "test result";
+            // Static because the builder instantiates the tool class itself; only this test class touches it.
+            public static Func<int>? Probe;
+            public static int InFlightSeen = -1;
+
+            public string TestMethod()
+            {
+                InFlightSeen = Probe?.Invoke() ?? -1;
+                return "test result";
+            }
         }
     }
 }
