@@ -1,0 +1,33 @@
+McpPlugin/src/Mcp/DuplicateRequestGuard.cs
+  s_5f9a753ce320b5::t_9814f588d3e3a4 14,21-25,31-33,38-41,51,53-56,58-60,66-69,73,85,100
+McpPlugin.Common/src/Utils/DataArguments.cs
+  s_5f9a753ce320b5::t_84d50acc03614b 145
+McpPlugin.Server.Tests/ClientUtilsToolCallDeliveryTests.cs
+  s_5f9a753ce320b5::t_2e8d54db778bd6 20,22,78,80,104-117
+McpPlugin.Server.Tests/Infrastructure/NoneAuthMcpHost.cs
+  s_5f9a753ce320b5::t_6fba3819cc1e6c 64-65
+McpPlugin.Server/src/Client/ClientUtils.cs
+  s_5f9a753ce320b5::t_4125d39f35278a 293
+McpPlugin.Server/src/Client/RemoteToolRunner.cs
+  s_5f9a753ce320b5::t_b3c930148e5fa0 20,27
+McpPlugin.Server/src/Tools/ToolDispatcher.cs
+  s_5f9a753ce320b5::t_9c48fc979895dd 23-32,64-65
+McpPlugin/src/McpPlugin/Network/Client/McpManagerClientHub.cs
+  s_5f9a753ce320b5::t_cfeb94d237e237 134
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "552f037e629987a240ca5b46a010c91b0e5c530f",
+  "prompts": {},
+  "sessions": {
+    "s_5f9a753ce320b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ee65e8c-aca3-452e-9397-46e1aceea5e9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
