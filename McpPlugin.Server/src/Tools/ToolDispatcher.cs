@@ -20,6 +20,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tools
 {
+    /// <summary>
+    /// A server-side tool hub whose call takes the caller's token, so a caller that goes away stops
+    /// the wait. Not on <see cref="IClientToolHub"/>: the plugin implements that interface too, and
+    /// a new member would break it.
+    /// </summary>
+    internal interface ICancellableToolHub
+    {
+        Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request, CancellationToken cancellationToken);
+    }
+
     /// <summary>One dispatch decision for MCP and REST, using the current authenticated request context.</summary>
     internal static class ToolDispatcher
     {
@@ -50,12 +60,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 }
             }
 
-            // IClientToolHub.RunCallTool has no token (the plugin implements the same interface, so
-            // adding one would break it); the server's own runner takes one, so a caller that goes
-            // away stops the wait.
             var toolHub = services.GetRequiredService<IClientToolHub>();
-            return toolHub is RemoteToolRunner remoteToolRunner
-                ? await remoteToolRunner.RunCallTool(request, cancellationToken)
+            return toolHub is ICancellableToolHub cancellable
+                ? await cancellable.RunCallTool(request, cancellationToken)
                 : await toolHub.RunCallTool(request);
         }
     }

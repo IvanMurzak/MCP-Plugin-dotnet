@@ -61,6 +61,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
         /// </summary>
         public string BaseUrl => _baseUrl;
 
+        public IServiceProvider Services => _app.Services;
+
         /// <summary>
         /// Starts the host. <paramref name="registerFakes"/> runs AFTER the production wiring, so a
         /// singleton it registers is the one the routers resolve (same pattern as

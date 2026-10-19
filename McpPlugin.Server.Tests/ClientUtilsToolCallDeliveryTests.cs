@@ -17,7 +17,9 @@ using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
+using com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Shouldly;
@@ -69,16 +71,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             var connectionId = NewConnectionId();
             var client = ClientReturning(Task.FromResult(Success()));
-            var clients = new Mock<IHubClients>();
-            clients.Setup(c => c.Client(connectionId)).Returns(client.Object);
-            var hub = new Mock<IHubContext<McpServerHub>>();
-            hub.Setup(h => h.Clients).Returns(clients.Object);
             var strategy = new Mock<IMcpConnectionStrategy>();
             strategy.SetupSequence(s => s.ResolveConnectionId(It.IsAny<string?>(), It.IsAny<int>()))
                 .Returns((string?)null) // a Unity domain reload: the plugin is reconnecting
                 .Returns(connectionId);
+            var (hub, _) = Route(client.Object, connectionId);
 
-            var result = await InvokeToolOnce(hub.Object, strategy.Object, timeoutMs: 10_000).WaitAsync(TimeSpan.FromSeconds(10));
+            var result = await InvokeToolOnce(hub, strategy.Object, timeoutMs: 10_000).WaitAsync(TimeSpan.FromSeconds(10));
 
             result.Status.ShouldBe(ResponseStatus.Success);
             VerifySent(client, Times.Once());
@@ -100,6 +99,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             result.Status.ShouldBe(ResponseStatus.Success);
             VerifySent(client, Times.Exactly(2));
+        }
+
+        [Fact]
+        public async Task RealSignalR_UnknownConnection_FailsWithTheErrorTreatedAsNotDelivered()
+        {
+            // Pins the exception ClientUtils.IsNotDelivered matches to what SignalR really throws, so a
+            // reworded message reds here instead of silently disabling the retry-before-send.
+            await using var host = await NoneAuthMcpHost.StartAsync();
+            var hub = host.Services.GetRequiredService<IHubContext<McpServerHub>>();
+
+            var ex = await Should.ThrowAsync<IOException>(() => hub.Clients.Client(NewConnectionId())
+                .InvokeAsync<ResponseData<ResponseCallTool>>("RunCallTool", new RequestCallTool(), CancellationToken.None));
+
+            ex.Message.ShouldContain("does not exist");
         }
 
         [Fact]

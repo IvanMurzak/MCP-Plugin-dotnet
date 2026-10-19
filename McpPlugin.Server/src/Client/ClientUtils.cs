@@ -282,7 +282,6 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                     // Timeout occurred
                     invokeCts.Cancel();
-                    sawTimeout = true;
                     if (!retryAfterDelivery)
                     {
                         return ResponseData<TResponse>.Error(request.RequestID,
@@ -291,6 +290,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                                 ResponseErrorKind.Timeout)
                             .Log(logger);
                     }
+                    sawTimeout = true;
                     logger.LogWarning("Invoke '{methodName}': Timeout: Client '{connectionId}' did not respond in {timeoutMs} ms. Retrying [{retryCount}/{maxRetries}].",
                         methodName, connectionId, timeoutMs, retryCount, maxRetries);
                     await Task.Delay(retryDelayMs, cancellationToken); // Wait before retrying

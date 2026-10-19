@@ -17,13 +17,14 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
+using com.IvanMurzak.McpPlugin.Server.Tools;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using R3;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
-    public class RemoteToolRunner : IClientToolHub, IDisposable
+    public class RemoteToolRunner : IClientToolHub, ICancellableToolHub, IDisposable
     {
         readonly ILogger _logger;
         readonly IDataArguments _dataArguments;

@@ -142,8 +142,7 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             ParseEnvironmentVariables(); // env variables - second priority
             ParseCommandLineArguments(args); // command line args - first priority (override previous values)
 
-            if (ToolTimeoutMs <= 0)
-                ToolTimeoutMs = Math.Max(Consts.Hub.DefaultToolTimeoutMs, PluginTimeoutMs);
+            ToolTimeoutMs = this.GetToolTimeoutMs(); // resolves the unset (0) case
 
             // Default to 'none' authorization if not explicitly set
             if (Authorization == Consts.MCP.Server.AuthOption.unknown)
