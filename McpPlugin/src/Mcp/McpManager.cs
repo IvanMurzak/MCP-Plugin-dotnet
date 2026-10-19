@@ -19,7 +19,7 @@ using R3;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public class McpManager : IMcpManager, IClientMcpManager
+    public partial class McpManager : IMcpManager, IClientMcpManager
     {
         protected readonly ILogger _logger;
         protected readonly Reflector _reflector;
@@ -43,10 +43,20 @@ namespace com.IvanMurzak.McpPlugin
         public IResourceManager? ResourceManager => _resources;
         public ISystemToolManager? SystemToolManager => _systemTools;
 
-        public IClientToolHub? ToolHub => _tools;
-        public IClientPromptHub? PromptHub => _prompts;
-        public IClientResourceHub? ResourceHub => _resources;
-        public IClientSystemToolHub? SystemToolHub => _systemTools;
+        readonly McpRequestActivity _requestActivity = new();
+        readonly IClientToolHub? _toolHub;
+        readonly IClientPromptHub? _promptHub;
+        readonly IClientResourceHub? _resourceHub;
+        readonly IClientSystemToolHub? _systemToolHub;
+
+        /// <inheritdoc cref="IMcpManager.RequestActivity"/>
+        public McpRequestActivity RequestActivity => _requestActivity;
+
+        // The hubs are what the MCP server calls; they wrap the managers to count each request in RequestActivity.
+        public IClientToolHub? ToolHub => _toolHub;
+        public IClientPromptHub? PromptHub => _promptHub;
+        public IClientResourceHub? ResourceHub => _resourceHub;
+        public IClientSystemToolHub? SystemToolHub => _systemToolHub;
 
         public IReadOnlyList<McpClientData> ActiveClients => _activeClients;
         public Observable<Unit> OnForceDisconnect => _onForceDisconnect.AsObservable();
@@ -71,6 +81,11 @@ namespace com.IvanMurzak.McpPlugin
             _prompts = prompts;
             _resources = resources;
             _systemTools = systemTools;
+
+            _toolHub = tools == null ? null : new TrackedToolHub(tools, _requestActivity);
+            _promptHub = prompts == null ? null : new TrackedPromptHub(prompts, _requestActivity);
+            _resourceHub = resources == null ? null : new TrackedResourceHub(resources, _requestActivity);
+            _systemToolHub = systemTools == null ? null : new TrackedSystemToolHub(systemTools, _requestActivity);
         }
 
         public Task OnMcpClientConnected(McpClientData connectedClient, McpClientData[] allActiveClients)
