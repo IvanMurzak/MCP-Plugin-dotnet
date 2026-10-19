@@ -35,18 +35,26 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             ISystemToolManager? systemTools = null)
             => new McpManager(NullLogger<McpManager>.Instance, new Reflector(), tools, prompts, resources, systemTools);
 
-        [Fact]
-        public async Task ToolCall_IsInFlight_UntilItsResponseIsReady()
+        static RequestCallTool Call(string name) => new RequestCallTool(name, new Dictionary<string, JsonElement>());
+
+        /// <summary>A manager whose only tool call stays in flight until the returned gate completes.</summary>
+        static (McpManager manager, TaskCompletionSource<ResponseData<ResponseCallTool>> gate) CreateGatedManager()
         {
             var gate = new TaskCompletionSource<ResponseData<ResponseCallTool>>(TaskCreationOptions.RunContinuationsAsynchronously);
             var tools = new Mock<IToolManager>();
             tools.Setup(t => t.RunCallTool(It.IsAny<RequestCallTool>())).Returns(gate.Task);
-            var manager = CreateManager(tools: tools.Object);
+            return (CreateManager(tools: tools.Object), gate);
+        }
+
+        [Fact]
+        public async Task ToolCall_IsInFlight_UntilItsResponseIsReady()
+        {
+            var (manager, gate) = CreateGatedManager();
             var activity = manager.RequestActivity;
 
             activity.InFlightCount.ShouldBe(0);
 
-            var call = manager.ToolHub!.RunCallTool(new RequestCallTool("slow", new Dictionary<string, JsonElement>()));
+            var call = manager.ToolHub!.RunCallTool(Call("slow"));
 
             activity.InFlightCount.ShouldBe(1);
             activity.IdleDuration.ShouldBe(TimeSpan.Zero);
@@ -60,13 +68,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         [Fact]
         public async Task IdleDuration_IsMeasuredFromTheLastFinish()
         {
-            var gate = new TaskCompletionSource<ResponseData<ResponseCallTool>>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var tools = new Mock<IToolManager>();
-            tools.Setup(t => t.RunCallTool(It.IsAny<RequestCallTool>())).Returns(gate.Task);
-            var manager = CreateManager(tools: tools.Object);
+            var (manager, gate) = CreateGatedManager();
             var activity = manager.RequestActivity;
 
-            var call = manager.ToolHub!.RunCallTool(new RequestCallTool("slow", new Dictionary<string, JsonElement>()));
+            var call = manager.ToolHub!.RunCallTool(Call("slow"));
             // The call runs longer than the gap below; a timer measuring from the start would already see it idle.
             await Task.Delay(500);
             activity.IdleDuration.ShouldBe(TimeSpan.Zero);
@@ -88,10 +93,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             systemTools.Setup(t => t.RunSystemTool(It.IsAny<RequestCallTool>(), It.IsAny<CancellationToken>()))
                 .Throws(new InvalidOperationException("sync failure"));
             var manager = CreateManager(tools: tools.Object, systemTools: systemTools.Object);
-            var request = new RequestCallTool("broken", new Dictionary<string, JsonElement>());
 
-            await Should.ThrowAsync<InvalidOperationException>(() => manager.ToolHub!.RunCallTool(request));
-            await Should.ThrowAsync<InvalidOperationException>(() => manager.SystemToolHub!.RunSystemTool(request));
+            await Should.ThrowAsync<InvalidOperationException>(() => manager.ToolHub!.RunCallTool(Call("broken")));
+            await Should.ThrowAsync<InvalidOperationException>(() => manager.SystemToolHub!.RunSystemTool(Call("broken")));
 
             manager.RequestActivity.InFlightCount.ShouldBe(0);
         }
@@ -106,28 +110,33 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var manager = CreateManager(tools.Object, prompts.Object, resources.Object, systemTools.Object);
             var activity = manager.RequestActivity;
             var seen = new List<int>();
+            Task<ResponseData<T>> Record<T>()
+            {
+                seen.Add(activity.InFlightCount);
+                return Task.FromResult(new ResponseData<T>());
+            }
 
             prompts.Setup(p => p.RunGetPrompt(It.IsAny<RequestGetPrompt>()))
-                .Returns(() => { seen.Add(activity.InFlightCount); return Task.FromResult(new ResponseData<ResponseGetPrompt>()); });
+                .Returns(Record<ResponseGetPrompt>);
             resources.Setup(r => r.RunResourceContent(It.IsAny<RequestResourceContent>()))
-                .Returns(() => { seen.Add(activity.InFlightCount); return Task.FromResult(new ResponseData<ResponseResourceContent[]>()); });
+                .Returns(Record<ResponseResourceContent[]>);
             systemTools.Setup(s => s.RunSystemTool(It.IsAny<RequestCallTool>(), It.IsAny<CancellationToken>()))
-                .Returns(() => { seen.Add(activity.InFlightCount); return Task.FromResult(new ResponseData<ResponseCallTool>()); });
+                .Returns(Record<ResponseCallTool>);
 
             tools.Setup(t => t.RunListTool(It.IsAny<RequestListTool>(), It.IsAny<CancellationToken>()))
-                .Returns(() => { seen.Add(activity.InFlightCount); return Task.FromResult(new ResponseData<ResponseListTool[]>()); });
+                .Returns(Record<ResponseListTool[]>);
             prompts.Setup(p => p.RunListPrompts(It.IsAny<RequestListPrompts>(), It.IsAny<CancellationToken>()))
-                .Returns(() => { seen.Add(activity.InFlightCount); return Task.FromResult(new ResponseData<ResponseListPrompts>()); });
+                .Returns(Record<ResponseListPrompts>);
             resources.Setup(r => r.RunListResources(It.IsAny<RequestListResources>(), It.IsAny<CancellationToken>()))
-                .Returns(() => { seen.Add(activity.InFlightCount); return Task.FromResult(new ResponseData<ResponseListResource[]>()); });
+                .Returns(Record<ResponseListResource[]>);
             resources.Setup(r => r.RunResourceTemplates(It.IsAny<RequestListResourceTemplates>(), It.IsAny<CancellationToken>()))
-                .Returns(() => { seen.Add(activity.InFlightCount); return Task.FromResult(new ResponseData<ResponseResourceTemplate[]>()); });
+                .Returns(Record<ResponseResourceTemplate[]>);
             systemTools.Setup(s => s.RunListSystemTool(It.IsAny<RequestListTool>(), It.IsAny<CancellationToken>()))
-                .Returns(() => { seen.Add(activity.InFlightCount); return Task.FromResult(new ResponseData<ResponseListTool[]>()); });
+                .Returns(Record<ResponseListTool[]>);
 
             await manager.PromptHub!.RunGetPrompt(new RequestGetPrompt("p", new Dictionary<string, JsonElement>()));
             await manager.ResourceHub!.RunResourceContent(new RequestResourceContent("res://x"));
-            await manager.SystemToolHub!.RunSystemTool(new RequestCallTool("s", new Dictionary<string, JsonElement>()));
+            await manager.SystemToolHub!.RunSystemTool(Call("s"));
             seen.ShouldBe(new[] { 1, 1, 1 });
 
             seen.Clear();
@@ -177,11 +186,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             builder.WithTool("testTool", "Test Tool", typeof(TestToolClass), typeof(TestToolClass).GetMethod(nameof(TestToolClass.TestMethod))!);
             var plugin = builder.Build(new Reflector());
 
-            plugin.RequestActivity.ShouldNotBeNull();
             plugin.RequestActivity.ShouldBeSameAs(plugin.McpManager.RequestActivity);
 
             var hub = ((IClientMcpManager)plugin.McpManager).ToolHub!;
-            var response = await hub.RunCallTool(new RequestCallTool("testTool", new Dictionary<string, JsonElement>()));
+            var response = await hub.RunCallTool(Call("testTool"));
 
             response.Status.ShouldBe(ResponseStatus.Success);
             plugin.ToolCallsCount.ShouldBe(1UL);

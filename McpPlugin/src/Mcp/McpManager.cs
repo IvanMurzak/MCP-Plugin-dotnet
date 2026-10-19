@@ -43,20 +43,14 @@ namespace com.IvanMurzak.McpPlugin
         public IResourceManager? ResourceManager => _resources;
         public ISystemToolManager? SystemToolManager => _systemTools;
 
-        readonly McpRequestActivity _requestActivity = new();
-        readonly IClientToolHub? _toolHub;
-        readonly IClientPromptHub? _promptHub;
-        readonly IClientResourceHub? _resourceHub;
-        readonly IClientSystemToolHub? _systemToolHub;
-
         /// <inheritdoc cref="IMcpManager.RequestActivity"/>
-        public McpRequestActivity RequestActivity => _requestActivity;
+        public McpRequestActivity RequestActivity { get; } = new();
 
-        // The hubs are what the MCP server calls; they wrap the managers to count each request in RequestActivity.
-        public IClientToolHub? ToolHub => _toolHub;
-        public IClientPromptHub? PromptHub => _promptHub;
-        public IClientResourceHub? ResourceHub => _resourceHub;
-        public IClientSystemToolHub? SystemToolHub => _systemToolHub;
+        // What the MCP server calls: the managers wrapped so each request is counted in RequestActivity.
+        public IClientToolHub? ToolHub { get; }
+        public IClientPromptHub? PromptHub { get; }
+        public IClientResourceHub? ResourceHub { get; }
+        public IClientSystemToolHub? SystemToolHub { get; }
 
         public IReadOnlyList<McpClientData> ActiveClients => _activeClients;
         public Observable<Unit> OnForceDisconnect => _onForceDisconnect.AsObservable();
@@ -82,10 +76,11 @@ namespace com.IvanMurzak.McpPlugin
             _resources = resources;
             _systemTools = systemTools;
 
-            _toolHub = tools == null ? null : new TrackedToolHub(tools, _requestActivity);
-            _promptHub = prompts == null ? null : new TrackedPromptHub(prompts, _requestActivity);
-            _resourceHub = resources == null ? null : new TrackedResourceHub(resources, _requestActivity);
-            _systemToolHub = systemTools == null ? null : new TrackedSystemToolHub(systemTools, _requestActivity);
+            var hubs = new TrackedHubs(this);
+            ToolHub = tools == null ? null : hubs;
+            PromptHub = prompts == null ? null : hubs;
+            ResourceHub = resources == null ? null : hubs;
+            SystemToolHub = systemTools == null ? null : hubs;
         }
 
         public Task OnMcpClientConnected(McpClientData connectedClient, McpClientData[] allActiveClients)

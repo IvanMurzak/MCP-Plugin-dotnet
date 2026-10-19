@@ -11,6 +11,7 @@
 using System;
 using System.Diagnostics;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace com.IvanMurzak.McpPlugin
 {
@@ -61,6 +62,13 @@ namespace com.IvanMurzak.McpPlugin
             Interlocked.Increment(ref _inFlightCount);
             Touch();
             return new Scope(this);
+        }
+
+        /// <summary>Runs <paramref name="run"/> as one request: in flight until its task completes or fails.</summary>
+        internal async Task<T> Track<T>(Func<Task<T>> run)
+        {
+            using (BeginRequest())
+                return await run().ConfigureAwait(false);
         }
 
         void EndRequest()

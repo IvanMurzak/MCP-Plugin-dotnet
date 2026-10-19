@@ -8,7 +8,6 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
@@ -18,85 +17,44 @@ namespace com.IvanMurzak.McpPlugin
 {
     public partial class McpManager
     {
-        static async Task<T> Track<T>(McpRequestActivity activity, Func<Task<T>> run)
+        /// <summary>
+        /// The hubs the MCP server calls: they forward to the managers and count each call, prompt get and
+        /// resource read in <see cref="RequestActivity"/>. List requests pass through uncounted.
+        /// </summary>
+        sealed class TrackedHubs : IClientToolHub, IClientPromptHub, IClientResourceHub, IClientSystemToolHub
         {
-            using (activity.BeginRequest())
-                return await run().ConfigureAwait(false);
-        }
+            readonly McpManager _owner;
 
-        sealed class TrackedToolHub : IClientToolHub
-        {
-            readonly IClientToolHub _inner;
-            readonly McpRequestActivity _activity;
+            public TrackedHubs(McpManager owner) => _owner = owner;
 
-            public TrackedToolHub(IClientToolHub inner, McpRequestActivity activity)
-            {
-                _inner = inner;
-                _activity = activity;
-            }
+            McpRequestActivity Activity => _owner.RequestActivity;
 
             public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request)
-                => Track(_activity, () => _inner.RunCallTool(request));
+                => Activity.Track(() => _owner._tools!.RunCallTool(request));
 
             public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request, CancellationToken cancellationToken = default)
-                => _inner.RunListTool(request, cancellationToken);
-        }
-
-        sealed class TrackedPromptHub : IClientPromptHub
-        {
-            readonly IClientPromptHub _inner;
-            readonly McpRequestActivity _activity;
-
-            public TrackedPromptHub(IClientPromptHub inner, McpRequestActivity activity)
-            {
-                _inner = inner;
-                _activity = activity;
-            }
+                => _owner._tools!.RunListTool(request, cancellationToken);
 
             public Task<ResponseData<ResponseGetPrompt>> RunGetPrompt(RequestGetPrompt request)
-                => Track(_activity, () => _inner.RunGetPrompt(request));
+                => Activity.Track(() => _owner._prompts!.RunGetPrompt(request));
 
             public Task<ResponseData<ResponseListPrompts>> RunListPrompts(RequestListPrompts request, CancellationToken cancellationToken = default)
-                => _inner.RunListPrompts(request, cancellationToken);
-        }
-
-        sealed class TrackedResourceHub : IClientResourceHub
-        {
-            readonly IClientResourceHub _inner;
-            readonly McpRequestActivity _activity;
-
-            public TrackedResourceHub(IClientResourceHub inner, McpRequestActivity activity)
-            {
-                _inner = inner;
-                _activity = activity;
-            }
+                => _owner._prompts!.RunListPrompts(request, cancellationToken);
 
             public Task<ResponseData<ResponseResourceContent[]>> RunResourceContent(RequestResourceContent request)
-                => Track(_activity, () => _inner.RunResourceContent(request));
+                => Activity.Track(() => _owner._resources!.RunResourceContent(request));
 
             public Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources request, CancellationToken cancellationToken = default)
-                => _inner.RunListResources(request, cancellationToken);
+                => _owner._resources!.RunListResources(request, cancellationToken);
 
             public Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(RequestListResourceTemplates request, CancellationToken cancellationToken = default)
-                => _inner.RunResourceTemplates(request, cancellationToken);
-        }
-
-        sealed class TrackedSystemToolHub : IClientSystemToolHub
-        {
-            readonly IClientSystemToolHub _inner;
-            readonly McpRequestActivity _activity;
-
-            public TrackedSystemToolHub(IClientSystemToolHub inner, McpRequestActivity activity)
-            {
-                _inner = inner;
-                _activity = activity;
-            }
+                => _owner._resources!.RunResourceTemplates(request, cancellationToken);
 
             public Task<ResponseData<ResponseCallTool>> RunSystemTool(RequestCallTool request, CancellationToken cancellationToken = default)
-                => Track(_activity, () => _inner.RunSystemTool(request, cancellationToken));
+                => Activity.Track(() => _owner._systemTools!.RunSystemTool(request, cancellationToken));
 
             public Task<ResponseData<ResponseListTool[]>> RunListSystemTool(RequestListTool request, CancellationToken cancellationToken = default)
-                => _inner.RunListSystemTool(request, cancellationToken);
+                => _owner._systemTools!.RunListSystemTool(request, cancellationToken);
         }
     }
 }
