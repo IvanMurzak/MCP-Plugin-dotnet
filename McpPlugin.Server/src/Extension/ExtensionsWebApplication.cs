@@ -23,6 +23,9 @@ namespace com.IvanMurzak.McpPlugin.Server
 {
     public static class ExtensionsWebApplication
     {
+        /// <summary>How long the server waits for a plugin to acknowledge a WebSocket close.</summary>
+        internal static readonly TimeSpan PluginWebSocketCloseTimeout = TimeSpan.FromSeconds(2);
+
         public static WebApplication UseMcpPluginServer(this WebApplication app, DataArguments dataArguments)
         {
             if (app == null)
@@ -56,6 +59,11 @@ namespace com.IvanMurzak.McpPlugin.Server
             app.MapHub<McpServerHub>(Consts.Hub.RemoteApp, options =>
             {
                 options.Transports = HttpTransports.All;
+                // SignalR closes every plugin connection when the host starts stopping; wait at most
+                // this long (default 5 s) for a plugin to acknowledge the WebSocket close, so a
+                // deploy is not held up by a plugin that does not answer and plugins reconnect to the
+                // new instance sooner.
+                options.WebSockets.CloseTimeout = PluginWebSocketCloseTimeout;
                 // 16 MB pipe buffers — large enough to carry a screenshot tool result
                 // (image base64 inside a JSON envelope) without dropping it in transit, raised
                 // from the previous 4 MB which silently truncated high-resolution captures.

@@ -32,9 +32,17 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly IMcpConnectionStrategy _strategy;
         readonly CompositeDisposable _disposables = new();
         readonly CancellationTokenSource _cancellationTokenSource;
+        readonly PluginCatalogCache? _catalog;
 
         public RemotePromptRunner(ILogger<RemotePromptRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IRequestTrackingService requestTrackingService, IMcpConnectionStrategy strategy)
+            : this(logger, remoteAppContext, dataArguments, requestTrackingService, strategy, catalog: null)
         {
+        }
+
+        /// <summary>See <see cref="RemoteToolRunner"/>'s catalog constructor; the same rules apply to prompts.</summary>
+        public RemotePromptRunner(ILogger<RemotePromptRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IRequestTrackingService requestTrackingService, IMcpConnectionStrategy strategy, PluginCatalogCache? catalog)
+        {
+            _catalog = catalog;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("Ctor.");
             _remoteAppContext = remoteAppContext ?? throw new ArgumentNullException(nameof(remoteAppContext));
@@ -50,15 +58,19 @@ namespace com.IvanMurzak.McpPlugin.Server
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
             cancellationToken = linkedCts.Token;
 
-            var responseData = await ClientUtils.InvokeAsync<RequestGetPrompt, ResponseGetPrompt, McpServerHub>(
+            var token = McpSessionTokenContext.CurrentToken;
+            var responseData = await ClientUtils.InvokeCoreAsync<RequestGetPrompt, ResponseGetPrompt, McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,
                 methodName: nameof(IClientPromptHub.RunGetPrompt),
                 request: request,
-                dataArguments: _dataArguments,
+                timeoutMs: _dataArguments.PluginTimeoutMs,
+                retryAfterDelivery: true,
                 strategy: _strategy,
-                token: McpSessionTokenContext.CurrentToken,
-                cancellationToken: cancellationToken);
+                token: token,
+                cancellationToken: cancellationToken,
+                waitForClient: CatalogAwareInvoke.WaitForPlugin(_catalog, _strategy, token, _logger, nameof(IClientPromptHub.RunGetPrompt)),
+                noClientMessage: CatalogAwareInvoke.ReconnectingMessage);
 
             if (responseData.Value != null)
                 return responseData.Value.Pack(request.RequestID);
@@ -72,15 +84,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
             cancellationToken = linkedCts.Token;
 
-            var response = await ClientUtils.InvokeAsync<RequestListPrompts, ResponseListPrompts, McpServerHub>(
-                logger: _logger,
-                hubContext: _remoteAppContext,
-                methodName: nameof(IClientPromptHub.RunListPrompts),
-                request: request,
-                dataArguments: _dataArguments,
-                strategy: _strategy,
-                token: McpSessionTokenContext.CurrentToken,
-                cancellationToken: cancellationToken);
+            var response = await CatalogAwareInvoke.ListAsync<RequestListPrompts, ResponseListPrompts>(
+                _logger, _remoteAppContext, nameof(IClientPromptHub.RunListPrompts), request, _dataArguments,
+                _strategy, _catalog, PluginCatalogKind.Prompts, cancellationToken);
 
             if (response.Status == ResponseStatus.Error)
                 return ResponseData<ResponseListPrompts>.Error(request.RequestID, response.Message ?? "Got an error during listing tools");

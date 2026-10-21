@@ -88,7 +88,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
 
         public static async Task<OAuthMcpHost> StartAsync(
             Action<IServiceCollection>? registerFakes = null,
-            string account = "acct-oauth-mcp-host")
+            string account = "acct-oauth-mcp-host",
+            params string[] extraArgs)
         {
             var port = FreeLoopbackPort();
             var publicUrl = $"http://127.0.0.1:{port}/mcp";
@@ -102,7 +103,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
                 "auth=oauth",
                 $"auth-issuer={Issuer}",
                 $"public-url={publicUrl}",
-            });
+            }.Concat(extraArgs).ToArray());
 
             var builder = WebApplication.CreateBuilder();
             builder.Logging.ClearProviders();

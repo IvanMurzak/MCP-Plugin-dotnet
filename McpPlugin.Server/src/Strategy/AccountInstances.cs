@@ -226,8 +226,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         /// narrows within the candidate set (never overrides a pin to a different project).
         /// </summary>
         public InstanceResolution Resolve(string? accountId, string? projectPin, string? selectedInstanceId)
+            => ResolveAmong(GetInstances(accountId), projectPin, selectedInstanceId);
+
+        /// <summary>
+        /// The <see cref="Resolve"/> precedence applied to an explicit candidate set, which the caller
+        /// guarantees belongs to ONE account. Shared with <see cref="PluginCatalogCache"/> so a
+        /// remembered (disconnected) instance is chosen by exactly the rules that would have chosen
+        /// it while it was live.
+        /// </summary>
+        internal static InstanceResolution ResolveAmong(IReadOnlyList<PluginInstance> all, string? projectPin, string? selectedInstanceId)
         {
-            var all = GetInstances(accountId);
             if (all.Count == 0)
                 return InstanceResolution.AccountEmpty();
 

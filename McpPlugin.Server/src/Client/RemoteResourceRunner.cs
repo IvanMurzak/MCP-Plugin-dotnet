@@ -32,9 +32,17 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly IMcpConnectionStrategy _strategy;
         readonly CompositeDisposable _disposables = new();
         readonly CancellationTokenSource _cancellationTokenSource;
+        readonly PluginCatalogCache? _catalog;
 
         public RemoteResourceRunner(ILogger<RemoteResourceRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IRequestTrackingService requestTrackingService, IMcpConnectionStrategy strategy)
+            : this(logger, remoteAppContext, dataArguments, requestTrackingService, strategy, catalog: null)
         {
+        }
+
+        /// <summary>See <see cref="RemoteToolRunner"/>'s catalog constructor; the same rules apply to resources.</summary>
+        public RemoteResourceRunner(ILogger<RemoteResourceRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IRequestTrackingService requestTrackingService, IMcpConnectionStrategy strategy, PluginCatalogCache? catalog)
+        {
+            _catalog = catalog;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("Ctor.");
             _remoteAppContext = remoteAppContext ?? throw new ArgumentNullException(nameof(remoteAppContext));
@@ -50,15 +58,19 @@ namespace com.IvanMurzak.McpPlugin.Server
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
             cancellationToken = linkedCts.Token;
 
-            return await ClientUtils.InvokeAsync<RequestResourceContent, ResponseResourceContent[], McpServerHub>(
+            var token = McpSessionTokenContext.CurrentToken;
+            return await ClientUtils.InvokeCoreAsync<RequestResourceContent, ResponseResourceContent[], McpServerHub>(
                 logger: _logger,
                 hubContext: _remoteAppContext,
                 methodName: nameof(IClientResourceHub.RunResourceContent),
                 request: requestData,
-                dataArguments: _dataArguments,
+                timeoutMs: _dataArguments.PluginTimeoutMs,
+                retryAfterDelivery: true,
                 strategy: _strategy,
-                token: McpSessionTokenContext.CurrentToken,
-                cancellationToken: cancellationToken);
+                token: token,
+                cancellationToken: cancellationToken,
+                waitForClient: CatalogAwareInvoke.WaitForPlugin(_catalog, _strategy, token, _logger, nameof(IClientResourceHub.RunResourceContent)),
+                noClientMessage: CatalogAwareInvoke.ReconnectingMessage);
         }
 
         public Task<ResponseData<ResponseListResource[]>> RunListResources(RequestListResources requestData) => RunListResources(requestData, default);
@@ -67,15 +79,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
             cancellationToken = linkedCts.Token;
 
-            return await ClientUtils.InvokeAsync<RequestListResources, ResponseListResource[], McpServerHub>(
-                logger: _logger,
-                hubContext: _remoteAppContext,
-                methodName: nameof(IClientResourceHub.RunListResources),
-                request: requestData,
-                dataArguments: _dataArguments,
-                strategy: _strategy,
-                token: McpSessionTokenContext.CurrentToken,
-                cancellationToken: cancellationToken);
+            return await CatalogAwareInvoke.ListAsync<RequestListResources, ResponseListResource[]>(
+                _logger, _remoteAppContext, nameof(IClientResourceHub.RunListResources), requestData, _dataArguments,
+                _strategy, _catalog, PluginCatalogKind.Resources, cancellationToken);
         }
 
         public Task<ResponseData<ResponseResourceTemplate[]>> RunResourceTemplates(RequestListResourceTemplates requestData) => RunResourceTemplates(requestData, default);
@@ -84,15 +90,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
             cancellationToken = linkedCts.Token;
 
-            return await ClientUtils.InvokeAsync<RequestListResourceTemplates, ResponseResourceTemplate[], McpServerHub>(
-                logger: _logger,
-                hubContext: _remoteAppContext,
-                methodName: nameof(IClientResourceHub.RunResourceTemplates),
-                request: requestData,
-                dataArguments: _dataArguments,
-                strategy: _strategy,
-                token: McpSessionTokenContext.CurrentToken,
-                cancellationToken: cancellationToken);
+            return await CatalogAwareInvoke.ListAsync<RequestListResourceTemplates, ResponseResourceTemplate[]>(
+                _logger, _remoteAppContext, nameof(IClientResourceHub.RunResourceTemplates), requestData, _dataArguments,
+                _strategy, _catalog, PluginCatalogKind.ResourceTemplates, cancellationToken);
         }
 
         public void Dispose()

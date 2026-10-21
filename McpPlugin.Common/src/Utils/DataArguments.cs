@@ -59,6 +59,21 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         int ToolTimeoutMs { get; }
     }
 
+    /// <summary>
+    /// Arguments that configure how the server treats an engine plugin whose connection dropped. A
+    /// separate interface for the same reason as <see cref="IToolTimeoutArguments"/>; read it through
+    /// <see cref="DataArgumentsExtensions.GetPluginReconnectGrace"/> and
+    /// <see cref="DataArgumentsExtensions.GetPluginReconnectWait"/>.
+    /// </summary>
+    public interface IPluginReconnectArguments
+    {
+        /// <summary>How long a disconnected plugin's lists are remembered, in seconds. 0 disables it.</summary>
+        int PluginReconnectGraceSeconds { get; }
+
+        /// <summary>How long a request that needs a reconnecting plugin waits for it, in seconds.</summary>
+        int PluginReconnectWaitSeconds { get; }
+    }
+
     public static class DataArgumentsExtensions
     {
         /// <summary>
@@ -70,8 +85,29 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             => dataArguments is IToolTimeoutArguments { ToolTimeoutMs: > 0 } toolTimeout
                 ? toolTimeout.ToolTimeoutMs
                 : Math.Max(Consts.Hub.DefaultToolTimeoutMs, dataArguments.PluginTimeoutMs);
+
+        /// <summary>
+        /// How long the server remembers a disconnected plugin's lists:
+        /// <see cref="IPluginReconnectArguments.PluginReconnectGraceSeconds"/> when the arguments carry
+        /// it, else <see cref="Consts.MCP.Server.DefaultPluginReconnectGraceSeconds"/>.
+        /// <see cref="TimeSpan.Zero"/> means disabled.
+        /// </summary>
+        public static TimeSpan GetPluginReconnectGrace(this IDataArguments dataArguments)
+            => TimeSpan.FromSeconds(dataArguments is IPluginReconnectArguments reconnect
+                ? Math.Max(0, reconnect.PluginReconnectGraceSeconds)
+                : Consts.MCP.Server.DefaultPluginReconnectGraceSeconds);
+
+        /// <summary>
+        /// How long a request that needs a reconnecting plugin waits for it:
+        /// <see cref="IPluginReconnectArguments.PluginReconnectWaitSeconds"/> when the arguments carry a
+        /// positive one, else <see cref="Consts.MCP.Server.DefaultPluginReconnectWaitSeconds"/>.
+        /// </summary>
+        public static TimeSpan GetPluginReconnectWait(this IDataArguments dataArguments)
+            => TimeSpan.FromSeconds(dataArguments is IPluginReconnectArguments { PluginReconnectWaitSeconds: > 0 } reconnect
+                ? reconnect.PluginReconnectWaitSeconds
+                : Consts.MCP.Server.DefaultPluginReconnectWaitSeconds);
     }
-    public class DataArguments : IDataArguments, IToolTimeoutArguments
+    public class DataArguments : IDataArguments, IToolTimeoutArguments, IPluginReconnectArguments
     {
         public int Port { get; private set; } = 8080;
         public int PluginTimeoutMs { get; private set; }
@@ -85,6 +121,20 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
         public int ToolTimeoutMs { get; private set; }
         public int IdleTimeoutSeconds { get; private set; } = Consts.MCP.Server.DefaultIdleTimeoutSeconds;
         public int MaxIdleSessionCount { get; private set; } = Consts.MCP.Server.DefaultMaxIdleSessionCount;
+
+        /// <summary>
+        /// How long the server remembers the lists of a plugin whose connection dropped
+        /// (<c>plugin-reconnect-grace-seconds</c> / <c>MCP_PLUGIN_RECONNECT_GRACE_SECONDS</c>). <c>0</c>
+        /// disables it. See <see cref="Consts.MCP.Server.DefaultPluginReconnectGraceSeconds"/>.
+        /// </summary>
+        public int PluginReconnectGraceSeconds { get; private set; } = Consts.MCP.Server.DefaultPluginReconnectGraceSeconds;
+
+        /// <summary>
+        /// How long a request that needs a reconnecting plugin waits for it
+        /// (<c>plugin-reconnect-wait-seconds</c> / <c>MCP_PLUGIN_RECONNECT_WAIT_SECONDS</c>). See
+        /// <see cref="Consts.MCP.Server.DefaultPluginReconnectWaitSeconds"/>.
+        /// </summary>
+        public int PluginReconnectWaitSeconds { get; private set; } = Consts.MCP.Server.DefaultPluginReconnectWaitSeconds;
         public Consts.MCP.Server.TransportMethod ClientTransport { get; private set; }
         public Consts.MCP.Server.AuthOption Authorization { get; private set; } = Consts.MCP.Server.AuthOption.none;
         public string? Token { get; private set; }
@@ -174,6 +224,14 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var envMaxIdleSessionCount = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.MaxIdleSessionCount);
             if (envMaxIdleSessionCount != null && int.TryParse(envMaxIdleSessionCount, out var parsedEnvMaxIdleSessionCount) && parsedEnvMaxIdleSessionCount > 0)
                 MaxIdleSessionCount = parsedEnvMaxIdleSessionCount;
+
+            var envReconnectGrace = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.PluginReconnectGraceSeconds);
+            if (envReconnectGrace != null && int.TryParse(envReconnectGrace, out var parsedEnvReconnectGrace) && parsedEnvReconnectGrace >= 0)
+                PluginReconnectGraceSeconds = parsedEnvReconnectGrace;
+
+            var envReconnectWait = Environment.GetEnvironmentVariable(Consts.MCP.Server.Env.PluginReconnectWaitSeconds);
+            if (envReconnectWait != null && int.TryParse(envReconnectWait, out var parsedEnvReconnectWait) && parsedEnvReconnectWait > 0)
+                PluginReconnectWaitSeconds = parsedEnvReconnectWait;
 
             // --- Client variables ---
 
@@ -283,6 +341,14 @@ namespace com.IvanMurzak.McpPlugin.Common.Utils
             var argMaxIdleSessionCount = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.MaxIdleSessionCount.TrimStart('-'));
             if (argMaxIdleSessionCount != null && int.TryParse(argMaxIdleSessionCount, out var parsedArgMaxIdleSessionCount) && parsedArgMaxIdleSessionCount > 0)
                 MaxIdleSessionCount = parsedArgMaxIdleSessionCount;
+
+            var argReconnectGrace = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.PluginReconnectGraceSeconds.TrimStart('-'));
+            if (argReconnectGrace != null && int.TryParse(argReconnectGrace, out var parsedArgReconnectGrace) && parsedArgReconnectGrace >= 0)
+                PluginReconnectGraceSeconds = parsedArgReconnectGrace;
+
+            var argReconnectWait = commandLineArgs.GetValueOrDefault(Consts.MCP.Server.Args.PluginReconnectWaitSeconds.TrimStart('-'));
+            if (argReconnectWait != null && int.TryParse(argReconnectWait, out var parsedArgReconnectWait) && parsedArgReconnectWait > 0)
+                PluginReconnectWaitSeconds = parsedArgReconnectWait;
 
             // --- Client variables ---
 

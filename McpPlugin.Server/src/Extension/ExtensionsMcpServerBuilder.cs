@@ -14,8 +14,11 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
+using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Auth.OAuth;
@@ -24,7 +27,9 @@ using com.IvanMurzak.McpPlugin.Server.Strategy;
 using com.IvanMurzak.McpPlugin.Server.Tools;
 using com.IvanMurzak.McpPlugin.Server.Webhooks;
 using com.IvanMurzak.ReflectorNet;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server
@@ -241,6 +246,18 @@ namespace com.IvanMurzak.McpPlugin.Server
             mcpServerBuilder.Services.AddSingleton<McpGracefulShutdownService>();
             mcpServerBuilder.Services.AddHostedService(sp => sp.GetRequiredService<McpGracefulShutdownService>());
 
+            // Remembered plugin lists across a plugin reconnect (plugin-reconnect-grace-seconds).
+            // Registered in every mode: with the grace at 0 it still makes list requests answer at once
+            // when no plugin is connected, instead of retrying for ~10 s. Its waits end as soon as the
+            // host starts stopping, so a tool call waiting for a plugin never holds up a shutdown.
+            mcpServerBuilder.Services.AddSingleton(sp => new PluginCatalogCache(
+                sp.GetRequiredService<IMcpConnectionStrategy>(),
+                dataArguments.GetPluginReconnectGrace(),
+                dataArguments.GetPluginReconnectWait(),
+                logger: sp.GetService<ILogger<PluginCatalogCache>>(),
+                stopping: sp.GetService<IHostApplicationLifetime>()?.ApplicationStopping ?? default,
+                fetchTools: (connectionId, cancellationToken) => FetchPluginToolsAsync(sp, dataArguments, connectionId, cancellationToken)));
+
             mcpServerBuilder.Services.AddWebhooks(dataArguments);
 
             mcpServerBuilder.Services.AddSingleton<RemoteToolRunner>();
@@ -256,6 +273,18 @@ namespace com.IvanMurzak.McpPlugin.Server
             mcpServerBuilder.Services.AddSingleton<IClientResourceHub>(sp => sp.GetRequiredService<RemoteResourceRunner>());
 
             return mcpServerBuilder;
+        }
+
+        /// <summary>Asks one plugin connection for its tools (null when it does not answer in time).</summary>
+        static async Task<ResponseListTool[]?> FetchPluginToolsAsync(IServiceProvider services, IDataArguments dataArguments, string connectionId, CancellationToken cancellationToken)
+        {
+            var hubContext = services.GetRequiredService<IHubContext<McpServerHub>>();
+            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeoutCts.CancelAfter(dataArguments.PluginTimeoutMs);
+            using var request = new RequestListTool();
+            var response = await hubContext.Clients.Client(connectionId)
+                .InvokeAsync<ResponseData<ResponseListTool[]>>(nameof(IClientToolHub.RunListTool), request, timeoutCts.Token);
+            return response?.Status == ResponseStatus.Success ? response.Value : null;
         }
     }
 }
