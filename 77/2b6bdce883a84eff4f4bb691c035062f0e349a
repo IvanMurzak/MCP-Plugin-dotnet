@@ -1,0 +1,31 @@
+McpPlugin/src/McpPlugin/Network/Connection/Retry/FastFirstRetryPolicy.cs
+  s_48def0c32da233::t_4a1933b70a0702 26,30-31,35-37
+McpPlugin.Tests/Network/Connection/ConnectionManagerServerCloseReconnectTests.cs
+  s_48def0c32da233::t_1a02ce2c5b32e2 85
+  s_48def0c32da233::t_ad8c7d5759b5d1 11
+  s_48def0c32da233::t_6c7c6080558687 91
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/HttpTokenRefresher.cs
+  s_48def0c32da233::t_a45099ba9671d9 84-85
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionManager.Connect.cs
+  s_48def0c32da233::t_c0fcf1865c8b67 532
+  s_48def0c32da233::t_5ac37647079031 556-560,562-563,566,575-576,579-585,587-592
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/PersistedDeadFamilyMemo.cs
+  s_48def0c32da233::t_50ed80b46662ef 105,109-110,114
+  s_48def0c32da233::t_57250895100db6 78,83,86-87,96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "772b6bdce883a84eff4f4bb691c035062f0e349a",
+  "prompts": {},
+  "sessions": {
+    "s_48def0c32da233": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b12596e-6fac-4b72-8f4f-08fe9abbc79c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
