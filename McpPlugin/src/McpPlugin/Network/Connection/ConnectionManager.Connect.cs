@@ -13,6 +13,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
@@ -295,7 +296,7 @@ namespace com.IvanMurzak.McpPlugin
                 // Small stabilization delay after HubConnection creation before the first StartAsync call.
                 // SignalR's internal DI/setup may not be fully ready immediately after CreateConnectionAsync returns.
                 // TODO: remove this delay if integration tests confirm it is no longer needed.
-                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                await Task.Delay(TakeFirstAttemptDelay(), cancellationToken);
 
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -441,27 +442,63 @@ namespace com.IvanMurzak.McpPlugin
                     _transportConnected.OnNext(Unit.Default);
                 });
 
-            // On auto-reconnect exhaustion, create a fresh HubConnection and restart.
-            // Uses _cancellationTokenSource (object lifetime) to avoid self-cancellation
-            // when Connect() replaces the connection-cycle internalCts.
+            // On auto-reconnect exhaustion (or a graceful server close), create a fresh HubConnection and restart.
             var closedSub = hubConnectionObservable.Closed
                 .Where(_ => _continueToReconnect.CurrentValue && !_cancellationTokenSource.IsCancellationRequested)
-                .Subscribe(ex =>
-                {
-                    _logger.LogWarning(ex, "{class}[{guid}] {method} Connection closed (auto-reconnect exhausted). Attempting fresh reconnection to: {endpoint}",
-                        nameof(ConnectionManager), _guid, nameof(SetupHubConnectionObservables), Endpoint);
-                    // Fire-and-forget: Connect() handles sequential execution via its internal gate.
-                    var reconnectTask = Connect(_cancellationTokenSource.Token);
-                    _ = reconnectTask.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
-                });
+                .Subscribe(HandleHubClosed);
 
-            _hubObservableReconnectSubscription.Disposable = new CompositeDisposable(reconnectedSub, closedSub);
+            // Record a ForceDisconnect for the attempt in flight, so the connection loop can tell a real
+            // authorization denial from a close for a temporary server-side reason. An additional
+            // handler: the hub connector's own ForceDisconnect handler still runs.
+            var forceDisconnectSub = hubConnection.On<string?>(nameof(IClientDisconnectable.ForceDisconnect), _ =>
+            {
+                if (ReferenceEquals(_hubConnection.CurrentValue, hubConnection))
+                    NoteServerForceDisconnect();
+            });
+
+            _hubObservableReconnectSubscription.Disposable = new CompositeDisposable(reconnectedSub, closedSub, forceDisconnectSub);
         }
 
         /// <summary>
-        /// Maximum number of consecutive immediate disconnects (server closes connection right after
-        /// handshake) before the connection loop gives up. This pattern typically indicates that the
-        /// server is rejecting the client (e.g. invalid or revoked authorization token).
+        /// The hub connection closed while reconnection is wanted. A close WITHOUT an error is a
+        /// graceful server-initiated close (e.g. the server shutting down for a deploy): the fresh
+        /// connect cycle then starts after a short jittered delay instead of the fixed stabilization
+        /// delay (see <see cref="TakeFirstAttemptDelay"/>). Uses _cancellationTokenSource (object
+        /// lifetime) to avoid self-cancellation when Connect() replaces the connection-cycle internalCts.
+        /// </summary>
+        internal void HandleHubClosed(Exception? exception)
+        {
+            if (exception == null)
+            {
+                _logger.LogInformation("{class}[{guid}] {method} Connection closed by the server. Reconnecting shortly to: {endpoint}",
+                    nameof(ConnectionManager), _guid, nameof(HandleHubClosed), Endpoint);
+                Interlocked.Exchange(ref _fastReconnectPending, 1);
+            }
+            else
+            {
+                _logger.LogWarning(exception, "{class}[{guid}] {method} Connection closed (auto-reconnect exhausted). Attempting fresh reconnection to: {endpoint}",
+                    nameof(ConnectionManager), _guid, nameof(HandleHubClosed), Endpoint);
+            }
+            // Fire-and-forget: Connect() handles sequential execution via its internal gate.
+            var reconnectTask = Connect(_cancellationTokenSource.Token);
+            _ = reconnectTask.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
+        }
+
+        /// <summary>
+        /// Delay between creating the HubConnection and the first StartAsync of a connect cycle: the
+        /// fixed 1 s stabilization delay, or — right after a graceful server-initiated close — a short
+        /// jittered delay (≤ 1 s) so plugins come back quickly after a deploy without all reconnecting
+        /// in the same instant. Consumes the fast-reconnect flag. Virtual for tests.
+        /// </summary>
+        internal virtual TimeSpan TakeFirstAttemptDelay()
+            => Interlocked.Exchange(ref _fastReconnectPending, 0) == 1
+                ? ReconnectJitter.NextFastReconnectDelay()
+                : TimeSpan.FromSeconds(1);
+
+        /// <summary>
+        /// Maximum number of consecutive authorization rejections (a <c>ForceDisconnect</c> + close right
+        /// after the handshake, or an observable HTTP 401/403) before the connection loop gives up and
+        /// fires <see cref="OnAuthorizationRejected"/>.
         /// </summary>
         private const int MaxConsecutiveRejections = 3;
 
@@ -474,9 +511,11 @@ namespace com.IvanMurzak.McpPlugin
 
         /// <summary>
         /// Starts the connection retry loop. Must be called from within a _gate-protected section.
-        /// Detects server-side rejection patterns (immediate disconnect after handshake, and an
-        /// observable HTTP 401/403 during the attempt itself — <see cref="ConnectionAttemptResult.AuthRejected"/>)
-        /// and stops retrying after <see cref="MaxConsecutiveRejections"/> consecutive rejections.
+        /// Detects server-side rejection patterns (a <c>ForceDisconnect</c> + close immediately after the
+        /// handshake, and an observable HTTP 401/403 during the attempt itself —
+        /// <see cref="ConnectionAttemptResult.AuthRejected"/>) and stops retrying after
+        /// <see cref="MaxConsecutiveRejections"/> consecutive rejections. A close right after the
+        /// handshake WITHOUT <c>ForceDisconnect</c> is a transient failure, not a rejection.
         /// </summary>
         private async Task<bool> StartConnectionLoop(CancellationToken cancellationToken, TaskCompletionSource<bool>? firstOutcome = null)
         {
@@ -488,11 +527,10 @@ namespace com.IvanMurzak.McpPlugin
 
             while (!cancellationToken.IsCancellationRequested && _continueToReconnect.CurrentValue)
             {
+                Interlocked.Exchange(ref _serverForceDisconnected, 0); // per attempt — see NoteServerForceDisconnect
                 var attempt = await AttemptConnection(cancellationToken);
                 if (attempt == ConnectionAttemptResult.Connected)
                 {
-                    consecutiveFailures = 0;
-
                     // Connection established — verify the server doesn't immediately close it.
                     // A server-side authorization rejection typically closes the WebSocket within
                     // milliseconds of the handshake completing.
@@ -516,13 +554,34 @@ namespace com.IvanMurzak.McpPlugin
 
                     // Server closed the connection immediately after handshake.
                     _connectionState.Value = HubConnectionState.Disconnected;
-                    consecutiveRejections++;
-                    _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} was closed by the server immediately after handshake ({count}/{max}). " +
-                        "This typically indicates authorization failure (invalid or revoked token).",
-                        nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveRejections, MaxConsecutiveRejections);
+                    if (Interlocked.Exchange(ref _serverForceDisconnected, 0) == 1)
+                    {
+                        // The server said ForceDisconnect on this attempt: a real authorization
+                        // denial (McpPlugin.Server BaseHub sends it only when the webhook says no).
+                        consecutiveFailures = 0;
+                        consecutiveRejections++;
+                        _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} was force-disconnected by the server immediately after handshake ({count}/{max}). " +
+                            "This indicates authorization failure (invalid or revoked token).",
+                            nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveRejections, MaxConsecutiveRejections);
 
-                    if (StopAfterRejectionCap(consecutiveRejections))
-                        return false;
+                        if (StopAfterRejectionCap(consecutiveRejections))
+                            return false;
+                    }
+                    else
+                    {
+                        // Closed WITHOUT ForceDisconnect: the server could not authorize right now
+                        // (backend restarting during a deploy, webhook timeout). Transient — normal
+                        // backoff, no auth-rejection signal, so the token is not refreshed (each
+                        // refresh rotates it) just because the server was briefly unavailable.
+                        consecutiveRejections = 0;
+                        consecutiveFailures++;
+                        _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} was closed by the server immediately after handshake without a rejection reason. " +
+                            "Treating it as a temporary server-side failure; will retry.",
+                            nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint);
+
+                        if (StopAfterFailureCap(consecutiveFailures))
+                            break;
+                    }
                 }
                 else if (attempt == ConnectionAttemptResult.AuthRejected)
                 {
@@ -546,24 +605,8 @@ namespace com.IvanMurzak.McpPlugin
                     consecutiveRejections = 0;
                     consecutiveFailures++;
 
-                    // OPT-IN bounded reconnect (ConnectionConfig.MaxConsecutiveConnectionFailures > 0): stop retrying
-                    // an UNREACHABLE endpoint after a bounded number of consecutive failures. Retrying forever keeps
-                    // a fresh negotiate/connect in-flight every WaitBeforeRetry window; a consumer hosted in a
-                    // COLLECTIBLE AssemblyLoadContext (e.g. the Godot editor addon) that performs a C# hot-reload
-                    // landing on one of those in-flight negotiates cannot unload the context ("Failed to unload
-                    // assemblies", godotengine/godot#78513). Giving up settles the connection into idle-Disconnected
-                    // (no in-flight transport work), so reloads after it are clean; reconnect via Connect once the
-                    // server is up. Default (0) = unlimited retry — historical behaviour for Unity/Unreal. Mirrors
-                    // the always-on MaxConsecutiveRejections auth-failure cap.
-                    if (_maxConsecutiveConnectionFailures > 0 && consecutiveFailures >= _maxConsecutiveConnectionFailures)
-                    {
-                        _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} failed {count} times consecutively (endpoint unreachable). " +
-                            "Stopping reconnection attempts; reconnect once the server is reachable.",
-                            nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveFailures);
-                        _continueToReconnect.Value = false;
-                        _connectionState.Value = HubConnectionState.Disconnected;
+                    if (StopAfterFailureCap(consecutiveFailures))
                         break;
-                    }
                 }
 
                 if (cancellationToken.IsCancellationRequested || !_continueToReconnect.CurrentValue)
@@ -603,6 +646,38 @@ namespace com.IvanMurzak.McpPlugin
             _authorizationRejected.OnNext(Unit.Default);
             return true;
         }
+
+        /// <summary>
+        /// OPT-IN bounded reconnect (ConnectionConfig.MaxConsecutiveConnectionFailures > 0): stop retrying
+        /// an UNREACHABLE endpoint after a bounded number of consecutive failures. Retrying forever keeps
+        /// a fresh negotiate/connect in-flight every WaitBeforeRetry window; a consumer hosted in a
+        /// COLLECTIBLE AssemblyLoadContext (e.g. the Godot editor addon) that performs a C# hot-reload
+        /// landing on one of those in-flight negotiates cannot unload the context ("Failed to unload
+        /// assemblies", godotengine/godot#78513). Giving up settles the connection into idle-Disconnected
+        /// (no in-flight transport work), so reloads after it are clean; reconnect via Connect once the
+        /// server is up. Default (0) = unlimited retry — historical behaviour for Unity/Unreal. Mirrors
+        /// the always-on MaxConsecutiveRejections auth-failure cap. Returns true when the cap fired.
+        /// </summary>
+        private bool StopAfterFailureCap(int consecutiveFailures)
+        {
+            if (_maxConsecutiveConnectionFailures <= 0 || consecutiveFailures < _maxConsecutiveConnectionFailures)
+                return false;
+
+            _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} failed {count} times consecutively (endpoint unreachable). " +
+                "Stopping reconnection attempts; reconnect once the server is reachable.",
+                nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveFailures);
+            _continueToReconnect.Value = false;
+            _connectionState.Value = HubConnectionState.Disconnected;
+            return true;
+        }
+
+        /// <summary>
+        /// Records that the server sent <c>ForceDisconnect</c> during the current connection attempt.
+        /// McpPlugin.Server sends it right before closing a connection whose authorization was DENIED,
+        /// and closes without it when authorization is only temporarily unavailable — the loop uses this
+        /// to tell the two apart for a close immediately after the handshake. Reset before every attempt.
+        /// </summary>
+        internal void NoteServerForceDisconnect() => Interlocked.Exchange(ref _serverForceDisconnected, 1);
 
         /// <summary>
         /// Outcome of one connection attempt — the failure-reason seam of

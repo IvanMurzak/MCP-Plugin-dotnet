@@ -39,8 +39,15 @@ namespace com.IvanMurzak.McpPlugin
     ///   <item><b>Rate discipline (04 §3.6):</b> at most one network attempt per family per skew
     ///   window per refresher instance (families are keyed by the refresh token presented — each
     ///   family owns a distinct rotation chain). A repeat call inside the window shares/replays the
-    ///   window's single attempt instead of hitting the AS again, so reactive-401 storms cannot
-    ///   hammer the token endpoint.</item>
+    ///   window's single attempt (in flight, succeeded, or failed with a terminal
+    ///   <c>invalid_grant</c>/<c>invalid_target</c>) instead of hitting the AS again, so
+    ///   reactive-401 storms cannot hammer the token endpoint. A <b>transient</b> failure is the
+    ///   exception: it is replayed only for <see cref="TransientFailureCooldown"/>, then the next
+    ///   caller presents the SAME token again. A transient failure is often a lost response to a
+    ///   refresh the server already committed (it rotated the token); the server absorbs a retry
+    ///   of that token only inside its short rotation grace window (ai-game.dev: 30 s) and treats
+    ///   a later one as reuse, revoking the whole family — so the retry must not wait out the
+    ///   window.</item>
     ///   <item><b>15 s HTTP timeout (04 §2):</b> <see cref="MachineCredentialLock.REFRESH_HTTP_TIMEOUT"/>
     ///   is applied per call — explicitly, because .NET's 100 s default would outlive
     ///   <see cref="MachineCredentialLock.LOCK_STALE_MS"/> and let a live lock holder be declared
@@ -71,6 +78,15 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         public static readonly TimeSpan DefaultAttemptWindow = TimeSpan.FromSeconds(60);
 
+        /// <summary>
+        /// How long a TRANSIENT failure (timeout, network error, 5xx, malformed body) is replayed to
+        /// later callers before the next call hits the network again with the same refresh token.
+        /// Short on purpose: it only stops a hot loop. It must stay well under the server's rotation
+        /// grace window (ai-game.dev <c>OAUTH_ROTATION_GRACE_WINDOW_SECONDS</c> = 30 s), or the retry
+        /// of a token whose rotation response was lost is reuse, which revokes the family.
+        /// </summary>
+        internal static readonly TimeSpan TransientFailureCooldown = TimeSpan.FromSeconds(2);
+
         static readonly HttpClient _sharedHttpClient = new HttpClient();
 
         readonly string _defaultServerTarget;
@@ -89,6 +105,9 @@ namespace com.IvanMurzak.McpPlugin
         {
             public DateTimeOffset StartedAt;
             public Task<TokenRefreshResult> Task = null!;
+
+            /// <summary>Set (under <c>_attemptGate</c>) when the attempt ended in a transient failure.</summary>
+            public DateTimeOffset? TransientFailedAt;
         }
 
         /// <summary>
@@ -154,24 +173,41 @@ namespace com.IvanMurzak.McpPlugin
                 return Task.FromResult(TokenRefreshResult.Failure("no server target"));
 
             // Rate discipline (04 §3.6): inside the window, every caller presenting the same
-            // refresh token shares the window's single attempt (in-flight or memoized). The shared
-            // task deliberately ignores the individual caller's CancellationToken — one caller
-            // aborting must not kill the attempt for its peers — and is bounded by the HTTP
-            // timeout, so nobody waits more than ~15 s.
+            // refresh token shares the window's single attempt (in-flight or memoized; a transient
+            // failure only for TransientFailureCooldown). The shared task deliberately ignores the
+            // individual caller's CancellationToken — one caller aborting must not kill the attempt
+            // for its peers — and is bounded by the HTTP timeout, so nobody waits more than ~15 s.
             lock (_attemptGate)
             {
                 PruneExpiredAttempts();
 
-                if (_attempts.TryGetValue(request.RefreshToken, out var existing)
-                    && _clock() - existing.StartedAt < _attemptWindow)
+                if (_attempts.TryGetValue(request.RefreshToken, out var existing))
                     return existing.Task;
 
                 var entry = new AttemptEntry { StartedAt = _clock() };
-                entry.Task = RefreshOverHttpAsync(baseUrl, request);
+                entry.Task = RunAttemptAsync(entry, baseUrl, request);
                 _attempts[request.RefreshToken] = entry;
                 return entry.Task;
             }
         }
+
+        async Task<TokenRefreshResult> RunAttemptAsync(AttemptEntry entry, string baseUrl, TokenRefreshRequest request)
+        {
+            var result = await RefreshOverHttpAsync(baseUrl, request).ConfigureAwait(false);
+            if (!result.Succeeded && result.FailureKind == TokenRefreshFailureKind.Transient)
+            {
+                // Start the short cooldown from the moment the failure is known, not from the
+                // attempt start: a 15 s timeout must not leave a stale failure memoized afterwards.
+                lock (_attemptGate)
+                    entry.TransientFailedAt = _clock();
+            }
+            return result;
+        }
+
+        // MUST be called with _attemptGate held.
+        bool IsExpired(AttemptEntry entry, DateTimeOffset now)
+            => now - entry.StartedAt >= _attemptWindow
+                || (entry.TransientFailedAt.HasValue && now - entry.TransientFailedAt.Value >= TransientFailureCooldown);
 
         // MUST be called with _attemptGate held.
         void PruneExpiredAttempts()
@@ -180,7 +216,7 @@ namespace com.IvanMurzak.McpPlugin
             var now = _clock();
             foreach (var pair in _attempts)
             {
-                if (now - pair.Value.StartedAt >= _attemptWindow)
+                if (IsExpired(pair.Value, now))
                     (expired ??= new List<string>()).Add(pair.Key);
             }
             if (expired != null)

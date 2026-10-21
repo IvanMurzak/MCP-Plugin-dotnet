@@ -65,6 +65,12 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         private Task? _pendingImmediateTeardown;
 
+        /// <summary>1 when the server sent <c>ForceDisconnect</c> during the current connection attempt (see <c>NoteServerForceDisconnect</c>).</summary>
+        private int _serverForceDisconnected;
+
+        /// <summary>1 when the next connect cycle follows a graceful server-initiated close and should start quickly (see <c>TakeFirstAttemptDelay</c>).</summary>
+        private int _fastReconnectPending;
+
         public ReadOnlyReactiveProperty<HubConnectionState> ConnectionState => _connectionStateReadOnly;
         public ReadOnlyReactiveProperty<HubConnection?> HubConnection => _hubConnectionReadOnly;
         public ReadOnlyReactiveProperty<bool> KeepConnected => _keepConnectedReadOnly;

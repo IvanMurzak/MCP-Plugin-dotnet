@@ -378,6 +378,91 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             refresher.Requests.Count.ShouldBe(1); // the loop is dead — nothing re-armed or refreshed
         }
 
+        // ── Persisted memo: the verdict survives the process (and every Unity domain reload)
+        //    as a hash-only sidecar next to the machine store. ──
+
+        string SidecarPath => Path.Combine(_baseDir, PersistedDeadFamilyMemo.FileName);
+
+        [Fact]
+        public async Task PersistedMemo_SecondProviderOverTheSameStore_DoesNotPresentTheDeadToken()
+        {
+            SeedV2();
+            var first = new FakeTokenRefresher(InvalidGrant());
+            using (var provider = new PluginCredentialProvider(NewStore(), first, clock: () => _now))
+                (await provider.RefreshAsync()).ShouldBeFalse(); // the verdict
+            first.Requests.Count.ShouldBe(1);
+
+            // A new process / domain reload: fresh provider, fresh refresher — it would even succeed.
+            var second = new FakeTokenRefresher(TokenRefreshResult.Success("eyJ.WOULD-WORK.sig", "RT-would-work", _now.AddHours(1)));
+            var logger = new CapturingLogger();
+            using var reloaded = new PluginCredentialProvider(NewStore(), second, logger, clock: () => _now);
+            reloaded.State.CurrentValue.ShouldBe(AuthState.SignedIn); // boot is unchanged: store holds token material
+
+            (await reloaded.RefreshAsync()).ShouldBeFalse();
+            (await reloaded.RefreshAsync()).ShouldBeFalse();
+
+            second.Requests.ShouldBeEmpty(); // no network attempt for the memoized dead token
+            reloaded.State.CurrentValue.ShouldBe(AuthState.SignInRequired);
+            reloaded.SignInRequiredReason.ShouldBe("invalid_grant: revoked");
+            logger.Warnings.Count(w => w.Contains("Credential family dead")).ShouldBe(0); // telemetry fired with the original verdict
+        }
+
+        [Fact]
+        public async Task PersistedMemo_StoreHoldsADifferentToken_Rearms()
+        {
+            SeedV2();
+            using (var provider = new PluginCredentialProvider(NewStore(), new FakeTokenRefresher(InvalidGrant()), clock: () => _now))
+                (await provider.RefreshAsync()).ShouldBeFalse(); // the verdict
+            File.Exists(SidecarPath).ShouldBeTrue();
+
+            // A fresh login rotated the refresh token while no editor was running.
+            var peer = NewStore().Read()!;
+            peer.Families!.Plugin!.RefreshToken = "RT-plugin-peer";
+            NewStore().Write(peer);
+
+            var refresher = new FakeTokenRefresher(TokenRefreshResult.Success("eyJ.FRESH.sig", "RT-plugin-fresh2", _now.AddHours(1)));
+            using var reloaded = new PluginCredentialProvider(NewStore(), refresher, clock: () => _now);
+
+            (await reloaded.RefreshAsync()).ShouldBeTrue();
+
+            refresher.Requests.ShouldHaveSingleItem().RefreshToken.ShouldBe("RT-plugin-peer");
+            reloaded.State.CurrentValue.ShouldBe(AuthState.SignedIn);
+            File.Exists(SidecarPath).ShouldBeFalse(); // a live credential clears the sidecar
+        }
+
+        [Fact]
+        public async Task PersistedMemo_SidecarHoldsOnlyAHash_NeverTheRawToken()
+        {
+            SeedV2();
+            using var provider = new PluginCredentialProvider(NewStore(), new FakeTokenRefresher(InvalidGrant()), clock: () => _now);
+            (await provider.RefreshAsync()).ShouldBeFalse(); // the verdict
+
+            var text = File.ReadAllText(SidecarPath);
+            text.ShouldNotContain(SeededPluginRefresh);
+            text.ShouldNotContain(SeededPluginAccess);
+            text.ShouldContain(PersistedDeadFamilyMemo.Hash(SeededPluginRefresh));
+        }
+
+        [Fact]
+        public async Task PersistedMemo_SignOutAndAdopt_ClearTheSidecar()
+        {
+            SeedV2();
+            using var provider = new PluginCredentialProvider(NewStore(), new FakeTokenRefresher(InvalidGrant()), clock: () => _now);
+            (await provider.RefreshAsync()).ShouldBeFalse(); // the verdict
+            File.Exists(SidecarPath).ShouldBeTrue();
+
+            provider.SignOut();
+            File.Exists(SidecarPath).ShouldBeFalse();
+
+            SeedV2();
+            using (var other = new PluginCredentialProvider(NewStore(), new FakeTokenRefresher(InvalidGrant()), clock: () => _now))
+                (await other.RefreshAsync()).ShouldBeFalse(); // a second verdict writes it again
+            File.Exists(SidecarPath).ShouldBeTrue();
+
+            provider.Adopt(NewStore().Read()!);
+            File.Exists(SidecarPath).ShouldBeFalse();
+        }
+
         sealed class CapturingLogger : ILogger
         {
             readonly List<(LogLevel Level, string Message)> _entries = new List<(LogLevel, string)>();

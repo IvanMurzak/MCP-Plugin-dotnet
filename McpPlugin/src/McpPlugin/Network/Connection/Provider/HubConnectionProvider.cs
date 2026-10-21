@@ -85,7 +85,9 @@ namespace com.IvanMurzak.McpPlugin
                         }
 #endif
                     })
-                    .WithAutomaticReconnect(new FixedRetryPolicy(TimeSpan.FromSeconds(10), maxRetries: 3))
+                    // Quick jittered first retry (a graceful server shutdown during a deploy is
+                    // usually over in a second or two), then the historical 10 s × 3.
+                    .WithAutomaticReconnect(new FastFirstRetryPolicy(TimeSpan.FromSeconds(10), laterRetries: 3))
                     .WithKeepAliveInterval(TimeSpan.FromSeconds(30))
                     .WithServerTimeout(TimeSpan.FromMinutes(5))
                     .AddJsonProtocol(options => SignalR_JsonConfiguration.ConfigureJsonSerializer(_reflector, options))
