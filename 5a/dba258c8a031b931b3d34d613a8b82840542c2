@@ -1,0 +1,77 @@
+specs/001-analytics-webhooks/spec.md
+  102ae544b81e4f85 1,3-4,6,8-9,23-30,32-39,41,43,45,47,51-53,57,59,61,63,67-70,74,76,78,80,84,88,90,92,94,96,98,100-102,104-111,113,115,117-120,122-129,132,134,136,139-141,144,149-150,152-158,160-167
+  c916d39f42956f60 10-21,121,130-131,133,137-138,142,151
+specs/001-analytics-webhooks/quickstart.md
+  07d286889c530b49 1-122
+specs/001-analytics-webhooks/contracts/webhook-api.md
+  07d286889c530b49 1-257
+specs/001-analytics-webhooks/research.md
+  07d286889c530b49 1-294
+specs/001-analytics-webhooks/plan.md
+  07d286889c530b49 1,3-4,8,12-20,25-52,54,61,73-113,116,118-145,148,151-152
+specs/001-analytics-webhooks/data-model.md
+  07d286889c530b49 1-202
+specs/001-analytics-webhooks/tasks.md
+  d2af09f951606aa3 1-321
+specs/001-analytics-webhooks/checklists/requirements.md
+  102ae544b81e4f85 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.6",
+  "base_commit_sha": "5adba258c8a031b931b3d34d613a8b82840542c2",
+  "prompts": {
+    "07d286889c530b49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "73a1f273-1df5-4171-9263-3eba12dfd81a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 1004,
+      "total_deletions": 81,
+      "accepted_lines": 991,
+      "overriden_lines": 0
+    },
+    "102ae544b81e4f85": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bdd2b435-0498-4fed-9e55-ef20a1bfbe99",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 140,
+      "total_deletions": 67,
+      "accepted_lines": 132,
+      "overriden_lines": 0
+    },
+    "c916d39f42956f60": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c92d3172-a1e2-4c4a-9a72-f78cbd5f82ac",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 20,
+      "total_deletions": 6,
+      "accepted_lines": 20,
+      "overriden_lines": 0
+    },
+    "d2af09f951606aa3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea4867e2-5294-42ce-9e8f-01dc6034e289",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 321,
+      "total_deletions": 0,
+      "accepted_lines": 321,
+      "overriden_lines": 0
+    }
+  }
+}

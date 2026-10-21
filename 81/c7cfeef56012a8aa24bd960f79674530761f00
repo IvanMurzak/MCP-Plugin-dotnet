@@ -1,0 +1,34 @@
+McpPlugin.Server/src/Auth/OAuth/JsonWebKeySet.cs
+  s_50edd0e0346255::t_bee7fa8be63c08 48-57
+  s_50edd0e0346255::t_df45151af73a00 113-117
+McpPlugin.Server/src/Auth/OAuth/IntrospectionClient.cs
+  s_50edd0e0346255::t_5f7644b559c941 86-95,100-106
+  s_50edd0e0346255::t_33a84356924e79 40-45
+  s_3c149407cdd5d4::t_a29ab2962b7551 107-108
+McpPlugin.Server/src/Transport/StreamableHttpTransportLayer.cs
+  s_3c149407cdd5d4::t_78741236253795 138-143,150,154-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "81c7cfeef56012a8aa24bd960f79674530761f00",
+  "prompts": {},
+  "sessions": {
+    "s_3c149407cdd5d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "845aef5f-a4aa-4844-b9e6-479df3530c09",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_50edd0e0346255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2164075-e554-49e6-8a57-fdc35f7f7e9d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

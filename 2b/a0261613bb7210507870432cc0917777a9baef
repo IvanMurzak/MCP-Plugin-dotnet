@@ -1,0 +1,21 @@
+McpPlugin.Tests/AgentConfig/MachineCredentialLockTakeoverPlantTests.cs
+  s_887efbfc81dc0f::t_fe3cc7114ec7bf 52-57,59
+  s_887efbfc81dc0f::t_08677d424f82e3 26-35
+  s_887efbfc81dc0f::t_12238b6c6eb4cc 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2ba0261613bb7210507870432cc0917777a9baef",
+  "prompts": {},
+  "sessions": {
+    "s_887efbfc81dc0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "556ed732-8c84-4c19-bfb0-6231e40ac140",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

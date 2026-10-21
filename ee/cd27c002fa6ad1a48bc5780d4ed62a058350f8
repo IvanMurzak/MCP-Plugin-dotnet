@@ -1,0 +1,38 @@
+McpPlugin.Server/src/Tools/ToolDispatcher.cs
+  s_8b677f7e5eeedc::t_b258aa6a3ed809 1-56
+McpPlugin.Server.Tests/SelectionRoutingOverHttpTests.cs
+  s_8b677f7e5eeedc::t_97d6c9bd3da8c8 22,86-97,105,107,110-124,127-143,298,327-336
+  s_8b677f7e5eeedc::t_d93f41e7663883 98-104,106,108-109,125-126
+McpPlugin.Server/src/Api/DirectToolCallEndpoints.cs
+  s_8b677f7e5eeedc::t_64aa4145eae7d8 14,23,139,141,148,156-167,169,271
+McpPlugin.Server/src/Tools/ServerNativeTools.cs
+  s_8b677f7e5eeedc::t_d93f41e7663883 59
+McpPlugin.Common/McpPlugin.Common.csproj
+  s_8b677f7e5eeedc::t_05f94add908749 14
+McpPlugin.Common/src/Utils/Consts.cs
+  s_8b677f7e5eeedc::t_e267b2f3a772d9 15
+McpPlugin.Server/McpPlugin.Server.csproj
+  s_8b677f7e5eeedc::t_de9e511adf87ee 14
+McpPlugin.Server/server.json
+  s_8b677f7e5eeedc::t_562a5e8630e3b5 11,17
+McpPlugin.Server/src/Mcp/Tool/ToolRouter.Call.cs
+  s_8b677f7e5eeedc::t_f8b10591fe2954 50
+McpPlugin/McpPlugin.csproj
+  s_8b677f7e5eeedc::t_145e9e4b9b1126 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eecd27c002fa6ad1a48bc5780d4ed62a058350f8",
+  "prompts": {},
+  "sessions": {
+    "s_8b677f7e5eeedc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1413c-d77b-7de0-8dd6-eb573f517fb8",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

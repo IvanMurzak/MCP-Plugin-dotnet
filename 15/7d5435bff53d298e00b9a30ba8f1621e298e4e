@@ -1,0 +1,27 @@
+McpPlugin.Server/src/Webhooks/Extensions/WebhookServiceExtensions.cs
+  e942a9f754faad6f 36-37,44,46-48
+McpPlugin.Server/src/Hub/BaseHub.cs
+  e942a9f754faad6f 31-36
+McpPlugin.Server.Tests/Webhooks/AuthorizationWebhookServiceTests.cs
+  e942a9f754faad6f 1-472
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "157d5435bff53d298e00b9a30ba8f1621e298e4e",
+  "prompts": {
+    "e942a9f754faad6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8535b35-9044-42b4-b193-efbb851c293c",
+        "model": "claude-haiku-4-5-20251001"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 708,
+      "total_deletions": 237,
+      "accepted_lines": 509,
+      "overriden_lines": 0
+    }
+  }
+}
