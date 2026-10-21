@@ -44,8 +44,6 @@ namespace com.IvanMurzak.McpPlugin
             _logger = logger;
         }
 
-        internal string FilePath => _path;
-
         /// <summary>
         /// True when the sidecar declares <paramref name="refreshToken"/> dead; <paramref name="reason"/>
         /// then carries the reason recorded with the verdict. False when there is no (readable) sidecar
@@ -77,20 +75,16 @@ namespace com.IvanMurzak.McpPlugin
             }
         }
 
-        /// <summary>Record <paramref name="refreshToken"/> (hashed) as dead. Atomic temp-and-rename; 0600 on POSIX.</summary>
+        /// <summary>Record <paramref name="refreshToken"/> (hashed) as dead, via the store's atomic write (0600 on POSIX).</summary>
         internal void Write(string refreshToken, string reason, DateTimeOffset at)
         {
-            var directory = Path.GetDirectoryName(_path);
-            if (string.IsNullOrEmpty(directory))
-                return;
-            var tempPath = _path + ".tmp-" + Guid.NewGuid().ToString("N");
             try
             {
-                if (!Directory.Exists(directory))
+                if (!Directory.Exists(Path.GetDirectoryName(_path)))
                     return; // no store directory ⇒ no credential to memoize against
 
-                using (var stream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-                using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
+                using var buffer = new MemoryStream();
+                using (var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = true }))
                 {
                     writer.WriteStartObject();
                     writer.WriteNumber("version", 1);
@@ -99,33 +93,25 @@ namespace com.IvanMurzak.McpPlugin
                     writer.WriteString("declaredDeadAt", at.ToUniversalTime().ToString("o"));
                     writer.WriteEndObject();
                 }
-                MachineCredentialStore.SetPosixPermissions(tempPath, MachineCredentialStore.PosixFilePermissions);
-
-                if (File.Exists(_path))
-                    File.Replace(tempPath, _path, destinationBackupFileName: null);
-                else
-                    File.Move(tempPath, _path);
+                MachineCredentialStore.WriteFileAtomic(_path, buffer.ToArray());
             }
             catch (Exception ex)
             {
                 _logger?.LogDebug("Persisting the dead-family memo failed: {message}", ex.Message);
-                TryDelete(tempPath);
             }
         }
 
         /// <summary>Remove the sidecar (re-arm). No-op when absent.</summary>
-        internal void Clear() => TryDelete(_path);
-
-        void TryDelete(string path)
+        internal void Clear()
         {
             try
             {
-                if (File.Exists(path))
-                    File.Delete(path);
+                if (File.Exists(_path))
+                    File.Delete(_path);
             }
             catch (Exception ex)
             {
-                _logger?.LogDebug("Deleting {file} failed: {message}", Path.GetFileName(path), ex.Message);
+                _logger?.LogDebug("Deleting the dead-family memo failed: {message}", ex.Message);
             }
         }
 

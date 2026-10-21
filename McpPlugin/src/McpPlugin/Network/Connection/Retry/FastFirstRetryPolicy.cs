@@ -23,28 +23,18 @@ namespace com.IvanMurzak.McpPlugin
     /// </summary>
     internal sealed class FastFirstRetryPolicy : IRetryPolicy
     {
-        private readonly TimeSpan _delay;
-        private readonly int _laterRetries;
+        private readonly FixedRetryPolicy _later;
 
         public FastFirstRetryPolicy(TimeSpan delay, int laterRetries)
         {
-            if (delay < TimeSpan.Zero)
-                throw new ArgumentOutOfRangeException(nameof(delay), delay, "delay must be non-negative.");
-            if (laterRetries < 0)
-                throw new ArgumentOutOfRangeException(nameof(laterRetries), laterRetries, "laterRetries must be >= 0.");
-
-            _delay = delay;
-            _laterRetries = laterRetries;
+            // laterRetries + 1: the fixed policy counts the fast first retry as already spent.
+            _later = new FixedRetryPolicy(delay, laterRetries + 1);
         }
 
         public TimeSpan? NextRetryDelay(RetryContext retryContext)
-        {
-            if (retryContext.PreviousRetryCount == 0)
-                return ReconnectJitter.NextFastReconnectDelay();
-            if (retryContext.PreviousRetryCount > _laterRetries)
-                return null;
-            return _delay;
-        }
+            => retryContext.PreviousRetryCount == 0
+                ? ReconnectJitter.NextFastReconnectDelay()
+                : _later.NextRetryDelay(retryContext);
     }
 
     /// <summary>Jittered short delay shared by the fast reconnect paths.</summary>

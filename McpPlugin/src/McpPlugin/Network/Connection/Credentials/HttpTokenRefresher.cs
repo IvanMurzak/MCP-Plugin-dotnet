@@ -81,9 +81,8 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// How long a TRANSIENT failure (timeout, network error, 5xx, malformed body) is replayed to
         /// later callers before the next call hits the network again with the same refresh token.
-        /// Short on purpose: it only stops a hot loop. It must stay well under the server's rotation
-        /// grace window (ai-game.dev <c>OAUTH_ROTATION_GRACE_WINDOW_SECONDS</c> = 30 s), or the retry
-        /// of a token whose rotation response was lost is reuse, which revokes the family.
+        /// It only stops a hot loop and must stay well under the server's rotation grace window
+        /// (ai-game.dev <c>OAUTH_ROTATION_GRACE_WINDOW_SECONDS</c> = 30 s) — see the class docs.
         /// </summary>
         internal static readonly TimeSpan TransientFailureCooldown = TimeSpan.FromSeconds(2);
 

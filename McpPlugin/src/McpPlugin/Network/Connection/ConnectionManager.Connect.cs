@@ -529,6 +529,7 @@ namespace com.IvanMurzak.McpPlugin
             {
                 Interlocked.Exchange(ref _serverForceDisconnected, 0); // per attempt — see NoteServerForceDisconnect
                 var attempt = await AttemptConnection(cancellationToken);
+                bool rejected;
                 if (attempt == ConnectionAttemptResult.Connected)
                 {
                     // Connection established — verify the server doesn't immediately close it.
@@ -552,59 +553,50 @@ namespace com.IvanMurzak.McpPlugin
                         return true;
                     }
 
-                    // Server closed the connection immediately after handshake.
+                    // Server closed the connection immediately after handshake. Only a close that
+                    // followed ForceDisconnect is an authorization denial; without it the server
+                    // could not authorize right now (backend restarting during a deploy, webhook
+                    // timeout) — a transient failure, so the token is not refreshed (each refresh
+                    // rotates it) just because the server was briefly unavailable.
                     _connectionState.Value = HubConnectionState.Disconnected;
-                    if (Interlocked.Exchange(ref _serverForceDisconnected, 0) == 1)
-                    {
-                        // The server said ForceDisconnect on this attempt: a real authorization
-                        // denial (McpPlugin.Server BaseHub sends it only when the webhook says no).
-                        consecutiveFailures = 0;
-                        consecutiveRejections++;
+                    rejected = Volatile.Read(ref _serverForceDisconnected) == 1;
+                    if (rejected)
                         _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} was force-disconnected by the server immediately after handshake ({count}/{max}). " +
                             "This indicates authorization failure (invalid or revoked token).",
-                            nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveRejections, MaxConsecutiveRejections);
-
-                        if (StopAfterRejectionCap(consecutiveRejections))
-                            return false;
-                    }
+                            nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveRejections + 1, MaxConsecutiveRejections);
                     else
-                    {
-                        // Closed WITHOUT ForceDisconnect: the server could not authorize right now
-                        // (backend restarting during a deploy, webhook timeout). Transient — normal
-                        // backoff, no auth-rejection signal, so the token is not refreshed (each
-                        // refresh rotates it) just because the server was briefly unavailable.
-                        consecutiveRejections = 0;
-                        consecutiveFailures++;
                         _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} was closed by the server immediately after handshake without a rejection reason. " +
                             "Treating it as a temporary server-side failure; will retry.",
                             nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint);
-
-                        if (StopAfterFailureCap(consecutiveFailures))
-                            break;
-                    }
                 }
                 else if (attempt == ConnectionAttemptResult.AuthRejected)
                 {
                     // The server ANSWERED the attempt with an observable HTTP 401/403
-                    // (oauth-client-error-hygiene 02 §C3.4): it is reachable but rejecting this
-                    // client, so the failure counts toward the auth-rejection cap — not toward the
-                    // unreachable-endpoint failure cap, which it also resets (a 401/403 response
-                    // proves reachability).
-                    consecutiveFailures = 0;
-                    consecutiveRejections++;
+                    // (oauth-client-error-hygiene 02 §C3.4): it is reachable but rejecting this client.
+                    rejected = true;
                     _logger.LogWarning("{class}[{guid}] {method} Connection attempt to {endpoint} was rejected with HTTP 401/403 ({count}/{max}). " +
                         "This indicates an authorization failure (invalid or revoked token).",
-                        nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveRejections, MaxConsecutiveRejections);
+                        nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveRejections + 1, MaxConsecutiveRejections);
+                }
+                else
+                {
+                    // Connection attempt itself failed (server unreachable, timeout, etc.)
+                    rejected = false;
+                }
 
+                if (rejected)
+                {
+                    // A rejection counts toward the auth-rejection cap and resets the
+                    // unreachable-endpoint failure count (the server answered, so it is reachable).
+                    consecutiveFailures = 0;
+                    consecutiveRejections++;
                     if (StopAfterRejectionCap(consecutiveRejections))
                         return false;
                 }
                 else
                 {
-                    // Connection attempt itself failed (server unreachable, timeout, etc.)
                     consecutiveRejections = 0;
                     consecutiveFailures++;
-
                     if (StopAfterFailureCap(consecutiveFailures))
                         break;
                 }

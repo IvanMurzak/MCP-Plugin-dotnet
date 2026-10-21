@@ -8,7 +8,7 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 using System;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Tests.Infrastructure;
@@ -82,13 +82,13 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
         [Fact]
         public void FastReconnectDelay_IsJitteredWithinBounds()
         {
-            var seen = new ConcurrentDictionary<TimeSpan, bool>();
+            var seen = new HashSet<TimeSpan>();
             for (var i = 0; i < 200; i++)
             {
                 var delay = ReconnectJitter.NextFastReconnectDelay();
                 delay.ShouldBeGreaterThanOrEqualTo(ReconnectJitter.FastReconnectMin);
                 delay.ShouldBeLessThanOrEqualTo(ReconnectJitter.FastReconnectMax);
-                seen[delay] = true;
+                seen.Add(delay);
             }
             ReconnectJitter.FastReconnectMax.ShouldBeLessThanOrEqualTo(TimeSpan.FromSeconds(1));
             seen.Count.ShouldBeGreaterThan(1, "the delay must be jittered, not a fixed value");
