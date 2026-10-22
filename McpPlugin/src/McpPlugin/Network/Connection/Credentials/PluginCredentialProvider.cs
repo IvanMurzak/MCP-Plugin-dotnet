@@ -405,9 +405,13 @@ namespace com.IvanMurzak.McpPlugin
                         _logger?.LogDebug("Token refresh suppressed: this credential family was declared dead ({reason}); waiting for a new sign-in.", _deadFamilyMemo.Value.Reason);
                         return false;
                     }
-                    ClearDeadFamilyMemo(); // the store holds a DIFFERENT token — re-arm and proceed
+                    // The store holds a DIFFERENT token — re-arm. Only the in-memory memo: the
+                    // sidecar may already carry another process's verdict for exactly this new
+                    // token (checked next); a stale sidecar is harmless (hash mismatch) and is
+                    // cleared on the next successful adoption.
+                    _deadFamilyMemo = null;
                 }
-                else if (_persistedMemo.Matches(latestFamily.RefreshToken!, out var persistedReason))
+                if (_persistedMemo.Matches(latestFamily.RefreshToken!, out var persistedReason))
                 {
                     // An earlier process — or this editor before a domain reload — already got the
                     // dead-family verdict for exactly this token. Adopt it without a network call:

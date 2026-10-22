@@ -337,6 +337,25 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         }
 
         [Fact]
+        public async Task Refresh_Transient4xxAnswer_StaysMemoizedForTheWholeWindow()
+        {
+            // A 429 / invalid_client is a decided answer, not a lost response: the short cooldown
+            // must not turn it into one token-endpoint hit per reconnect.
+            var now = new DateTimeOffset(2026, 8, 15, 12, 0, 0, TimeSpan.Zero);
+            var handler = new RecordingHttpMessageHandler()
+                .RespondWith((HttpStatusCode)429, "{\"error\":\"slow_down\"}");
+            var refresher = NewRefresher(handler, clock: () => now);
+
+            var first = await refresher.RefreshAsync(new TokenRefreshRequest(RefreshToken, ServerTarget, StoredClientId));
+            now = now + HttpTokenRefresher.TransientFailureCooldown + TimeSpan.FromSeconds(1);
+            var second = await refresher.RefreshAsync(new TokenRefreshRequest(RefreshToken, ServerTarget, StoredClientId));
+
+            first.FailureKind.ShouldBe(TokenRefreshFailureKind.Transient);
+            second.ShouldBeSameAs(first);
+            handler.Requests.Count.ShouldBe(1);
+        }
+
+        [Fact]
         public async Task Refresh_InvalidGrant_StaysMemoizedForTheWholeWindow()
         {
             // A terminal verdict is not retried inside the window: re-presenting a dead token only

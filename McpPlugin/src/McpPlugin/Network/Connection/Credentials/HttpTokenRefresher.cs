@@ -41,8 +41,9 @@ namespace com.IvanMurzak.McpPlugin
     ///   family owns a distinct rotation chain). A repeat call inside the window shares/replays the
     ///   window's single attempt (in flight, succeeded, or failed with a terminal
     ///   <c>invalid_grant</c>/<c>invalid_target</c>) instead of hitting the AS again, so
-    ///   reactive-401 storms cannot hammer the token endpoint. A <b>transient</b> failure is the
-    ///   exception: it is replayed only for <see cref="TransientFailureCooldown"/>, then the next
+    ///   reactive-401 storms cannot hammer the token endpoint. A <b>transient</b> failure that may
+    ///   be a lost response (timeout, network error, 5xx — not a 4xx answer) is the exception: it
+    ///   is replayed only for <see cref="TransientFailureCooldown"/>, then the next
     ///   caller presents the SAME token again. A transient failure is often a lost response to a
     ///   refresh the server already committed (it rotated the token); the server absorbs a retry
     ///   of that token only inside its short rotation grace window (ai-game.dev: 30 s) and treats
@@ -79,10 +80,12 @@ namespace com.IvanMurzak.McpPlugin
         public static readonly TimeSpan DefaultAttemptWindow = TimeSpan.FromSeconds(60);
 
         /// <summary>
-        /// How long a TRANSIENT failure (timeout, network error, 5xx, malformed body) is replayed to
-        /// later callers before the next call hits the network again with the same refresh token.
-        /// It only stops a hot loop and must stay well under the server's rotation grace window
-        /// (ai-game.dev <c>OAUTH_ROTATION_GRACE_WINDOW_SECONDS</c> = 30 s) — see the class docs.
+        /// How long a TRANSIENT failure that may be a lost response (timeout, network error, 5xx,
+        /// malformed 2xx body) is replayed to later callers before the next call hits the network
+        /// again with the same refresh token. It only stops a hot loop and must stay well under the
+        /// server's rotation grace window (ai-game.dev <c>OAUTH_ROTATION_GRACE_WINDOW_SECONDS</c> =
+        /// 30 s) — see the class docs. A 4xx answer (429, <c>invalid_client</c>, …) is a decided
+        /// response, not a lost one, and keeps the full window.
         /// </summary>
         internal static readonly TimeSpan TransientFailureCooldown = TimeSpan.FromSeconds(2);
 
@@ -105,7 +108,7 @@ namespace com.IvanMurzak.McpPlugin
             public DateTimeOffset StartedAt;
             public Task<TokenRefreshResult> Task = null!;
 
-            /// <summary>Set (under <c>_attemptGate</c>) when the attempt ended in a transient failure.</summary>
+            /// <summary>Set (under <c>_attemptGate</c>) when the attempt ended in a transient failure that may be a lost response.</summary>
             public DateTimeOffset? TransientFailedAt;
         }
 
@@ -192,8 +195,8 @@ namespace com.IvanMurzak.McpPlugin
 
         async Task<TokenRefreshResult> RunAttemptAsync(AttemptEntry entry, string baseUrl, TokenRefreshRequest request)
         {
-            var result = await RefreshOverHttpAsync(baseUrl, request).ConfigureAwait(false);
-            if (!result.Succeeded && result.FailureKind == TokenRefreshFailureKind.Transient)
+            var (result, mayBeLostResponse) = await RefreshOverHttpAsync(baseUrl, request).ConfigureAwait(false);
+            if (mayBeLostResponse)
             {
                 // Start the short cooldown from the moment the failure is known, not from the
                 // attempt start: a 15 s timeout must not leave a stale failure memoized afterwards.
@@ -225,7 +228,10 @@ namespace com.IvanMurzak.McpPlugin
             }
         }
 
-        async Task<TokenRefreshResult> RefreshOverHttpAsync(string baseUrl, TokenRefreshRequest request)
+        // MayBeLostResponse: a transient failure whose answer may have been lost after the server
+        // committed a rotation (timeout, network error, 5xx, a 2xx without a usable body) — the
+        // short-cooldown case. A 4xx is a decided answer and keeps the full rate-discipline window.
+        async Task<(TokenRefreshResult Result, bool MayBeLostResponse)> RefreshOverHttpAsync(string baseUrl, TokenRefreshRequest request)
         {
             // The 04 §3 wire contract: grant_type + refresh_token + client_id and NOTHING else.
             // No scope (P0-3: a component default permanently narrows an agent family) and no
@@ -243,17 +249,22 @@ namespace com.IvanMurzak.McpPlugin
                 using var content = new FormUrlEncodedContent(form);
                 using var response = await _httpClient.PostAsync(baseUrl + "/oauth/token", content, timeout.Token).ConfigureAwait(false);
                 var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                return ParseTokenResponse(response.IsSuccessStatusCode, (int)response.StatusCode, json, _clock);
+                var statusCode = (int)response.StatusCode;
+                var result = ParseTokenResponse(response.IsSuccessStatusCode, statusCode, json, _clock);
+                var mayBeLost = !result.Succeeded
+                    && result.FailureKind == TokenRefreshFailureKind.Transient
+                    && (statusCode >= 500 || statusCode < 400);
+                return (result, mayBeLost);
             }
             catch (OperationCanceledException) when (timeout.IsCancellationRequested)
             {
                 // The 15 s contract timeout fired (04 §2) — a transient failure, never an
                 // unclassified exception: the caller keeps its credential and retries later.
-                return TokenRefreshResult.Failure("refresh HTTP call timed out after " + _timeoutMs + " ms");
+                return (TokenRefreshResult.Failure("refresh HTTP call timed out after " + _timeoutMs + " ms"), true);
             }
             catch (Exception ex)
             {
-                return TokenRefreshResult.Failure(ex.Message); // never token material
+                return (TokenRefreshResult.Failure(ex.Message), true); // never token material
             }
         }
 

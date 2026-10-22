@@ -550,6 +550,9 @@ namespace com.IvanMurzak.McpPlugin
                         // Note: _connectionState is NOT set to Connected here. That happens only
                         // after the application-level handshake succeeds (via SetConnected).
                         consecutiveRejections = 0;
+                        // A graceful close noted while this cycle was already running (its Connect
+                        // joined us) is settled now; never let it shorten an unrelated later cycle.
+                        Interlocked.Exchange(ref _fastReconnectPending, 0);
                         return true;
                     }
 
@@ -621,7 +624,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// When the consecutive-rejection cap is reached: stop the reconnect loop, settle
         /// idle-Disconnected, and fire the aggregated <see cref="OnAuthorizationRejected"/> signal.
-        /// Shared by both rejection flavours (immediate close after handshake, and an observable
+        /// Shared by both rejection flavours (ForceDisconnect + close after handshake, and an observable
         /// HTTP 401/403 during the attempt — 02 §C3.4). Returns true when the cap fired.
         /// </summary>
         private bool StopAfterRejectionCap(int consecutiveRejections)
@@ -655,7 +658,7 @@ namespace com.IvanMurzak.McpPlugin
             if (_maxConsecutiveConnectionFailures <= 0 || consecutiveFailures < _maxConsecutiveConnectionFailures)
                 return false;
 
-            _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} failed {count} times consecutively (endpoint unreachable). " +
+            _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} failed {count} times consecutively (endpoint unreachable, or closed by the server right after the handshake). " +
                 "Stopping reconnection attempts; reconnect once the server is reachable.",
                 nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveFailures);
             _continueToReconnect.Value = false;
