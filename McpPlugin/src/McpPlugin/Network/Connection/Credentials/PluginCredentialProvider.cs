@@ -125,7 +125,7 @@ namespace com.IvanMurzak.McpPlugin
         /// Rule 7 + transient: the client id (null ⇒ the refresher's default) whose presentation of
         /// <c>RefreshToken</c> failed transiently. The server may have rotated and only the response
         /// was lost; its rotation grace is per client, so the retry presents the same id first.
-        /// Guarded by <see cref="_gate"/>.
+        /// Cleared wherever the dead-family memo is cleared. Guarded by <see cref="_gate"/>.
         /// </summary>
         (string RefreshToken, string? ClientId)? _transientClientId;
 
@@ -546,7 +546,8 @@ namespace com.IvanMurzak.McpPlugin
                 // A transient failure (possibly a lost response to a committed rotation) makes the
                 // next attempt present this token under the SAME id first: the server's rotation
                 // grace is per client, so a retry under another id would read as reuse.
-                _transientClientId = result != null && !result.Succeeded && result.FailureKind == TokenRefreshFailureKind.Transient
+                // A decided 4xx answer (invalid_client, 429) is not a lost response and pins nothing.
+                _transientClientId = result != null && !result.Succeeded && result.FailureKind == TokenRefreshFailureKind.Transient && !result.IsDecidedAnswer
                     ? (refreshTokenPresented, presentedClientId)
                     : ((string, string?)?)null;
 
@@ -718,11 +719,13 @@ namespace com.IvanMurzak.McpPlugin
         }
 
         // MUST be called with _gate held. Clears both the in-memory memo and its on-disk sidecar,
-        // and the (in-memory only) client-id exhaustion hold.
+        // and the (in-memory only) client-id exhaustion hold and transient-id memory — neither keeps
+        // a superseded refresh token in memory once a new credential (or none) is adopted.
         void ClearDeadFamilyMemo()
         {
             _deadFamilyMemo = null;
             _clientIdExhaustedToken = null;
+            _transientClientId = null;
             _persistedMemo.Clear();
         }
 

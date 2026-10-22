@@ -220,6 +220,10 @@ namespace com.IvanMurzak.McpPlugin
                 lock (_attemptGate)
                     entry.TransientFailedAt = _clock();
             }
+            else if (!result.Succeeded && result.FailureKind == TokenRefreshFailureKind.Transient)
+            {
+                result.MarkDecidedAnswer(); // a 4xx answer — the server decided, nothing was lost
+            }
             return result;
         }
 

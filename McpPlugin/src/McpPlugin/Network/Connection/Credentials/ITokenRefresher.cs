@@ -92,6 +92,21 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         public TokenRefreshFailureKind FailureKind { get; }
 
+        /// <summary>
+        /// Set by <see cref="HttpTokenRefresher"/> on a <see cref="TokenRefreshFailureKind.Transient"/>
+        /// failure that is a DECIDED server answer (a 4xx such as <c>invalid_client</c> or 429), as
+        /// opposed to one that may be a lost response to a committed rotation (timeout, network
+        /// error, 5xx). Only the latter makes the provider re-present the token under the same
+        /// client id first; other refreshers leave it false (treated as possibly lost).
+        /// </summary>
+        internal bool IsDecidedAnswer { get; private set; }
+
+        internal TokenRefreshResult MarkDecidedAnswer()
+        {
+            IsDecidedAnswer = true;
+            return this;
+        }
+
         TokenRefreshResult(bool succeeded, string? accessToken, string? refreshToken, DateTimeOffset? expiresAt, string? failureReason, TokenRefreshFailureKind failureKind)
         {
             Succeeded = succeeded;

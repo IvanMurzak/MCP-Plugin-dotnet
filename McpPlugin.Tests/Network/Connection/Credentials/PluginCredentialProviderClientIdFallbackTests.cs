@@ -287,6 +287,25 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         }
 
         [Fact]
+        public async Task DecidedClientRejectionDuringFallback_IsNotPinnedAsTheRetryId()
+        {
+            SeedCollapsedV1();
+            var server = new MintServer().Mint(LegacyRefresh, "godot-cli");
+            server.RejectClient("agd_enroll"); // a decided 400 invalid_client — nothing was lost
+            using var provider = NewProvider(NewRefresher(server));
+
+            (await provider.RefreshAsync()).ShouldBeFalse();
+            server.PresentedClientIds.ShouldBe(new[] { "unity-mcp-plugin", "unity-mcp-cli", "agd_enroll" });
+
+            // Past the refresher's 60 s window: the retry starts from the default again — it does
+            // NOT lead with the rejected id (which would end every later attempt right there).
+            _now = Start.AddSeconds(61);
+            var before = server.PresentedClientIds.Count;
+            (await provider.RefreshAsync()).ShouldBeFalse();
+            server.PresentedClientIds[before].ShouldBe(ComponentClientId);
+        }
+
+        [Fact]
         public async Task BudgetExhausted_StopsProbing_WithoutAVerdict_AndTheNextAttemptContinues()
         {
             SeedCollapsedV1();
@@ -319,6 +338,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             readonly Dictionary<string, string> _mintClientByToken = new Dictionary<string, string>(StringComparer.Ordinal);
             readonly Dictionary<string, string> _headByClient = new Dictionary<string, string>(StringComparer.Ordinal);
             readonly HashSet<string> _failTransientlyOnce = new HashSet<string>(StringComparer.Ordinal);
+            readonly HashSet<string> _rejectedClients = new HashSet<string>(StringComparer.Ordinal);
             int _generation;
 
             public MintServer() => Handler = new RecordingHttpMessageHandler().RespondWith(Respond);
@@ -335,6 +355,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
 
             public void FailTransientlyOnce(string clientId) => _failTransientlyOnce.Add(clientId);
 
+            /// <summary>The AS does not know this client at all (a decided 400 invalid_client).</summary>
+            public void RejectClient(string clientId) => _rejectedClients.Add(clientId);
+
             public string? HeadOf(string clientId) => _headByClient.TryGetValue(clientId, out var head) ? head : null;
 
             HttpResponseMessage Respond(RecordingHttpMessageHandler.RecordedRequest request)
@@ -342,6 +365,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
                 var clientId = request.Form["client_id"];
                 var token = request.Form["refresh_token"];
 
+                if (_rejectedClients.Contains(clientId))
+                    return Json(HttpStatusCode.BadRequest, "{\"error\":\"invalid_client\"}");
                 if (!_mintClientByToken.TryGetValue(token, out var mintClient))
                     return Json(HttpStatusCode.BadRequest, "{\"error\":\"invalid_grant\",\"error_description\":\"refresh token revoked\"}");
                 if (!string.Equals(mintClient, clientId, StringComparison.Ordinal))
