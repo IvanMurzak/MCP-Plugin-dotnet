@@ -65,6 +65,13 @@ namespace com.IvanMurzak.McpPlugin.Tests.Infrastructure
             return this;
         }
 
+        /// <summary>A request-dependent fallback response (e.g. an authorization-server emulator).</summary>
+        public RecordingHttpMessageHandler RespondWith(Func<RecordedRequest, HttpResponseMessage> responder)
+        {
+            _fallback = responder;
+            return this;
+        }
+
         /// <summary>Delay every response (for timeout tests).</summary>
         public RecordingHttpMessageHandler DelayEachResponse(TimeSpan delay)
         {
@@ -98,7 +105,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Infrastructure
             return producer(recorded);
         }
 
-        static HttpResponseMessage JsonResponse(HttpStatusCode status, string json)
+        /// <summary>A JSON response with the given status.</summary>
+        public static HttpResponseMessage JsonResponse(HttpStatusCode status, string json)
             => new HttpResponseMessage(status)
             {
                 Content = new StringContent(json, Encoding.UTF8, "application/json"),

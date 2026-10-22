@@ -51,6 +51,9 @@
     <!-- Cross-language golden vectors for the project-key cache (project-keys contract §6) — AUTHORED here
          and vendored byte-identical into cli-core. -->
     <None Include="../McpPlugin/src/AgentConfig/project-keys.golden.json" Link="project-keys.golden.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Cross-language golden vectors for the dead-family memo sidecar plugin-dead-family.json — AUTHORED
+         here and vendored byte-identical into cli-core/test/golden-vectors/. -->
+    <None Include="../McpPlugin/src/AgentConfig/DeadFamilyMemo.GoldenVectors.json" Link="DeadFamilyMemo.GoldenVectors.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

@@ -462,29 +462,5 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             provider.Adopt(NewStore().Read()!);
             File.Exists(SidecarPath).ShouldBeFalse();
         }
-
-        sealed class CapturingLogger : ILogger
-        {
-            readonly List<(LogLevel Level, string Message)> _entries = new List<(LogLevel, string)>();
-
-            public IEnumerable<string> Warnings
-            {
-                get { lock (_entries) return _entries.Where(e => e.Level == LogLevel.Warning).Select(e => e.Message).ToList(); }
-            }
-
-            public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
-            public bool IsEnabled(LogLevel logLevel) => true;
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-            {
-                lock (_entries)
-                    _entries.Add((logLevel, formatter(state, exception)));
-            }
-
-            sealed class NullScope : IDisposable
-            {
-                public static readonly NullScope Instance = new NullScope();
-                public void Dispose() { }
-            }
-        }
     }
 }

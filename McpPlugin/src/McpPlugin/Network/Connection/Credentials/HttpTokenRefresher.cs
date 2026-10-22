@@ -38,7 +38,9 @@ namespace com.IvanMurzak.McpPlugin
     ///   the caller to keep the previous one.</item>
     ///   <item><b>Rate discipline (04 §3.6):</b> at most one network attempt per family per skew
     ///   window per refresher instance (families are keyed by the refresh token presented — each
-    ///   family owns a distinct rotation chain). A repeat call inside the window shares/replays the
+    ///   family owns a distinct rotation chain — together with the client id presented, so the
+    ///   provider's client-id fallback for a family with no stored id reaches the server under each
+    ///   candidate id instead of replaying the first mismatch). A repeat call inside the window shares/replays the
     ///   window's single attempt (in flight, succeeded, or failed with a terminal
     ///   <c>invalid_grant</c>/<c>invalid_target</c>) instead of hitting the AS again, so
     ///   reactive-401 storms cannot hammer the token endpoint. A <b>transient</b> failure that may
@@ -58,7 +60,11 @@ namespace com.IvanMurzak.McpPlugin
     ///   <c>invalid_grant</c> is returned as <see cref="TokenRefreshFailureKind.InvalidGrant"/>,
     ///   and exactly <c>invalid_target</c> (RFC 8707 §2) as
     ///   <see cref="TokenRefreshFailureKind.InvalidTarget"/> — defensive hardening: our refresh
-    ///   requests send no <c>resource</c>, so current clients cannot receive it; every other
+    ///   requests send no <c>resource</c>, so current clients cannot receive it. An
+    ///   <c>invalid_grant</c> whose description names a client-id mismatch
+    ///   (<see cref="RefreshClientIdFallback.ClientIdMismatchDescription"/>) is
+    ///   <see cref="TokenRefreshFailureKind.ClientIdMismatch"/> instead — the token is live for
+    ///   its real mint client, so it must never read as a dead family. Every other
     ///   failure (network, 5xx, other OAuth errors, malformed JSON) is
     ///   <see cref="TokenRefreshFailureKind.Transient"/>.</item>
     /// </list>
@@ -98,7 +104,8 @@ namespace com.IvanMurzak.McpPlugin
         readonly TimeSpan _attemptWindow;
         readonly int _timeoutMs;
 
-        // Rate discipline (04 §3.6): refresh-token → the window's single shared attempt. Guarded by
+        // Rate discipline (04 §3.6): (client id presented, refresh token) → the window's single
+        // shared attempt (see AttemptKey). Guarded by
         // _attemptGate; pruned on every call (a process holds ≤3 families, so this stays tiny).
         readonly object _attemptGate = new object();
         readonly Dictionary<string, AttemptEntry> _attempts = new Dictionary<string, AttemptEntry>();
@@ -183,15 +190,25 @@ namespace com.IvanMurzak.McpPlugin
             {
                 PruneExpiredAttempts();
 
-                if (_attempts.TryGetValue(request.RefreshToken, out var existing))
+                var key = AttemptKey(request);
+                if (_attempts.TryGetValue(key, out var existing))
                     return existing.Task;
 
                 var entry = new AttemptEntry { StartedAt = _clock() };
                 entry.Task = RunAttemptAsync(entry, baseUrl, request);
-                _attempts[request.RefreshToken] = entry;
+                _attempts[key] = entry;
                 return entry.Task;
             }
         }
+
+        // The client id this request presents on the wire: the family's stored id, else the
+        // component default (04 §3.7).
+        string PresentedClientId(TokenRefreshRequest request) => request.ClientId ?? _componentClientId;
+
+        // A family is identified by its refresh token; the presented client id is part of the key
+        // because the server answers each (token, id) pair independently — a client-id mismatch for
+        // one id says nothing about another (04 §3 rule 7). A newline never occurs in either part.
+        string AttemptKey(TokenRefreshRequest request) => PresentedClientId(request) + "\n" + request.RefreshToken;
 
         async Task<TokenRefreshResult> RunAttemptAsync(AttemptEntry entry, string baseUrl, TokenRefreshRequest request)
         {
@@ -202,6 +219,10 @@ namespace com.IvanMurzak.McpPlugin
                 // attempt start: a 15 s timeout must not leave a stale failure memoized afterwards.
                 lock (_attemptGate)
                     entry.TransientFailedAt = _clock();
+            }
+            else if (!result.Succeeded && result.FailureKind == TokenRefreshFailureKind.Transient)
+            {
+                result.MarkDecidedAnswer(); // a 4xx answer — the server decided, nothing was lost
             }
             return result;
         }
@@ -240,7 +261,7 @@ namespace com.IvanMurzak.McpPlugin
             {
                 new KeyValuePair<string, string>("grant_type", "refresh_token"),
                 new KeyValuePair<string, string>("refresh_token", request.RefreshToken),
-                new KeyValuePair<string, string>("client_id", request.ClientId ?? _componentClientId),
+                new KeyValuePair<string, string>("client_id", PresentedClientId(request)),
             };
 
             using var timeout = new CancellationTokenSource(_timeoutMs);
@@ -272,7 +293,9 @@ namespace com.IvanMurzak.McpPlugin
         /// Parse an <c>/oauth/token</c> refresh response (pure, unit-testable). A success without
         /// <c>refresh_token</c> keeps <see cref="TokenRefreshResult.RefreshToken"/> null (04 §3.4);
         /// an OAuth error of exactly <c>invalid_grant</c> is classified
-        /// <see cref="TokenRefreshFailureKind.InvalidGrant"/>, exactly <c>invalid_target</c>
+        /// <see cref="TokenRefreshFailureKind.InvalidGrant"/> (or
+        /// <see cref="TokenRefreshFailureKind.ClientIdMismatch"/> when its description names a
+        /// client-id mismatch), exactly <c>invalid_target</c>
         /// (RFC 8707 §2) is <see cref="TokenRefreshFailureKind.InvalidTarget"/>, everything else
         /// transient. The raw <c>error</c> (and <c>error_description</c> when present) is preserved
         /// verbatim in <see cref="TokenRefreshResult.FailureReason"/> so telemetry keeps distinct
@@ -312,7 +335,9 @@ namespace com.IvanMurzak.McpPlugin
             if (!isSuccessStatusCode || string.IsNullOrEmpty(accessToken))
             {
                 var kind = string.Equals(error, "invalid_grant", StringComparison.Ordinal)
-                    ? TokenRefreshFailureKind.InvalidGrant
+                    ? (RefreshClientIdFallback.IsClientIdMismatchText(errorDescription)
+                        ? TokenRefreshFailureKind.ClientIdMismatch
+                        : TokenRefreshFailureKind.InvalidGrant)
                     : string.Equals(error, "invalid_target", StringComparison.Ordinal)
                         ? TokenRefreshFailureKind.InvalidTarget
                         : TokenRefreshFailureKind.Transient;

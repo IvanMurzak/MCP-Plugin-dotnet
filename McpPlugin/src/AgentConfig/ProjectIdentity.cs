@@ -102,7 +102,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 throw new ArgumentNullException(nameof(projectRoot));
 
             var hash = HashOf(projectRoot);
-            var pin = ToHex(hash, PinLength / 2);
+            var pin = HexEncoding.ToLowerHex(hash, PinLength / 2);
             var derivedPort = PortFromHash(hash);
 
             if (portOverride.HasValue)
@@ -122,7 +122,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         {
             if (projectRoot == null)
                 throw new ArgumentNullException(nameof(projectRoot));
-            return ToHex(HashOf(projectRoot), PinLength / 2);
+            return HexEncoding.ToLowerHex(HashOf(projectRoot), PinLength / 2);
         }
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         {
             if (projectRoot == null)
                 throw new ArgumentNullException(nameof(projectRoot));
-            return ToHex(HashOf(projectRoot), 32);
+            return HexEncoding.ToLowerHex(HashOf(projectRoot), 32);
         }
 
         /// <summary>
@@ -198,7 +198,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         {
             if (projectRoot == null)
                 throw new ArgumentNullException(nameof(projectRoot));
-            return ToHex(HashOfV2(projectRoot), PinLength / 2);
+            return HexEncoding.ToLowerHex(HashOfV2(projectRoot), PinLength / 2);
         }
 
         /// <summary>
@@ -211,7 +211,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         {
             if (projectRoot == null)
                 throw new ArgumentNullException(nameof(projectRoot));
-            return ToHex(HashOfV2(projectRoot), 32);
+            return HexEncoding.ToLowerHex(HashOfV2(projectRoot), 32);
         }
 
         /// <summary>
@@ -251,7 +251,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 throw new ArgumentNullException(nameof(projectRoot));
 
             var hash = HashOfV2(projectRoot);
-            var pin = ToHex(hash, PinLength / 2);
+            var pin = HexEncoding.ToLowerHex(hash, PinLength / 2);
             var derivedPort = PortFromHash(hash);
 
             if (portOverride.HasValue)
@@ -301,14 +301,6 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             while (end > 1 && (path[end - 1] == '/' || path[end - 1] == '\\'))
                 end--;
             return end == path.Length ? path : path.Substring(0, end);
-        }
-
-        private static string ToHex(byte[] bytes, int count)
-        {
-            var sb = new StringBuilder(count * 2);
-            for (var i = 0; i < count; i++)
-                sb.Append(bytes[i].ToString("x2"));
-            return sb.ToString();
         }
     }
 }

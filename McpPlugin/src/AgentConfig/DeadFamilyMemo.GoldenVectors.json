@@ -1,0 +1,114 @@
+{
+  "description": "Cross-language golden vectors for the dead-family memo sidecar plugin-dead-family.json, shared by MCP-Plugin-dotnet PersistedDeadFamilyMemo and AI-Game-Dev-CLI-Core dead-family-memo.ts (keep the two copies byte-identical). writes: the sidecar BYTES (UTF-8, no BOM) a writer must produce for (refreshToken, reason, declaredDeadAtMs) — JSON.stringify({version:1, refreshTokenSha256, reason, declaredDeadAt}, null, 2): 2-space indent, LF, no trailing newline; refreshTokenSha256 = lowercase hex SHA-256 of the UTF-8 token; declaredDeadAt = Date.prototype.toISOString(). reads: the verdict a reader must reach for the given file text and token — 'dead' (adopt the verdict, with expectedReason) or 'none' (no memo: different/non-string/uppercase hash, unparseable, non-object root, or a reason naming a client-id mismatch, which is never a verdict). version is not checked. Generated with Node's crypto + JSON.stringify.",
+  "writes": [
+    {
+      "name": "plainInvalidGrant",
+      "refreshToken": "RT-dead-aaa",
+      "reason": "invalid_grant: refresh token has expired",
+      "declaredDeadAtMs": 1792586096789,
+      "refreshTokenSha256": "e443c1956309efd3a9c8e766182150be29eba245ec4db1162f949e9a6682ac02",
+      "expectedFile": "{\n  \"version\": 1,\n  \"refreshTokenSha256\": \"e443c1956309efd3a9c8e766182150be29eba245ec4db1162f949e9a6682ac02\",\n  \"reason\": \"invalid_grant: refresh token has expired\",\n  \"declaredDeadAt\": \"2026-10-21T12:34:56.789Z\"\n}"
+    },
+    {
+      "name": "escapingAndNonAscii",
+      "refreshToken": "RT-ünïcode-Ж-😀",
+      "reason": "quote \" backslash \\ newline \n cr \r tab \t bs \b ff \f ctl \u0001\u001f html <&'> é Ж 😀 ls   del  slash /",
+      "declaredDeadAtMs": 1767323045006,
+      "refreshTokenSha256": "7071b375c37a7dc41b925d4c9611fdb25b0f15a1fe4466acdf34388ae178f8ef",
+      "expectedFile": "{\n  \"version\": 1,\n  \"refreshTokenSha256\": \"7071b375c37a7dc41b925d4c9611fdb25b0f15a1fe4466acdf34388ae178f8ef\",\n  \"reason\": \"quote \\\" backslash \\\\ newline \\n cr \\r tab \\t bs \\b ff \\f ctl \\u0001\\u001f html <&'> é Ж 😀 ls   del  slash /\",\n  \"declaredDeadAt\": \"2026-01-02T03:04:05.006Z\"\n}"
+    },
+    {
+      "name": "invalidTargetWholeSecond",
+      "refreshToken": "RT-target-bbb",
+      "reason": "server configuration error: invalid_target",
+      "declaredDeadAtMs": 1798761599000,
+      "refreshTokenSha256": "7b83a770274d5754a1d9646c77dde8636aae0b438033fb088dc14065dfb2307f",
+      "expectedFile": "{\n  \"version\": 1,\n  \"refreshTokenSha256\": \"7b83a770274d5754a1d9646c77dde8636aae0b438033fb088dc14065dfb2307f\",\n  \"reason\": \"server configuration error: invalid_target\",\n  \"declaredDeadAt\": \"2026-12-31T23:59:59.000Z\"\n}"
+    }
+  ],
+  "reads": [
+    {
+      "name": "matchingRecord",
+      "file": "{\n  \"version\": 1,\n  \"refreshTokenSha256\": \"d4939ec3073c20e4011e7757eb4a6a4bb25632a24158d0275d1ca1c80031a975\",\n  \"reason\": \"invalid_grant: revoked\",\n  \"declaredDeadAt\": \"1970-01-01T00:00:00.000Z\"\n}",
+      "refreshToken": "RT-read-ccc",
+      "expected": "dead",
+      "expectedReason": "invalid_grant: revoked"
+    },
+    {
+      "name": "differentToken",
+      "file": "{\n  \"version\": 1,\n  \"refreshTokenSha256\": \"183c683b41e6734b80c54aa1d6f28383ab2c7e46723dcfe689fd17f523399ec3\",\n  \"reason\": \"invalid_grant: revoked\",\n  \"declaredDeadAt\": \"1970-01-01T00:00:00.000Z\"\n}",
+      "refreshToken": "RT-read-ccc",
+      "expected": "none"
+    },
+    {
+      "name": "clientIdMismatchIsNotAVerdict",
+      "file": "{\n  \"version\": 1,\n  \"refreshTokenSha256\": \"d4939ec3073c20e4011e7757eb4a6a4bb25632a24158d0275d1ca1c80031a975\",\n  \"reason\": \"invalid_grant: client_id does not match the refresh token\",\n  \"declaredDeadAt\": \"1970-01-01T00:00:00.000Z\"\n}",
+      "refreshToken": "RT-read-ccc",
+      "expected": "none"
+    },
+    {
+      "name": "clientIdMismatchCaseInsensitive",
+      "file": "{\n  \"version\": 1,\n  \"refreshTokenSha256\": \"d4939ec3073c20e4011e7757eb4a6a4bb25632a24158d0275d1ca1c80031a975\",\n  \"reason\": \"CLIENT_ID DOES NOT MATCH\",\n  \"declaredDeadAt\": \"1970-01-01T00:00:00.000Z\"\n}",
+      "refreshToken": "RT-read-ccc",
+      "expected": "none"
+    },
+    {
+      "name": "uppercaseHashDoesNotMatch",
+      "file": "{\n  \"version\": 1,\n  \"refreshTokenSha256\": \"D4939EC3073C20E4011E7757EB4A6A4BB25632A24158D0275D1CA1C80031A975\",\n  \"reason\": \"x\"\n}",
+      "refreshToken": "RT-read-ccc",
+      "expected": "none"
+    },
+    {
+      "name": "versionIsNotChecked",
+      "file": "{\n  \"version\": 2,\n  \"refreshTokenSha256\": \"d4939ec3073c20e4011e7757eb4a6a4bb25632a24158d0275d1ca1c80031a975\",\n  \"reason\": \"invalid_grant\",\n  \"declaredDeadAt\": \"whatever\"\n}",
+      "refreshToken": "RT-read-ccc",
+      "expected": "dead",
+      "expectedReason": "invalid_grant"
+    },
+    {
+      "name": "missingReasonMatchesWithEmptyReason",
+      "file": "{\n  \"version\": 1,\n  \"refreshTokenSha256\": \"d4939ec3073c20e4011e7757eb4a6a4bb25632a24158d0275d1ca1c80031a975\"\n}",
+      "refreshToken": "RT-read-ccc",
+      "expected": "dead",
+      "expectedReason": ""
+    },
+    {
+      "name": "nonStringReasonMatchesWithEmptyReason",
+      "file": "{\n  \"version\": 1,\n  \"refreshTokenSha256\": \"d4939ec3073c20e4011e7757eb4a6a4bb25632a24158d0275d1ca1c80031a975\",\n  \"reason\": 42\n}",
+      "refreshToken": "RT-read-ccc",
+      "expected": "dead",
+      "expectedReason": ""
+    },
+    {
+      "name": "nonStringHash",
+      "file": "{\n  \"version\": 1,\n  \"refreshTokenSha256\": 7,\n  \"reason\": \"x\"\n}",
+      "refreshToken": "RT-read-ccc",
+      "expected": "none"
+    },
+    {
+      "name": "arrayRoot",
+      "file": "[]",
+      "refreshToken": "RT-read-ccc",
+      "expected": "none"
+    },
+    {
+      "name": "nullRoot",
+      "file": "null",
+      "refreshToken": "RT-read-ccc",
+      "expected": "none"
+    },
+    {
+      "name": "malformedJson",
+      "file": "{\"refreshTokenSha256\":",
+      "refreshToken": "RT-read-ccc",
+      "expected": "none"
+    },
+    {
+      "name": "crlfIndentedWriterOutput",
+      "file": "{\r\n  \"version\": 1,\r\n  \"refreshTokenSha256\": \"d4939ec3073c20e4011e7757eb4a6a4bb25632a24158d0275d1ca1c80031a975\",\r\n  \"reason\": \"invalid_grant\",\r\n  \"declaredDeadAt\": \"1970-01-01T00:00:00.000Z\"\r\n}",
+      "refreshToken": "RT-read-ccc",
+      "expected": "dead",
+      "expectedReason": "invalid_grant"
+    }
+  ]
+}

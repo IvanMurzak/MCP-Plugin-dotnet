@@ -19,8 +19,7 @@ namespace com.IvanMurzak.McpPlugin
     /// How a failed refresh should be classified by the caller (unified-machine-auth 04 §3.5). The
     /// distinction is behavioral: <see cref="InvalidGrant"/> and <see cref="InvalidTarget"/> are
     /// the only terminal kinds — the only ones that may declare a credential family dead (after
-    /// the mandatory post-failure re-read); everything else is retryable and must never destroy
-    /// local state.
+    /// the mandatory post-failure re-read); everything else must never destroy local state.
     /// </summary>
     public enum TokenRefreshFailureKind
     {
@@ -47,6 +46,18 @@ namespace com.IvanMurzak.McpPlugin
         /// that adopts RFC 8707 resource indicators inherits sane terminal behavior.
         /// </summary>
         InvalidTarget = 2,
+
+        /// <summary>
+        /// The authorization server answered <c>invalid_grant</c> with the description
+        /// <see cref="RefreshClientIdFallback.ClientIdMismatchDescription"/>: the refresh token was
+        /// minted under ANOTHER client id than the one presented. The server checks the id only on a
+        /// live token and writes nothing, so the token is still good for its real mint client — this
+        /// is NEVER a dead family and never persisted as one. It is not transient either (presenting
+        /// the same id again gets the same answer): a family with no stored <c>clientId</c> retries
+        /// under the other first-party ids (<see cref="RefreshClientIdFallback"/>); otherwise the
+        /// caller surfaces sign-in-required without declaring the family dead.
+        /// </summary>
+        ClientIdMismatch = 3,
     }
 
     /// <summary>
@@ -80,6 +91,21 @@ namespace com.IvanMurzak.McpPlugin
         /// successful result (meaningless there).
         /// </summary>
         public TokenRefreshFailureKind FailureKind { get; }
+
+        /// <summary>
+        /// Set by <see cref="HttpTokenRefresher"/> on a <see cref="TokenRefreshFailureKind.Transient"/>
+        /// failure that is a DECIDED server answer (a 4xx such as <c>invalid_client</c> or 429), as
+        /// opposed to one that may be a lost response to a committed rotation (timeout, network
+        /// error, 5xx). Only the latter makes the provider re-present the token under the same
+        /// client id first; other refreshers leave it false (treated as possibly lost).
+        /// </summary>
+        internal bool IsDecidedAnswer { get; private set; }
+
+        internal TokenRefreshResult MarkDecidedAnswer()
+        {
+            IsDecidedAnswer = true;
+            return this;
+        }
 
         TokenRefreshResult(bool succeeded, string? accessToken, string? refreshToken, DateTimeOffset? expiresAt, string? failureReason, TokenRefreshFailureKind failureKind)
         {
