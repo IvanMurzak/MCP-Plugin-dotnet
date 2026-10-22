@@ -37,6 +37,12 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// </summary>
         protected volatile bool _connectionRejected = false;
 
+        /// <summary>
+        /// How long a denied connection stays open after <c>ForceDisconnect</c> is sent, so the frame
+        /// reaches the client before the connection is aborted.
+        /// </summary>
+        internal static readonly TimeSpan ForceDisconnectFlushTime = TimeSpan.FromMilliseconds(250);
+
         protected BaseHub(ILogger logger, IMcpConnectionStrategy strategy, IAuthorizationWebhookService authorizationWebhookService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -100,6 +106,17 @@ namespace com.IvanMurzak.McpPlugin.Server
                 try
                 {
                     await Clients.Caller.ForceDisconnect("Authorization failed. Token may be missing, invalid, or revoked.");
+
+                    // The send completes once the message is queued, not once it is on the wire, and
+                    // Context.Abort() drops whatever is still queued: in production the client often saw
+                    // only a bare close. A client treats a close WITHOUT ForceDisconnect as transient and
+                    // retries, so give the frame a short, bounded time to flush. The wait ends early when
+                    // the client, having handled ForceDisconnect, closes the connection itself.
+                    await Task.Delay(ForceDisconnectFlushTime, Context.ConnectionAborted);
+                }
+                catch (OperationCanceledException) when (Context.ConnectionAborted.IsCancellationRequested)
+                {
+                    // The client closed first: the frame was delivered (or the connection is gone).
                 }
                 catch (Exception ex)
                 {

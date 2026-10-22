@@ -60,6 +60,11 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string IdleTimeoutSeconds = "idle-timeout-seconds";
                     public const string MaxIdleSessionCount = "max-idle-session-count";
 
+                    // Plugin reconnect handling (server). See DefaultPluginReconnectGraceSeconds and
+                    // DefaultPluginReconnectWaitSeconds.
+                    public const string PluginReconnectGraceSeconds = "plugin-reconnect-grace-seconds";
+                    public const string PluginReconnectWaitSeconds = "plugin-reconnect-wait-seconds";
+
                     // OAuth resource-server arguments (mcp-authorize b2).
                     // <c>auth</c> is the target-state name for <c>authorization</c> ({none|oauth});
                     // the legacy <c>authorization</c> arg is retained until the legacy surface is
@@ -113,6 +118,8 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string Authorization = "MCP_AUTHORIZATION";
                     public const string IdleTimeoutSeconds = "MCP_PLUGIN_IDLE_TIMEOUT_SECONDS";
                     public const string MaxIdleSessionCount = "MCP_PLUGIN_MAX_IDLE_SESSION_COUNT";
+                    public const string PluginReconnectGraceSeconds = "MCP_PLUGIN_RECONNECT_GRACE_SECONDS";
+                    public const string PluginReconnectWaitSeconds = "MCP_PLUGIN_RECONNECT_WAIT_SECONDS";
 
                     // OAuth resource-server environment variables (mcp-authorize b2).
                     public const string Auth = "MCP_AUTH";
@@ -165,6 +172,25 @@ namespace com.IvanMurzak.McpPlugin.Common
                 /// <see cref="Env.MaxIdleSessionCount"/> environment variable.
                 /// </summary>
                 public const int DefaultMaxIdleSessionCount = 1000;
+
+                /// <summary>
+                /// Default time (seconds) the server remembers the tool, prompt and resource lists of
+                /// an engine plugin whose connection dropped. While the plugin reconnects (a Unity
+                /// recompile, a server deploy, an auth refresh) a list request that would have reached
+                /// it is answered from the remembered lists, and a request that needs the plugin waits
+                /// for it (see <see cref="DefaultPluginReconnectWaitSeconds"/>). <c>0</c> disables it.
+                /// Override via <see cref="Args.PluginReconnectGraceSeconds"/> or
+                /// <see cref="Env.PluginReconnectGraceSeconds"/>.
+                /// </summary>
+                public const int DefaultPluginReconnectGraceSeconds = 300;
+
+                /// <summary>
+                /// Default longest time (seconds) a request that needs a reconnecting plugin waits for
+                /// it before failing with a "the engine plugin is reconnecting, retry" error. Never
+                /// longer than what is left of the reconnect grace. Override via
+                /// <see cref="Args.PluginReconnectWaitSeconds"/> or <see cref="Env.PluginReconnectWaitSeconds"/>.
+                /// </summary>
+                public const int DefaultPluginReconnectWaitSeconds = 60;
 
                 public const string DefaultBodyPath = "mcpServers";
                 public const string DefaultServerName = "McpPlugin";

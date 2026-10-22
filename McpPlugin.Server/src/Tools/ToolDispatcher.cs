@@ -49,7 +49,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             if (nativeTools != null && services.GetService<IMcpConnectionStrategy>() is AccountMcpStrategy strategy)
             {
                 var resolution = strategy.ResolveCurrentSession();
-                if (resolution.Kind != InstanceResolutionKind.Resolved)
+                // A session whose instance is reconnecting goes on to the runner, which waits for it
+                // (bounded) before sending the call once.
+                if (resolution.Kind != InstanceResolutionKind.Resolved
+                    && services.GetService<PluginCatalogCache>()?.HasOfflineTargetForCurrentSession() != true)
                 {
                     var identity = McpSessionTokenContext.CurrentIdentity;
                     var message = AgentActionableErrors.ForResolution(

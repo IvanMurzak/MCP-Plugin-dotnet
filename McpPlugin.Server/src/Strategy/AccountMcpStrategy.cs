@@ -157,7 +157,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         /// <see cref="AccountInstances.Resolve"/>: a project pin is still applied first and strictly, so
         /// a selection can narrow a pin but can never route across projects.</para>
         /// </summary>
-        string? ResolveStickySelection()
+        internal string? ResolveStickySelection()
             => McpSessionTokenContext.CurrentSelectedInstanceId
                 ?? _selections.Get(McpSessionTokenContext.CurrentSessionId);
 

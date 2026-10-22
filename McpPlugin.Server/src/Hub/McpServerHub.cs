@@ -78,6 +78,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (_connectionRejected)
                 return;
 
+            // A reconnecting plugin takes its remembered lists back (or a replaced instance's are dropped).
+            Catalog?.OnPluginConnected(Context.ConnectionId);
+
             var allActiveClients = _strategy.GetAllClientData(Context.ConnectionId, _sessionTracker);
             _logger.LogDebug("{method}. {guid}. Sending initial client data. Count: {count}",
                 nameof(OnConnectedAsync), _guid, allActiveClients.Length);
@@ -150,6 +153,14 @@ namespace com.IvanMurzak.McpPlugin.Server
             account.RegisterInstance(identity, metadata, Context.ConnectionId, _logger);
         }
 
+        /// <summary>
+        /// The host's <see cref="PluginCatalogCache"/>, read from the connection's request services so the
+        /// public constructor stays unchanged. Null outside a real hub connection. Not cached: SignalR
+        /// creates a hub instance per invocation, so each instance reads it about once.
+        /// </summary>
+        PluginCatalogCache? Catalog
+            => Context?.GetHttpContext()?.RequestServices?.GetService(typeof(PluginCatalogCache)) as PluginCatalogCache;
+
         static string? QueryValue(Microsoft.AspNetCore.Http.IQueryCollection? query, string key)
         {
             if (query == null || !query.TryGetValue(key, out var value))
@@ -172,6 +183,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                 return Task.CompletedTask;
 
             _webhookCollector.OnPluginDisconnected(Context.ConnectionId);
+            // Every plugin-side close keeps the lists for the reconnect grace: the server cannot tell a
+            // recompile from a closed project. See PluginCatalogCache for what drops them early.
+            Catalog?.OnPluginDisconnected(Context.ConnectionId);
             return base.OnDisconnectedAsync(exception);
         }
 
@@ -181,11 +195,17 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("{method}. {guid}. Data: {data}",
                 nameof(IServerToolHub.NotifyAboutUpdatedTools), _guid, request);
 
-            _eventAppToolsChange.OnNext(new HubEventToolsChange.EventData
+            var eventData = new HubEventToolsChange.EventData
             {
                 ConnectionId = Context.ConnectionId,
                 Request = request
-            });
+            };
+            // The plugin sends this on every (re)connect. When its previous tools are known, agents
+            // are told only if the set really changed.
+            var catalog = Catalog;
+            if (catalog == null || !catalog.TryNotifyIfToolsChanged(Context.ConnectionId, () => _eventAppToolsChange.OnNext(eventData)))
+                _eventAppToolsChange.OnNext(eventData);
+
             return ResponseData.Success(request.RequestId, "Received tools update notification").TaskFromResult();
         }
 
@@ -194,6 +214,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
                 nameof(IServerPromptHub.NotifyAboutUpdatedPrompts), _guid, request);
+
+            Catalog?.Invalidate(Context.ConnectionId, PluginCatalogKind.Prompts);
 
             _eventAppPromptsChange.OnNext(new HubEventPromptsChange.EventData
             {
@@ -209,6 +231,10 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             _logger.LogTrace("{method}. {guid}. Data: {data}",
                 nameof(IServerResourceHub.NotifyAboutUpdatedResources), _guid, request);
+
+            var catalog = Catalog;
+            catalog?.Invalidate(Context.ConnectionId, PluginCatalogKind.Resources);
+            catalog?.Invalidate(Context.ConnectionId, PluginCatalogKind.ResourceTemplates);
             _eventAppResourcesChange.OnNext(new HubEventResourcesChange.EventData
             {
                 ConnectionId = Context.ConnectionId,

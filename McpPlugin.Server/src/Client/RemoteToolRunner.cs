@@ -33,9 +33,21 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly IMcpConnectionStrategy _strategy;
         readonly CompositeDisposable _disposables = new();
         readonly CancellationTokenSource _cancellationTokenSource;
+        readonly PluginCatalogCache? _catalog;
 
         public RemoteToolRunner(ILogger<RemoteToolRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IRequestTrackingService requestTrackingService, IMcpConnectionStrategy strategy)
+            : this(logger, remoteAppContext, dataArguments, requestTrackingService, strategy, catalog: null)
         {
+        }
+
+        /// <summary>
+        /// With a <paramref name="catalog"/>, a reconnecting plugin's remembered tools answer
+        /// <c>tools/list</c>, a tool call waits for the plugin to return, and a list never waits for a
+        /// plugin that is not there (see <see cref="CatalogAwareInvoke"/>).
+        /// </summary>
+        public RemoteToolRunner(ILogger<RemoteToolRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IRequestTrackingService requestTrackingService, IMcpConnectionStrategy strategy, PluginCatalogCache? catalog)
+        {
+            _catalog = catalog;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("Ctor.");
             _dataArguments = dataArguments ?? throw new ArgumentNullException(nameof(dataArguments));
@@ -56,16 +68,11 @@ namespace com.IvanMurzak.McpPlugin.Server
                 request.RequestID,
                 async () =>
                 {
-                    // Sent once, never retried: a retry would run the tool a second time.
-                    var responseData = await ClientUtils.InvokeOnceAsync<RequestCallTool, ResponseCallTool, McpServerHub>(
-                        logger: _logger,
-                        hubContext: _remoteAppContext,
-                        methodName: nameof(IClientToolHub.RunCallTool),
-                        request: request,
-                        timeoutMs: toolTimeoutMs,
-                        strategy: _strategy,
-                        token: McpSessionTokenContext.CurrentToken,
-                        cancellationToken: cancellationToken);
+                    // Sent once, never retried: a retry would run the tool a second time. Waiting for a
+                    // reconnecting plugin happens BEFORE sending, so it cannot cause a second run.
+                    var responseData = await CatalogAwareInvoke.SendAsync<RequestCallTool, ResponseCallTool>(
+                        _logger, _remoteAppContext, nameof(IClientToolHub.RunCallTool), request, toolTimeoutMs,
+                        retryAfterDelivery: false, _strategy, _catalog, cancellationToken);
 
                     if (responseData.Status == ResponseStatus.Error)
                     {
@@ -90,15 +97,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
             cancellationToken = linkedCts.Token;
 
-            var response = await ClientUtils.InvokeAsync<RequestListTool, ResponseListTool[], McpServerHub>(
-                logger: _logger,
-                hubContext: _remoteAppContext,
-                methodName: nameof(IClientToolHub.RunListTool),
-                request: request,
-                dataArguments: _dataArguments,
-                strategy: _strategy,
-                token: McpSessionTokenContext.CurrentToken,
-                cancellationToken: cancellationToken);
+            var response = await CatalogAwareInvoke.ListAsync<RequestListTool, ResponseListTool[]>(
+                _logger, _remoteAppContext, nameof(IClientToolHub.RunListTool), request, _dataArguments,
+                _strategy, _catalog, PluginCatalogKind.Tools, cancellationToken);
 
             if (response.Status == ResponseStatus.Error)
                 return ResponseData<ResponseListTool[]>.Error(request.RequestID, response.Message ?? "Got an error during listing tools", response.ErrorKind, response.HttpStatusCode);
