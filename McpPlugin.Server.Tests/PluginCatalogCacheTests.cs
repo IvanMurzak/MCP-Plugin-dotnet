@@ -332,26 +332,55 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         public async Task ToolChange_WithDifferentTools_IsForwardedOnce()
         {
             var cache = NewCache(fetchTools: (_, _) => Task.FromResult<ResponseListTool[]?>(PluginReconnect.Tools("a", "new")));
-            Connect(cache, "acc-1", "i1", "c1", HashA);
-            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("a"));
+            Reconnected(cache, PluginReconnect.Tools("a"));
             var notified = new TaskCompletionSource<bool>();
 
-            cache.TryNotifyIfToolsChanged("c1", () => notified.TrySetResult(true)).ShouldBeTrue();
+            cache.TryNotifyIfToolsChanged("c2", () => notified.TrySetResult(true)).ShouldBeTrue();
 
             (await notified.Task.WaitAsync(TimeSpan.FromSeconds(5))).ShouldBeTrue();
+        }
+
+        [Fact]
+        public async Task ToolChange_AfterAnAgentAlreadyListedTheNewTools_IsStillForwarded()
+        {
+            var cache = NewCache(fetchTools: (_, _) => Task.FromResult<ResponseListTool[]?>(PluginReconnect.Tools("a", "new")));
+            Reconnected(cache, PluginReconnect.Tools("a"));
+            // One agent lists the new tools before the plugin's change notice arrives; the others still show "a".
+            cache.Record("c2", PluginCatalogKind.Tools, PluginReconnect.Tools("a", "new"));
+            var notified = new TaskCompletionSource<bool>();
+
+            cache.TryNotifyIfToolsChanged("c2", () => notified.TrySetResult(true)).ShouldBeTrue();
+
+            (await notified.Task.WaitAsync(TimeSpan.FromSeconds(5))).ShouldBeTrue();
+        }
+
+        [Fact]
+        public void ToolChange_AfterAToolListWasAnsweredWithoutThePlugin_IsLeftToTheCaller()
+        {
+            var cache = NewCache(fetchTools: (_, _) => Task.FromResult<ResponseListTool[]?>(PluginReconnect.Tools("a")));
+            Connect(cache, "acc-1", "i1", "c1", HashA);
+            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("a"));
+            using (PluginReconnect.Session("acc-1"))
+                cache.NoteToolListMissed(); // e.g. the busy plugin timed out: that agent shows only server tools
+            Disconnect(cache, "c1");
+            Connect(cache, "acc-1", "i1", "c2", HashA);
+
+            cache.TryNotifyIfToolsChanged("c2", () => { }).ShouldBeFalse("that agent must be told the plugin is back");
         }
 
         [Fact]
         public async Task ToolChange_WhenThePluginDoesNotAnswer_IsForwarded()
         {
             var cache = NewCache(fetchTools: (_, _) => Task.FromException<ResponseListTool[]?>(new TimeoutException()));
-            Connect(cache, "acc-1", "i1", "c1", HashA);
-            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("a"));
+            Reconnected(cache, PluginReconnect.Tools("a"));
             var notified = new TaskCompletionSource<bool>();
 
-            cache.TryNotifyIfToolsChanged("c1", () => notified.TrySetResult(true)).ShouldBeTrue();
+            cache.TryNotifyIfToolsChanged("c2", () => notified.TrySetResult(true)).ShouldBeTrue();
 
             (await notified.Task.WaitAsync(TimeSpan.FromSeconds(5))).ShouldBeTrue();
+            Disconnect(cache, "c2");
+            using (PluginReconnect.Session("acc-1"))
+                cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeNull("the pre-change list is stale");
         }
 
         [Fact]
@@ -361,6 +390,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             Connect(cache, "acc-1", "i1", "c1", HashA);
 
             cache.TryNotifyIfToolsChanged("c1", () => { }).ShouldBeFalse();
+        }
+
+        [Fact]
+        public void ToolChange_OfALivePluginThatDidNotReconnect_IsLeftToTheCaller_AndDropsTheStaleTools()
+        {
+            var cache = NewCache(fetchTools: (_, _) => Task.FromResult<ResponseListTool[]?>(PluginReconnect.Tools("a")));
+            Connect(cache, "acc-1", "i1", "c1", HashA);
+            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("a"));
+
+            cache.TryNotifyIfToolsChanged("c1", () => { }).ShouldBeFalse();
+
+            Disconnect(cache, "c1");
+            cache.OfflineCount.ShouldBe(0, "its only list was stale, so nothing is remembered");
         }
 
         // ───────────────────────────── single-plugin modes ─────────────────────────────
@@ -394,6 +436,33 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             multiCache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeNull("no safe routing key without accounts");
         }
 
+        [Fact]
+        public void SinglePluginMode_ANewerConnectionReplacingALivePlugin_DropsItsLists()
+        {
+            var first = "catalog-replaced-" + Guid.NewGuid().ToString("N");
+            var second = "catalog-replacing-" + Guid.NewGuid().ToString("N");
+            var single = new Mock<IMcpConnectionStrategy>();
+            single.Setup(s => s.AllowMultipleConnections).Returns(false);
+            var cache = new PluginCatalogCache(single.Object, Grace, TimeSpan.FromSeconds(1), clock: () => _now);
+            ClientUtils.AddClient(typeof(McpServerHub), first, NullLogger.Instance);
+            ClientUtils.AddClient(typeof(McpServerHub), second, NullLogger.Instance);
+            try
+            {
+                cache.OnPluginConnected(first);
+                cache.Record(first, PluginCatalogKind.Tools, PluginReconnect.Tools("t1"));
+                cache.OnPluginConnected(second); // e.g. another project's editor
+                cache.OnPluginDisconnected(first);
+                cache.OnPluginDisconnected(second);
+            }
+            finally
+            {
+                ClientUtils.RemoveClient(typeof(McpServerHub), first, NullLogger.Instance);
+                ClientUtils.RemoveClient(typeof(McpServerHub), second, NullLogger.Instance);
+            }
+
+            cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeNull();
+        }
+
         // ───────────────────────────── helpers ─────────────────────────────
 
         void Connect(PluginCatalogCache cache, string account, string instanceId, string connectionId, string pathHash, string machine = "PC-1")
@@ -401,5 +470,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
         void Disconnect(PluginCatalogCache cache, string connectionId)
             => PluginReconnect.Unregister(_strategy, cache, connectionId);
+
+        /// <summary>Instance i1 of acc-1 answered <paramref name="tools"/> on c1, dropped, and is back on c2.</summary>
+        void Reconnected(PluginCatalogCache cache, ResponseListTool[] tools)
+        {
+            Connect(cache, "acc-1", "i1", "c1", HashA);
+            cache.Record("c1", PluginCatalogKind.Tools, tools);
+            Disconnect(cache, "c1");
+            Connect(cache, "acc-1", "i1", "c2", HashA);
+        }
     }
 }

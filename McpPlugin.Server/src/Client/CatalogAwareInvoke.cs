@@ -56,16 +56,28 @@ namespace com.IvanMurzak.McpPlugin.Server
             where TRequest : IRequestID
             where T : class
         {
-            var response = await ClientUtils.InvokeCoreAsync<TRequest, T, McpServerHub>(
-                logger, hubContext, methodName, request, dataArguments.PluginTimeoutMs, retryAfterDelivery: true,
-                strategy, McpSessionTokenContext.CurrentToken, cancellationToken,
-                waitForClient: catalog == null ? null : NeverWait,
-                noClientMessage: NotConnectedMessage,
-                onAnswered: catalog == null ? null : (connectionId, answer) =>
-                {
-                    if (answer.Status == ResponseStatus.Success && answer.Value != null)
-                        catalog.Record(connectionId, kind, answer.Value);
-                });
+            // A tools/list answered without the plugin's tools leaves the agent with only the server's
+            // own tools, so the plugin's next tool change must reach it (see NoteToolListMissed).
+            var noteMiss = catalog != null && kind == PluginCatalogKind.Tools;
+            ResponseData<T> response;
+            try
+            {
+                response = await ClientUtils.InvokeCoreAsync<TRequest, T, McpServerHub>(
+                    logger, hubContext, methodName, request, dataArguments.PluginTimeoutMs, retryAfterDelivery: true,
+                    strategy, McpSessionTokenContext.CurrentToken, cancellationToken,
+                    waitForClient: catalog == null ? null : NeverWait,
+                    noClientMessage: NotConnectedMessage,
+                    onAnswered: catalog == null ? null : (connectionId, answer) =>
+                    {
+                        if (answer.Status == ResponseStatus.Success && answer.Value != null)
+                            catalog.Record(connectionId, kind, answer.Value);
+                    });
+            }
+            catch (OperationCanceledException) when (noteMiss)
+            {
+                catalog!.NoteToolListMissed();
+                throw;
+            }
 
             if (catalog != null && response.Status == ResponseStatus.Error && response.ErrorKind == ResponseErrorKind.Unavailable)
             {
@@ -77,6 +89,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                         .SetData(remembered);
                 }
             }
+            if (noteMiss && response.Status == ResponseStatus.Error)
+                catalog!.NoteToolListMissed();
             return response;
         }
 

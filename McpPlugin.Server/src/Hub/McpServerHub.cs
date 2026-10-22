@@ -155,11 +155,11 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         /// <summary>
         /// The host's <see cref="PluginCatalogCache"/>, read from the connection's request services so the
-        /// public constructor stays unchanged. Null outside a real hub connection.
+        /// public constructor stays unchanged. Null outside a real hub connection. Not cached: SignalR
+        /// creates a hub instance per invocation, so each instance reads it about once.
         /// </summary>
         PluginCatalogCache? Catalog
-            => _catalog ??= Context?.GetHttpContext()?.RequestServices?.GetService(typeof(PluginCatalogCache)) as PluginCatalogCache;
-        PluginCatalogCache? _catalog;
+            => Context?.GetHttpContext()?.RequestServices?.GetService(typeof(PluginCatalogCache)) as PluginCatalogCache;
 
         static string? QueryValue(Microsoft.AspNetCore.Http.IQueryCollection? query, string key)
         {

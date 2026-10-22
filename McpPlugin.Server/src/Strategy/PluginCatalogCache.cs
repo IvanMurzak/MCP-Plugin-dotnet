@@ -71,6 +71,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         readonly object _gate = new object();
         readonly Dictionary<string, Dictionary<string, Entry>> _byAccount = new Dictionary<string, Dictionary<string, Entry>>(StringComparer.Ordinal);
         readonly Dictionary<string, Entry> _byConnection = new Dictionary<string, Entry>(StringComparer.Ordinal);
+        /// <summary>Accounts (with a bucket) where a <c>tools/list</c> was answered without the plugin's tools.</summary>
+        readonly HashSet<string> _toolListMissed = new HashSet<string>(StringComparer.Ordinal);
         readonly IMcpConnectionStrategy _strategy;
         readonly Func<DateTimeOffset> _clock;
         readonly ILogger? _logger;
@@ -148,8 +150,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 if (bucket.TryGetValue(key, out var entry))
                 {
                     revived = entry.ConnectionId == null && entry.HasAnyList;
-                    if (entry.ConnectionId != null)
+                    if (entry.ConnectionId != null && !string.Equals(entry.ConnectionId, connectionId, StringComparison.Ordinal))
+                    {
                         _byConnection.Remove(entry.ConnectionId);
+                        // Single-plugin mode: a newer connection replaced a LIVE plugin, which may be
+                        // another project entirely, so the replaced plugin's lists are not its lists.
+                        if (instance == null)
+                            entry.ClearLists();
+                    }
+                    // What agents may have seen of this target so far: the tool-change check after a
+                    // reconnect compares against this, never against a list fetched since.
+                    entry.AnnouncedTools = entry.Lists[(int)PluginCatalogKind.Tools] as ResponseListTool[];
                 }
                 else
                 {
@@ -297,33 +308,55 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         }
 
         /// <summary>
-        /// The plugin on <paramref name="connectionId"/> said its tools changed. When its previous tool
-        /// list is known, asks it for the new one in the background and calls <paramref name="notify"/>
-        /// only if the set really differs (or the check fails), so a plain reconnect does not send
-        /// agents a <c>tools/list_changed</c>. Returns false when there is nothing to compare against;
-        /// the caller then notifies as usual.
+        /// The plugin on <paramref name="connectionId"/> said its tools changed. When the tools agents
+        /// were shown for it are known (it reconnected with remembered tools), asks it for the new list
+        /// in the background and calls <paramref name="notify"/> only if the set really differs (or the
+        /// check fails), so a plain reconnect does not send agents a <c>tools/list_changed</c>. Returns
+        /// false when there is nothing safe to compare against (no reconnect, or a <c>tools/list</c> of
+        /// this account was answered without the plugin's tools since); the caller then notifies as
+        /// usual, and the remembered tools are dropped as stale.
         /// </summary>
         public bool TryNotifyIfToolsChanged(string connectionId, Action notify)
         {
             if (notify == null) throw new ArgumentNullException(nameof(notify));
-            if (_fetchTools == null || string.IsNullOrEmpty(connectionId))
+            if (string.IsNullOrEmpty(connectionId))
                 return false;
 
-            ResponseListTool[]? known;
+            ResponseListTool[]? announced;
             lock (_gate)
             {
                 if (!_byConnection.TryGetValue(connectionId, out var entry))
                     return false;
-                known = entry.Lists[(int)PluginCatalogKind.Tools] as ResponseListTool[];
+                var missed = _toolListMissed.Remove(entry.Account);
+                announced = entry.AnnouncedTools;
+                if (_fetchTools == null || announced == null || missed)
+                {
+                    entry.AnnouncedTools = null;
+                    entry.Lists[(int)PluginCatalogKind.Tools] = null;
+                    return false;
+                }
             }
-            if (known == null)
-                return false;
 
-            _ = CompareAndNotifyAsync(connectionId, known, notify);
+            _ = CompareAndNotifyAsync(connectionId, announced, notify);
             return true;
         }
 
-        async Task CompareAndNotifyAsync(string connectionId, ResponseListTool[] known, Action notify)
+        /// <summary>
+        /// A <c>tools/list</c> of the CURRENT session was answered without its plugin's tools (no route,
+        /// timeout, error). That session now shows only the server's own tools, so the next tool change
+        /// of its account is forwarded even if the plugin's set looks unchanged.
+        /// </summary>
+        public void NoteToolListMissed()
+        {
+            lock (_gate)
+            {
+                var account = CurrentAccountKeyLocked(out _);
+                if (account != null && _byAccount.ContainsKey(account))
+                    _toolListMissed.Add(account);
+            }
+        }
+
+        async Task CompareAndNotifyAsync(string connectionId, ResponseListTool[] announced, Action notify)
         {
             ResponseListTool[]? fresh = null;
             try
@@ -337,14 +370,18 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 
             try
             {
-                if (fresh != null)
+                // An unanswered fetch leaves nothing reliable to remember: the old list is stale.
+                SetList(connectionId, PluginCatalogKind.Tools, fresh);
+                if (fresh != null && SameToolSet(announced, fresh))
                 {
-                    Record(connectionId, PluginCatalogKind.Tools, fresh);
-                    if (SameToolSet(known, fresh))
-                    {
-                        _logger?.LogDebug("PluginCatalogCache: tools of {connectionId} are unchanged; tools/list_changed not sent.", connectionId);
-                        return;
-                    }
+                    _logger?.LogDebug("PluginCatalogCache: tools of {connectionId} are unchanged; tools/list_changed not sent.", connectionId);
+                    return;
+                }
+                lock (_gate)
+                {
+                    // Agents re-list after the notification, so from now on they are shown `fresh`.
+                    if (_byConnection.TryGetValue(connectionId, out var entry))
+                        entry.AnnouncedTools = fresh;
                 }
                 notify();
             }
@@ -403,32 +440,26 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             return ClientUtils.IsConnected(typeof(McpServerHub), connectionId);
         }
 
+        /// <summary>
+        /// The account bucket the CURRENT session routes within, or null when it has none: an oauth
+        /// session without identity (fail closed) or a multi-plugin strategy with no account scope.
+        /// </summary>
+        string? CurrentAccountKeyLocked(out AccountMcpStrategy? accountStrategy)
+        {
+            accountStrategy = _strategy as AccountMcpStrategy;
+            if (accountStrategy != null)
+                return McpSessionTokenContext.CurrentIdentity?.AccountId;
+            return _strategy.AllowMultipleConnections ? null : SingleAccount;
+        }
+
         Entry? FindOfflineForCurrentSessionLocked()
         {
             if (!Enabled)
                 return null;
 
-            string account;
-            string? pin = null;
-            string? selected = null;
-            var accountStrategy = _strategy as AccountMcpStrategy;
-            if (accountStrategy != null)
-            {
-                var identity = McpSessionTokenContext.CurrentIdentity;
-                if (identity == null)
-                    return null; // fail closed: no identity, no account, nothing to serve
-                account = identity.AccountId;
-                pin = McpSessionTokenContext.CurrentProjectPin;
-                selected = accountStrategy.ResolveStickySelection();
-            }
-            else if (_strategy.AllowMultipleConnections)
-            {
+            var account = CurrentAccountKeyLocked(out var accountStrategy);
+            if (account == null)
                 return null;
-            }
-            else
-            {
-                account = SingleAccount;
-            }
 
             var now = _clock();
             SweepIfDue(now);
@@ -442,7 +473,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             var candidates = bucket.Values.Where(e => e.ConnectionId == null && e.Instance != null).ToList();
             if (candidates.Count == 0)
                 return null;
-            var resolution = AccountInstances.ResolveAmong(candidates.Select(e => e.Instance!).ToList(), pin, selected);
+            var resolution = AccountInstances.ResolveAmong(candidates.Select(e => e.Instance!).ToList(),
+                McpSessionTokenContext.CurrentProjectPin, accountStrategy.ResolveStickySelection());
             if (resolution.Kind != InstanceResolutionKind.Resolved || resolution.Instance == null)
                 return null;
             return candidates.FirstOrDefault(e => ReferenceEquals(e.Instance, resolution.Instance));
@@ -503,7 +535,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 var bucket = _byAccount[entry.Account];
                 bucket.Remove(entry.Key);
                 if (bucket.Count == 0)
+                {
                     _byAccount.Remove(entry.Account);
+                    _toolListMissed.Remove(entry.Account);
+                }
             }
         }
 
@@ -524,6 +559,18 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             public DateTimeOffset DisconnectedAt { get; set; }
             public object?[] Lists { get; } = new object?[KindCount];
             public bool HasAnyList => Lists.Any(l => l != null);
+
+            /// <summary>
+            /// The tools agents were last shown for this target (set on reconnect, updated when a change
+            /// is forwarded); null when unknown, and then every tool change is forwarded.
+            /// </summary>
+            public ResponseListTool[]? AnnouncedTools { get; set; }
+
+            public void ClearLists()
+            {
+                Array.Clear(Lists, 0, Lists.Length);
+                AnnouncedTools = null;
+            }
         }
     }
 }
