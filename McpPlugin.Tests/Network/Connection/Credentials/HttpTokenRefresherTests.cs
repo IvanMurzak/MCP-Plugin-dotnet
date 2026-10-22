@@ -308,6 +308,72 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             handler.Requests.Count.ShouldBe(2);
         }
 
+        [Fact]
+        public async Task Refresh_TransientFailure_IsReplayedOnlyForTheShortCooldown_ThenRetriedWithTheSameToken()
+        {
+            // A transient failure may be a lost response to a rotation the server already
+            // committed; the server absorbs a retry of the same token only for ~30 s, so the
+            // refresher must not memoize the failure for the whole 60 s window.
+            HttpTokenRefresher.TransientFailureCooldown.ShouldBeLessThan(TimeSpan.FromSeconds(10));
+            var now = new DateTimeOffset(2026, 8, 15, 12, 0, 0, TimeSpan.Zero);
+            var handler = new RecordingHttpMessageHandler()
+                .Enqueue(HttpStatusCode.ServiceUnavailable, "{}")
+                .RespondWith(HttpStatusCode.OK, SuccessJson);
+            var refresher = NewRefresher(handler, clock: () => now); // default 60 s window
+
+            var failed = await refresher.RefreshAsync(new TokenRefreshRequest(RefreshToken, ServerTarget, StoredClientId));
+            failed.FailureKind.ShouldBe(TokenRefreshFailureKind.Transient);
+
+            var replayed = await refresher.RefreshAsync(new TokenRefreshRequest(RefreshToken, ServerTarget, StoredClientId));
+            replayed.ShouldBeSameAs(failed); // inside the cooldown: no hot loop
+            handler.Requests.Count.ShouldBe(1);
+
+            now = now + HttpTokenRefresher.TransientFailureCooldown;
+            var retried = await refresher.RefreshAsync(new TokenRefreshRequest(RefreshToken, ServerTarget, StoredClientId));
+
+            handler.Requests.Count.ShouldBe(2);
+            handler.Requests[1].Form["refresh_token"].ShouldBe(RefreshToken);
+            retried.Succeeded.ShouldBeTrue();
+        }
+
+        [Fact]
+        public async Task Refresh_Transient4xxAnswer_StaysMemoizedForTheWholeWindow()
+        {
+            // A 429 / invalid_client is a decided answer, not a lost response: the short cooldown
+            // must not turn it into one token-endpoint hit per reconnect.
+            var now = new DateTimeOffset(2026, 8, 15, 12, 0, 0, TimeSpan.Zero);
+            var handler = new RecordingHttpMessageHandler()
+                .RespondWith((HttpStatusCode)429, "{\"error\":\"slow_down\"}");
+            var refresher = NewRefresher(handler, clock: () => now);
+
+            var first = await refresher.RefreshAsync(new TokenRefreshRequest(RefreshToken, ServerTarget, StoredClientId));
+            now = now + HttpTokenRefresher.TransientFailureCooldown + TimeSpan.FromSeconds(1);
+            var second = await refresher.RefreshAsync(new TokenRefreshRequest(RefreshToken, ServerTarget, StoredClientId));
+
+            first.FailureKind.ShouldBe(TokenRefreshFailureKind.Transient);
+            second.ShouldBeSameAs(first);
+            handler.Requests.Count.ShouldBe(1);
+        }
+
+        [Fact]
+        public async Task Refresh_InvalidGrant_StaysMemoizedForTheWholeWindow()
+        {
+            // A terminal verdict is not retried inside the window: re-presenting a dead token only
+            // produces more 400s.
+            var now = new DateTimeOffset(2026, 8, 15, 12, 0, 0, TimeSpan.Zero);
+            var handler = new RecordingHttpMessageHandler()
+                .RespondWith(HttpStatusCode.BadRequest, "{\"error\":\"invalid_grant\"}");
+            var refresher = NewRefresher(handler, clock: () => now);
+
+            var first = await refresher.RefreshAsync(new TokenRefreshRequest(RefreshToken, ServerTarget, StoredClientId));
+            now = now.AddSeconds(59);
+            var second = await refresher.RefreshAsync(new TokenRefreshRequest(RefreshToken, ServerTarget, StoredClientId));
+
+            first.FailureKind.ShouldBe(TokenRefreshFailureKind.InvalidGrant);
+            second.ShouldBeSameAs(first);
+            handler.Requests.Count.ShouldBe(1);
+        }
+
         // ── Fail-closed basics. ──
 
         [Fact]

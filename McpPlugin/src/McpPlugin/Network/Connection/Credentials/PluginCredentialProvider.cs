@@ -49,7 +49,8 @@ namespace com.IvanMurzak.McpPlugin
     ///   re-read that shows nobody else rotated the family. Then ONE structured telemetry event is
     ///   emitted (per family death, not per retry), other families are never deleted, and the
     ///   provider <b>never loops</b> (oauth-client-error-hygiene 02 §C1): the dead refresh token is
-    ///   memoized in-process and never re-presented to the server — re-armed only when the machine
+    ///   memoized (in-process, plus a hash-only sidecar next to the store so restarts and domain
+    ///   reloads honour it) and never re-presented to the server — re-armed only when the machine
     ///   store holds a DIFFERENT token, i.e. a fresh login by any surface (App, CLI, another
     ///   editor). While sign-in is required, a low-frequency store re-check (02 §C3.3,
     ///   <see cref="DefaultDeadFamilyRecheckPeriod"/>) adopts a peer surface's fresh login so a
@@ -92,12 +93,17 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// The dead-family memo (04 §3.5 "never loop", 02 §C1): the refresh token the server
         /// declared dead plus the surfaced reason. ONE nullable field — the provider manages a
-        /// single plane (<c>families.plugin</c> + legacy fallback), so no map, no persistence.
-        /// Guarded by <see cref="_gate"/>. Armed only by a confirmed dead-family verdict; cleared
-        /// (re-armed) when the freshly-read store token differs, on any in-memory adoption of a
-        /// live credential, and on sign-out.
+        /// single plane (<c>families.plugin</c> + legacy fallback), so no map. Guarded by
+        /// <see cref="_gate"/>. Armed by a confirmed dead-family verdict, or by
+        /// <see cref="_persistedMemo"/> when an earlier process (or Unity domain) recorded the
+        /// store's current token as dead; cleared (re-armed) together with the sidecar when the
+        /// freshly-read store token differs, on any in-memory adoption of a live credential, and
+        /// on sign-out.
         /// </summary>
         (string RefreshToken, string Reason)? _deadFamilyMemo;
+
+        /// <summary>The on-disk (hash-only) copy of the dead-family memo that survives process restarts and domain reloads.</summary>
+        readonly PersistedDeadFamilyMemo _persistedMemo;
 
         /// <summary>The live dead-family store re-check loop (02 §C3.3), null when not running. Guarded by <see cref="_gate"/> (see <see cref="StopDeadFamilyRecheck"/> for the Dispose exception).</summary>
         CancellationTokenSource? _deadFamilyRecheckCts;
@@ -135,6 +141,7 @@ namespace com.IvanMurzak.McpPlugin
             _logger = logger;
             _refreshSkew = refreshSkew ?? DefaultRefreshSkew;
             _clock = clock ?? (() => DateTimeOffset.UtcNow);
+            _persistedMemo = new PersistedDeadFamilyMemo(store.BaseDirectory, logger);
 
             // Auto-adopt: read the machine store now. No UI, no device flow. If a plugin-plane
             // credential exists the plugin is already signed in (the zero-button rule — design 06).
@@ -262,7 +269,7 @@ namespace com.IvanMurzak.McpPlugin
                 _store.Write(credentials);
                 _current = credentials;
                 _familyDeadTelemetryEmitted = false;
-                _deadFamilyMemo = null; // a fresh sign-in re-arms refresh (02 §C1)
+                ClearDeadFamilyMemo(); // a fresh sign-in re-arms refresh (02 §C1)
                 _signInRequiredReason = null;
                 StopDeadFamilyRecheck();
                 _state.Value = PluginPlaneFamily(credentials)?.AccessToken != null ? AuthState.SignedIn : AuthState.SignedOut;
@@ -292,7 +299,7 @@ namespace com.IvanMurzak.McpPlugin
                 catch (Exception ex) { _logger?.LogWarning("Deleting stored credential failed: {message}", ex.Message); }
                 _current = null;
                 _familyDeadTelemetryEmitted = false;
-                _deadFamilyMemo = null;
+                ClearDeadFamilyMemo();
                 _signInRequiredReason = null;
                 StopDeadFamilyRecheck();
                 _state.Value = AuthState.SignedOut;
@@ -362,7 +369,7 @@ namespace com.IvanMurzak.McpPlugin
                 {
                     // A peer signed the machine out (F6.3) — adopt the signed-out state, quietly.
                     _current = null;
-                    _deadFamilyMemo = null; // no credential left to memoize against
+                    ClearDeadFamilyMemo(); // no credential left to memoize against
                     _signInRequiredReason = null;
                     StopDeadFamilyRecheck();
                     _state.Value = AuthState.SignedOut;
@@ -398,7 +405,24 @@ namespace com.IvanMurzak.McpPlugin
                         _logger?.LogDebug("Token refresh suppressed: this credential family was declared dead ({reason}); waiting for a new sign-in.", _deadFamilyMemo.Value.Reason);
                         return false;
                     }
-                    _deadFamilyMemo = null; // the store holds a DIFFERENT token — re-arm and proceed
+                    // The store holds a DIFFERENT token — re-arm. Only the in-memory memo: the
+                    // sidecar may already carry another process's verdict for exactly this new
+                    // token (checked next); a stale sidecar is harmless (hash mismatch) and is
+                    // cleared on the next successful adoption.
+                    _deadFamilyMemo = null;
+                }
+                if (_persistedMemo.Matches(latestFamily.RefreshToken!, out var persistedReason))
+                {
+                    // An earlier process — or this editor before a domain reload — already got the
+                    // dead-family verdict for exactly this token. Adopt it without a network call:
+                    // arm the in-memory memo, park in SignInRequired with the peer wake-up running,
+                    // and skip the telemetry event (it fired with the original verdict).
+                    var reason = string.IsNullOrEmpty(persistedReason) ? "invalid_grant" : persistedReason;
+                    _deadFamilyMemo = (latestFamily.RefreshToken!, reason);
+                    _familyDeadTelemetryEmitted = true;
+                    StartDeadFamilyRecheck();
+                    SurfaceSignInRequired(reason);
+                    return false;
                 }
 
                 // Still stale — one network attempt, presenting the family's STORED clientId
@@ -505,10 +529,12 @@ namespace com.IvanMurzak.McpPlugin
                 }
 
                 // Never loop (04 §3.5, 02 §C1): memoize the dead token — RefreshCoreAsync will not
-                // re-present it until the machine store holds a different one. In-process only;
-                // the store itself is never written or deleted on any failure path
-                // (unified-machine-auth 03-auth-flows.md:52).
+                // re-present it until the machine store holds a different one. The memo is also
+                // persisted as a hash-only sidecar so a restart or domain reload does not present
+                // the dead token again; the store itself is never written or deleted on any
+                // failure path (unified-machine-auth 03-auth-flows.md:52).
                 _deadFamilyMemo = (attemptedFamily.RefreshToken!, reason);
+                _persistedMemo.Write(attemptedFamily.RefreshToken!, reason, _clock());
 
                 // Peer wake-up (02 §C3.3): while parked in SignInRequired, a low-frequency store
                 // re-check adopts a peer surface's fresh login — the machine-wide "one login
@@ -533,10 +559,17 @@ namespace com.IvanMurzak.McpPlugin
         {
             _current = credentials;
             _familyDeadTelemetryEmitted = false;
-            _deadFamilyMemo = null; // a live credential re-arms refresh (02 §C1)
+            ClearDeadFamilyMemo(); // a live credential re-arms refresh (02 §C1)
             _signInRequiredReason = null;
             StopDeadFamilyRecheck();
             _state.Value = AuthState.SignedIn;
+        }
+
+        // MUST be called with _gate held. Clears both the in-memory memo and its on-disk sidecar.
+        void ClearDeadFamilyMemo()
+        {
+            _deadFamilyMemo = null;
+            _persistedMemo.Clear();
         }
 
         // MUST be called with _gate held. Starts the low-frequency dead-family store re-check

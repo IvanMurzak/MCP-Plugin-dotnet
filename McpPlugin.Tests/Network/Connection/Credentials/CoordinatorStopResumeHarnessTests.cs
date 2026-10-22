@@ -336,7 +336,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             }
         }
 
-        /// <summary>Real loop, accelerated pacing, server "accepts the handshake then closes" — the 3-strike rejection pattern.</summary>
+        /// <summary>Real loop, accelerated pacing, server "accepts the handshake, sends ForceDisconnect, then closes" — the 3-strike rejection pattern.</summary>
         private class RejectedLoopConnectionManager : ConnectionManager
         {
             private int _attemptCount;
@@ -355,8 +355,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             protected override Task<ConnectionAttemptResult> AttemptConnection(CancellationToken cancellationToken)
             {
                 Interlocked.Increment(ref _attemptCount);
-                // Connected (handshake "succeeds") but the hub state stays Disconnected ⇒ the loop
-                // counts it as a server-side rejection after the stability window.
+                // Connected (handshake "succeeds"), the server says ForceDisconnect, and the hub state
+                // stays Disconnected ⇒ the loop counts it as a server-side rejection after the
+                // stability window.
+                NoteServerForceDisconnect();
                 return Task.FromResult(ConnectionAttemptResult.Connected);
             }
         }
