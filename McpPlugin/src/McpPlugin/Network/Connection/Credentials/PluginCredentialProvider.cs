@@ -10,6 +10,8 @@
 
 #nullable enable
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.AgentConfig;
@@ -39,7 +41,12 @@ namespace com.IvanMurzak.McpPlugin
     ///   <c>clientId</c> (null for a legacy family — the refresher presents its component default,
     ///   §3.7); a rotation response without a new refresh token keeps the previous one; a
     ///   successful legacy-family refresh rewrites the document as v2 <c>families.legacy</c>
-    ///   (+ v1 mirror) via the normal write contract. Family-aware writes go through
+    ///   (+ v1 mirror) via the normal write contract. A family with NO stored <c>clientId</c> whose
+    ///   refresh is refused with a client-id mismatch is retried under the other first-party ids
+    ///   (<see cref="FallbackClientIds"/>, rule 7) within the same lock hold and a 20 s budget; the
+    ///   id that works is recorded on the family. A mismatch is never a dead family: nothing is
+    ///   memoized or persisted as dead, and when every id is refused the provider surfaces
+    ///   sign-in-required ("issued to another application"). Family-aware writes go through
     ///   read-modify-<see cref="MachineCredentialStore.Write"/> under the lock — never through
     ///   <see cref="MachineCredentialStore.Rotate"/> (b1 review A3: its plugin/legacy fallback is
     ///   not family-explicit and its unreadable-refusal throw is the wrong shape mid-lock).</item>
@@ -105,6 +112,35 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>The on-disk (hash-only) copy of the dead-family memo that survives process restarts and domain reloads.</summary>
         readonly PersistedDeadFamilyMemo _persistedMemo;
 
+        /// <summary>
+        /// Rule 7: the refresh token every candidate client id refused (a client-id mismatch — the
+        /// token is live for another application, so this is NOT the dead-family memo and is never
+        /// persisted). Holds back further network bursts for that token in this process; cleared
+        /// when the store holds a different token and wherever the dead-family memo is cleared.
+        /// Guarded by <see cref="_gate"/>.
+        /// </summary>
+        string? _clientIdExhaustedToken;
+
+        /// <summary>
+        /// Rule 7 + transient: the client id (null ⇒ the refresher's default) whose presentation of
+        /// <c>RefreshToken</c> failed transiently. The server may have rotated and only the response
+        /// was lost; its rotation grace is per client, so the retry presents the same id first.
+        /// Guarded by <see cref="_gate"/>.
+        /// </summary>
+        (string RefreshToken, string? ClientId)? _transientClientId;
+
+        volatile IReadOnlyList<string> _fallbackClientIds = RefreshClientIdFallback.DefaultFirstPartyClientIds;
+
+        /// <summary>
+        /// Wall-clock budget for the client-id fallback inside one lock hold: no further candidate
+        /// is presented once it has passed, so the hold (plus one 15 s HTTP timeout) stays below
+        /// <see cref="MachineCredentialLock.LOCK_STALE_MS"/>. Same value as cli-core.
+        /// </summary>
+        internal static readonly TimeSpan DefaultClientIdFallbackBudget = TimeSpan.FromSeconds(20);
+
+        /// <summary>Test seam for <see cref="DefaultClientIdFallbackBudget"/>.</summary>
+        internal TimeSpan ClientIdFallbackBudget { get; set; } = DefaultClientIdFallbackBudget;
+
         /// <summary>The live dead-family store re-check loop (02 §C3.3), null when not running. Guarded by <see cref="_gate"/> (see <see cref="StopDeadFamilyRecheck"/> for the Dispose exception).</summary>
         CancellationTokenSource? _deadFamilyRecheckCts;
         readonly TimeSpan _deadFamilyRecheckPeriod;
@@ -157,6 +193,22 @@ namespace com.IvanMurzak.McpPlugin
                     : AuthState.SignedOut;
             _state = new ReactiveProperty<AuthState>(initialState);
             _stateReadOnly = _state.ToReadOnlyReactiveProperty();
+        }
+
+        /// <summary>
+        /// The first-party client ids presented, after the refresher's component default, to a
+        /// credential family that stores NO <c>clientId</c> when the server answers with a
+        /// client-id mismatch (04 §3 rule 7; see <see cref="RefreshClientIdFallback"/>). Ordered at
+        /// use: the default id's sibling of the same engine first, then
+        /// <see cref="RefreshClientIdFallback.EnrollClientId"/>, then the rest in the given order.
+        /// Defaults to <see cref="RefreshClientIdFallback.DefaultFirstPartyClientIds"/>; an empty
+        /// list disables the fallback; null restores the default. A family with a stored id is never
+        /// presented under another id.
+        /// </summary>
+        public IReadOnlyList<string> FallbackClientIds
+        {
+            get => _fallbackClientIds;
+            set => _fallbackClientIds = value ?? RefreshClientIdFallback.DefaultFirstPartyClientIds;
         }
 
         /// <summary>The current sign-in state (engine UI binds a sign-in chip to this).</summary>
@@ -324,7 +376,8 @@ namespace com.IvanMurzak.McpPlugin
             return credentials.Families?.Plugin ?? credentials.Families?.Legacy;
         }
 
-        // MUST be called with _gate held. One network attempt maximum — never loops (04 §3.5).
+        // MUST be called with _gate held. One network attempt per client id (only a client-less family
+        // tries more than one id — rule 7) — never loops (04 §3.5).
         async Task<bool> RefreshCoreAsync(CancellationToken cancellationToken)
         {
             var current = _current;
@@ -425,32 +478,92 @@ namespace com.IvanMurzak.McpPlugin
                     return false;
                 }
 
-                // Still stale — one network attempt, presenting the family's STORED clientId
-                // (04 §3.2; null for legacy ⇒ the refresher's component default, §3.7).
-                var request = new TokenRefreshRequest(
-                    latestFamily.RefreshToken!,
-                    latest.ServerTarget ?? current.ServerTarget,
-                    latestFamily.ClientId);
+                // Rule 7: every first-party id was already refused for exactly this token in this
+                // process (a client-id mismatch — not a dead family). No new network burst until the
+                // store holds a different token; the state is already SignInRequired.
+                if (_clientIdExhaustedToken != null)
+                {
+                    if (string.Equals(_clientIdExhaustedToken, latestFamily.RefreshToken, StringComparison.Ordinal))
+                    {
+                        _logger?.LogDebug("Token refresh suppressed: no first-party client id is accepted for this credential; waiting for a new sign-in.");
+                        return false;
+                    }
+                    _clientIdExhaustedToken = null;
+                }
 
-                TokenRefreshResult result;
-                try
+                // Still stale — one network attempt, presenting the family's STORED clientId
+                // (04 §3.2; none ⇒ the refresher's component default, §3.7). Only a family with no
+                // stored id, and only on a client-id mismatch, is retried under the other
+                // first-party ids (rule 7) — within this lock hold and the fallback budget.
+                var refreshTokenPresented = latestFamily.RefreshToken!;
+                var storedClientId = string.IsNullOrWhiteSpace(latestFamily.ClientId) ? null : latestFamily.ClientId;
+                var candidates = ClientIdCandidates(refreshTokenPresented, storedClientId);
+                var serverTarget = latest.ServerTarget ?? current.ServerTarget;
+                var fallbackClock = Stopwatch.StartNew();
+
+                TokenRefreshResult? result = null;
+                string? presentedClientId = null;
+                var mismatchExhausted = false;
+                for (var i = 0; i < candidates.Count; i++)
                 {
-                    result = await _refresher.RefreshAsync(request, cancellationToken).ConfigureAwait(false);
+                    presentedClientId = candidates[i];
+                    try
+                    {
+                        result = await _refresher.RefreshAsync(
+                            new TokenRefreshRequest(refreshTokenPresented, serverTarget, presentedClientId),
+                            cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        // A thrown refresh (network down, DNS, TLS) is TRANSIENT (review B2): keep the
+                        // current credential and state, retry later — offline self-heals silently (F9).
+                        // The fallback stops here and remembers the id it was presenting.
+                        _transientClientId = (refreshTokenPresented, presentedClientId);
+                        _logger?.LogWarning("Token refresh threw ({message}); staying signed in, will retry.", ex.Message); // never log token material
+                        return false;
+                    }
+                    if (!RefreshClientIdFallback.IsClientIdMismatch(result))
+                        break;
+                    // Only a refresher that classifies the mismatch itself is known to present the
+                    // candidate id; an engine refresher reporting it as plain invalid_grant may drop
+                    // the id (the ITokenRefresher compat bridge does), so probing would only repeat it.
+                    if (i == candidates.Count - 1 || result!.FailureKind != TokenRefreshFailureKind.ClientIdMismatch)
+                    {
+                        mismatchExhausted = true;
+                        break;
+                    }
+                    // Out of budget with candidates left: the hold must stay below LOCK_STALE_MS.
+                    // Not exhausted — the next attempt continues (the refresher replays the ids
+                    // already refused inside its window, so it reaches the untried ones).
+                    if (fallbackClock.Elapsed >= ClientIdFallbackBudget)
+                        break;
                 }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    // A thrown refresh (network down, DNS, TLS) is TRANSIENT (review B2): keep the
-                    // current credential and state, retry later — offline self-heals silently (F9).
-                    _logger?.LogWarning("Token refresh threw ({message}); staying signed in, will retry.", ex.Message); // never log token material
-                    return false;
-                }
+
+                // A transient failure (possibly a lost response to a committed rotation) makes the
+                // next attempt present this token under the SAME id first: the server's rotation
+                // grace is per client, so a retry under another id would read as reuse.
+                _transientClientId = result != null && !result.Succeeded && result.FailureKind == TokenRefreshFailureKind.Transient
+                    ? (refreshTokenPresented, presentedClientId)
+                    : ((string, string?)?)null;
+
+                if (RefreshClientIdFallback.IsClientIdMismatch(result))
+                    return HandleClientIdMismatch(result!, refreshTokenPresented, mismatchExhausted);
 
                 if (result == null || !result.Succeeded || string.IsNullOrEmpty(result.AccessToken))
                     return HandleRefreshFailure(result, latestFamily);
+
+                if (storedClientId == null && presentedClientId != null)
+                {
+                    // Rule 7: the server accepted another first-party id — record it so every later
+                    // refresh (this plugin's, a CLI's, the App's) presents the real mint client
+                    // directly. Never replaces a stored id (a stored-id family has no fallback).
+                    latestFamily.ClientId = presentedClientId;
+                    _logger?.LogInformation("The plugin credential stored no client id; it was minted under '{clientId}' and now records it.", presentedClientId);
+                }
 
                 // Success: family-aware write (NOT Store.Rotate — b1 review A3). Rotation response
                 // without a new refresh token keeps the previous one (04 §3.4). For a v1-adopted
@@ -479,6 +592,45 @@ namespace com.IvanMurzak.McpPlugin
                 AdoptInMemory(latest);
                 return true;
             }
+        }
+
+        // MUST be called with _gate held. The ids to present for one attempt, in order: the stored
+        // id (null ⇒ the refresher's component default); for a family with NO stored id also the
+        // host's fallback ids (rule 7), never the default twice. A transient failure under one of
+        // them for this same token moves that id to the front.
+        List<string?> ClientIdCandidates(string refreshToken, string? storedClientId)
+        {
+            var candidates = new List<string?> { storedClientId };
+            if (storedClientId != null)
+                return candidates; // a stored id is never re-presented under another id
+
+            var defaultClientId = (_refresher as HttpTokenRefresher)?.ComponentClientId;
+            foreach (var id in RefreshClientIdFallback.Order(FallbackClientIds, defaultClientId))
+                candidates.Add(id);
+
+            if (_transientClientId is { } pending
+                && string.Equals(pending.RefreshToken, refreshToken, StringComparison.Ordinal)
+                && candidates.Remove(pending.ClientId))
+                candidates.Insert(0, pending.ClientId);
+            return candidates;
+        }
+
+        // MUST be called with _gate held. A client-id mismatch is NEVER a dead family (rule 7): the
+        // token is live for its real mint client, so nothing is memoized as dead, nothing is
+        // persisted to the shared sidecar (a CLI may still refresh it), and no family-dead event
+        // fires. Once every candidate id was refused, surface SignInRequired with a clear reason
+        // and hold back further bursts for this token (re-armed by a different store token).
+        bool HandleClientIdMismatch(TokenRefreshResult result, string refreshToken, bool exhausted)
+        {
+            var detail = result.FailureReason ?? "invalid_grant: " + RefreshClientIdFallback.ClientIdMismatchDescription;
+            _logger?.LogWarning("Token refresh refused: the credential was issued to another application ({reason}). Not a dead family; nothing persisted.", detail);
+            if (!exhausted)
+                return false; // the fallback budget ran out with ids left — continue on the next attempt
+
+            _clientIdExhaustedToken = refreshToken;
+            StartDeadFamilyRecheck(); // a peer surface's fresh login wakes the provider (02 §C3.3)
+            SurfaceSignInRequired("the saved sign-in was issued to another application (" + detail + "); sign in again");
+            return false;
         }
 
         // MUST be called with _gate held, INSIDE the lock's using scope. attemptedFamily's
@@ -565,10 +717,12 @@ namespace com.IvanMurzak.McpPlugin
             _state.Value = AuthState.SignedIn;
         }
 
-        // MUST be called with _gate held. Clears both the in-memory memo and its on-disk sidecar.
+        // MUST be called with _gate held. Clears both the in-memory memo and its on-disk sidecar,
+        // and the (in-memory only) client-id exhaustion hold.
         void ClearDeadFamilyMemo()
         {
             _deadFamilyMemo = null;
+            _clientIdExhaustedToken = null;
             _persistedMemo.Clear();
         }
 
@@ -656,7 +810,7 @@ namespace com.IvanMurzak.McpPlugin
             var read = SafeRead();
             var storeFamily = PluginPlaneFamily(read.Credentials);
             var currentFamily = PluginPlaneFamily(_current);
-            var deadToken = _deadFamilyMemo?.RefreshToken ?? currentFamily?.RefreshToken;
+            var deadToken = _deadFamilyMemo?.RefreshToken ?? _clientIdExhaustedToken ?? currentFamily?.RefreshToken;
             var storeHoldsSomethingNew = storeFamily != null
                 && ((storeFamily.RefreshToken != null && deadToken != null
                         && !string.Equals(storeFamily.RefreshToken, deadToken, StringComparison.Ordinal))

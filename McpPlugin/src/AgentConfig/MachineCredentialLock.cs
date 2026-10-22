@@ -625,10 +625,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             var bytes = new byte[16];
             using (var rng = RandomNumberGenerator.Create())
                 rng.GetBytes(bytes);
-            var builder = new StringBuilder(32);
-            foreach (var b in bytes)
-                builder.Append(b.ToString("x2", CultureInfo.InvariantCulture));
-            return builder.ToString();
+            return HexEncoding.ToLowerHex(bytes);
         }
 
         /// <summary>
