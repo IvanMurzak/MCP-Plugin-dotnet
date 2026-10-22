@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
+using com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Shouldly;
@@ -32,7 +33,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
     [Collection("McpPlugin.Server")]
     public sealed class PluginCatalogCacheTests
     {
-        const string HashA = "aabbccdd11223344556677889900aabbccddeeff00112233445566778899aabb";
+        const string HashA = PluginReconnect.HashA;
         const string HashB = "11223344aabbccdd556677889900aabbccddeeff00112233445566778899aabb";
         const string PinA = "aabbccdd";
         const string PinB = "11223344";
@@ -52,7 +53,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         public void DisconnectedPlugin_ListsAreServedWithinTheGrace()
         {
             var cache = NewCache();
-            var tools = Tools("engine_tool");
+            var tools = PluginReconnect.Tools("engine_tool");
             Connect(cache, "acc-1", "i1", "c1", HashA);
             cache.Record("c1", PluginCatalogKind.Tools, tools);
             cache.Record("c1", PluginCatalogKind.Prompts, new ResponseListPrompts());
@@ -60,7 +61,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             Disconnect(cache, "c1");
             _now += Grace - TimeSpan.FromSeconds(1);
 
-            using (Session("acc-1"))
+            using (PluginReconnect.Session("acc-1"))
             {
                 cache.HasOfflineTargetForCurrentSession().ShouldBeTrue();
                 cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeSameAs(tools);
@@ -73,12 +74,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             var cache = NewCache();
             Connect(cache, "acc-1", "i1", "c1", HashA);
-            cache.Record("c1", PluginCatalogKind.Tools, Tools("engine_tool"));
+            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("engine_tool"));
 
             Disconnect(cache, "c1");
             _now += Grace;
 
-            using (Session("acc-1"))
+            using (PluginReconnect.Session("acc-1"))
                 cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeNull();
             cache.OfflineCount.ShouldBe(0, "an expired entry must be pruned, not kept forever");
         }
@@ -88,12 +89,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             var cache = NewCache(grace: TimeSpan.Zero);
             Connect(cache, "acc-1", "i1", "c1", HashA);
-            cache.Record("c1", PluginCatalogKind.Tools, Tools("engine_tool"));
+            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("engine_tool"));
 
             Disconnect(cache, "c1");
 
             cache.Enabled.ShouldBeFalse();
-            using (Session("acc-1"))
+            using (PluginReconnect.Session("acc-1"))
                 cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeNull();
         }
 
@@ -113,14 +114,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             var cache = NewCache();
             Connect(cache, "acc-1", "i1", "c1", HashA);
-            cache.Record("c1", PluginCatalogKind.Tools, Tools("engine_tool"));
+            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("engine_tool"));
             Disconnect(cache, "c1");
 
             Connect(cache, "acc-1", "i1", "c2", HashA); // reconnect-replace by InstanceId
             cache.OnPluginDisconnected("c1");           // late close of the old connection: no-op
 
             cache.OfflineCount.ShouldBe(0);
-            using (Session("acc-1"))
+            using (PluginReconnect.Session("acc-1"))
                 cache.HasOfflineTargetForCurrentSession().ShouldBeFalse("the instance is live again");
         }
 
@@ -131,14 +132,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             var cache = NewCache();
             Connect(cache, "acc-1", "i1", "c1", HashA);
-            cache.Record("c1", PluginCatalogKind.Tools, Tools("engine_tool"));
+            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("engine_tool"));
             Disconnect(cache, "c1");
 
-            using (Session("acc-2"))
+            using (PluginReconnect.Session("acc-2"))
                 cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeNull();
-            using (Session(null))
+            using (PluginReconnect.Session(null))
                 cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeNull();
-            using (Session("acc-1"))
+            using (PluginReconnect.Session("acc-1"))
                 cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldNotBeNull("control: the owner still gets it");
         }
 
@@ -146,8 +147,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         public void ProjectPin_SelectsOnlyTheMatchingRememberedInstance()
         {
             var cache = NewCache();
-            var toolsA = Tools("tool_a");
-            var toolsB = Tools("tool_b");
+            var toolsA = PluginReconnect.Tools("tool_a");
+            var toolsB = PluginReconnect.Tools("tool_b");
             Connect(cache, "acc-1", "iA", "cA", HashA, machine: "PC-A");
             Connect(cache, "acc-1", "iB", "cB", HashB, machine: "PC-B");
             cache.Record("cA", PluginCatalogKind.Tools, toolsA);
@@ -155,11 +156,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             Disconnect(cache, "cA");
             Disconnect(cache, "cB");
 
-            using (Session("acc-1", pin: PinB))
+            using (PluginReconnect.Session("acc-1", pin: PinB))
                 cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeSameAs(toolsB);
-            using (Session("acc-1", pin: PinA))
+            using (PluginReconnect.Session("acc-1", pin: PinA))
                 cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeSameAs(toolsA);
-            using (Session("acc-1", pin: "deadbeef"))
+            using (PluginReconnect.Session("acc-1", pin: "deadbeef"))
                 cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeNull("a pin never falls through to another project");
         }
 
@@ -167,15 +168,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         public void StickySelection_SelectsTheChosenRememberedInstance()
         {
             var cache = NewCache();
-            var toolsB = Tools("tool_b");
+            var toolsB = PluginReconnect.Tools("tool_b");
             Connect(cache, "acc-1", "iA", "cA", HashA, machine: "PC-A");
             Connect(cache, "acc-1", "iB", "cB", HashB, machine: "PC-B");
-            cache.Record("cA", PluginCatalogKind.Tools, Tools("tool_a"));
+            cache.Record("cA", PluginCatalogKind.Tools, PluginReconnect.Tools("tool_a"));
             cache.Record("cB", PluginCatalogKind.Tools, toolsB);
             Disconnect(cache, "cA");
             Disconnect(cache, "cB");
 
-            using (Session("acc-1", selected: "iB"))
+            using (PluginReconnect.Session("acc-1", selected: "iB"))
                 cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeSameAs(toolsB);
         }
 
@@ -186,14 +187,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             var cache = NewCache();
             Connect(cache, "acc-1", "i-old", "c1", HashA);
-            cache.Record("c1", PluginCatalogKind.Tools, Tools("engine_tool"));
+            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("engine_tool"));
             Disconnect(cache, "c1");
 
             Connect(cache, "acc-1", "i-new", "c2", HashA); // same project/engine/machine, new InstanceId
             Disconnect(cache, "c2");                       // the new one never listed: not kept either
 
             cache.OfflineCount.ShouldBe(0);
-            using (Session("acc-1"))
+            using (PluginReconnect.Session("acc-1"))
                 cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeNull();
         }
 
@@ -203,16 +204,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var cache = NewCache();
             Connect(cache, "acc-1", "i1", "c1", HashA);
             Connect(cache, "acc-2", "i2", "c2", HashA);
-            cache.Record("c1", PluginCatalogKind.Tools, Tools("t1"));
-            cache.Record("c2", PluginCatalogKind.Tools, Tools("t2"));
+            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("t1"));
+            cache.Record("c2", PluginCatalogKind.Tools, PluginReconnect.Tools("t2"));
             Disconnect(cache, "c1");
             Disconnect(cache, "c2");
 
             cache.ForgetAccount("acc-1").ShouldBe(1);
 
-            using (Session("acc-1"))
+            using (PluginReconnect.Session("acc-1"))
                 cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeNull();
-            using (Session("acc-2"))
+            using (PluginReconnect.Session("acc-2"))
                 cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldNotBeNull();
         }
 
@@ -221,12 +222,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             var cache = NewCache();
             Connect(cache, "acc-1", "i1", "c1", HashA);
-            cache.Record("c1", PluginCatalogKind.Tools, Tools("t1"));
+            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("t1"));
             cache.Record("c1", PluginCatalogKind.Prompts, new ResponseListPrompts());
             cache.Invalidate("c1", PluginCatalogKind.Prompts);
             Disconnect(cache, "c1");
 
-            using (Session("acc-1"))
+            using (PluginReconnect.Session("acc-1"))
             {
                 cache.GetOfflineList<ResponseListPrompts>(PluginCatalogKind.Prompts).ShouldBeNull();
                 cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldNotBeNull();
@@ -238,7 +239,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             var cache = NewCache();
             cache.OnPluginConnected("not-registered"); // e.g. a rejected oauth plugin
-            cache.Record("not-registered", PluginCatalogKind.Tools, Tools("t1"));
+            cache.Record("not-registered", PluginCatalogKind.Tools, PluginReconnect.Tools("t1"));
             cache.OnPluginDisconnected("not-registered");
 
             cache.OfflineCount.ShouldBe(0);
@@ -251,13 +252,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             var cache = NewCache(wait: TimeSpan.FromSeconds(10));
             Connect(cache, "acc-1", "i1", "c1", HashA);
-            cache.Record("c1", PluginCatalogKind.Tools, Tools("t1"));
+            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("t1"));
             Disconnect(cache, "c1");
             var live = false;
             _ = Task.Delay(300).ContinueWith(_ => live = true);
 
-            using (Session("acc-1"))
-                (await cache.WaitForReconnectAsync(() => live, CancellationToken.None)).ShouldBeTrue();
+            using (PluginReconnect.Session("acc-1"))
+                (await cache.WaitForReconnectAsync(() => live, CancellationToken.None)).ShouldBe(true);
         }
 
         [Fact]
@@ -265,17 +266,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             var cache = NewCache(wait: TimeSpan.FromMilliseconds(300));
             Connect(cache, "acc-1", "i1", "c1", HashA);
-            cache.Record("c1", PluginCatalogKind.Tools, Tools("t1"));
+            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("t1"));
             Disconnect(cache, "c1");
 
-            using (Session("acc-1"))
+            using (PluginReconnect.Session("acc-1"))
             {
                 var started = DateTime.UtcNow;
-                (await cache.WaitForReconnectAsync(() => false, CancellationToken.None)).ShouldBeFalse();
+                (await cache.WaitForReconnectAsync(() => false, CancellationToken.None)).ShouldBe(false);
                 (DateTime.UtcNow - started).ShouldBeLessThan(TimeSpan.FromSeconds(5));
             }
-            using (Session("acc-2"))
-                (await cache.WaitForReconnectAsync(() => false, CancellationToken.None).WaitAsync(TimeSpan.FromMilliseconds(200))).ShouldBeFalse();
+            using (PluginReconnect.Session("acc-2"))
+                (await cache.WaitForReconnectAsync(() => false, CancellationToken.None).WaitAsync(TimeSpan.FromMilliseconds(200))).ShouldBeNull("nothing remembered: nothing to wait for");
         }
 
         [Fact]
@@ -284,14 +285,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             using var stopping = new CancellationTokenSource();
             var cache = new PluginCatalogCache(_strategy, Grace, TimeSpan.FromSeconds(30), clock: () => _now, stopping: stopping.Token);
             Connect(cache, "acc-1", "i1", "c1", HashA);
-            cache.Record("c1", PluginCatalogKind.Tools, Tools("t1"));
+            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("t1"));
             Disconnect(cache, "c1");
 
-            using (Session("acc-1"))
+            using (PluginReconnect.Session("acc-1"))
             {
                 var wait = cache.WaitForReconnectAsync(() => false, CancellationToken.None);
                 stopping.Cancel();
-                (await wait.WaitAsync(TimeSpan.FromSeconds(5))).ShouldBeFalse();
+                (await wait.WaitAsync(TimeSpan.FromSeconds(5))).ShouldBe(false);
             }
         }
 
@@ -300,22 +301,22 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void SameToolSet_IgnoresOrder_ButNotContent()
         {
-            PluginCatalogCache.SameToolSet(Tools("a", "b"), Tools("b", "a")).ShouldBeTrue();
-            PluginCatalogCache.SameToolSet(Tools("a", "b"), Tools("a", "c")).ShouldBeFalse();
-            PluginCatalogCache.SameToolSet(Tools("a"), Tools("a", "b")).ShouldBeFalse();
+            PluginCatalogCache.SameToolSet(PluginReconnect.Tools("a", "b"), PluginReconnect.Tools("b", "a")).ShouldBeTrue();
+            PluginCatalogCache.SameToolSet(PluginReconnect.Tools("a", "b"), PluginReconnect.Tools("a", "c")).ShouldBeFalse();
+            PluginCatalogCache.SameToolSet(PluginReconnect.Tools("a"), PluginReconnect.Tools("a", "b")).ShouldBeFalse();
 
-            var changed = Tools("a", "b");
+            var changed = PluginReconnect.Tools("a", "b");
             changed[0].Description = "different";
-            PluginCatalogCache.SameToolSet(Tools("a", "b"), changed).ShouldBeFalse();
+            PluginCatalogCache.SameToolSet(PluginReconnect.Tools("a", "b"), changed).ShouldBeFalse();
         }
 
         [Fact]
         public async Task ToolChange_AfterReconnectWithTheSameTools_IsNotForwarded()
         {
             var fetched = new TaskCompletionSource<bool>();
-            var cache = NewCache(fetchTools: (_, _) => { fetched.TrySetResult(true); return Task.FromResult<ResponseListTool[]?>(Tools("a", "b")); });
+            var cache = NewCache(fetchTools: (_, _) => { fetched.TrySetResult(true); return Task.FromResult<ResponseListTool[]?>(PluginReconnect.Tools("a", "b")); });
             Connect(cache, "acc-1", "i1", "c1", HashA);
-            cache.Record("c1", PluginCatalogKind.Tools, Tools("b", "a"));
+            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("b", "a"));
             Disconnect(cache, "c1");
             Connect(cache, "acc-1", "i1", "c2", HashA);
             var notified = 0;
@@ -330,9 +331,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public async Task ToolChange_WithDifferentTools_IsForwardedOnce()
         {
-            var cache = NewCache(fetchTools: (_, _) => Task.FromResult<ResponseListTool[]?>(Tools("a", "new")));
+            var cache = NewCache(fetchTools: (_, _) => Task.FromResult<ResponseListTool[]?>(PluginReconnect.Tools("a", "new")));
             Connect(cache, "acc-1", "i1", "c1", HashA);
-            cache.Record("c1", PluginCatalogKind.Tools, Tools("a"));
+            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("a"));
             var notified = new TaskCompletionSource<bool>();
 
             cache.TryNotifyIfToolsChanged("c1", () => notified.TrySetResult(true)).ShouldBeTrue();
@@ -345,7 +346,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             var cache = NewCache(fetchTools: (_, _) => Task.FromException<ResponseListTool[]?>(new TimeoutException()));
             Connect(cache, "acc-1", "i1", "c1", HashA);
-            cache.Record("c1", PluginCatalogKind.Tools, Tools("a"));
+            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("a"));
             var notified = new TaskCompletionSource<bool>();
 
             cache.TryNotifyIfToolsChanged("c1", () => notified.TrySetResult(true)).ShouldBeTrue();
@@ -356,7 +357,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void ToolChange_WithNoKnownTools_IsLeftToTheCaller()
         {
-            var cache = NewCache(fetchTools: (_, _) => Task.FromResult<ResponseListTool[]?>(Tools("a")));
+            var cache = NewCache(fetchTools: (_, _) => Task.FromResult<ResponseListTool[]?>(PluginReconnect.Tools("a")));
             Connect(cache, "acc-1", "i1", "c1", HashA);
 
             cache.TryNotifyIfToolsChanged("c1", () => { }).ShouldBeFalse();
@@ -380,7 +381,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 foreach (var cache in new[] { singleCache, multiCache })
                 {
                     cache.OnPluginConnected(connectionId);
-                    cache.Record(connectionId, PluginCatalogKind.Tools, Tools("t1"));
+                    cache.Record(connectionId, PluginCatalogKind.Tools, PluginReconnect.Tools("t1"));
                     cache.OnPluginDisconnected(connectionId);
                 }
             }
@@ -395,43 +396,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
         // ───────────────────────────── helpers ─────────────────────────────
 
-        internal static ResponseListTool[] Tools(params string[] names)
-            => names.Select(n => new ResponseListTool
-            {
-                Name = n,
-                Description = "tool " + n,
-                InputSchema = JsonDocument.Parse("{\"type\":\"object\"}").RootElement.Clone(),
-            }).ToArray();
-
         void Connect(PluginCatalogCache cache, string account, string instanceId, string connectionId, string pathHash, string machine = "PC-1")
-        {
-            _strategy.RegisterInstance(new ConnectionIdentity(account, ConnectionIdentity.RolePlugin),
-                new PluginInstanceMetadata(instanceId, "unity", "MyGame", pathHash, machine), connectionId, NullLogger.Instance);
-            cache.OnPluginConnected(connectionId);
-        }
+            => PluginReconnect.Register(_strategy, cache, account, instanceId, connectionId, pathHash, machine);
 
         void Disconnect(PluginCatalogCache cache, string connectionId)
-        {
-            cache.OnPluginDisconnected(connectionId);
-            _strategy.OnPluginDisconnected(typeof(McpServerHub), connectionId, NullLogger.Instance);
-        }
-
-        internal static IDisposable Session(string? account, string? pin = null, string? selected = null)
-        {
-            McpSessionTokenContext.CurrentIdentity = account == null ? null : new ConnectionIdentity(account, ConnectionIdentity.RoleAgent);
-            McpSessionTokenContext.CurrentProjectPin = pin;
-            McpSessionTokenContext.CurrentSelectedInstanceId = selected;
-            return new ResetSession();
-        }
-
-        sealed class ResetSession : IDisposable
-        {
-            public void Dispose()
-            {
-                McpSessionTokenContext.CurrentIdentity = null;
-                McpSessionTokenContext.CurrentProjectPin = null;
-                McpSessionTokenContext.CurrentSelectedInstanceId = null;
-            }
-        }
+            => PluginReconnect.Unregister(_strategy, cache, connectionId);
     }
 }

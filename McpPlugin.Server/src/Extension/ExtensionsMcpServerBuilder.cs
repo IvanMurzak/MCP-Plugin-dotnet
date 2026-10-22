@@ -250,13 +250,18 @@ namespace com.IvanMurzak.McpPlugin.Server
             // Registered in every mode: with the grace at 0 it still makes list requests answer at once
             // when no plugin is connected, instead of retrying for ~10 s. Its waits end as soon as the
             // host starts stopping, so a tool call waiting for a plugin never holds up a shutdown.
-            mcpServerBuilder.Services.AddSingleton(sp => new PluginCatalogCache(
-                sp.GetRequiredService<IMcpConnectionStrategy>(),
-                dataArguments.GetPluginReconnectGrace(),
-                dataArguments.GetPluginReconnectWait(),
-                logger: sp.GetService<ILogger<PluginCatalogCache>>(),
-                stopping: sp.GetService<IHostApplicationLifetime>()?.ApplicationStopping ?? default,
-                fetchTools: (connectionId, cancellationToken) => FetchPluginToolsAsync(sp, dataArguments, connectionId, cancellationToken)));
+            mcpServerBuilder.Services.AddSingleton(sp =>
+            {
+                var hubContext = sp.GetRequiredService<IHubContext<McpServerHub>>();
+                var pluginTimeoutMs = dataArguments.PluginTimeoutMs;
+                return new PluginCatalogCache(
+                    sp.GetRequiredService<IMcpConnectionStrategy>(),
+                    dataArguments.GetPluginReconnectGrace(),
+                    dataArguments.GetPluginReconnectWait(),
+                    logger: sp.GetService<ILogger<PluginCatalogCache>>(),
+                    stopping: sp.GetService<IHostApplicationLifetime>()?.ApplicationStopping ?? default,
+                    fetchTools: (connectionId, cancellationToken) => FetchPluginToolsAsync(hubContext, pluginTimeoutMs, connectionId, cancellationToken));
+            });
 
             mcpServerBuilder.Services.AddWebhooks(dataArguments);
 
@@ -276,11 +281,10 @@ namespace com.IvanMurzak.McpPlugin.Server
         }
 
         /// <summary>Asks one plugin connection for its tools (null when it does not answer in time).</summary>
-        static async Task<ResponseListTool[]?> FetchPluginToolsAsync(IServiceProvider services, IDataArguments dataArguments, string connectionId, CancellationToken cancellationToken)
+        static async Task<ResponseListTool[]?> FetchPluginToolsAsync(IHubContext<McpServerHub> hubContext, int timeoutMs, string connectionId, CancellationToken cancellationToken)
         {
-            var hubContext = services.GetRequiredService<IHubContext<McpServerHub>>();
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(dataArguments.PluginTimeoutMs);
+            timeoutCts.CancelAfter(timeoutMs);
             using var request = new RequestListTool();
             var response = await hubContext.Clients.Client(connectionId)
                 .InvokeAsync<ResponseData<ResponseListTool[]>>(nameof(IClientToolHub.RunListTool), request, timeoutCts.Token);

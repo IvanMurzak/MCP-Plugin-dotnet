@@ -55,13 +55,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
     /// bounded by the grace period. An entry is dropped at once when the server knows the instance is
     /// gone: another instance of the same project/engine/machine registered (an editor restart,
     /// <see cref="AccountInstances.Register"/> dedup), a newer connection replaced the plugin in a
-    /// single-plugin mode, or the host calls <see cref="Forget"/> / <see cref="ForgetAccount"/> (for
+    /// single-plugin mode, or the host calls <see cref="ForgetAccount"/> (for
     /// example after revoking an account). A rejected connection is never registered, so it never
     /// creates an entry.</para>
     /// </summary>
     public sealed class PluginCatalogCache
     {
-        const int KindCount = 4;
+        static readonly int KindCount = Enum.GetValues(typeof(PluginCatalogKind)).Length;
         static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(100);
         static readonly TimeSpan SweepInterval = TimeSpan.FromMinutes(1);
 
@@ -199,18 +199,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 _logger?.LogDebug("PluginCatalogCache: plugin on {connectionId} disconnected; keeping its lists for {grace}.", connectionId, Grace);
         }
 
-        /// <summary>Forgets the routing target served by <paramref name="connectionId"/> (live or not).</summary>
-        public void Forget(string connectionId)
-        {
-            if (string.IsNullOrEmpty(connectionId))
-                return;
-            lock (_gate)
-            {
-                if (_byConnection.TryGetValue(connectionId, out var entry))
-                    RemoveEntry(entry);
-            }
-        }
-
         /// <summary>
         /// Forgets everything remembered for <paramref name="accountId"/>, for a host that revokes an
         /// account or signs it out. Returns how many entries were dropped.
@@ -235,24 +223,21 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         /// <summary>Remembers a list the plugin on <paramref name="connectionId"/> just answered.</summary>
         public void Record(string connectionId, PluginCatalogKind kind, object list)
         {
-            if (string.IsNullOrEmpty(connectionId) || list == null)
-                return;
-            lock (_gate)
-            {
-                if (_byConnection.TryGetValue(connectionId, out var entry))
-                    entry.Lists[(int)kind] = list;
-            }
+            if (list != null)
+                SetList(connectionId, kind, list);
         }
 
         /// <summary>Drops one remembered list of a live plugin (it told the server the list changed).</summary>
-        public void Invalidate(string connectionId, PluginCatalogKind kind)
+        public void Invalidate(string connectionId, PluginCatalogKind kind) => SetList(connectionId, kind, null);
+
+        void SetList(string connectionId, PluginCatalogKind kind, object? list)
         {
             if (string.IsNullOrEmpty(connectionId))
                 return;
             lock (_gate)
             {
                 if (_byConnection.TryGetValue(connectionId, out var entry))
-                    entry.Lists[(int)kind] = null;
+                    entry.Lists[(int)kind] = list;
             }
         }
 
@@ -275,12 +260,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         }
 
         /// <summary>
-        /// Waits for the remembered plugin of the current session to come back. Returns true once
-        /// <paramref name="isLive"/> reports a live route; false right away when the session has no
-        /// remembered plugin, and false when <see cref="ReconnectWait"/> passes, the entry expires or
-        /// is dropped, or the host is stopping.
+        /// Waits for the remembered plugin of the current session to come back. Returns null right
+        /// away when the session has no remembered plugin (nothing to wait for); true once
+        /// <paramref name="isLive"/> reports a live route; false when <see cref="ReconnectWait"/>
+        /// passes, the entry expires or is dropped, or the host is stopping.
         /// </summary>
-        public async Task<bool> WaitForReconnectAsync(Func<bool> isLive, CancellationToken cancellationToken)
+        public async Task<bool?> WaitForReconnectAsync(Func<bool> isLive, CancellationToken cancellationToken)
         {
             if (isLive == null) throw new ArgumentNullException(nameof(isLive));
 
@@ -288,7 +273,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             lock (_gate)
                 entry = FindOfflineForCurrentSessionLocked();
             if (entry == null)
-                return false;
+                return null;
 
             var waited = Stopwatch.StartNew();
             while (true)
@@ -415,7 +400,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             if (_strategy.AllowMultipleConnections)
                 return false;
 
-            return ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).Contains(connectionId, StringComparer.Ordinal);
+            return ClientUtils.IsConnected(typeof(McpServerHub), connectionId);
         }
 
         Entry? FindOfflineForCurrentSessionLocked()
@@ -451,13 +436,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 return null;
 
             PruneExpired(bucket, now);
-            var offline = bucket.Values.Where(e => e.ConnectionId == null).ToList();
-            if (offline.Count == 0)
-                return null;
             if (accountStrategy == null)
-                return offline[0];
+                return bucket.Values.FirstOrDefault(e => e.ConnectionId == null); // at most one slot
 
-            var candidates = offline.Where(e => e.Instance != null).ToList();
+            var candidates = bucket.Values.Where(e => e.ConnectionId == null && e.Instance != null).ToList();
+            if (candidates.Count == 0)
+                return null;
             var resolution = AccountInstances.ResolveAmong(candidates.Select(e => e.Instance!).ToList(), pin, selected);
             if (resolution.Kind != InstanceResolutionKind.Resolved || resolution.Instance == null)
                 return null;
@@ -514,10 +498,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         {
             if (entry.ConnectionId != null)
                 _byConnection.Remove(entry.ConnectionId);
-            if (_byAccount.TryGetValue(entry.Account, out var bucket)
-                && bucket.TryGetValue(entry.Key, out var current)
-                && ReferenceEquals(current, entry))
+            if (IsTracked(entry))
             {
+                var bucket = _byAccount[entry.Account];
                 bucket.Remove(entry.Key);
                 if (bucket.Count == 0)
                     _byAccount.Remove(entry.Account);

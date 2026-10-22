@@ -30,9 +30,6 @@ namespace com.IvanMurzak.McpPlugin.Server
         const int maxRetries = 10; // Maximum number of retries
         const int retryDelayMs = 1000; // Delay between retries in milliseconds
 
-        /// <summary>Delay between two attempts to find a plugin connection, in milliseconds.</summary>
-        internal const int RetryDelayMs = retryDelayMs;
-
         // Thread-safe collection to store connected clients, grouped by hub type
         static readonly ConcurrentDictionary<Type, ConcurrentDictionary<string, bool>> ConnectedClients = new();
         static readonly ConcurrentDictionary<Type, string> LastSuccessfulClients = new();
@@ -51,6 +48,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                 return clients.Keys.ToList();
             return Enumerable.Empty<string>();
         }
+
+        internal static bool IsConnected(Type hubType, string connectionId)
+            => ConnectedClients.TryGetValue(hubType, out var clients) && clients.ContainsKey(connectionId);
 
         public static string? GetBestConnectionId(Type type, int offset = 0)
         {
@@ -194,10 +194,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                 timeoutMs, retryAfterDelivery: false, strategy, token, cancellationToken);
 
         /// <param name="waitForClient">
-        /// What to do when no plugin connection resolves. Null keeps the fixed retry ladder (wait
-        /// <see cref="RetryDelayMs"/>, try again, up to 10 attempts). Otherwise it is awaited: true
-        /// tries to resolve again (counting as an attempt), false gives up at once with
-        /// <paramref name="noClientMessage"/> as a <see cref="ResponseErrorKind.Unavailable"/> error.
+        /// What to do when no plugin connection resolves. Its result: true tries to resolve again
+        /// (counting as an attempt); false gives up at once with <paramref name="noClientMessage"/> as
+        /// a <see cref="ResponseErrorKind.Unavailable"/> error; null (or no policy) takes the fixed
+        /// retry ladder (wait 1 s, try again, up to 10 attempts).
         /// </param>
         /// <param name="noClientMessage">The error text when <paramref name="waitForClient"/> gives up.</param>
         /// <param name="onAnswered">Called with the connection that answered and its answer.</param>
@@ -211,7 +211,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             IMcpConnectionStrategy strategy,
             string? token,
             CancellationToken cancellationToken,
-            Func<CancellationToken, Task<bool>>? waitForClient = null,
+            Func<CancellationToken, Task<bool?>>? waitForClient = null,
             string? noClientMessage = null,
             Action<string, ResponseData<TResponse>>? onAnswered = null)
             where TRequest : IRequestID
@@ -247,15 +247,14 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                     if (client == null)
                     {
-                        if (waitForClient != null)
-                        {
-                            if (await waitForClient(cancellationToken))
-                                continue;
+                        var waited = waitForClient == null ? null : await waitForClient(cancellationToken);
+                        if (waited == true)
+                            continue;
+                        if (waited == false)
                             return ResponseData<TResponse>.Error(request.RequestID,
                                     noClientMessage ?? $"Invoke '{methodName}': no engine plugin is connected.",
                                     ResponseErrorKind.Unavailable)
                                 .Log(logger);
-                        }
                         logger.LogWarning("Invoke '{0}': No connected clients. Retrying [{1}/{2}]...", methodName, retryCount, maxRetries);
                         await Task.Delay(retryDelayMs, cancellationToken); // Wait before retrying
                         continue;

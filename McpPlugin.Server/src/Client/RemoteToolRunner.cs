@@ -70,19 +70,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                 {
                     // Sent once, never retried: a retry would run the tool a second time. Waiting for a
                     // reconnecting plugin happens BEFORE sending, so it cannot cause a second run.
-                    var token = McpSessionTokenContext.CurrentToken;
-                    var responseData = await ClientUtils.InvokeCoreAsync<RequestCallTool, ResponseCallTool, McpServerHub>(
-                        logger: _logger,
-                        hubContext: _remoteAppContext,
-                        methodName: nameof(IClientToolHub.RunCallTool),
-                        request: request,
-                        timeoutMs: toolTimeoutMs,
-                        retryAfterDelivery: false,
-                        strategy: _strategy,
-                        token: token,
-                        cancellationToken: cancellationToken,
-                        waitForClient: CatalogAwareInvoke.WaitForPlugin(_catalog, _strategy, token, _logger, nameof(IClientToolHub.RunCallTool)),
-                        noClientMessage: CatalogAwareInvoke.ReconnectingMessage);
+                    var responseData = await CatalogAwareInvoke.SendAsync<RequestCallTool, ResponseCallTool>(
+                        _logger, _remoteAppContext, nameof(IClientToolHub.RunCallTool), request, toolTimeoutMs,
+                        retryAfterDelivery: false, _strategy, _catalog, cancellationToken);
 
                     if (responseData.Status == ResponseStatus.Error)
                     {

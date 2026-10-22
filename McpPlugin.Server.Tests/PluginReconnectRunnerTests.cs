@@ -10,7 +10,6 @@
 
 #nullable enable
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text.Json;
@@ -20,6 +19,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
+using com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -37,21 +37,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
     public sealed class PluginReconnectRunnerTests
     {
         const string Account = "acc-runner";
-        const string HashA = "aabbccdd11223344556677889900aabbccddeeff00112233445566778899aabb";
 
         readonly AccountMcpStrategy _strategy = new AccountMcpStrategy();
-        readonly ConcurrentDictionary<string, Mock<ISingleClientProxy>> _plugins = new ConcurrentDictionary<string, Mock<ISingleClientProxy>>();
-        readonly IHubContext<McpServerHub> _hub;
-
-        public PluginReconnectRunnerTests()
-        {
-            var clients = new Mock<IHubClients>();
-            clients.Setup(c => c.Client(It.IsAny<string>()))
-                .Returns((string id) => _plugins.TryGetValue(id, out var plugin) ? plugin.Object : null!);
-            var hub = new Mock<IHubContext<McpServerHub>>();
-            hub.Setup(h => h.Clients).Returns(clients.Object);
-            _hub = hub.Object;
-        }
+        readonly FakePluginHub _plugins = new FakePluginHub();
+        IHubContext<McpServerHub> _hub => _plugins.Context;
 
         [Fact]
         public async Task ListCalls_NoPluginAndNothingRemembered_AnswerAtOnce()
@@ -85,10 +74,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             using var runner = Runner(catalog);
             var plugin = Plugin("c1");
             plugin.Setup(c => c.InvokeCoreAsync<ResponseData<ResponseListTool[]>>(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(ResponseData<ResponseListTool[]>.Success("r").SetData(PluginCatalogCacheTests.Tools("engine_tool")));
+                .ReturnsAsync(ResponseData<ResponseListTool[]>.Success("r").SetData(PluginReconnect.Tools("engine_tool")));
             Register("i1", "c1", catalog);
 
-            using (PluginCatalogCacheTests.Session(Account))
+            using (PluginReconnect.Session(Account))
             {
                 (await runner.RunListTool(new RequestListTool())).Value!.ShouldHaveSingleItem().Name.ShouldBe("engine_tool");
 
@@ -100,7 +89,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 offline.Status.ShouldBe(ResponseStatus.Success);
                 offline.Value!.ShouldHaveSingleItem().Name.ShouldBe("engine_tool");
             }
-            using (PluginCatalogCacheTests.Session("another-account"))
+            using (PluginReconnect.Session("another-account"))
                 (await runner.RunListTool(new RequestListTool())).Status.ShouldBe(ResponseStatus.Error, "never another tenant's tools");
 
             plugin.Verify(c => c.InvokeCoreAsync<ResponseData<ResponseListTool[]>>(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()), Times.Once());
@@ -116,7 +105,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var newPlugin = PluginAnsweringCalls("c2");
 
             ResponseData<ResponseCallTool> result;
-            using (PluginCatalogCacheTests.Session(Account))
+            using (PluginReconnect.Session(Account))
             {
                 using var request = new RequestCallTool("engine_tool", new Dictionary<string, JsonElement>());
                 var call = runner.RunCallTool(request);
@@ -141,7 +130,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             ResponseData<ResponseCallTool> result;
             var watch = Stopwatch.StartNew();
-            using (PluginCatalogCacheTests.Session(Account))
+            using (PluginReconnect.Session(Account))
             {
                 using var request = new RequestCallTool("engine_tool", new Dictionary<string, JsonElement>());
                 result = await runner.RunCallTool(request).WaitAsync(TimeSpan.FromSeconds(10));
@@ -163,7 +152,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             RememberToolsOf("i1", "c1", catalog);
             using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
 
-            using (PluginCatalogCacheTests.Session(Account))
+            using (PluginReconnect.Session(Account))
             {
                 using var request = new RequestCallTool("engine_tool", new Dictionary<string, JsonElement>());
                 await Should.ThrowAsync<OperationCanceledException>(() => runner.RunCallTool(request, cts.Token).WaitAsync(TimeSpan.FromSeconds(10)));
@@ -187,12 +176,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
         static RequestTrackingService Tracking() => new RequestTrackingService(NullLogger<RequestTrackingService>.Instance);
 
-        Mock<ISingleClientProxy> Plugin(string connectionId)
-        {
-            var plugin = new Mock<ISingleClientProxy>();
-            _plugins[connectionId] = plugin;
-            return plugin;
-        }
+        Mock<ISingleClientProxy> Plugin(string connectionId) => _plugins.Add(connectionId);
 
         Mock<ISingleClientProxy> PluginAnsweringCalls(string connectionId)
         {
@@ -206,22 +190,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         void RememberToolsOf(string instanceId, string connectionId, PluginCatalogCache catalog)
         {
             Register(instanceId, connectionId, catalog);
-            catalog.Record(connectionId, PluginCatalogKind.Tools, PluginCatalogCacheTests.Tools("engine_tool"));
+            catalog.Record(connectionId, PluginCatalogKind.Tools, PluginReconnect.Tools("engine_tool"));
             Unregister(connectionId, catalog);
         }
 
         void Register(string instanceId, string connectionId, PluginCatalogCache catalog)
-        {
-            _strategy.RegisterInstance(new ConnectionIdentity(Account, ConnectionIdentity.RolePlugin),
-                new PluginInstanceMetadata(instanceId, "unity", "MyGame", HashA, "PC-1"), connectionId, NullLogger.Instance);
-            catalog.OnPluginConnected(connectionId);
-        }
+            => PluginReconnect.Register(_strategy, catalog, Account, instanceId, connectionId);
 
         void Unregister(string connectionId, PluginCatalogCache catalog)
-        {
-            catalog.OnPluginDisconnected(connectionId);
-            _strategy.OnPluginDisconnected(typeof(McpServerHub), connectionId, NullLogger.Instance);
-        }
+            => PluginReconnect.Unregister(_strategy, catalog, connectionId);
 
         static void VerifyCalls(Mock<ISingleClientProxy> plugin, Times times)
             => plugin.Verify(c => c.InvokeCoreAsync<ResponseData<ResponseCallTool>>(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()), times);

@@ -132,7 +132,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
             HttpClient client,
             string clientName = "mcp-plugin-server-oauth-test",
             IReadOnlyDictionary<string, string>? initializeHeaders = null,
-            IReadOnlyDictionary<string, string>? initializedHeaders = null)
+            IReadOnlyDictionary<string, string>? initializedHeaders = null,
+            string? bearerToken = null)
         {
             var (_, sessionId) = await PostAsync(client, null, new
             {
@@ -145,10 +146,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
                     capabilities = new { },
                     clientInfo = new { name = clientName, version = "1.0.0" }
                 }
-            }, initializeHeaders);
+            }, initializeHeaders, bearerToken);
 
             sessionId.ShouldNotBeNullOrEmpty("the server must mint an Mcp-Session-Id on initialize");
-            await PostAsync(client, sessionId, new { jsonrpc = "2.0", method = "notifications/initialized" }, initializedHeaders);
+            await PostAsync(client, sessionId, new { jsonrpc = "2.0", method = "notifications/initialized" }, initializedHeaders, bearerToken);
             return sessionId!;
         }
 

@@ -22,15 +22,16 @@ using Microsoft.Extensions.Logging;
 namespace com.IvanMurzak.McpPlugin.Server
 {
     /// <summary>
-    /// How the remote runners reach a plugin when a <see cref="PluginCatalogCache"/> is available:
+    /// How the remote runners reach a plugin when a <see cref="PluginCatalogCache"/> is available
+    /// (without one, both paths behave exactly as before):
     /// <list type="bullet">
     ///   <item><b>Lists</b> never wait for an absent plugin. They answer from the remembered list of a
     ///   reconnecting plugin, or fail at once so the router returns the server's own tools.</item>
     ///   <item><b>Other requests</b> (tool call, prompt get, resource read) wait for a reconnecting
     ///   plugin up to <see cref="PluginCatalogCache.ReconnectWait"/>, then fail with
-    ///   <see cref="ReconnectingMessage"/>. With nothing remembered they keep the old short retry.</item>
+    ///   <see cref="ReconnectingMessage"/>. With nothing remembered they keep the fixed retry ladder.</item>
     /// </list>
-    /// A request is still sent at most once by a tool call: the wait happens before sending.
+    /// A tool call is still sent at most once: the wait happens before sending.
     /// </summary>
     internal static class CatalogAwareInvoke
     {
@@ -40,7 +41,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         internal const string NotConnectedMessage = "No engine plugin is connected.";
 
-        static readonly Func<CancellationToken, Task<bool>> NeverWait = _ => Task.FromResult(false);
+        static readonly Func<CancellationToken, Task<bool?>> NeverWait = _ => Task.FromResult<bool?>(false);
 
         internal static async Task<ResponseData<T>> ListAsync<TRequest, T>(
             ILogger logger,
@@ -55,23 +56,18 @@ namespace com.IvanMurzak.McpPlugin.Server
             where TRequest : IRequestID
             where T : class
         {
-            var token = McpSessionTokenContext.CurrentToken;
-            if (catalog == null)
-                return await ClientUtils.InvokeAsync<TRequest, T, McpServerHub>(
-                    logger, hubContext, methodName, request, dataArguments, strategy, token, cancellationToken);
-
             var response = await ClientUtils.InvokeCoreAsync<TRequest, T, McpServerHub>(
                 logger, hubContext, methodName, request, dataArguments.PluginTimeoutMs, retryAfterDelivery: true,
-                strategy, token, cancellationToken,
-                waitForClient: NeverWait,
+                strategy, McpSessionTokenContext.CurrentToken, cancellationToken,
+                waitForClient: catalog == null ? null : NeverWait,
                 noClientMessage: NotConnectedMessage,
-                onAnswered: (connectionId, answer) =>
+                onAnswered: catalog == null ? null : (connectionId, answer) =>
                 {
                     if (answer.Status == ResponseStatus.Success && answer.Value != null)
                         catalog.Record(connectionId, kind, answer.Value);
                 });
 
-            if (response.Status == ResponseStatus.Error && response.ErrorKind == ResponseErrorKind.Unavailable)
+            if (catalog != null && response.Status == ResponseStatus.Error && response.ErrorKind == ResponseErrorKind.Unavailable)
             {
                 var remembered = catalog.GetOfflineList<T>(kind);
                 if (remembered != null)
@@ -84,31 +80,29 @@ namespace com.IvanMurzak.McpPlugin.Server
             return response;
         }
 
-        /// <summary>
-        /// The <c>waitForClient</c> policy of a non-list request; null (the fixed retry ladder) when
-        /// there is no cache.
-        /// </summary>
-        internal static Func<CancellationToken, Task<bool>>? WaitForPlugin(
-            PluginCatalogCache? catalog, IMcpConnectionStrategy strategy, string? token, ILogger logger, string methodName)
+        /// <summary>A non-list request: waits for a reconnecting plugin before sending (see the class summary).</summary>
+        internal static Task<ResponseData<TResponse>> SendAsync<TRequest, TResponse>(
+            ILogger logger,
+            IHubContext<McpServerHub> hubContext,
+            string methodName,
+            TRequest request,
+            int timeoutMs,
+            bool retryAfterDelivery,
+            IMcpConnectionStrategy strategy,
+            PluginCatalogCache? catalog,
+            CancellationToken cancellationToken)
+            where TRequest : IRequestID
         {
-            if (catalog == null)
-                return null;
+            var token = McpSessionTokenContext.CurrentToken;
+            Func<CancellationToken, Task<bool?>>? waitForClient = catalog == null
+                ? null
+                : ct => catalog.WaitForReconnectAsync(() => strategy.ResolveConnectionId(token, 0) != null, ct);
 
-            return async cancellationToken =>
-            {
-                if (catalog.HasOfflineTargetForCurrentSession())
-                {
-                    logger.LogInformation("Invoke '{methodName}': the engine plugin is reconnecting; waiting up to {wait} for it.",
-                        methodName, catalog.ReconnectWait);
-                    return await catalog.WaitForReconnectAsync(() => strategy.ResolveConnectionId(token, 0) != null, cancellationToken);
-                }
-
-                // Nothing remembered (a plugin that never connected, or the grace is disabled): keep the
-                // short fixed retry, bounded by the attempt count in ClientUtils.
-                logger.LogWarning("Invoke '{methodName}': No connected clients. Retrying...", methodName);
-                await Task.Delay(ClientUtils.RetryDelayMs, cancellationToken);
-                return true;
-            };
+            return ClientUtils.InvokeCoreAsync<TRequest, TResponse, McpServerHub>(
+                logger, hubContext, methodName, request, timeoutMs, retryAfterDelivery,
+                strategy, token, cancellationToken,
+                waitForClient: waitForClient,
+                noClientMessage: ReconnectingMessage);
         }
     }
 }

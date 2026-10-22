@@ -135,13 +135,6 @@ namespace com.IvanMurzak.McpPlugin.Server
             await base.OnConnectedAsync();
         }
 
-        /// <summary>
-        /// A host singleton, read from the connection's request services rather than the constructor
-        /// so the public hub constructors stay unchanged. Null outside a real hub connection.
-        /// </summary>
-        private protected TService? GetHostService<TService>() where TService : class
-            => Context?.GetHttpContext()?.RequestServices?.GetService(typeof(TService)) as TService;
-
         public override Task OnDisconnectedAsync(Exception? exception)
         {
             if (_connectionRejected)

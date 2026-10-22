@@ -58,19 +58,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
             cancellationToken = linkedCts.Token;
 
-            var token = McpSessionTokenContext.CurrentToken;
-            var responseData = await ClientUtils.InvokeCoreAsync<RequestGetPrompt, ResponseGetPrompt, McpServerHub>(
-                logger: _logger,
-                hubContext: _remoteAppContext,
-                methodName: nameof(IClientPromptHub.RunGetPrompt),
-                request: request,
-                timeoutMs: _dataArguments.PluginTimeoutMs,
-                retryAfterDelivery: true,
-                strategy: _strategy,
-                token: token,
-                cancellationToken: cancellationToken,
-                waitForClient: CatalogAwareInvoke.WaitForPlugin(_catalog, _strategy, token, _logger, nameof(IClientPromptHub.RunGetPrompt)),
-                noClientMessage: CatalogAwareInvoke.ReconnectingMessage);
+            var responseData = await CatalogAwareInvoke.SendAsync<RequestGetPrompt, ResponseGetPrompt>(
+                _logger, _remoteAppContext, nameof(IClientPromptHub.RunGetPrompt), request, _dataArguments.PluginTimeoutMs,
+                retryAfterDelivery: true, _strategy, _catalog, cancellationToken);
 
             if (responseData.Value != null)
                 return responseData.Value.Pack(request.RequestID);

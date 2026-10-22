@@ -10,7 +10,6 @@
 
 #nullable enable
 using System;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
@@ -38,15 +37,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
     {
         const string AccountA = "acct-reconnect-a";
         const string AccountB = "acct-reconnect-b";
-        const string HashA = "aabbccdd11223344556677889900aabbccddeeff00112233445566778899aabb";
 
-        readonly ConcurrentDictionary<string, Mock<ISingleClientProxy>> _plugins = new ConcurrentDictionary<string, Mock<ISingleClientProxy>>();
+        readonly FakePluginHub _plugins = new FakePluginHub();
 
         [Fact]
         public async Task OAuth_PluginReconnecting_KeepsItsToolsForItsAccountOnly_AndAToolCallWaitsForIt()
         {
             await using var host = await OAuthMcpHost.StartAsync(
-                services => services.AddSingleton(FakeHubContext()),
+                services => services.AddSingleton(_plugins.Context),
                 AccountA,
                 "plugin-reconnect-wait-seconds=10");
             var strategy = (AccountMcpStrategy)host.Services.GetRequiredService<IMcpConnectionStrategy>();
@@ -68,7 +66,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // Account B never sees them, and its tool call fails at once with the usual error.
             var tokenB = host.TokenForAccount(AccountB);
-            var sessionB = await HandshakeAsync(host, http, tokenB);
+            var sessionB = await host.HandshakeAsync(http, bearerToken: tokenB);
             var listB = await host.CallAsync(http, sessionB, "tools/list", id: 4, bearerToken: tokenB);
             listB.ShouldContain(ServerNativeToolsName, customMessage: "control: account B got a real tool list");
             listB.ShouldNotContain("engine_tool");
@@ -134,39 +132,21 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
         const string ServerNativeToolsName = "list_engine_instances";
 
-        IHubContext<McpServerHub> FakeHubContext()
-        {
-            var clients = new Mock<IHubClients>();
-            clients.Setup(c => c.Client(It.IsAny<string>()))
-                .Returns((string id) => _plugins.TryGetValue(id, out var plugin) ? plugin.Object : null!);
-            var hub = new Mock<IHubContext<McpServerHub>>();
-            hub.Setup(h => h.Clients).Returns(clients.Object);
-            return hub.Object;
-        }
-
         Mock<ISingleClientProxy> Plugin(string connectionId, string callAnswer)
         {
-            var plugin = new Mock<ISingleClientProxy>();
+            var plugin = _plugins.Add(connectionId);
             plugin.Setup(c => c.InvokeCoreAsync<ResponseData<ResponseListTool[]>>(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => ResponseData<ResponseListTool[]>.Success("r").SetData(PluginCatalogCacheTests.Tools("engine_tool")));
+                .ReturnsAsync(() => ResponseData<ResponseListTool[]>.Success("r").SetData(PluginReconnect.Tools("engine_tool")));
             plugin.Setup(c => c.InvokeCoreAsync<ResponseData<ResponseCallTool>>(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() => ResponseCallTool.Success(callAnswer).Pack("r"));
-            _plugins[connectionId] = plugin;
             return plugin;
         }
 
         static void Register(AccountMcpStrategy strategy, PluginCatalogCache catalog, string connectionId)
-        {
-            strategy.RegisterInstance(new ConnectionIdentity(AccountA, ConnectionIdentity.RolePlugin),
-                new PluginInstanceMetadata("instance-a", "unity", "MyGame", HashA, "PC-1"), connectionId, NullLogger.Instance);
-            catalog.OnPluginConnected(connectionId);
-        }
+            => PluginReconnect.Register(strategy, catalog, AccountA, "instance-a", connectionId);
 
         static void Unregister(AccountMcpStrategy strategy, PluginCatalogCache catalog, string connectionId)
-        {
-            catalog.OnPluginDisconnected(connectionId);
-            strategy.OnPluginDisconnected(typeof(McpServerHub), connectionId, NullLogger.Instance);
-        }
+            => PluginReconnect.Unregister(strategy, catalog, connectionId);
 
         static object ToolsCall(int id) => new
         {
@@ -176,23 +156,5 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             @params = new { name = "engine_tool", arguments = new { } }
         };
 
-        static async Task<string> HandshakeAsync(OAuthMcpHost host, HttpClient http, string token)
-        {
-            var (_, sessionId) = await host.PostAsync(http, null, new
-            {
-                jsonrpc = "2.0",
-                id = 1,
-                method = "initialize",
-                @params = new
-                {
-                    protocolVersion = "2024-11-05",
-                    capabilities = new { },
-                    clientInfo = new { name = "reconnect-test-b", version = "1.0.0" }
-                }
-            }, bearerToken: token);
-            sessionId.ShouldNotBeNullOrEmpty();
-            await host.PostAsync(http, sessionId, new { jsonrpc = "2.0", method = "notifications/initialized" }, bearerToken: token);
-            return sessionId!;
-        }
     }
 }
