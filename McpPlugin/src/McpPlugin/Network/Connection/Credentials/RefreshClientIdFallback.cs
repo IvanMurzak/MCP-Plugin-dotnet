@@ -68,7 +68,10 @@ namespace com.IvanMurzak.McpPlugin
         /// both implementations classify a server answer (and a recorded sidecar reason) alike.
         /// </summary>
         internal static bool IsClientIdMismatchText(string? text)
-            => text != null && text.IndexOf("client_id does not match", StringComparison.OrdinalIgnoreCase) >= 0;
+            => text != null && text.IndexOf(MismatchMarker, StringComparison.OrdinalIgnoreCase) >= 0;
+
+        // The stable prefix of ClientIdMismatchDescription that both implementations test for.
+        const string MismatchMarker = "client_id does not match";
 
         /// <summary>
         /// True when a refresh failed ONLY because the presented client id is not the token's mint
@@ -89,25 +92,21 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         internal static IReadOnlyList<string> Order(IEnumerable<string> ids, string? defaultClientId)
         {
-            var given = new List<string>();
+            var remaining = new List<string>();
             foreach (var id in ids)
             {
                 var trimmed = id?.Trim();
-                if (!string.IsNullOrEmpty(trimmed) && !given.Contains(trimmed!))
-                    given.Add(trimmed!);
+                if (!string.IsNullOrEmpty(trimmed) && trimmed != defaultClientId && !remaining.Contains(trimmed!))
+                    remaining.Add(trimmed!);
             }
 
-            var ordered = new List<string>(given.Count);
-            void Take(string? id)
+            var ordered = new List<string>(remaining.Count);
+            foreach (var preferred in new[] { SiblingOf(defaultClientId), EnrollClientId })
             {
-                if (id != null && given.Contains(id) && !ordered.Contains(id) && id != defaultClientId)
-                    ordered.Add(id);
+                if (preferred != null && remaining.Remove(preferred))
+                    ordered.Add(preferred);
             }
-
-            Take(SiblingOf(defaultClientId));
-            Take(EnrollClientId);
-            foreach (var id in given)
-                Take(id);
+            ordered.AddRange(remaining);
             return ordered;
         }
 

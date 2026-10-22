@@ -33,8 +33,7 @@ namespace com.IvanMurzak.McpPlugin
     /// 2-space indent, LF, no trailing newline, UTF-8 without BOM, the token hash as lowercase hex
     /// SHA-256 of its UTF-8 bytes, the timestamp as <c>Date.toISOString()</c> (UTC, milliseconds,
     /// <c>Z</c>). Both read it alike: a record matches on the exact hash string, <c>version</c> is
-    /// not checked, and a record whose reason names a client-id mismatch is ignored (and never
-    /// written): such a token is live for its real mint client (04 §3 rule 7). Pinned by
+    /// not checked, and a record whose reason names a client-id mismatch is ignored: such a token is live for its real mint client (04 §3 rule 7). Pinned by
     /// <c>DeadFamilyMemo.GoldenVectors.json</c>.</para>
     /// <para>Every operation is best-effort: a failed read is "no memo" (at worst one extra network
     /// attempt), and a failed write or delete is logged at debug level and swallowed — this class
@@ -104,14 +103,12 @@ namespace com.IvanMurzak.McpPlugin
 
         /// <summary>
         /// Record <paramref name="refreshToken"/> (hashed) as dead, via the store's atomic write
-        /// (0600 on POSIX). A client-id mismatch reason is never recorded (04 §3 rule 7).
+        /// (0600 on POSIX). The provider never calls this for a client-id mismatch (04 §3 rule 7).
         /// </summary>
         internal void Write(string refreshToken, string reason, DateTimeOffset at)
         {
             try
             {
-                if (RefreshClientIdFallback.IsClientIdMismatchText(reason))
-                    return;
                 if (!Directory.Exists(Path.GetDirectoryName(_path)))
                     return; // no store directory ⇒ no credential to memoize against
 

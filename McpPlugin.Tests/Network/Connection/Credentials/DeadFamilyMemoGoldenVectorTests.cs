@@ -101,14 +101,5 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             if (expectedDead)
                 reason.ShouldBe(vector.GetProperty("expectedReason").GetString());
         }
-
-        [Fact]
-        public void Write_NeverRecordsAClientIdMismatch()
-        {
-            new PersistedDeadFamilyMemo(_baseDir, logger: null)
-                .Write("RT-x", "invalid_grant: client_id does not match the refresh token", DateTimeOffset.UnixEpoch);
-
-            File.Exists(Path.Combine(_baseDir, PersistedDeadFamilyMemo.FileName)).ShouldBeFalse();
-        }
     }
 }

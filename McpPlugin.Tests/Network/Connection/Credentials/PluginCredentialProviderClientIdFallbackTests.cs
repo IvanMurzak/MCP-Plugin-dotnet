@@ -90,7 +90,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         }
 
         HttpTokenRefresher NewRefresher(MintServer server)
-            => new HttpTokenRefresher(ServerTarget, ComponentClientId, new HttpClient(server), () => _now, attemptWindow: null, timeoutMs: 2_000);
+            => new HttpTokenRefresher(ServerTarget, ComponentClientId, new HttpClient(server.Handler), () => _now, attemptWindow: null, timeoutMs: 2_000);
 
         PluginCredentialProvider NewProvider(ITokenRefresher refresher, ILogger? logger = null)
             => new PluginCredentialProvider(NewStore(), refresher, logger, clock: () => _now);
@@ -176,9 +176,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             (await provider.RefreshAsync()).ShouldBeFalse();
 
             // The default plus every other first-party id, each exactly once.
-            var expected = new List<string> { ComponentClientId };
-            expected.AddRange(RefreshClientIdFallback.Order(RefreshClientIdFallback.DefaultFirstPartyClientIds, ComponentClientId));
-            server.PresentedClientIds.ShouldBe(expected);
+            server.PresentedClientIds.ShouldBe(new[]
+            {
+                "unity-mcp-plugin", "unity-mcp-cli", "agd_enroll",
+                "unreal-mcp-plugin", "unreal-mcp-cli", "godot-mcp-plugin", "godot-cli", "brutal-cli", "ai-game-dev-app",
+            });
             provider.State.CurrentValue.ShouldBe(AuthState.SignInRequired);
             provider.SignInRequiredReason.ShouldBe("the saved sign-in was issued to another application (" + MismatchReason + "); sign in again");
             File.Exists(SidecarPath).ShouldBeFalse(); // a CLI may still refresh it — never told it is dead
@@ -312,15 +314,18 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
         /// "client_id does not match the refresh token", nothing written; under its mint client ⇒
         /// rotation. Unknown tokens ⇒ <c>invalid_grant</c> / revoked.
         /// </summary>
-        sealed class MintServer : HttpMessageHandler
+        sealed class MintServer
         {
             readonly Dictionary<string, string> _mintClientByToken = new Dictionary<string, string>(StringComparer.Ordinal);
             readonly Dictionary<string, string> _headByClient = new Dictionary<string, string>(StringComparer.Ordinal);
             readonly HashSet<string> _failTransientlyOnce = new HashSet<string>(StringComparer.Ordinal);
-            readonly List<string> _presented = new List<string>();
             int _generation;
 
-            public IReadOnlyList<string> PresentedClientIds { get { lock (_presented) return _presented.ToList(); } }
+            public MintServer() => Handler = new RecordingHttpMessageHandler().RespondWith(Respond);
+
+            public RecordingHttpMessageHandler Handler { get; }
+
+            public IReadOnlyList<string> PresentedClientIds => Handler.Requests.Select(r => r.Form["client_id"]).ToList();
 
             public MintServer Mint(string refreshToken, string clientId)
             {
@@ -332,16 +337,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
 
             public string? HeadOf(string clientId) => _headByClient.TryGetValue(clientId, out var head) ? head : null;
 
-            protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            HttpResponseMessage Respond(RecordingHttpMessageHandler.RecordedRequest request)
             {
-                var form = (await request.Content!.ReadAsStringAsync().ConfigureAwait(false))
-                    .Split('&')
-                    .Select(pair => pair.Split('='))
-                    .ToDictionary(kv => Uri.UnescapeDataString(kv[0]), kv => Uri.UnescapeDataString(kv[1].Replace('+', ' ')));
-                var clientId = form["client_id"];
-                var token = form["refresh_token"];
-                lock (_presented)
-                    _presented.Add(clientId);
+                var clientId = request.Form["client_id"];
+                var token = request.Form["refresh_token"];
 
                 if (!_mintClientByToken.TryGetValue(token, out var mintClient))
                     return Json(HttpStatusCode.BadRequest, "{\"error\":\"invalid_grant\",\"error_description\":\"refresh token revoked\"}");
@@ -359,31 +358,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             }
 
             static HttpResponseMessage Json(HttpStatusCode status, string json)
-                => new HttpResponseMessage(status) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
-        }
-
-        sealed class CapturingLogger : ILogger
-        {
-            readonly List<(LogLevel Level, string Message)> _entries = new List<(LogLevel, string)>();
-
-            public IReadOnlyList<string> Warnings
-            {
-                get { lock (_entries) return _entries.Where(e => e.Level == LogLevel.Warning).Select(e => e.Message).ToList(); }
-            }
-
-            public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
-            public bool IsEnabled(LogLevel logLevel) => true;
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-            {
-                lock (_entries)
-                    _entries.Add((logLevel, formatter(state, exception)));
-            }
-
-            sealed class NullScope : IDisposable
-            {
-                public static readonly NullScope Instance = new NullScope();
-                public void Dispose() { }
-            }
+                => RecordingHttpMessageHandler.JsonResponse(status, json);
         }
     }
 }
