@@ -77,28 +77,50 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
         }
 
         [Fact]
-        public async Task Connect_ImmediateCloseWithoutForceDisconnect_IsTransient_NeverFiresAuthorizationRejected()
+        public async Task Connect_ImmediateCloseWithoutForceDisconnect_IsTransient_ThenEscalatesAfterFiveInARow()
         {
             // The server closes right after the handshake WITHOUT ForceDisconnect — McpPlugin.Server
             // does that when authorization is only temporarily unavailable (backend restarting during
-            // a deploy, webhook timeout). That must not count as an auth rejection: firing
-            // OnAuthorizationRejected makes the coordinator refresh (= rotate) the token, and the cap
-            // would stop the loop. Normal retry instead.
+            // a deploy, webhook timeout), so it must NOT trip the 3-strike rejection cap (that would
+            // refresh = rotate the token). But the ForceDisconnect of a real denial can be lost
+            // (it races the server's abort), so the loop must not retry such closes forever either:
+            // the 5th in a row escalates to the rejection path exactly once.
             await using var cm = new RejectingConnectionManager(
                 _logger, _testVersion, _testEndpoint, _mockProvider.Object, serverSendsForceDisconnect: false
+            );
+            var rejectionFired = 0;
+            cm.OnAuthorizationRejected.Subscribe(_ => Interlocked.Increment(ref rejectionFired));
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var result = await cm.Connect(cts.Token);
+
+            result.ShouldBeFalse();
+            cts.Token.IsCancellationRequested.ShouldBeFalse("The loop must stop via the escalation, not the hang-guard CTS");
+            cm.AttemptCount.ShouldBe(5, "Retried PAST the 3-strike rejection cap, escalated on the 5th unexplained close");
+            rejectionFired.ShouldBe(1, "The escalation fires the authorization-rejected signal exactly once");
+            cm.KeepConnected.CurrentValue.ShouldBeFalse("The escalation stops the loop like the rejection cap");
+        }
+
+        [Fact]
+        public async Task Connect_ImmediateCloseWithoutForceDisconnect_CounterResetsOnADifferentFailure()
+        {
+            // 4 unexplained closes, a different failure, 4 more: never 5 IN A ROW ⇒ no escalation.
+            var c = ConnectionManager.ConnectionAttemptResult.Connected;
+            var f = ConnectionManager.ConnectionAttemptResult.Failed;
+            await using var cm = new SequenceConnectionManager(
+                _logger, _testVersion, _testEndpoint, _mockProvider.Object,
+                attemptResults: new[] { c, c, c, c, f, c, c, c, c },
+                forceDisconnectOnConnected: false
             );
             var rejectionFired = false;
             cm.OnAuthorizationRejected.Subscribe(_ => rejectionFired = true);
 
-            // Only the external CTS can stop the loop (default = unlimited retry).
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-            var result = await cm.Connect(cts.Token);
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            await cm.Connect(cts.Token);
 
-            result.ShouldBeFalse();
-            cts.Token.IsCancellationRequested.ShouldBeTrue("The loop must keep retrying until cancelled — no rejection cap");
-            rejectionFired.ShouldBeFalse("A close without ForceDisconnect is not an authorization rejection");
-            cm.KeepConnected.CurrentValue.ShouldBeTrue("Reconnect intent must survive transient server-side closes");
-            cm.AttemptCount.ShouldBeGreaterThan(3, "Must retry PAST the 3-strike rejection cap");
+            cts.Token.IsCancellationRequested.ShouldBeFalse("The loop must stop via sequence exhaustion");
+            cm.AttemptCount.ShouldBe(10, "The whole sequence ran (plus the exhausting attempt)");
+            rejectionFired.ShouldBeFalse("The interleaved failure resets the unexplained-close count");
         }
 
         [Fact]
@@ -412,11 +434,14 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             public SequenceConnectionManager(
                 ILogger logger, Common.Version version, string endpoint,
                 IHubConnectionProvider provider, ConnectionAttemptResult[] attemptResults,
-                int maxConsecutiveConnectionFailures = 0)
+                int maxConsecutiveConnectionFailures = 0, bool forceDisconnectOnConnected = true)
                 : base(logger, version, endpoint, provider, maxConsecutiveConnectionFailures)
             {
                 _results = attemptResults;
+                _forceDisconnectOnConnected = forceDisconnectOnConnected;
             }
+
+            private readonly bool _forceDisconnectOnConnected;
 
             protected override Task<ConnectionAttemptResult> AttemptConnection(CancellationToken cancellationToken)
             {
@@ -426,9 +451,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                     _continueToReconnect.Value = false;
                     return Task.FromResult(ConnectionAttemptResult.Failed);
                 }
-                // A Connected step models the server denying authorization right after the
-                // handshake: ForceDisconnect, then close.
-                if (_results[idx] == ConnectionAttemptResult.Connected)
+                // A Connected step models the server closing right after the handshake — by
+                // default a denial (ForceDisconnect, then close).
+                if (_results[idx] == ConnectionAttemptResult.Connected && _forceDisconnectOnConnected)
                     NoteServerForceDisconnect();
                 return Task.FromResult(_results[idx]);
             }

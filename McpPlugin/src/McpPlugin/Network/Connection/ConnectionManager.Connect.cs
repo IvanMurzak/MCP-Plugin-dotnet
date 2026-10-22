@@ -503,6 +503,15 @@ namespace com.IvanMurzak.McpPlugin
         private const int MaxConsecutiveRejections = 3;
 
         /// <summary>
+        /// Consecutive closes right after the handshake WITHOUT <c>ForceDisconnect</c> before the loop
+        /// escalates them to an authorization rejection. Each is first treated as transient (backend
+        /// restarting, webhook timeout); 5 attempts span ~30–40 s with the stability window and the
+        /// 5 s backoff — longer than a backend restart — yet a real denial whose ForceDisconnect was
+        /// lost (it can race the server's abort) still reaches the refresh path instead of looping forever.
+        /// </summary>
+        private const int MaxConsecutiveUnexplainedCloses = 5;
+
+        /// <summary>
         /// If the server closes the connection within this duration after a successful handshake,
         /// it is counted as an immediate rejection (e.g. authorization failure).
         /// Protected to allow test subclasses to reduce the delay.
@@ -515,7 +524,8 @@ namespace com.IvanMurzak.McpPlugin
         /// handshake, and an observable HTTP 401/403 during the attempt itself —
         /// <see cref="ConnectionAttemptResult.AuthRejected"/>) and stops retrying after
         /// <see cref="MaxConsecutiveRejections"/> consecutive rejections. A close right after the
-        /// handshake WITHOUT <c>ForceDisconnect</c> is a transient failure, not a rejection.
+        /// handshake WITHOUT <c>ForceDisconnect</c> is a transient failure, escalated to a rejection only
+        /// after <see cref="MaxConsecutiveUnexplainedCloses"/> in a row.
         /// </summary>
         private async Task<bool> StartConnectionLoop(CancellationToken cancellationToken, TaskCompletionSource<bool>? firstOutcome = null)
         {
@@ -524,6 +534,7 @@ namespace com.IvanMurzak.McpPlugin
 
             var consecutiveRejections = 0;
             var consecutiveFailures = 0;
+            var consecutiveUnexplainedCloses = 0;
 
             while (!cancellationToken.IsCancellationRequested && _continueToReconnect.CurrentValue)
             {
@@ -561,21 +572,41 @@ namespace com.IvanMurzak.McpPlugin
                     // could not authorize right now (backend restarting during a deploy, webhook
                     // timeout) — a transient failure, so the token is not refreshed (each refresh
                     // rotates it) just because the server was briefly unavailable.
+                    //
+                    // The ForceDisconnect message does not always reach the client before the
+                    // server's Context.Abort, so a real denial can also look like this. Bound it:
+                    // after MaxConsecutiveUnexplainedCloses in a row (longer than a backend restart)
+                    // escalate to the rejection path (OnAuthorizationRejected → refresh + reconnect).
                     _connectionState.Value = HubConnectionState.Disconnected;
                     rejected = Volatile.Read(ref _serverForceDisconnected) == 1;
                     if (rejected)
+                    {
+                        consecutiveUnexplainedCloses = 0;
                         _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} was force-disconnected by the server immediately after handshake ({count}/{max}). " +
                             "This indicates authorization failure (invalid or revoked token).",
                             nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveRejections + 1, MaxConsecutiveRejections);
+                    }
                     else
-                        _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} was closed by the server immediately after handshake without a rejection reason. " +
+                    {
+                        consecutiveUnexplainedCloses++;
+                        _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} was closed by the server immediately after handshake without a rejection reason ({count}/{max}). " +
                             "Treating it as a temporary server-side failure; will retry.",
-                            nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint);
+                            nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveUnexplainedCloses, MaxConsecutiveUnexplainedCloses);
+                        if (consecutiveUnexplainedCloses >= MaxConsecutiveUnexplainedCloses)
+                        {
+                            _logger.LogWarning("{class}[{guid}] {method} Connection to {endpoint} was closed right after the handshake {count} times in a row. " +
+                                "Treating it as an authorization rejection (the server's ForceDisconnect may have been lost).",
+                                nameof(ConnectionManager), _guid, nameof(StartConnectionLoop), Endpoint, consecutiveUnexplainedCloses);
+                            StopAfterRejectionCap(MaxConsecutiveRejections);
+                            return false;
+                        }
+                    }
                 }
                 else if (attempt == ConnectionAttemptResult.AuthRejected)
                 {
                     // The server ANSWERED the attempt with an observable HTTP 401/403
                     // (oauth-client-error-hygiene 02 §C3.4): it is reachable but rejecting this client.
+                    consecutiveUnexplainedCloses = 0;
                     rejected = true;
                     _logger.LogWarning("{class}[{guid}] {method} Connection attempt to {endpoint} was rejected with HTTP 401/403 ({count}/{max}). " +
                         "This indicates an authorization failure (invalid or revoked token).",
@@ -584,6 +615,7 @@ namespace com.IvanMurzak.McpPlugin
                 else
                 {
                     // Connection attempt itself failed (server unreachable, timeout, etc.)
+                    consecutiveUnexplainedCloses = 0;
                     rejected = false;
                 }
 
