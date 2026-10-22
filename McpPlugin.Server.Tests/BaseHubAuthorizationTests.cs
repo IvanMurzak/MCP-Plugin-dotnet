@@ -162,6 +162,64 @@ namespace McpPlugin.Server.Tests
             mockContext.Verify(c => c.Abort(), Times.Once);
         }
 
+        /// <summary>
+        /// A denied plugin must actually RECEIVE ForceDisconnect: the send only queues the frame and an
+        /// immediate Abort drops it, leaving the client a bare close that it treats as transient.
+        /// </summary>
+        [Fact]
+        public async Task OnConnectedAsync_WebhookDenies_SendsForceDisconnect_ThenGivesItTimeToFlushBeforeAborting()
+        {
+            var (hub, context, caller) = DeniedHub(CancellationToken.None);
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            TimeSpan? sentAt = null, abortedAt = null;
+            caller.Setup(x => x.ForceDisconnect(It.IsAny<string?>()))
+                .Callback(() => sentAt = clock.Elapsed)
+                .Returns(Task.CompletedTask);
+            context.Setup(c => c.Abort()).Callback(() => abortedAt = clock.Elapsed);
+
+            await hub.OnConnectedAsync();
+
+            sentAt.ShouldNotBeNull();
+            abortedAt.ShouldNotBeNull();
+            (abortedAt!.Value - sentAt!.Value).ShouldBeGreaterThanOrEqualTo(TimeSpan.FromMilliseconds(200),
+                "Abort must not run right after the ForceDisconnect send");
+            context.Verify(c => c.Abort(), Times.Once);
+        }
+
+        [Fact]
+        public async Task OnConnectedAsync_WebhookDenies_ClientAlreadyClosed_AbortsWithoutWaiting()
+        {
+            using var closed = new CancellationTokenSource();
+            closed.Cancel();
+            var (hub, context, caller) = DeniedHub(closed.Token);
+            caller.Setup(x => x.ForceDisconnect(It.IsAny<string?>())).Returns(Task.CompletedTask);
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+
+            await hub.OnConnectedAsync();
+
+            clock.Elapsed.ShouldBeLessThan(TimeSpan.FromMilliseconds(200));
+            caller.Verify(x => x.ForceDisconnect(It.IsAny<string?>()), Times.Once);
+            context.Verify(c => c.Abort(), Times.Once);
+            hub.ConnectionRejectedFlag.ShouldBeTrue();
+        }
+
+        static (TestHub Hub, Mock<HubCallerContext> Context, Mock<IClientDisconnectable> Caller) DeniedHub(CancellationToken connectionAborted)
+        {
+            var webhook = new Mock<IAuthorizationWebhookService>();
+            webhook.Setup(x => x.AuthorizePluginAsync(
+                    It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
+                .ReturnsAsync(false);
+            var caller = new Mock<IClientDisconnectable>();
+            var clients = new Mock<IHubCallerClients<IClientDisconnectable>>();
+            clients.Setup(x => x.Caller).Returns(caller.Object);
+            var context = CreateMockHubCallerContext("denied-token");
+            context.Setup(c => c.ConnectionAborted).Returns(connectionAborted);
+            var hub = CreateTestHub(context, webhook);
+            hub.Clients = clients.Object;
+            return (hub, context, caller);
+        }
+
         [Fact]
         public async Task OnConnectedAsync_WebhookDenies_DoesNotCallStrategy()
         {
