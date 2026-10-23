@@ -9,6 +9,7 @@
 */
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -71,6 +72,10 @@ namespace com.IvanMurzak.McpPlugin
             _version = version ?? throw new ArgumentNullException(nameof(version));
             _connectionConfig = connectionConfig?.Value ?? new ConnectionConfig();
             _skillFileGenerator = skillFileGenerator ?? throw new ArgumentNullException(nameof(skillFileGenerator));
+            // Also covers explicitly supplied generator instances and engine-specific subclasses.
+            // Configure before constructor-time generation can write the first SKILL.md.
+            if (_skillFileGenerator is SkillFileGenerator generator)
+                generator.Metadata = new Dictionary<string, string>(_connectionConfig.SkillMetadata);
             _skillContentCollection = skillContentCollection ?? throw new ArgumentNullException(nameof(skillContentCollection));
             _mcpManagerHub.ConnectionState
                 .Where(state => state == HubConnectionState.Connected)
