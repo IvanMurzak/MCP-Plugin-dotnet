@@ -11,11 +11,13 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Skills
@@ -72,6 +74,12 @@ namespace com.IvanMurzak.McpPlugin.Skills
         public const string ProvenanceValue = "mcp-plugin-dotnet";
 
         /// <summary>
+        /// Host-supplied global metadata. The plugin snapshots ConnectionConfig.SkillMetadata here
+        /// before initial generation. Subclasses retaining the standard document builders inherit it.
+        /// </summary>
+        public IReadOnlyDictionary<string, string> Metadata { get; set; } = new Dictionary<string, string>();
+
+        /// <summary>
         /// Appends the provenance marker as raw YAML lines. Callers must invoke it INSIDE the
         /// front-matter block — before the closing <c>---</c> — because a consumer that identifies
         /// generated skills parses the front-matter only:
@@ -86,18 +94,43 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// Written literally rather than through <see cref="EscapeYaml"/>, which escapes a single
         /// scalar and would collapse the nested mapping into a quoted string.
         /// <para>
-        /// The default <see cref="BuildMarkdown"/> and <see cref="BuildSkillContentMarkdown"/>
-        /// implementations call this, so the marker is emitted for every file THEY write. It is a
-        /// convention, not an invariant the type can enforce: a subclass that replaces either of
-        /// those wholesale — which their own documentation permits — must call this itself, or the
-        /// files it writes carry no marker and read as hand-authored to any consumer.
+        /// Retained for existing subclasses. New document builders should call
+        /// <see cref="AppendMetadata"/> with <see cref="Metadata"/> to include host overrides.
         /// </para>
         /// </summary>
         /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
         protected static void AppendProvenanceMetadata(StringBuilder sb)
         {
+            AppendMetadata(sb, null);
+        }
+
+        /// <summary>
+        /// Writes one YAML metadata mapping, merging host entries over the provenance default.
+        /// Shared by engine-specific writers that do not use the standard document builders.
+        /// Keys are sorted for deterministic output; strings requiring quoting use JSON escaping,
+        /// which is valid in YAML double-quoted scalars and prevents multiline metadata injection.
+        /// </summary>
+        public static void AppendMetadata(StringBuilder sb, IReadOnlyDictionary<string, string>? metadata)
+        {
+            if (sb == null) throw new ArgumentNullException(nameof(sb));
             sb.AppendLine(ProvenanceBlockKey + ":");
-            sb.AppendLine("  " + ProvenanceKey + ": " + ProvenanceValue);
+            var generatedBy = metadata != null && metadata.TryGetValue(ProvenanceKey, out var value)
+                ? value : ProvenanceValue;
+            sb.AppendLine("  " + ProvenanceKey + ": " + MetadataScalar(generatedBy));
+            if (metadata == null) return;
+            foreach (var entry in metadata.OrderBy(e => e.Key, StringComparer.Ordinal))
+            {
+                if (entry.Key == ProvenanceKey) continue;
+                sb.AppendLine("  " + MetadataScalar(entry.Key) + ": " + MetadataScalar(entry.Value));
+            }
+        }
+
+        private static string MetadataScalar(string value)
+        {
+            if (value == null) throw new ArgumentException("Skill metadata keys and values must be strings.");
+            return Regex.IsMatch(value, @"\A[A-Za-z_][A-Za-z0-9_-]*\z") &&
+                !Regex.IsMatch(value, @"\A(?:null|true|false|yes|no|on|off|y|n)\z", RegexOptions.IgnoreCase)
+                ? value : JsonSerializer.Serialize(value);
         }
 
         // ── Customization properties ─────────────────────────────────────────
@@ -383,9 +416,9 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// <summary>
         /// Builds the full markdown content for a custom skill's SKILL.md.
         /// Contains YAML frontmatter (name, description, and the
-        /// <see cref="AppendProvenanceMetadata"/> marker) followed by the verbatim content body.
+        /// <see cref="AppendMetadata"/> mapping) followed by the verbatim content body.
         /// An override that rebuilds the front matter must still call
-        /// <see cref="AppendProvenanceMetadata"/> before the closing <c>---</c>.
+        /// <see cref="AppendMetadata"/> with <see cref="Metadata"/> before the closing <c>---</c>.
         /// </summary>
         protected virtual string BuildSkillContentMarkdown(ISkillContent skill, string skillName)
         {
@@ -397,7 +430,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine("---");
             sb.AppendLine($"name: {EscapeYaml(skillName)}");
             sb.AppendLine($"description: {EscapeYaml(yamlDescription)}");
-            AppendProvenanceMetadata(sb);
+            AppendMetadata(sb, Metadata);
             sb.AppendLine("---");
 
             // Verbatim content body
@@ -520,7 +553,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// For targeted changes, prefer overriding individual section helpers or the
         /// customization properties/methods instead.
         /// An override that rebuilds the front matter must still call
-        /// <see cref="AppendProvenanceMetadata"/> before the closing <c>---</c>.
+        /// <see cref="AppendMetadata"/> with <see cref="Metadata"/> before the closing <c>---</c>.
         /// </summary>
         protected virtual string BuildMarkdown(IRunTool tool, string skillName, string host)
         {
@@ -535,7 +568,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine("---");
             sb.AppendLine($"name: {EscapeYaml(skillName)}");
             sb.AppendLine($"description: {EscapeYaml(yamlDescription)}");
-            AppendProvenanceMetadata(sb);
+            AppendMetadata(sb, Metadata);
             sb.AppendLine("---");
             sb.AppendLine();
             BuildFrontMatterNotes(sb);

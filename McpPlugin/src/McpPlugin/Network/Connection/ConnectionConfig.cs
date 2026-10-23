@@ -90,6 +90,14 @@ namespace com.IvanMurzak.McpPlugin
         public virtual bool GenerateSkillFiles { get; set; } = true;
 
         /// <summary>
+        /// Global SKILL.md metadata for both tool documentation and standalone skills.
+        /// Configure before building the plugin; entries override the generator's defaults,
+        /// including <c>generated-by</c>. Runtime-only host policy, not connection settings.
+        /// </summary>
+        [JsonIgnore]
+        public virtual Dictionary<string, string> SkillMetadata { get; set; } = new();
+
+        /// <summary>
         /// Path for generated skill markdown files. Can be absolute or relative.
         /// When relative, it is anchored against (in priority order): the <c>basePath</c> argument
         /// passed to <see cref="IMcpPlugin.GenerateSkillFiles(string?)"/> /
