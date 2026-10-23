@@ -82,7 +82,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 // the authorization server from the ABSOLUTE resource_metadata URL, plus the scope.
                 var metadataUrl = _oauthConfig.ProtectedResourceMetadataUrl();
                 Response.Headers.WWWAuthenticate =
-                    $"Bearer resource_metadata=\"{metadataUrl}\", scope=\"{OAuthResourceServerConfig.AgentScope}\"";
+                    $"Bearer resource_metadata=\"{metadataUrl}\", scope=\"{OAuthResourceServerConfig.AgentScope}\""
+                    // RFC 6750: report a PRESENTED invalid token in the challenge,
+                    // where OAuth clients read it. An unauthenticated discovery
+                    // request must not be labelled as a rejected credential.
+                    + (TryGetBearerToken(out _) ? ", error=\"invalid_token\"" : "");
                 await Response.WriteAsJsonAsync(new
                 {
                     error = "invalid_token",

@@ -126,6 +126,22 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
+        public async Task RejectedBearer_ChallengeIncludesInvalidTokenAndDiscovery()
+        {
+            var (handler, context, scheme) = Create(new FakeValidator(OAuthValidationResult.Fail("jwt", "expired")));
+            context.Request.Path = "/mcp";
+            context.Request.Headers.Authorization = "Bearer expired-credential";
+            await handler.InitializeAsync(scheme, context);
+            (await handler.AuthenticateAsync()).Succeeded.ShouldBeFalse();
+
+            await handler.ChallengeAsync(null);
+
+            context.Response.StatusCode.ShouldBe(401);
+            context.Response.Headers.WWWAuthenticate.ToString().ShouldContain("error=\"invalid_token\"");
+            context.Response.Headers.WWWAuthenticate.ToString().ShouldContain($"resource_metadata=\"{Config.ProtectedResourceMetadataUrl()}\"");
+        }
+
+        [Fact]
         public async Task Challenge_Emits401_WithAbsoluteResourceMetadata_AndScope()
         {
             var (handler, context, scheme) = Create(null);
@@ -138,6 +154,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             wwwAuth.ShouldContain("Bearer ");
             wwwAuth.ShouldContain($"resource_metadata=\"{Config.ProtectedResourceMetadataUrl()}\"");
             wwwAuth.ShouldContain("scope=\"mcp:agent\"");
+            wwwAuth.ShouldNotContain("error=");
 
             // The resource_metadata URL must be ABSOLUTE (a real MCP client rejects relative URLs).
             Config.ProtectedResourceMetadataUrl().ShouldStartWith("http://localhost:23471/.well-known/oauth-protected-resource");
