@@ -58,7 +58,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <remarks>
         /// <para>
         /// The skill members are measured FLAT, alongside the other fields, whereas the wire nests them inside
-        /// a <c>_meta</c> object. For an enabled tool that object exists only because of them, so the figure
+        /// a <c>_meta</c> object. For a visible tool that object exists only because of them, so the figure
         /// omits its own <c>,"_meta":{</c> … <c>}</c> wrapper — about ten characters, two to three tokens per
         /// skill-bearing tool. That is deliberate: the members are counted under the same flat accounting
         /// every other member gets, rather than in a unit of their own. Treat the result as a catalogue-weight

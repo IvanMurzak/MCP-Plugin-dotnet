@@ -162,7 +162,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             public string? SkillBody => null;
             public JsonNode InputSchema => JsonNode.Parse("{}")!;
             public JsonNode OutputSchema => JsonNode.Parse("{}")!;
-            public bool Enabled { get; set; } = true;
+            public bool Visible { get; set; } = true;
             public bool? ReadOnlyHint => null;
             public bool? DestructiveHint => null;
             public bool? IdempotentHint => null;

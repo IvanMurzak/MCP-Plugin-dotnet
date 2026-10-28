@@ -38,10 +38,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Data.Annotations
         [AiTool("tool-enabled-default", "Tool With Default Enabled")]
         public static void EnabledDefault() { }
 
-        [AiTool("tool-enabled-true", "Tool With Enabled True", Enabled = true)]
+        [AiTool("tool-enabled-true", "Tool With Enabled True", Visible = true)]
         public static void EnabledTrue() { }
 
-        [AiTool("tool-enabled-false", "Tool With Enabled False", Enabled = false)]
+        [AiTool("tool-enabled-false", "Tool With Enabled False", Visible = false)]
         public static void EnabledFalse() { }
     }
 }

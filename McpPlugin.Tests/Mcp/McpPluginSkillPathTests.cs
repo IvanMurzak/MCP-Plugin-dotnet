@@ -244,7 +244,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             public string? SkillBody => null;
             public JsonNode? InputSchema => null;
             public JsonNode? OutputSchema => null;
-            public bool Enabled { get; set; } = true;
+            public bool Visible { get; set; } = true;
             public bool? ReadOnlyHint => null;
             public bool? DestructiveHint => null;
             public bool? IdempotentHint => null;

@@ -88,7 +88,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// Calculates the skill-metadata share of this tool's token count, with the same
         /// return-0-on-failure resilience <see cref="CalculateTokenCount"/> has: a breakdown must never
-        /// be able to poison <see cref="IToolManager.EnabledToolsSkillMetadataTokenCount"/>.
+        /// be able to poison <see cref="IToolManager.VisibleToolsSkillMetadataTokenCount"/>.
         /// </summary>
         private int CalculateSkillMetadataTokenCount()
         {

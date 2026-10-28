@@ -35,7 +35,7 @@ namespace com.IvanMurzak.McpPlugin
                     destructiveHint: attr.DestructiveHintValue,
                     idempotentHint: attr.IdempotentHintValue,
                     openWorldHint: attr.OpenWorldHintValue,
-                    enabled: attr.EnabledValue,
+                    visible: attr.VisibleValue,
                     toolType: attr.ToolType)
                 : RunTool.CreateFromClassMethod(
                     reflector: reflector,
@@ -48,7 +48,7 @@ namespace com.IvanMurzak.McpPlugin
                     destructiveHint: attr.DestructiveHintValue,
                     idempotentHint: attr.IdempotentHintValue,
                     openWorldHint: attr.OpenWorldHintValue,
-                    enabled: attr.EnabledValue,
+                    visible: attr.VisibleValue,
                     toolType: attr.ToolType);
         }
     }

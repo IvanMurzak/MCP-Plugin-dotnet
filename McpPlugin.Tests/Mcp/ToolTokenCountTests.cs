@@ -114,7 +114,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         }
 
         [Fact]
-        public void EnabledToolsTokenCount_ShouldReturnSumOfAllEnabledTools()
+        public void VisibleToolsTokenCount_ShouldReturnSumOfAllEnabledTools()
         {
             // Arrange
             var reflector = new Reflector();
@@ -131,20 +131,20 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var toolManager = plugin.McpManager.ToolManager!;
 
             // Act
-            var totalTokens = toolManager.EnabledToolsTokenCount;
+            var totalTokens = toolManager.VisibleToolsTokenCount;
 
             // Assert
             totalTokens.ShouldBeGreaterThan(0);
 
             // Verify it's the sum by checking individual tools
             var tools = toolManager.GetAllTools();
-            int expectedSum = tools.Where(tool => tool.Enabled).Sum(tool => tool.TokenCount);
+            int expectedSum = tools.Where(tool => tool.Visible).Sum(tool => tool.TokenCount);
 
             totalTokens.ShouldBe(expectedSum);
         }
 
         [Fact]
-        public void EnabledToolsTokenCount_ShouldExcludeDisabledTools()
+        public void VisibleToolsTokenCount_ShouldExcludeDisabledTools()
         {
             // Arrange
             var reflector = new Reflector();
@@ -159,10 +159,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var toolManager = plugin.McpManager.ToolManager!;
 
             // Disable one tool
-            toolManager.SetToolEnabled("disabledTool", false);
+            toolManager.SetToolVisible("disabledTool", false);
 
             // Act
-            var totalTokens = toolManager.EnabledToolsTokenCount;
+            var totalTokens = toolManager.VisibleToolsTokenCount;
 
             // Assert - Should only count the enabled tool
             var tools = toolManager.GetAllTools();
@@ -176,7 +176,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         }
 
         [Fact]
-        public void EnabledToolsTokenCount_ShouldReturnZero_WhenNoToolsEnabled()
+        public void VisibleToolsTokenCount_ShouldReturnZero_WhenNoToolsEnabled()
         {
             // Arrange
             var reflector = new Reflector();
@@ -189,17 +189,17 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var toolManager = plugin.McpManager.ToolManager!;
 
             // Disable all tools
-            toolManager.SetToolEnabled("testTool", false);
+            toolManager.SetToolVisible("testTool", false);
 
             // Act
-            var totalTokens = toolManager.EnabledToolsTokenCount;
+            var totalTokens = toolManager.VisibleToolsTokenCount;
 
             // Assert
             totalTokens.ShouldBe(0);
         }
 
         [Fact]
-        public void EnabledToolsTokenCount_ShouldUpdateDynamically_WhenToolsAreDisabled()
+        public void VisibleToolsTokenCount_ShouldUpdateDynamically_WhenToolsAreDisabled()
         {
             // Arrange
             var reflector = new Reflector();
@@ -214,15 +214,15 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var toolManager = plugin.McpManager.ToolManager!;
 
             // Act - Get initial count
-            var initialCount = toolManager.EnabledToolsTokenCount;
+            var initialCount = toolManager.VisibleToolsTokenCount;
 
             // Disable one tool
-            toolManager.SetToolEnabled("tool1", false);
-            var countAfterDisable = toolManager.EnabledToolsTokenCount;
+            toolManager.SetToolVisible("tool1", false);
+            var countAfterDisable = toolManager.VisibleToolsTokenCount;
 
             // Re-enable the tool
-            toolManager.SetToolEnabled("tool1", true);
-            var countAfterReEnable = toolManager.EnabledToolsTokenCount;
+            toolManager.SetToolVisible("tool1", true);
+            var countAfterReEnable = toolManager.VisibleToolsTokenCount;
 
             // Assert
             initialCount.ShouldBeGreaterThan(countAfterDisable);

@@ -37,21 +37,33 @@ namespace com.IvanMurzak.McpPlugin
         private bool _openWorldHint;
         private bool _openWorldHintSet;
 
-        private bool _enabled = true;
-        private bool _enabledSet;
+        private bool _visible = true;
+        private bool _visibleSet;
 
         /// <summary>
-        /// If set to false, the tool will be disabled by default when first discovered.
-        /// When not set, the tool defaults to enabled.
+        /// If set to false, the tool is hidden from <c>tools/list</c> by default when first discovered.
+        /// A hidden tool still runs through <c>tools/call</c>. When not set, the tool defaults to visible.
         /// </summary>
-        public bool Enabled
+        public bool Visible
         {
-            get => _enabled;
-            set { _enabled = value; _enabledSet = true; }
+            get => _visible;
+            set { _visible = value; _visibleSet = true; }
         }
 
-        /// <summary>Gets the Enabled value, or null if it was not explicitly set.</summary>
-        public bool? EnabledValue => _enabledSet ? _enabled : null;
+        /// <summary>Gets the Visible value, or null if it was not explicitly set.</summary>
+        public bool? VisibleValue => _visibleSet ? _visible : null;
+
+        /// <summary>Old name of <see cref="Visible"/>.</summary>
+        [Obsolete("Renamed to Visible" + VisibilityRename.Note)]
+        public bool Enabled
+        {
+            get => Visible;
+            set => Visible = value;
+        }
+
+        /// <summary>Old name of <see cref="VisibleValue"/>.</summary>
+        [Obsolete("Renamed to VisibleValue" + VisibilityRename.Note)]
+        public bool? EnabledValue => VisibleValue;
 
         /// <summary>
         /// If true, the tool only reads or queries data and does not modify system state.

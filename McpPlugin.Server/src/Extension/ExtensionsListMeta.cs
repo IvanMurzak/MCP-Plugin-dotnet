@@ -100,7 +100,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (response == null)
                 throw new ArgumentNullException(nameof(response));
 
-            var meta = BuildEnabledMeta(response.Enabled);
+            var meta = BuildEnabledMeta(response.Visible);
 
             // Opt-in gate. Checked BEFORE the per-key guards, so neither skill key can be
             // reached without the opt-in and a caller that did not opt in gets the

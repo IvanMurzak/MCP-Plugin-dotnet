@@ -60,10 +60,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             return builder.Build(reflector);
         }
 
-        // ── Tool: Enabled attribute ──────────────────────────────────────
+        // ── Tool: Visible attribute ──────────────────────────────────────
 
         [Fact]
-        public async Task Tool_DefaultEnabled_ShouldBeTrue()
+        public async Task Tool_DefaultVisible_ShouldBeTrue()
         {
             var plugin = BuildWithTools();
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
@@ -72,11 +72,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             response.Status.ShouldBe(ResponseStatus.Success);
 
             var tool = response.Value!.First(t => t.Name == "tool-enabled-default");
-            tool.Enabled.ShouldBeTrue();
+            tool.Visible.ShouldBeTrue();
         }
 
         [Fact]
-        public async Task Tool_EnabledTrue_ShouldBeTrue()
+        public async Task Tool_VisibleTrue_ShouldBeTrue()
         {
             var plugin = BuildWithTools();
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
@@ -85,11 +85,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             response.Status.ShouldBe(ResponseStatus.Success);
 
             var tool = response.Value!.First(t => t.Name == "tool-enabled-true");
-            tool.Enabled.ShouldBeTrue();
+            tool.Visible.ShouldBeTrue();
         }
 
         [Fact]
-        public async Task Tool_EnabledFalse_ShouldBeFalse()
+        public async Task Tool_VisibleFalse_ShouldBeFalse()
         {
             var plugin = BuildWithTools();
             var response = await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool());
@@ -98,24 +98,24 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             response.Status.ShouldBe(ResponseStatus.Success);
 
             var tool = response.Value!.First(t => t.Name == "tool-enabled-false");
-            tool.Enabled.ShouldBeFalse();
+            tool.Visible.ShouldBeFalse();
         }
 
         [Fact]
-        public void Tool_EnabledFalse_ShouldBeExcludedFromEnabledCount()
+        public void Tool_VisibleFalse_ShouldBeExcludedFromVisibleCount()
         {
             var plugin = BuildWithTools();
             var toolManager = plugin.McpManager.ToolManager!;
             var allTools = toolManager.GetAllTools().ToList();
 
             var disabledTool = allTools.First(t => t.Name == "tool-enabled-false");
-            disabledTool.Enabled.ShouldBeFalse();
+            disabledTool.Visible.ShouldBeFalse();
 
-            toolManager.EnabledToolsCount.ShouldBe(allTools.Count - 1);
+            toolManager.VisibleToolsCount.ShouldBe(allTools.Count - 1);
         }
 
         [Fact]
-        public void Tool_RunnerEnabled_ShouldMatchAttribute()
+        public void Tool_RunnerVisible_ShouldMatchAttribute()
         {
             var plugin = BuildWithTools();
             var tools = plugin.McpManager.ToolManager!.GetAllTools().ToList();
@@ -124,9 +124,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var enabledTool = tools.First(t => t.Name == "tool-enabled-true");
             var disabledTool = tools.First(t => t.Name == "tool-enabled-false");
 
-            defaultTool.Enabled.ShouldBeTrue();
-            enabledTool.Enabled.ShouldBeTrue();
-            disabledTool.Enabled.ShouldBeFalse();
+            defaultTool.Visible.ShouldBeTrue();
+            enabledTool.Visible.ShouldBeTrue();
+            disabledTool.Visible.ShouldBeFalse();
         }
 
         // ── Prompt: Enabled attribute ────────────────────────────────────
@@ -174,24 +174,24 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         // ── Attribute: EnabledValue nullable semantics ───────────────────
 
         [Fact]
-        public void ToolAttribute_EnabledNotSet_EnabledValueShouldBeNull()
+        public void ToolAttribute_VisibleNotSet_VisibleValueShouldBeNull()
         {
             var attr = new AiToolAttribute("test");
-            attr.EnabledValue.ShouldBeNull();
+            attr.VisibleValue.ShouldBeNull();
         }
 
         [Fact]
-        public void ToolAttribute_EnabledSetTrue_EnabledValueShouldBeTrue()
+        public void ToolAttribute_VisibleSetTrue_VisibleValueShouldBeTrue()
         {
-            var attr = new AiToolAttribute("test") { Enabled = true };
-            attr.EnabledValue.ShouldBe(true);
+            var attr = new AiToolAttribute("test") { Visible = true };
+            attr.VisibleValue.ShouldBe(true);
         }
 
         [Fact]
-        public void ToolAttribute_EnabledSetFalse_EnabledValueShouldBeFalse()
+        public void ToolAttribute_VisibleSetFalse_VisibleValueShouldBeFalse()
         {
-            var attr = new AiToolAttribute("test") { Enabled = false };
-            attr.EnabledValue.ShouldBe(false);
+            var attr = new AiToolAttribute("test") { Visible = false };
+            attr.VisibleValue.ShouldBe(false);
         }
 
         [Fact]

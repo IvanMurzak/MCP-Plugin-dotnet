@@ -30,7 +30,11 @@ namespace com.IvanMurzak.McpPlugin
     public partial class RunTool : MethodWrapper, IRunTool
     {
         public string Name { get; private set; }
-        public bool Enabled { get; set; } = true;
+        /// <summary>Whether the tool is listed in <c>tools/list</c>. A hidden tool still runs through <c>tools/call</c>.</summary>
+        public bool Visible { get; set; } = true;
+        /// <summary>Old name of <see cref="Visible"/>.</summary>
+        [Obsolete("Renamed to Visible" + VisibilityRename.Note)]
+        public bool Enabled { get => Visible; set => Visible = value; }
         public McpToolType ToolType { get; protected set; } = McpToolType.Standard;
         public string? Title { get; protected set; }
         public bool? ReadOnlyHint { get; protected set; }

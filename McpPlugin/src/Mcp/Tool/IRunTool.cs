@@ -8,6 +8,7 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -17,8 +18,21 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public interface IRunTool : IEnabled
+    public interface IRunTool : IVisible
     {
+        /// <summary>Old name of <see cref="IVisible.Visible"/>, kept as an alias until the next major release.</summary>
+        /// <remarks>
+        /// <see cref="Enabled"/> and <see cref="IVisible.Visible"/> forward to each other, so an implementation
+        /// written against either name keeps working: one that declares only <c>Enabled</c> (written before the
+        /// rename) gets <c>Visible</c> from here. An implementation must declare at least one of the two.
+        /// </remarks>
+        [Obsolete("Renamed to Visible" + VisibilityRename.Note)]
+        bool Enabled { get => Visible; set => Visible = value; }
+
+#pragma warning disable CS0618 // forwards to the old name for implementations that only declare Enabled
+        bool IVisible.Visible { get => Enabled; set => Enabled = value; }
+#pragma warning restore CS0618
+
         string Name { get; }
         string? Title { get; }
         string? Description { get; }

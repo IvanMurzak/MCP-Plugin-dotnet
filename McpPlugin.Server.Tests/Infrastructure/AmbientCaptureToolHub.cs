@@ -123,7 +123,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
                 new ResponseListTool
                 {
                     Name = AttributedToolName,
-                    Enabled = true,
+                    Visible = true,
                     InputSchema = Consts.MCP.EmptyInputSchema,
                     SkillDescription = SkillDescriptionText,
                     SkillBody = SkillBodyText
@@ -131,7 +131,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
                 new ResponseListTool
                 {
                     Name = UnattributedToolName,
-                    Enabled = true,
+                    Visible = true,
                     InputSchema = Consts.MCP.EmptyInputSchema
                 }
             };
@@ -163,8 +163,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
         {
             var tools = new[]
             {
-                new ResponseListTool { Name = EnabledToolName, Enabled = true, InputSchema = Consts.MCP.EmptyInputSchema },
-                new ResponseListTool { Name = DisabledToolName, Enabled = false, InputSchema = Consts.MCP.EmptyInputSchema }
+                new ResponseListTool { Name = EnabledToolName, Visible = true, InputSchema = Consts.MCP.EmptyInputSchema },
+                new ResponseListTool { Name = DisabledToolName, Visible = false, InputSchema = Consts.MCP.EmptyInputSchema }
             };
             return Task.FromResult(tools.Pack("req-ok"));
         }

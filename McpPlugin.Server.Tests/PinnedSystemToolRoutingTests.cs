@@ -331,7 +331,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                         new ResponseListTool
                         {
                             Name = OutcomeName(Resolve()),
-                            Enabled = true,
+                            Visible = true,
                             InputSchema = Consts.MCP.EmptyInputSchema
                         }
                     }

@@ -268,35 +268,35 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         // ── Catalogue-level breakdown ───────────────────────────────────────────────────────────────
 
         [Fact]
-        public void EnabledToolsSkillMetadataTokenCount_IsTheShareOfTheEnabledCatalogue()
+        public void VisibleToolsSkillMetadataTokenCount_IsTheShareOfTheEnabledCatalogue()
         {
             var toolManager = BuildSkillMetadataToolManager();
             var withMetadata = GetTool(toolManager, WithSkillToolName);
             var withSecond = GetTool(toolManager, SecondSkillToolName);
             var withoutMetadata = GetTool(toolManager, SansSkillToolName);
 
-            toolManager.EnabledToolsTokenCount
+            toolManager.VisibleToolsTokenCount
                 .ShouldBe(withMetadata.TokenCount + withSecond.TokenCount + withoutMetadata.TokenCount);
 
             // TWO skill-bearing tools with DIFFERENT-sized payloads, so this pins an addition: over this
             // catalogue a sum reads both shares while max / first / last each read only one of them.
-            toolManager.EnabledToolsSkillMetadataTokenCount
+            toolManager.VisibleToolsSkillMetadataTokenCount
                 .ShouldBe(SkillMetadataTokens + SecondSkillMetadataTokens);
         }
 
         [Fact]
-        public void EnabledToolsSkillMetadataTokenCount_ExcludesDisabledTools()
+        public void VisibleToolsSkillMetadataTokenCount_ExcludesDisabledTools()
         {
             var toolManager = BuildSkillMetadataToolManager();
             var withSecond = GetTool(toolManager, SecondSkillToolName);
             var withoutMetadata = GetTool(toolManager, SansSkillToolName);
 
-            toolManager.SetToolEnabled(WithSkillToolName, false);
+            toolManager.SetToolVisible(WithSkillToolName, false);
 
             // The disabled tool's share drops out and the second tool's survives. A NON-zero expectation is
             // what makes this discriminate: against zero, a filter that excluded everything would also pass.
-            toolManager.EnabledToolsSkillMetadataTokenCount.ShouldBe(SecondSkillMetadataTokens);
-            toolManager.EnabledToolsTokenCount.ShouldBe(withSecond.TokenCount + withoutMetadata.TokenCount);
+            toolManager.VisibleToolsSkillMetadataTokenCount.ShouldBe(SecondSkillMetadataTokens);
+            toolManager.VisibleToolsTokenCount.ShouldBe(withSecond.TokenCount + withoutMetadata.TokenCount);
         }
 
         // ── Helpers ─────────────────────────────────────────────────────────────────────────────────
