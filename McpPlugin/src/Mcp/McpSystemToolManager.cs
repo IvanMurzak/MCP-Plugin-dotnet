@@ -124,7 +124,7 @@ namespace com.IvanMurzak.McpPlugin
                         var response = new ResponseListTool()
                         {
                             Name = kvp.Value.Name,
-                            Enabled = kvp.Value.Enabled,
+                            Visible = kvp.Value.Visible,
                             Title = kvp.Value.Title,
                             Description = kvp.Value.Description,
                             InputSchema = kvp.Value.InputSchema.ToJsonElement() ?? Common.Consts.MCP.EmptyInputSchema,

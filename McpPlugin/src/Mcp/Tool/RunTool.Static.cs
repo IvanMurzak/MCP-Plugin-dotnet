@@ -38,7 +38,7 @@ namespace com.IvanMurzak.McpPlugin
             bool? destructiveHint = null,
             bool? idempotentHint = null,
             bool? openWorldHint = null,
-            bool? enabled = null,
+            bool? visible = null,
             McpToolType toolType = McpToolType.Standard)
             => new RunTool(reflector, logger, name, methodInfo)
             {
@@ -48,7 +48,7 @@ namespace com.IvanMurzak.McpPlugin
                 DestructiveHint = destructiveHint,
                 IdempotentHint = idempotentHint,
                 OpenWorldHint = openWorldHint,
-                Enabled = enabled ?? true
+                Visible = visible ?? true
             };
 
         /// <summary>
@@ -67,7 +67,7 @@ namespace com.IvanMurzak.McpPlugin
             bool? destructiveHint = null,
             bool? idempotentHint = null,
             bool? openWorldHint = null,
-            bool? enabled = null,
+            bool? visible = null,
             McpToolType toolType = McpToolType.Standard)
             => new RunTool(reflector, logger, name, targetInstance, methodInfo)
             {
@@ -77,7 +77,7 @@ namespace com.IvanMurzak.McpPlugin
                 DestructiveHint = destructiveHint,
                 IdempotentHint = idempotentHint,
                 OpenWorldHint = openWorldHint,
-                Enabled = enabled ?? true
+                Visible = visible ?? true
             };
 
         /// <summary>
@@ -99,7 +99,7 @@ namespace com.IvanMurzak.McpPlugin
             bool? destructiveHint = null,
             bool? idempotentHint = null,
             bool? openWorldHint = null,
-            bool? enabled = null,
+            bool? visible = null,
             McpToolType toolType = McpToolType.Standard)
             => new RunTool(reflector, logger, name, classType, methodInfo)
             {
@@ -109,7 +109,7 @@ namespace com.IvanMurzak.McpPlugin
                 DestructiveHint = destructiveHint,
                 IdempotentHint = idempotentHint,
                 OpenWorldHint = openWorldHint,
-                Enabled = enabled ?? true
+                Visible = visible ?? true
             };
     }
 }

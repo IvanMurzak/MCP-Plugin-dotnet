@@ -48,6 +48,30 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
         static string WireName(JsonSerializerOptions options, string clrName)
             => options.PropertyNamingPolicy?.ConvertName(clrName) ?? clrName;
 
+        /// <summary>
+        /// <see cref="ResponseListTool.Visible"/> was <c>Enabled</c> before the rename; on the wire it keeps the old
+        /// member's name (the hub policy applied to "Enabled") so plugins and servers built on older McpPlugin
+        /// versions keep exchanging catalogues.
+        /// </summary>
+        static string VisibleWireName => WireName(HubPayloadOptions(), "Enabled");
+
+        [Fact]
+        public void HubSerializer_KeepsTheOldWireName_ForVisible()
+        {
+            var options = HubPayloadOptions();
+
+            var json = JsonSerializer.Serialize(new ResponseListTool { Name = "hidden-tool", Visible = false, InputSchema = com.IvanMurzak.McpPlugin.Common.Consts.MCP.EmptyInputSchema }, options);
+            using var doc = JsonDocument.Parse(json);
+            doc.RootElement.TryGetProperty(VisibleWireName, out var visible)
+                .ShouldBeTrue($"the flag must keep its old wire name. Payload was: {json}");
+            visible.GetBoolean().ShouldBeFalse();
+            doc.RootElement.TryGetProperty(WireName(options, nameof(ResponseListTool.Visible)), out _)
+                .ShouldBeFalse($"no new wire key may appear. Payload was: {json}");
+
+            var back = JsonSerializer.Deserialize<ResponseListTool>(json, options)!;
+            back.Visible.ShouldBeFalse();
+        }
+
         [Fact]
         public void HubSerializer_TransportsSkillDescription()
         {
@@ -139,13 +163,13 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
             // Backward tolerance: a plugin built before this change sends a payload with
             // neither member. The server must still materialise the tool.
             var options = HubPayloadOptions();
-            // `Enabled` is carried as FALSE on purpose. The member defaults to `true`, so
+            // `Visible` (wire name "enabled") is carried as FALSE on purpose. The member defaults to `true`, so
             // asserting it deserializes to `true` is satisfied by the initializer and holds
             // under every mutation, including one that stops binding the member at all.
             // `false` is the only value in the domain that distinguishes a real bind.
             var oldShape =
                 "{\"" + WireName(options, nameof(ResponseListTool.Name)) + "\":\"gameobject-create\"," +
-                "\"" + WireName(options, nameof(ResponseListTool.Enabled)) + "\":false," +
+                "\"" + VisibleWireName + "\":false," +
                 "\"" + WireName(options, nameof(ResponseListTool.Description)) + "\":\"legacy\"}";
 
             var parsed = JsonSerializer.Deserialize<ResponseListTool>(oldShape, options);
@@ -153,7 +177,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
             parsed.ShouldNotBeNull();
             parsed!.Name.ShouldBe("gameobject-create");
             parsed.Description.ShouldBe("legacy");
-            parsed.Enabled.ShouldBeFalse();
+            parsed.Visible.ShouldBeFalse();
             parsed.SkillDescription.ShouldBeNull();
             parsed.SkillBody.ShouldBeNull();
         }

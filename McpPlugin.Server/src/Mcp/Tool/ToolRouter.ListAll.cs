@@ -85,7 +85,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             // including `Enabled = false` tools tagged with `_meta.enabled = false`.
             // Every other caller continues to get the pre-existing filtered view.
             // See ExtensionsListMeta.SelectVisible for the predicate.
-            var result = Merge(response.Value.SelectVisible(x => x.Enabled, x => x.ToTool()), nativeTools);
+            var result = Merge(response.Value.SelectVisible(x => x.Visible, x => x.ToTool()), nativeTools);
 
             if (logger.IsTraceEnabled)
                 logger.Trace("ListAll, result: {0}", result.ToPrettyJson());

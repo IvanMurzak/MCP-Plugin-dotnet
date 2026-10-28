@@ -8,6 +8,7 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
+using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -17,8 +18,12 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 
 namespace com.IvanMurzak.McpPlugin
 {
-    public interface IRunTool : IEnabled
+    public interface IRunTool : IVisible
     {
+        /// <summary>Old name of <see cref="IVisible.Visible"/>, kept as an alias until the next major release.</summary>
+        [Obsolete("Renamed to Visible: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        bool Enabled { get => Visible; set => Visible = value; }
+
         string Name { get; }
         string? Title { get; }
         string? Description { get; }

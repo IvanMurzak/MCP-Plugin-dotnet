@@ -170,7 +170,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
                     var entry = new JsonObject
                     {
                         ["name"] = tool.Name,
-                        ["enabled"] = tool.Enabled
+                        ["enabled"] = tool.Visible // wire key kept for compatibility: listed in tools/list, not an access control
                     };
                     if (tool.Title != null)
                         entry["title"] = tool.Title;

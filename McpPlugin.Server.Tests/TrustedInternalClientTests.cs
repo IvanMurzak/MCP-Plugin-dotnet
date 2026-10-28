@@ -153,7 +153,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // ToTool() now composes through BuildToolMeta, which may also add
             // skillDescription/skillBody. With neither set — the case here — the result
             // must still be the pre-existing null.
-            new ResponseListTool { Name = "ping", Enabled = true, InputSchema = Consts.MCP.EmptyInputSchema }
+            new ResponseListTool { Name = "ping", Visible = true, InputSchema = Consts.MCP.EmptyInputSchema }
                 .ToTool()
                 .Meta
                 .ShouldBeNull();
@@ -162,7 +162,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public void ToTool_AttachesEnabledFalseMeta_WhenDisabled()
         {
-            var meta = new ResponseListTool { Name = "ping", Enabled = false, InputSchema = Consts.MCP.EmptyInputSchema }.ToTool().Meta;
+            var meta = new ResponseListTool { Name = "ping", Visible = false, InputSchema = Consts.MCP.EmptyInputSchema }.ToTool().Meta;
 
             meta.ShouldNotBeNull();
             meta![ExtensionsListMeta.EnabledKey]!.GetValue<bool>().ShouldBeFalse();

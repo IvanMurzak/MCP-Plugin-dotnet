@@ -69,14 +69,14 @@ namespace com.IvanMurzak.McpPlugin.NullEngine.Replay
         public bool? IdempotentHint { get; }
         public bool? OpenWorldHint { get; }
 
-        public bool Enabled { get; set; } = true;
+        public bool Visible { get; set; } = true;
 
         /// <summary>
         /// The same chars/4 approximation <c>RunTool</c> and <c>ProxyTool</c> report, recomputed
         /// here because the helper that implements it (<c>ToolTokenCount</c>) is <c>internal</c> to
         /// McpPlugin and this assembly only references it. The count is NOT part of the T2
         /// contract — a fixture records no token counts — so the duplication is a convenience for
-        /// <c>IToolManager.EnabledToolsTokenCount</c>, not a claim anything is asserted on.
+        /// <c>IToolManager.VisibleToolsTokenCount</c>, not a claim anything is asserted on.
         /// </summary>
         public int TokenCount
         {
@@ -104,7 +104,7 @@ namespace com.IvanMurzak.McpPlugin.NullEngine.Replay
                 catch (Exception)
                 {
                     // Same silent resilience as ProxyTool: one unserializable schema must not
-                    // poison IToolManager.EnabledToolsTokenCount, which sums over every tool.
+                    // poison IToolManager.VisibleToolsTokenCount, which sums over every tool.
                     _cachedTokenCount = 0;
                 }
                 return _cachedTokenCount.Value;

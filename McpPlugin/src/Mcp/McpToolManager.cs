@@ -58,26 +58,33 @@ namespace com.IvanMurzak.McpPlugin
         }
 
         #region Tools
-        public int EnabledToolsCount => _tools.Count(kvp => kvp.Value.Enabled);
+        public int VisibleToolsCount => _tools.Count(kvp => kvp.Value.Visible);
         public int TotalToolsCount => _tools.Count;
 
         /// <summary>
-        /// Gets the total token count for all enabled tools.
-        /// This is calculated as the sum of TokenCount for each enabled tool.
+        /// Gets the total token count for all visible tools.
+        /// This is calculated as the sum of TokenCount for each visible tool.
         /// Recalculates on each access but should be performant for typical tool counts.
         /// </summary>
-        public int EnabledToolsTokenCount => _tools
-            .Where(kvp => kvp.Value.Enabled)
+        public int VisibleToolsTokenCount => _tools
+            .Where(kvp => kvp.Value.Visible)
             .Sum(kvp => kvp.Value.TokenCount);
 
         /// <summary>
-        /// The skill-metadata share of <see cref="EnabledToolsTokenCount"/>, summed over the SAME enabled
+        /// The skill-metadata share of <see cref="VisibleToolsTokenCount"/>, summed over the SAME visible
         /// tools so the two figures are directly comparable (subtracting one from the other yields the
         /// pre-skill-metadata catalogue weight).
         /// </summary>
-        public int EnabledToolsSkillMetadataTokenCount => _tools
-            .Where(kvp => kvp.Value.Enabled)
+        public int VisibleToolsSkillMetadataTokenCount => _tools
+            .Where(kvp => kvp.Value.Visible)
             .Sum(kvp => kvp.Value.SkillMetadataTokenCount);
+
+        [Obsolete("Renamed to VisibleToolsCount: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        public int EnabledToolsCount => VisibleToolsCount;
+        [Obsolete("Renamed to VisibleToolsTokenCount: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        public int EnabledToolsTokenCount => VisibleToolsTokenCount;
+        [Obsolete("Renamed to VisibleToolsSkillMetadataTokenCount: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        public int EnabledToolsSkillMetadataTokenCount => VisibleToolsSkillMetadataTokenCount;
 
         private IToolBinding? _toolBinding;
 
@@ -127,7 +134,7 @@ namespace com.IvanMurzak.McpPlugin
 
             return removed;
         }
-        public bool IsToolEnabled(string name)
+        public bool IsToolVisible(string name)
         {
             if (!_tools.TryGetValue(name, out var runner))
             {
@@ -135,9 +142,13 @@ namespace com.IvanMurzak.McpPlugin
                 return false;
             }
 
-            return runner.Enabled;
+            return runner.Visible;
         }
-        public bool SetToolEnabled(string name, bool enabled)
+        [Obsolete("Renamed to IsToolVisible: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        public bool IsToolEnabled(string name) => IsToolVisible(name);
+        [Obsolete("Renamed to SetToolVisible: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        public bool SetToolEnabled(string name, bool enabled) => SetToolVisible(name, enabled);
+        public bool SetToolVisible(string name, bool visible)
         {
             if (!_tools.TryGetValue(name, out var runner))
             {
@@ -145,7 +156,7 @@ namespace com.IvanMurzak.McpPlugin
                 return false;
             }
 
-            runner.Enabled = enabled;
+            runner.Visible = visible;
             _onToolsUpdated.OnNext(Unit.Default);
 
             return true;
@@ -218,7 +229,7 @@ namespace com.IvanMurzak.McpPlugin
                         var response = new ResponseListTool()
                         {
                             Name = kvp.Value.Name,
-                            Enabled = kvp.Value.Enabled,
+                            Visible = kvp.Value.Visible,
                             Title = kvp.Value.Title,
                             Description = kvp.Value.Description,
                             SkillDescription = kvp.Value.SkillDescription,

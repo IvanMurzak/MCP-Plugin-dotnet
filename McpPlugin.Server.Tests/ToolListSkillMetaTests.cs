@@ -44,7 +44,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             => new ResponseListTool
             {
                 Name = "gameobject-create",
-                Enabled = enabled,
+                Visible = enabled,
                 InputSchema = Consts.MCP.EmptyInputSchema,
                 SkillDescription = skillDescription,
                 SkillBody = skillBody

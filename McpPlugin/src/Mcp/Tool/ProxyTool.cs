@@ -29,8 +29,8 @@ namespace com.IvanMurzak.McpPlugin
     /// Register a proxy tool against a built plugin via
     /// <c>plugin.McpManager.ToolManager.AddTool(name, proxyTool)</c> (which fires the tools-updated /
     /// list-changed notification), and remove it via <c>RemoveTool(name)</c>. To toggle visibility after
-    /// registration, call <c>IToolManager.SetToolEnabled(name, enabled)</c> (which fires the list-changed
-    /// notification) rather than setting <see cref="Enabled"/> directly — a direct set updates the tool but
+    /// registration, call <c>IToolManager.SetToolVisible(name, visible)</c> (which fires the list-changed
+    /// notification) rather than setting <see cref="Visible"/> directly — a direct set updates the tool but
     /// leaves connected clients with a stale listing.
     /// </para>
     ///
@@ -59,15 +59,20 @@ namespace com.IvanMurzak.McpPlugin
         public bool? OpenWorldHint { get; }
 
         /// <summary>
-        /// Whether this tool is exposed to MCP clients. Settable so a host can toggle a runtime tool on/off;
-        /// disabled tools are filtered out of the enabled-tools view by the tool manager. Defaults to <see langword="true"/>.
+        /// Whether this tool is listed in <c>tools/list</c>. Settable so a host can show or hide a runtime tool;
+        /// hidden tools are left out of the visible-tools view by the tool manager but still run through
+        /// <c>tools/call</c>. Defaults to <see langword="true"/>.
         /// <para>
-        /// For post-registration toggling prefer <c>IToolManager.SetToolEnabled(name, enabled)</c>: it both
+        /// For post-registration toggling prefer <c>IToolManager.SetToolVisible(name, visible)</c>: it both
         /// flips this flag and fires the list-changed notification, whereas setting this property directly
         /// leaves connected clients with a stale listing.
         /// </para>
         /// </summary>
-        public bool Enabled { get; set; } = true;
+        public bool Visible { get; set; } = true;
+
+        /// <summary>Old name of <see cref="Visible"/>.</summary>
+        [Obsolete("Renamed to Visible: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        public bool Enabled { get => Visible; set => Visible = value; }
 
         /// <summary>
         /// Semantic token count for this tool, computed once (then cached) from the same chars/4 approximation
@@ -89,8 +94,8 @@ namespace com.IvanMurzak.McpPlugin
                 catch
                 {
                     // Mirror RunTool.CalculateTokenCount's resilience: a tool whose externally supplied schema
-                    // fails to serialize must not poison IToolManager.EnabledToolsTokenCount, which sums
-                    // TokenCount over every enabled tool. ProxyTool has no logger, so the fallback is silent.
+                    // fails to serialize must not poison IToolManager.VisibleToolsTokenCount, which sums
+                    // TokenCount over every visible tool. ProxyTool has no logger, so the fallback is silent.
                     _cachedTokenCount = 0;
                 }
                 return _cachedTokenCount.Value;
@@ -117,7 +122,7 @@ namespace com.IvanMurzak.McpPlugin
                 catch
                 {
                     // Same silent resilience as TokenCount above: a breakdown must never be able to poison
-                    // IToolManager.EnabledToolsSkillMetadataTokenCount.
+                    // IToolManager.VisibleToolsSkillMetadataTokenCount.
                     _cachedSkillMetadataTokenCount = 0;
                 }
                 return _cachedSkillMetadataTokenCount.Value;

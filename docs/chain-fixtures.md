@@ -68,7 +68,7 @@ reach an MCP client:
 
 A field the tool does not declare is **omitted**, never written as `null`.
 
-Deliberately **not** recorded: `Enabled` (an untrusted client is served only enabled tools, so an
+Deliberately **not** recorded: `Visible` (formerly `Enabled`; an untrusted client is served only visible tools, so an
 MCP capture could never observe it) and the skill metadata `_meta.skillDescription` /
 `_meta.skillBody` (behind the `X-McpPlugin-Skill-Meta: 1` opt-in). Recording either would make the
 two recorder kinds disagree for a reason that is not a contract change.

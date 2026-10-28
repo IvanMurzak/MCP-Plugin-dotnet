@@ -409,7 +409,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Security
                         new ResponseListTool
                         {
                             Name = outcome,
-                            Enabled = true,
+                            Visible = true,
                             InputSchema = Consts.MCP.EmptyInputSchema
                         }
                     }

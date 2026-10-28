@@ -58,7 +58,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             => new ResponseListTool
             {
                 Name = "gameobject-create",
-                Enabled = enabled,
+                Visible = enabled,
                 InputSchema = Consts.MCP.EmptyInputSchema,
                 SkillDescription = SkillDescriptionText,
                 SkillBody = SkillBodyText
@@ -279,7 +279,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 headers: new() { [Consts.MCP.Server.Headers.TrustedInternalClient] = "1" },
                 next: () =>
                 {
-                    visibleNames.AddRange(Catalog().SelectVisible(x => x.Enabled, x => x.Name!));
+                    visibleNames.AddRange(Catalog().SelectVisible(x => x.Visible, x => x.Name!));
                     disabledMeta = AttributedTool(enabled: false).ToTool().Meta;
                     enabledMeta = AttributedTool().ToTool().Meta;
                     return Task.CompletedTask;
@@ -306,7 +306,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 headers: new() { [Consts.MCP.Server.Headers.SkillMetaClient] = "1" },
                 next: () =>
                 {
-                    visibleNames.AddRange(Catalog().SelectVisible(x => x.Enabled, x => x.Name!));
+                    visibleNames.AddRange(Catalog().SelectVisible(x => x.Visible, x => x.Name!));
                     enabledMeta = AttributedTool().ToTool().Meta;
                     return Task.CompletedTask;
                 });
@@ -388,8 +388,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         /// <summary>One enabled and one disabled tool — the input <c>SelectVisible</c> filters.</summary>
         static List<ResponseListTool?> Catalog() => new()
         {
-            new ResponseListTool { Name = "enabled-tool", Enabled = true, InputSchema = Consts.MCP.EmptyInputSchema },
-            new ResponseListTool { Name = "disabled-tool", Enabled = false, InputSchema = Consts.MCP.EmptyInputSchema }
+            new ResponseListTool { Name = "enabled-tool", Visible = true, InputSchema = Consts.MCP.EmptyInputSchema },
+            new ResponseListTool { Name = "disabled-tool", Visible = false, InputSchema = Consts.MCP.EmptyInputSchema }
         };
 
         static async Task InvokeMiddlewareAsync(Dictionary<string, string> headers, Func<Task> next)

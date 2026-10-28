@@ -57,7 +57,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         }
 
         [Fact]
-        public void CreateProxyTool_ShouldReturnIRunTool_WithSettableEnabledDefaultingTrue()
+        public void CreateProxyTool_ShouldReturnIRunTool_WithSettableVisibleDefaultingTrue()
         {
             // Arrange
             IDynamicToolFactory factory = new ProxyToolFactory();
@@ -81,10 +81,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             tool.ShouldNotBeNull();
             tool.ShouldBeAssignableTo<IRunTool>();
             tool.Name.ShouldBe("proxy-create");
-            tool.Enabled.ShouldBeTrue(); // default true
+            tool.Visible.ShouldBeTrue(); // default true
 
-            tool.Enabled = false; // settable
-            tool.Enabled.ShouldBeFalse();
+            tool.Visible = false; // settable
+            tool.Visible.ShouldBeFalse();
         }
 
         [Fact]
@@ -152,7 +152,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var listed = Array.Find(listResponse.Value!, t => t.Name == "proxy-echo");
             listed.ShouldNotBeNull();
             listed!.Title.ShouldBe("Proxy Echo");
-            listed.Enabled.ShouldBeTrue();
+            listed.Visible.ShouldBeTrue();
 
             // Call dispatch routes through the proxy handler
             var args = new Dictionary<string, JsonElement>
@@ -176,7 +176,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         }
 
         [Fact]
-        public async Task ProxyTool_DisabledToggle_FiltersOutOfEnabledView()
+        public async Task ProxyTool_HiddenToggle_FiltersOutOfVisibleView()
         {
             // Arrange
             var reflector = new Reflector();
@@ -201,27 +201,27 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             toolManager.AddTool("proxy-toggled", toggledProxy).ShouldBeTrue();
 
             toolManager.TotalToolsCount.ShouldBe(2);
-            toolManager.EnabledToolsCount.ShouldBe(2);
-            var bothEnabledTokens = toolManager.EnabledToolsTokenCount;
+            toolManager.VisibleToolsCount.ShouldBe(2);
+            var bothEnabledTokens = toolManager.VisibleToolsTokenCount;
 
-            // Disable one — it must drop out of the enabled view (count + token sum) but stay registered
-            toolManager.SetToolEnabled("proxy-toggled", false).ShouldBeTrue();
+            // Hide one — it must drop out of the visible view (count + token sum) but stay registered
+            toolManager.SetToolVisible("proxy-toggled", false).ShouldBeTrue();
 
-            toolManager.IsToolEnabled("proxy-toggled").ShouldBeFalse();
+            toolManager.IsToolVisible("proxy-toggled").ShouldBeFalse();
             toolManager.TotalToolsCount.ShouldBe(2);
-            toolManager.EnabledToolsCount.ShouldBe(1);
-            toolManager.EnabledToolsTokenCount.ShouldBe(bothEnabledTokens - toggledProxy.TokenCount);
+            toolManager.VisibleToolsCount.ShouldBe(1);
+            toolManager.VisibleToolsTokenCount.ShouldBe(bothEnabledTokens - toggledProxy.TokenCount);
 
-            // The listing still includes it, flagged disabled
+            // The listing still includes it, flagged hidden
             var listResponse = await toolManager.RunListTool(new RequestListTool());
             var listed = Array.Find(listResponse.Value!, t => t.Name == "proxy-toggled");
             listed.ShouldNotBeNull();
-            listed!.Enabled.ShouldBeFalse();
+            listed!.Visible.ShouldBeFalse();
 
-            // Re-enabling restores it
-            toolManager.SetToolEnabled("proxy-toggled", true).ShouldBeTrue();
-            toolManager.EnabledToolsCount.ShouldBe(2);
-            toolManager.EnabledToolsTokenCount.ShouldBe(bothEnabledTokens);
+            // Showing it again restores it
+            toolManager.SetToolVisible("proxy-toggled", true).ShouldBeTrue();
+            toolManager.VisibleToolsCount.ShouldBe(2);
+            toolManager.VisibleToolsTokenCount.ShouldBe(bothEnabledTokens);
         }
 
         [Fact]

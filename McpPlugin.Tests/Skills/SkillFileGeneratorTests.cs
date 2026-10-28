@@ -1056,7 +1056,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Skills
             public string? SkillBody { get; init; }
             public JsonNode? InputSchema { get; init; }
             public JsonNode? OutputSchema { get; init; }
-            public bool Enabled { get; set; } = true;
+            public bool Visible { get; set; } = true;
             public bool? ReadOnlyHint => null;
             public bool? DestructiveHint => null;
             public bool? IdempotentHint => null;
