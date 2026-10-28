@@ -27,7 +27,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var config = new ConnectionConfig { Host = "http://localhost:8080" };
 
             config.ClientRole.ShouldBe(ClientRole.Editor);
-            HubConnectionProvider.BuildHubUrl(config, Consts.Hub.RemoteApp)
+            HubConnectionProvider.BuildHubUrl(config, Consts.Hub.RemoteApp, "Godot 4.5.1.stable")
                 .ShouldBe("http://localhost:8080" + Consts.Hub.RemoteApp + "?client_role=editor");
         }
 
@@ -41,11 +41,22 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                 InstanceMetadata = new ConnectionInstanceMetadata("inst-1", "unity", "MyGame", "hash", "PC-1"),
             };
 
-            var url = new Uri(HubConnectionProvider.BuildHubUrl(config, Consts.Hub.RemoteApp));
+            var url = new Uri(HubConnectionProvider.BuildHubUrl(config, Consts.Hub.RemoteApp, "6000.0.40f1"));
 
             url.AbsolutePath.ShouldBe(Consts.Hub.RemoteApp);
             url.Query.ShouldStartWith("?instance_id=inst-1&");
             url.Query.ShouldEndWith("&client_role=runtime");
+        }
+
+        [Fact]
+        public void RuntimeEnvironmentSuffix_DeclaresARuntime_EvenWithTheDefaultRole()
+        {
+            // The Godot runtime marks itself only with "(runtime)" in its handshake environment. Declaring
+            // "editor" for it would make the server replace the real editor with the game.
+            var config = new ConnectionConfig { Host = "http://localhost:8080" };
+
+            HubConnectionProvider.BuildHubUrl(config, Consts.Hub.RemoteApp, "Godot 4.5.1.stable (runtime)")
+                .ShouldEndWith("?client_role=runtime");
         }
 
         [Fact]

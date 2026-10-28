@@ -42,6 +42,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
     {
         static readonly Type RoutedHubType = typeof(McpServerHub);
 
+        /// <summary>Keeps a role change and the matching ClientUtils change together (two editors may classify at once).</summary>
+        readonly object _gate = new object();
+
         TimeSpan _editorReconnectWindow = TimeSpan.FromSeconds(Consts.MCP.Server.DefaultPluginReconnectWaitSeconds);
         int _runtimeServed;
 
@@ -75,26 +78,31 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         public virtual void OnPluginConnected(Type hubType, string connectionId, string? token, ClientRole? declaredRole,
             ILogger logger, Action<string, string?> disconnectClient)
         {
-            var replaced = Registry.Add(connectionId, declaredRole, token);
             logger.LogInformation("auth={0}: plugin connection '{1}' connected (role: {2}).", AuthOption, connectionId, Describe(declaredRole));
-
-            if (declaredRole == ClientRole.Editor && !replaced.Contains(connectionId))
-                ClientUtils.AddClient(hubType, connectionId, logger, token);
-            Disconnect(hubType, replaced, declaredRole, logger, disconnectClient);
+            lock (_gate)
+            {
+                var replaced = Registry.Add(connectionId, declaredRole, token);
+                if (declaredRole == ClientRole.Editor && !replaced.Contains(connectionId))
+                    ClientUtils.AddClient(hubType, connectionId, logger, token);
+                Disconnect(hubType, replaced, declaredRole, logger, disconnectClient);
+            }
         }
 
         public bool OnPluginHandshake(Type hubType, string connectionId, string? environment, ILogger logger, Action<string, string?> disconnectClient)
         {
             var role = ClientRoles.FromEnvironment(environment);
-            if (!Registry.TryClassify(connectionId, role, out var token, out var replaced))
-                return false;
+            lock (_gate)
+            {
+                if (!Registry.TryClassify(connectionId, role, out var token, out var replaced))
+                    return false;
 
-            logger.LogInformation("auth={0}: plugin connection '{1}' is {2} (handshake environment '{3}').", AuthOption, connectionId, Describe(role), environment);
-            var routedEditor = role == ClientRole.Editor && !replaced.Contains(connectionId);
-            if (routedEditor)
-                ClientUtils.AddClient(hubType, connectionId, logger, token);
-            Disconnect(hubType, replaced, role, logger, disconnectClient);
-            return routedEditor;
+                logger.LogInformation("auth={0}: plugin connection '{1}' is {2} (handshake environment '{3}').", AuthOption, connectionId, Describe(role), environment);
+                var routedEditor = role == ClientRole.Editor && !replaced.Contains(connectionId);
+                if (routedEditor)
+                    ClientUtils.AddClient(hubType, connectionId, logger, token);
+                Disconnect(hubType, replaced, role, logger, disconnectClient);
+                return routedEditor;
+            }
         }
 
         void Disconnect(Type hubType, IReadOnlyList<string> replaced, ClientRole? role, ILogger logger, Action<string, string?> disconnectClient)
@@ -111,9 +119,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 
         public virtual void OnPluginDisconnected(Type hubType, string connectionId, ILogger logger)
         {
-            Registry.Remove(connectionId, out _);
-            if (ClientUtils.IsConnected(hubType, connectionId))
-                ClientUtils.RemoveClient(hubType, connectionId, logger);
+            lock (_gate)
+            {
+                Registry.Remove(connectionId, out _);
+                if (ClientUtils.IsConnected(hubType, connectionId))
+                    ClientUtils.RemoveClient(hubType, connectionId, logger);
+            }
         }
 
         /// <summary>The editor (by token, else the best one); else, unless an editor left within <see cref="EditorReconnectWindow"/>, a runtime.</summary>
@@ -132,10 +143,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 
         public bool TakeRuntimeServed() => Interlocked.Exchange(ref _runtimeServed, 0) == 1;
 
-        /// <summary>A runtime's list changes are not forwarded to agents while they are routed to an editor.</summary>
+        /// <summary>A runtime's list changes reach agents only while they are routed to it (the same rule as <see cref="ResolveConnectionId"/>).</summary>
         public bool ShouldNotifySession(string pluginConnectionId, string sessionId)
             => Registry.GetRole(pluginConnectionId) != ClientRole.Runtime
-                || !ClientUtils.GetAllConnectionIds(RoutedHubType).Any();
+                || (!ClientUtils.GetAllConnectionIds(RoutedHubType).Any() && !Registry.EditorLeftWithin(EditorReconnectWindow));
 
         // One project: a broadcast reaches at most the one editor the agents are routed to.
         public NotificationTarget ResolveNotificationTarget(string? routingToken) => NotificationTarget.Broadcast();

@@ -108,8 +108,9 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string MachineName = "machine_name";
 
                     /// <summary>
-                    /// The plugin's role, <c>editor</c> or <c>runtime</c> (see <see cref="ClientRoles"/>). Read in
-                    /// every auth mode: the server keeps one connection per role and routes to the editor.
+                    /// The plugin's role, <c>editor</c> or <c>runtime</c> (see <see cref="ClientRoles"/>). Read in the
+                    /// single-project modes (<c>none</c>, <c>token</c>): the server keeps one connection per role and
+                    /// routes to the editor. Ignored by <c>oauth</c>.
                     /// <see cref="ClientRoleHeader"/> is the header alternative.
                     /// </summary>
                     public const string ClientRole = "client_role";

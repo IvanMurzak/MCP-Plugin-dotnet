@@ -181,8 +181,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             var request = httpContext?.Request;
             return request == null
                 ? null
-                : ClientRoles.Parse(request.Query[Consts.MCP.Server.HubQuery.ClientRole].FirstOrDefault()
-                    ?? request.Headers[Consts.MCP.Server.ClientRoleHeader].FirstOrDefault());
+                : ClientRoles.Parse(request.Query[Consts.MCP.Server.HubQuery.ClientRole].FirstOrDefault())
+                    ?? ClientRoles.Parse(request.Headers[Consts.MCP.Server.ClientRoleHeader].FirstOrDefault());
         }
 
         static string? GetClientIpAddress(Microsoft.AspNetCore.Http.HttpContext? httpContext)

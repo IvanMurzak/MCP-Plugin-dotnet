@@ -56,12 +56,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             var problems = new List<string>();
             foreach (var name in required)
             {
-                var allowed = properties.HasValue && TryGetProperty(properties.Value, name, out var propSchema)
-                    ? AllowedTypes(propSchema)
-                    : null;
+                JsonElement propSchema = default;
+                var hasSchema = properties.HasValue && TryGetProperty(properties.Value, name, out propSchema);
+                var allowed = hasSchema ? AllowedTypes(propSchema) : null;
                 var present = TryGetArgument(arguments, name, out var value) && value.ValueKind != JsonValueKind.Undefined;
                 // An explicit null passes for a required argument whose schema allows null; the type check below covers the rest.
-                if (!present || (value.ValueKind == JsonValueKind.Null && allowed?.Contains("null") != true))
+                if (!present || (value.ValueKind == JsonValueKind.Null && allowed?.Contains("null") != true && !(hasSchema && IsNullable(propSchema))))
                 {
                     var expected = DescribeTypes(allowed);
                     problems.Add(expected == null
@@ -90,6 +90,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 return null;
             return $"{ToolCallErrors.InvalidParams} Invalid params for tool '{toolName}': {string.Join("; ", problems)}.";
         }
+
+        /// <summary>OpenAPI-style <c>"nullable": true</c>.</summary>
+        static bool IsNullable(JsonElement propertySchema)
+            => propertySchema.ValueKind == JsonValueKind.Object
+                && propertySchema.TryGetProperty("nullable", out var nullable)
+                && nullable.ValueKind == JsonValueKind.True;
 
         /// <summary>The JSON types a property schema allows, or null when it does not say plainly.</summary>
         static IReadOnlyList<string>? AllowedTypes(JsonElement propertySchema)

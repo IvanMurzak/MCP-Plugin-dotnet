@@ -81,6 +81,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
         /// <summary>A cached schema that rejects a call is checked against a fresh list when it is older than this.</summary>
         static readonly TimeSpan SchemaRecheckAge = TimeSpan.FromSeconds(5);
 
+        /// <summary>After a tool list for validation failed, calls to that connection skip validation this long.</summary>
+        static readonly TimeSpan FailedListRetryAge = TimeSpan.FromSeconds(30);
+
         const int MaxCachedTargets = 64;
 
         readonly IMcpConnectionStrategy _strategy;
@@ -128,29 +131,27 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                     if (IsServerTimeout(response) || (response.Status != ResponseStatus.Success && IsDeadline(deadline, cancellationToken)))
                         return TimedOut(request, sent, response.Message);
 
-                    if (IsNotExecuted(response) && elapsed.Elapsed < resendDeadline)
+                    var notExecuted = IsNotExecuted(response);
+                    if (notExecuted && elapsed.Elapsed < resendDeadline)
                     {
                         _logger.LogInformation("Tool '{tool}': the plugin did not execute it ({message}); sending it again once the plugin is back.", request.Name, response.Message);
-                        await WaitForReconnectAsync(target, RefusalRetryInterval, deadline.Token);
-                        continue;
+                        await WaitForReconnectAsync(target, RefusalRetryInterval, deadline.Token, cancellationToken);
+                        if (elapsed.Elapsed < resendDeadline && !deadline.IsCancellationRequested)
+                            continue;
+                        return Reloading(request, CurrentTarget() != null, RemainingWindow(elapsed), response.Message);
                     }
 
-                    if (IsReloadRefusal(response))
+                    // Not executed, past the re-send window, or a reload-gate refusal: safe for the agent to retry.
+                    if (notExecuted || IsReloadRefusal(response))
                     {
                         var window = RemainingWindow(elapsed);
-                        var back = await WaitForReconnectAsync(target, window, deadline.Token);
-                        return Fail(request, back
-                            ? $"{ToolCallErrors.PluginReloading} The engine plugin refused '{request.Name}' because it was reloading, and is connected again: " +
-                              $"retry the call now (it was not re-sent automatically). Plugin: {response.Message}"
-                            : $"{ToolCallErrors.PluginReloading} The engine plugin refused '{request.Name}' because it was reloading, and did not reconnect " +
-                              $"within {window.TotalSeconds:0} s. Retry once the editor has finished reloading. Plugin: {response.Message}",
-                            ResponseErrorKind.Unavailable, ResponseCallTool.NotExecutedStatusCode);
+                        return Reloading(request, await WaitForReconnectAsync(target, window, deadline.Token, cancellationToken), window, response.Message);
                     }
 
                     if (IsMaybeDelivered(response))
                     {
                         var window = RemainingWindow(elapsed);
-                        var back = await WaitForReconnectAsync(target, window, deadline.Token);
+                        var back = await WaitForReconnectAsync(target, window, deadline.Token, cancellationToken);
                         return Fail(request, back
                             ? $"{ToolCallErrors.PluginReconnected} The engine plugin disconnected while running '{request.Name}' (usually a script or " +
                               "assembly reload) and is connected again. The call was not re-sent because it may already have run: " +
@@ -168,6 +169,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 return TimedOut(request, sent, null);
             }
         }
+
+        ResponseData<ResponseCallTool> Reloading(RequestCallTool request, bool back, TimeSpan window, string? pluginMessage)
+            => Fail(request, back
+                ? $"{ToolCallErrors.PluginReloading} The engine plugin refused '{request.Name}' because it was reloading, and is connected again: " +
+                  $"retry the call now (it was not re-sent automatically). Plugin: {pluginMessage}"
+                : $"{ToolCallErrors.PluginReloading} The engine plugin refused '{request.Name}' because it was reloading, and did not reconnect " +
+                  $"within {window.TotalSeconds:0} s. Retry once the editor has finished reloading. Plugin: {pluginMessage}",
+                ResponseErrorKind.Unavailable, ResponseCallTool.NotExecutedStatusCode);
 
         static bool IsDeadline(CancellationTokenSource deadline, CancellationToken callerToken)
             => deadline.IsCancellationRequested && !callerToken.IsCancellationRequested;
@@ -196,7 +205,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 return null; // no plugin right now: the call waits for one, and the plugin validates
 
             var fresh = false;
-            if (!_schemas.TryGetValue(target, out var schemas))
+            if (!_schemas.TryGetValue(target, out var schemas) || (schemas.Failed && schemas.Age.Elapsed >= FailedListRetryAge))
             {
                 schemas = await RefreshSchemasAsync(target, cancellationToken);
                 fresh = true;
@@ -220,7 +229,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             timeout.CancelAfter(ValidationListTimeout);
             try
             {
-                return Remember(target, await _fetchTools(target, timeout.Token));
+                var tools = await _fetchTools(target, timeout.Token);
+                if (tools != null)
+                    return Remember(target, tools);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -228,10 +239,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             }
             catch (Exception ex)
             {
-                // Validation is best effort: without a schema the plugin checks the arguments itself.
                 _logger.LogDebug(ex, "Could not list tools to validate arguments.");
-                return null;
             }
+            // Validation is best effort: without a schema the plugin checks the arguments itself. Remembered,
+            // so a plugin that cannot list in time does not slow every call down.
+            return Store(target, new SchemaSnapshot(new Dictionary<string, JsonElement>(), Stopwatch.StartNew(), failed: true));
         }
 
         /// <summary>Caches the input schemas of a tool list the plugin on <paramref name="connectionId"/> answered.</summary>
@@ -245,23 +257,31 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 if (tool?.Name != null && tool.InputSchema.ValueKind == JsonValueKind.Object)
                     byName[tool.Name] = tool.InputSchema.Clone();
             }
+            return Store(connectionId, new SchemaSnapshot(byName, Stopwatch.StartNew(), failed: false));
+        }
+
+        SchemaSnapshot Store(string connectionId, SchemaSnapshot snapshot)
+        {
             if (_schemas.Count >= MaxCachedTargets)
                 _schemas.Clear(); // old connections: dropping them all is simpler than tracking disconnects
-            var snapshot = new SchemaSnapshot(byName, Stopwatch.StartNew());
             _schemas[connectionId] = snapshot;
             return snapshot;
         }
 
         internal sealed class SchemaSnapshot
         {
-            public SchemaSnapshot(IReadOnlyDictionary<string, JsonElement> byName, Stopwatch age)
+            public SchemaSnapshot(IReadOnlyDictionary<string, JsonElement> byName, Stopwatch age, bool failed)
             {
                 ByName = byName;
                 Age = age;
+                Failed = failed;
             }
 
             public IReadOnlyDictionary<string, JsonElement> ByName { get; }
             public Stopwatch Age { get; }
+
+            /// <summary>The list could not be fetched: nothing is validated until it is retried.</summary>
+            public bool Failed { get; }
         }
 
         /// <summary>An error for the first argument (or the tool name) holding a lone UTF-16 surrogate, or null.</summary>
@@ -284,11 +304,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
 
         // ───────────────────────────── reloads ─────────────────────────────
 
-        /// <summary>The library's own timeouts (no answer, or no deferred completion); a tool's own timeout error is left alone.</summary>
+        /// <summary>The library's own timeouts (no answer, or no deferred completion: HTTP 504); a tool's own timeout error is left alone.</summary>
         static bool IsServerTimeout(ResponseData<ResponseCallTool> response)
             => response.Status == ResponseStatus.Error
                 && response.ErrorKind == ResponseErrorKind.Timeout
-                && response.Message?.IndexOf("not re-sent", StringComparison.Ordinal) >= 0;
+                && response.HttpStatusCode == ClientUtils.ServerTimeoutStatusCode;
 
         static bool IsNotExecuted(ResponseData<ResponseCallTool> response)
             => response.Status == ResponseStatus.Error
@@ -314,9 +334,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
         /// <summary>
         /// Waits up to <paramref name="window"/> for the plugin to be connected through a different connection
         /// than <paramref name="previous"/> (or at all, when there was none). A connection that is still
-        /// <paramref name="previous"/> after <see cref="SameConnectionSettle"/> never left: true as well.
+        /// <paramref name="previous"/> after <see cref="SameConnectionSettle"/> never left: true as well. The call's
+        /// deadline ending the wait is an answer (false), not a timeout: the caller reports why it waited.
         /// </summary>
-        async Task<bool> WaitForReconnectAsync(string? previous, TimeSpan window, CancellationToken cancellationToken)
+        async Task<bool> WaitForReconnectAsync(string? previous, TimeSpan window, CancellationToken deadline, CancellationToken callerToken)
         {
             var waited = Stopwatch.StartNew();
             while (true)
@@ -328,7 +349,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                     return false;
                 if (current != null && waited.Elapsed >= SameConnectionSettle)
                     return true;
-                await Task.Delay(PollInterval, cancellationToken);
+                try
+                {
+                    await Task.Delay(PollInterval, deadline);
+                }
+                catch (OperationCanceledException) when (!callerToken.IsCancellationRequested)
+                {
+                    return false;
+                }
             }
         }
 
@@ -343,7 +371,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 "Raise the limit with --tool-timeout=<ms> or MCP_PLUGIN_TOOL_TIMEOUT.";
             if (!string.IsNullOrEmpty(detail))
                 message += " Detail: " + detail;
-            return Fail(request, message, ResponseErrorKind.Timeout, 504);
+            return Fail(request, message, ResponseErrorKind.Timeout, ClientUtils.ServerTimeoutStatusCode);
         }
 
         ResponseData<ResponseCallTool> Fail(RequestCallTool request, string message, ResponseErrorKind kind, int httpStatusCode)

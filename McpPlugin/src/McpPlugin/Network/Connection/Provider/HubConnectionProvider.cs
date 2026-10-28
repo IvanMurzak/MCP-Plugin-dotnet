@@ -43,7 +43,7 @@ namespace com.IvanMurzak.McpPlugin
             {
                 var connectionConfig = _serviceProvider.GetRequiredService<IOptions<ConnectionConfig>>().Value;
 
-                var url = BuildHubUrl(connectionConfig, endpoint);
+                var url = BuildHubUrl(connectionConfig, endpoint, _serviceProvider.GetService<Common.Version>()?.Environment);
 
                 var hubConnectionBuilder = new HubConnectionBuilder()
                     .WithUrl(url, options =>
@@ -111,17 +111,27 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// The hub URL with its non-secret query parameters: the instance metadata (mcp-authorize b7), so the
         /// server can register this editor session in its account+instance pairing plane (b3), and the
-        /// plugin's <see cref="ConnectionConfig.ClientRole"/>. The credential (JWT) itself NEVER goes in the
-        /// query: it is presented via AccessTokenProvider (the Authorization header).
+        /// plugin's role. The credential (JWT) itself NEVER goes in the query: it is presented via
+        /// AccessTokenProvider (the Authorization header).
         /// </summary>
-        internal static string BuildHubUrl(ConnectionConfig connectionConfig, string endpoint)
+        internal static string BuildHubUrl(ConnectionConfig connectionConfig, string endpoint, string? environment)
         {
             var baseUrl = connectionConfig.Host + endpoint;
             var url = connectionConfig.InstanceMetadata?.AppendToUrl(baseUrl) ?? baseUrl;
             return url
                 + (url.IndexOf('?') < 0 ? "?" : "&")
-                + Consts.MCP.Server.HubQuery.ClientRole + "=" + ClientRoles.ToWire(connectionConfig.ClientRole);
+                + Consts.MCP.Server.HubQuery.ClientRole + "=" + ClientRoles.ToWire(EffectiveRole(connectionConfig, environment));
         }
+
+        /// <summary>
+        /// <see cref="ConnectionConfig.ClientRole"/>, or <see cref="ClientRole.Runtime"/> when the handshake
+        /// <paramref name="environment"/> marks a runtime (<see cref="ClientRoles.RuntimeEnvironmentSuffix"/>): a
+        /// host that tells its game build apart only by that suffix (the Godot runtime) keeps working unchanged.
+        /// </summary>
+        internal static ClientRole EffectiveRole(ConnectionConfig connectionConfig, string? environment)
+            => connectionConfig.ClientRole == ClientRole.Runtime || ClientRoles.FromEnvironment(environment) == ClientRole.Runtime
+                ? ClientRole.Runtime
+                : ClientRole.Editor;
 
         /// <summary>
         /// Builds the logger provider that forwards SignalR's internal logs to the host logger, appending

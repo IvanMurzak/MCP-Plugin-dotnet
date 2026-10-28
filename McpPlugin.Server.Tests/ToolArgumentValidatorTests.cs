@@ -97,6 +97,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             => Assert.Null(Validate("{\"Query\":\"x\",\"Label\":\"l\",\"MAX_TARGETS\":3}", StringComparer.OrdinalIgnoreCase));
 
         [Fact]
+        public void NullForARequiredNullableArgument_Passes()
+        {
+            var schema = JsonDocument.Parse("{\"type\":\"object\",\"properties\":{\"note\":{\"type\":\"string\",\"nullable\":true}},\"required\":[\"note\"]}").RootElement;
+            var arguments = new Dictionary<string, JsonElement> { ["note"] = JsonDocument.Parse("null").RootElement };
+            Assert.Null(ToolArgumentValidator.Validate("t", schema, arguments));
+        }
+
+        [Fact]
         public void SchemaWithoutProperties_PassesAnything()
         {
             var schema = JsonDocument.Parse("{\"type\":\"object\"}").RootElement;

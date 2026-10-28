@@ -254,6 +254,38 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
+        public async Task PluginRefusingUntilTheDeadline_IsReportedAsReloading_NotAsATimeout()
+        {
+            // The call never ran, so the agent must learn it is safe to retry, not that the engine "may still be running it".
+            await using var host = await NoneAuthMcpHost.StartAsync(null, "tool-timeout=3000", "plugin-reconnect-wait-seconds=60");
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Godot 4.5", onCall: (_, request)
+                => Task.FromResult(ResponseCallTool.NotExecuted("Reloading; the call was not executed.").SetRequestID(request.RequestID).Pack(request.RequestID)));
+            await editor.StartAsync();
+
+            var (status, body) = await client.RestAsync("echo", "{}").WaitAsync(TimeSpan.FromSeconds(30));
+            status.ShouldBe(503);
+            var error = body!["error"]!.GetValue<string>();
+            error.ShouldStartWith("[plugin_reloading]");
+            error.ShouldContain("is connected again");
+            editor.Calls.Count.ShouldBeGreaterThan(1, "re-sent while the window was open");
+        }
+
+        [Fact]
+        public async Task LoneSurrogateInARestArgumentName_IsABadRequest()
+        {
+            await using var host = await NoneAuthMcpHost.StartAsync();
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Godot 4.5");
+            await editor.StartAsync();
+
+            var (status, body) = await client.RestAsync("echo", "{\"q\\ud800\":1}");
+            status.ShouldBe(400);
+            body!["error"]!.GetValue<string>().ShouldStartWith("[invalid_utf16]");
+            editor.Calls.ShouldBeEmpty();
+        }
+
+        [Fact]
         public async Task CallDroppedAndPluginNeverReturns_SaysSo()
         {
             await using var host = await NoneAuthMcpHost.StartAsync(null, "plugin-reconnect-wait-seconds=2");

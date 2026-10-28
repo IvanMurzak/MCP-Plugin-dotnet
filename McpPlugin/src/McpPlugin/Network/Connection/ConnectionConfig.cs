@@ -78,9 +78,11 @@ namespace com.IvanMurzak.McpPlugin
         /// process). Sent on every hub connection as the query parameter
         /// <see cref="Consts.MCP.Server.HubQuery.ClientRole"/>. The server keeps one editor and one runtime
         /// connection side by side (a newer connection replaces only an older one of the same role) and
-        /// routes agents to the editor, so a game build must set <see cref="Common.ClientRole.Runtime"/> or it
-        /// replaces the editor. Read when each HubConnection is built, so set it before connecting.
-        /// Runtime-only host fact; never serialized to the on-disk connection config.
+        /// routes agents to the editor, so a game build must declare itself a runtime or it replaces the editor:
+        /// set <see cref="Common.ClientRole.Runtime"/>, or end the handshake environment with
+        /// <see cref="ClientRoles.RuntimeEnvironmentSuffix"/> (either one makes the connection a runtime). Read
+        /// when each HubConnection is built, so set it before connecting. Runtime-only host fact; never serialized
+        /// to the on-disk connection config (an override must repeat <c>[JsonIgnore]</c>).
         /// </summary>
         [JsonIgnore]
         public virtual ClientRole ClientRole { get; set; } = ClientRole.Editor;
