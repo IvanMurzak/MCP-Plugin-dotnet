@@ -18,7 +18,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
 {
     /// <summary>
     /// Checks <c>tools/call</c> arguments against the tool's input schema before the call reaches the
-    /// engine: every <c>required</c> argument is present (and not null), and every argument whose schema
+    /// engine: every plainly typed <c>required</c> argument is present (and not null unless its schema allows
+    /// null), and every argument whose schema
     /// names a JSON <c>type</c> has that type. Anything the schema does not state plainly
     /// (<c>$ref</c>, untyped, unknown keywords, extra arguments) is left to the plugin.
     /// <para>

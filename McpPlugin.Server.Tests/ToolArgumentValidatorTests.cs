@@ -102,6 +102,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // ReflectorNet lists `EchoPayload? payload` (no default) as required, and the plugin accepts it missing.
             var schema = JsonDocument.Parse("{\"type\":\"object\",\"properties\":{\"payload\":{\"$ref\":\"#/$defs/P\"}},\"required\":[\"payload\",\"unlisted\"]}").RootElement;
             Assert.Null(ToolArgumentValidator.Validate("t", schema, new Dictionary<string, JsonElement>()));
+            Assert.Null(ToolArgumentValidator.Validate("t", schema, new Dictionary<string, JsonElement> { ["payload"] = JsonDocument.Parse("null").RootElement }));
         }
 
         [Fact]
