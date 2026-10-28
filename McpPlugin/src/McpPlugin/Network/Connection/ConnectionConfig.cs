@@ -73,6 +73,21 @@ namespace com.IvanMurzak.McpPlugin
         public virtual ConnectionInstanceMetadata? InstanceMetadata { get; set; }
 
         /// <summary>
+        /// What this plugin connection is: <see cref="Common.ClientRole.Editor"/> (the default) for the engine
+        /// editor, <see cref="Common.ClientRole.Runtime"/> for a running game (a player build, or a play-mode
+        /// process). Sent on every hub connection as the query parameter
+        /// <see cref="Consts.MCP.Server.HubQuery.ClientRole"/>. The server keeps one editor and one runtime
+        /// connection side by side (a newer connection replaces only an older one of the same role) and
+        /// routes agents to the editor, so a game build must declare itself a runtime or it replaces the editor:
+        /// set <see cref="Common.ClientRole.Runtime"/>, or end the handshake environment with
+        /// <see cref="ClientRoles.RuntimeEnvironmentSuffix"/> (either one makes the connection a runtime). Read
+        /// when each HubConnection is built, so set it before connecting. Runtime-only host fact; never serialized
+        /// to the on-disk connection config (an override must repeat <c>[JsonIgnore]</c>).
+        /// </summary>
+        [JsonIgnore]
+        public virtual ClientRole ClientRole { get; set; } = ClientRole.Editor;
+
+        /// <summary>
         /// Optional consumer-supplied hint appended (as a separate log entry at the same level) after every
         /// Error/Critical log produced by the SignalR hub connection — e.g. how the user can stop the
         /// connection in the host's UI. <c>null</c> or whitespace (the default) appends nothing: this library

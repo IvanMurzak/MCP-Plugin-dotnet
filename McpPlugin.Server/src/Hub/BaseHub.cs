@@ -135,17 +135,20 @@ namespace com.IvanMurzak.McpPlugin.Server
                 return;
             }
 
-            _strategy.OnPluginConnected(GetType(), Context.ConnectionId, token, _logger,
-                (id, reason) =>
+            Action<string, string?> disconnectClient = (id, reason) =>
+            {
+                var client = Clients.Client(id);
+                if (client == null)
                 {
-                    var client = Clients.Client(id);
-                    if (client == null)
-                    {
-                        _logger.LogWarning("{guid} ForceDisconnect skipped: no SignalR connection found for ConnectionId: {connectionId}. Client may have already disconnected.", _guid, id);
-                        return;
-                    }
-                    client.ForceDisconnect(reason);
-                });
+                    _logger.LogWarning("{guid} ForceDisconnect skipped: no SignalR connection found for ConnectionId: {connectionId}. Client may have already disconnected.", _guid, id);
+                    return;
+                }
+                client.ForceDisconnect(reason);
+            };
+            if (_strategy is IPluginRoleStrategy roles)
+                roles.OnPluginConnected(GetType(), Context.ConnectionId, token, DeclaredRole(httpContext), _logger, disconnectClient);
+            else
+                _strategy.OnPluginConnected(GetType(), Context.ConnectionId, token, _logger, disconnectClient);
 
             _logger.LogDebug("{guid} MCP Plugin connected. ConnectionId: {connectionId}, Token: {hasToken}.",
                 _guid, Context.ConnectionId, !string.IsNullOrEmpty(token) ? "present" : "absent");
@@ -170,6 +173,16 @@ namespace com.IvanMurzak.McpPlugin.Server
             _logger.LogTrace("Dispose. {0}", _guid);
             base.Dispose();
             _disposables.Dispose();
+        }
+
+        /// <summary>The role the plugin declared: hub query <c>client_role</c>, else header <c>X-Client-Role</c>; null when none.</summary>
+        static ClientRole? DeclaredRole(Microsoft.AspNetCore.Http.HttpContext? httpContext)
+        {
+            var request = httpContext?.Request;
+            return request == null
+                ? null
+                : ClientRoles.Parse(request.Query[Consts.MCP.Server.HubQuery.ClientRole].FirstOrDefault())
+                    ?? ClientRoles.Parse(request.Headers[Consts.MCP.Server.ClientRoleHeader].FirstOrDefault());
         }
 
         static string? GetClientIpAddress(Microsoft.AspNetCore.Http.HttpContext? httpContext)

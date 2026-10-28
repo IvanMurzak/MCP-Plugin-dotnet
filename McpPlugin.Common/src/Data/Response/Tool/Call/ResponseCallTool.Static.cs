@@ -39,6 +39,20 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
                 httpStatusCode: httpStatusCode);
         }
 
+        /// <summary>
+        /// HTTP status that, with <see cref="ResponseErrorKind.Unavailable"/>, says the plugin refused a tool
+        /// call before running any of it (see <see cref="NotExecuted"/>).
+        /// </summary>
+        public const int NotExecutedStatusCode = 503;
+
+        /// <summary>
+        /// A refusal for a tool call the plugin did NOT start at all (a reload gate, shutting down before
+        /// the call began). The server sends such a call again once the plugin is back, within its reconnect
+        /// wait. Never use it for a call that may have started: that call would run twice.
+        /// </summary>
+        public static ResponseCallTool NotExecuted(string message)
+            => Error(message, ResponseErrorKind.Unavailable, NotExecutedStatusCode);
+
         public static ResponseCallTool Success(string? message = null)
         {
             return new ResponseCallTool(

@@ -243,6 +243,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
                 await context.Response.WriteAsJsonAsync(new { error = $"Invalid JSON body: {ex.Message}" });
                 return;
             }
+            catch (InvalidOperationException)
+            {
+                // An argument name System.Text.Json cannot decode: a lone UTF-16 surrogate escape.
+                context.Response.StatusCode = 400;
+                await context.Response.WriteAsJsonAsync(new { error = Utf16Validation.Describe("arguments") + $" (tool '{name}')" });
+                return;
+            }
             catch (Exception)
             {
                 context.Response.StatusCode = 500;

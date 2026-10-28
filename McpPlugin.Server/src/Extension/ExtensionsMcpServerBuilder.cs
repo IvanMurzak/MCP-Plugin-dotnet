@@ -31,6 +31,8 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol;
+using ModelContextProtocol.Protocol;
 
 namespace com.IvanMurzak.McpPlugin.Server
 {
@@ -265,6 +267,16 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             mcpServerBuilder.Services.AddWebhooks(dataArguments);
 
+            // A lone UTF-16 surrogate in any request's params fails the SDK's own deserialization with a
+            // bare -32603 "An error occurred.": answer -32602 naming the offending field instead.
+            mcpServerBuilder.WithMessageFilters(filters => filters.AddIncomingFilter(next => (context, cancellationToken) =>
+            {
+                if (context.JsonRpcMessage is JsonRpcRequest { Params: not null } request
+                    && Utf16Validation.Find(request.Params, "params") is { } path)
+                    throw new McpProtocolException(Utf16Validation.Describe(path), McpErrorCode.InvalidParams);
+                return next(context, cancellationToken);
+            }));
+
             mcpServerBuilder.Services.AddSingleton<RemoteToolRunner>();
             mcpServerBuilder.Services.AddSingleton<IClientToolHub>(sp => sp.GetRequiredService<RemoteToolRunner>());
 
@@ -281,7 +293,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         }
 
         /// <summary>Asks one plugin connection for its tools (null when it does not answer in time).</summary>
-        static async Task<ResponseListTool[]?> FetchPluginToolsAsync(IHubContext<McpServerHub> hubContext, int timeoutMs, string connectionId, CancellationToken cancellationToken)
+        internal static async Task<ResponseListTool[]?> FetchPluginToolsAsync(IHubContext<McpServerHub> hubContext, int timeoutMs, string connectionId, CancellationToken cancellationToken)
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeoutCts.CancelAfter(timeoutMs);

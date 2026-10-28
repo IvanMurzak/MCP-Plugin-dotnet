@@ -169,7 +169,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             ResponseCallTool TimedOut()
                 => ResponseCallTool.Error($"Request {RequestId} did not complete within {_timeout} after the plugin reported it as processing. " +
-                    "It was not re-sent; the plugin may still be running it.", ResponseErrorKind.Timeout).SetRequestID(RequestId);
+                    "It was not re-sent; the plugin may still be running it.", ResponseErrorKind.Timeout, ClientUtils.ServerTimeoutStatusCode).SetRequestID(RequestId);
 
             /// <summary>Cancels the timeout now (null) or after a delay. A no-op once disposed (a late completion).</summary>
             void TryCancelTimeout(TimeSpan? after = null)

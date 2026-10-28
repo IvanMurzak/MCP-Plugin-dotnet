@@ -326,7 +326,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                         return ResponseData<TResponse>.Error(request.RequestID,
                                 $"Invoke '{methodName}': Timeout: client '{connectionId}' did not answer within {timeoutMs} ms. " +
                                 "The request was not re-sent, because the plugin may still be running it.",
-                                ResponseErrorKind.Timeout)
+                                ResponseErrorKind.Timeout,
+                                httpStatusCode: ServerTimeoutStatusCode)
                             .Log(logger);
                     }
                     sawTimeout = true;
@@ -363,6 +364,9 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         /// <summary>HTTP status for a tool call that failed after it may have reached the plugin.</summary>
         internal const int MaybeDeliveredStatusCode = 502;
+
+        /// <summary>HTTP status the server gives its own tool-call timeouts (no answer, no deferred completion).</summary>
+        internal const int ServerTimeoutStatusCode = 504;
 
         static void ObserveFault(Task task)
             => task.ContinueWith(static t => _ = t.Exception, CancellationToken.None,

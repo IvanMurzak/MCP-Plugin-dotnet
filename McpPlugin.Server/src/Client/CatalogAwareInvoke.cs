@@ -52,7 +52,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             IMcpConnectionStrategy strategy,
             PluginCatalogCache? catalog,
             PluginCatalogKind kind,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            Action<string, ResponseData<T>>? onAnswered = null)
             where TRequest : IRequestID
             where T : class
         {
@@ -67,10 +68,11 @@ namespace com.IvanMurzak.McpPlugin.Server
                     strategy, McpSessionTokenContext.CurrentToken, cancellationToken,
                     waitForClient: catalog == null ? null : NeverWait,
                     noClientMessage: NotConnectedMessage,
-                    onAnswered: catalog == null ? null : (connectionId, answer) =>
+                    onAnswered: (connectionId, answer) =>
                     {
-                        if (answer.Status == ResponseStatus.Success && answer.Value != null)
+                        if (catalog != null && answer.Status == ResponseStatus.Success && answer.Value != null)
                             catalog.Record(connectionId, kind, answer.Value);
+                        onAnswered?.Invoke(connectionId, answer);
                     });
             }
             catch (OperationCanceledException) when (noteMiss)
