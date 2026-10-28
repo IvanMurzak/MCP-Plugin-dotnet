@@ -183,9 +183,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
 
         // ───────────────────────────── arguments ─────────────────────────────
 
-        /// <summary>Caches the input schemas of a tool list the plugin on <paramref name="connectionId"/> answered.</summary>
-        public void Remember(string connectionId, ResponseListTool[]? tools) => RememberSnapshot(connectionId, tools);
-
         /// <summary>
         /// Validates against the input schemas the current plugin connection listed (listed now when it has
         /// not yet). A cached schema that rejects the call is checked against a fresh list first unless it is
@@ -223,7 +220,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             timeout.CancelAfter(ValidationListTimeout);
             try
             {
-                return RememberSnapshot(target, await _fetchTools(target, timeout.Token));
+                return Remember(target, await _fetchTools(target, timeout.Token));
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -237,7 +234,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             }
         }
 
-        SchemaSnapshot? RememberSnapshot(string connectionId, ResponseListTool[]? tools)
+        /// <summary>Caches the input schemas of a tool list the plugin on <paramref name="connectionId"/> answered.</summary>
+        public SchemaSnapshot? Remember(string connectionId, ResponseListTool[]? tools)
         {
             if (string.IsNullOrEmpty(connectionId) || tools == null)
                 return null;
@@ -254,7 +252,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             return snapshot;
         }
 
-        sealed class SchemaSnapshot
+        internal sealed class SchemaSnapshot
         {
             public SchemaSnapshot(IReadOnlyDictionary<string, JsonElement> byName, Stopwatch age)
             {

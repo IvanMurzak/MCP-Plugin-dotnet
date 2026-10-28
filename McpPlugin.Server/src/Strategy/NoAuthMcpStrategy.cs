@@ -8,7 +8,6 @@
 └────────────────────────────────────────────────────────────────────────┘
 */
 
-using System;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;

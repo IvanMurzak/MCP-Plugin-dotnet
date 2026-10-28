@@ -23,7 +23,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
     {
         /// <summary>The error text for a lone surrogate found at <paramref name="path"/>.</summary>
         public static string Describe(string path)
-            => $"[invalid_utf16] Invalid params: '{path}' contains a lone UTF-16 surrogate (an unpaired \\uD800-\\uDFFF escape), " +
+            => $"{ToolCallErrors.InvalidUtf16} Invalid params: '{path}' contains a lone UTF-16 surrogate (an unpaired \\uD800-\\uDFFF escape), " +
                "which is not valid text. Send a complete surrogate pair or the character itself.";
 
         /// <summary>The path of the first string (or property name) holding a lone surrogate, or null.</summary>

@@ -88,7 +88,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
 
             if (problems.Count == 0)
                 return null;
-            return $"[invalid_params] Invalid params for tool '{toolName}': {string.Join("; ", problems)}.";
+            return $"{ToolCallErrors.InvalidParams} Invalid params for tool '{toolName}': {string.Join("; ", problems)}.";
         }
 
         /// <summary>The JSON types a property schema allows, or null when it does not say plainly.</summary>
