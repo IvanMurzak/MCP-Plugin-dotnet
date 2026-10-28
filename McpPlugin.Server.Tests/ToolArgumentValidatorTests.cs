@@ -97,6 +97,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             => Assert.Null(Validate("{\"Query\":\"x\",\"Label\":\"l\",\"MAX_TARGETS\":3}", StringComparer.OrdinalIgnoreCase));
 
         [Fact]
+        public void MissingRequiredArgumentNotStatedPlainly_IsLeftToThePlugin()
+        {
+            // ReflectorNet lists `EchoPayload? payload` (no default) as required, and the plugin accepts it missing.
+            var schema = JsonDocument.Parse("{\"type\":\"object\",\"properties\":{\"payload\":{\"$ref\":\"#/$defs/P\"}},\"required\":[\"payload\",\"unlisted\"]}").RootElement;
+            Assert.Null(ToolArgumentValidator.Validate("t", schema, new Dictionary<string, JsonElement>()));
+        }
+
+        [Fact]
         public void NullForARequiredNullableArgument_Passes()
         {
             var schema = JsonDocument.Parse("{\"type\":\"object\",\"properties\":{\"note\":{\"type\":\"string\",\"nullable\":true}},\"required\":[\"note\"]}").RootElement;

@@ -56,18 +56,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             var problems = new List<string>();
             foreach (var name in required)
             {
-                JsonElement propSchema = default;
-                var hasSchema = properties.HasValue && TryGetProperty(properties.Value, name, out propSchema);
-                var allowed = hasSchema ? AllowedTypes(propSchema) : null;
+                // A required argument whose schema is not stated plainly ($ref, untyped, not listed) is left to the
+                // plugin: ReflectorNet lists a nullable parameter without a default as required, and accepts it missing.
+                if (!properties.HasValue || !TryGetProperty(properties.Value, name, out var propSchema) || !(AllowedTypes(propSchema) is { } allowed))
+                    continue;
                 var present = TryGetArgument(arguments, name, out var value) && value.ValueKind != JsonValueKind.Undefined;
                 // An explicit null passes for a required argument whose schema allows null; the type check below covers the rest.
-                if (!present || (value.ValueKind == JsonValueKind.Null && allowed?.Contains("null") != true && !(hasSchema && IsNullable(propSchema))))
-                {
-                    var expected = DescribeTypes(allowed);
-                    problems.Add(expected == null
-                        ? $"missing required argument '{name}'"
-                        : $"missing required argument '{name}' ({expected})");
-                }
+                if (!present || (value.ValueKind == JsonValueKind.Null && !allowed.Contains("null") && !IsNullable(propSchema)))
+                    problems.Add($"missing required argument '{name}' ({DescribeTypes(allowed)})");
             }
 
             if (properties.HasValue)
