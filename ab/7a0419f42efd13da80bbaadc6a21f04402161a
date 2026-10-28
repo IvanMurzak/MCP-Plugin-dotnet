@@ -1,0 +1,27 @@
+McpPlugin.Server.Tests/Infrastructure/NoneAuthMcpHost.cs
+  s_cd0506cc1301e4::t_eb2aa44db95639 1-169
+docs/claude/testing.md
+  s_cd0506cc1301e4::t_72ae94421d857f 6-59,71,74-78
+McpPlugin.Server.Tests/PromptListDegradationOverHttpTests.cs
+  s_cd0506cc1301e4::t_1614c220922ddf 22,41-43,48-50,73,76-77,114,117-118,148,150,153-154,156,158-162
+McpPlugin.Server.Tests/Infrastructure/CapturedRouterLogs.cs
+  s_cd0506cc1301e4::t_c4e7cd5c15826e 1-167
+McpPlugin.Server.Tests/RouterLogCaptureTests.cs
+  s_cd0506cc1301e4::t_e60c631b2551be 1-268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "ab7a0419f42efd13da80bbaadc6a21f04402161a",
+  "prompts": {},
+  "sessions": {
+    "s_cd0506cc1301e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c24289ef-f4b4-4415-bbca-50d0efeef3d8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

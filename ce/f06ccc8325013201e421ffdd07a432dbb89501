@@ -1,0 +1,39 @@
+McpPlugin.Server/src/Webhooks/Services/AuthorizationWebhookService.cs
+  eb7bc09673870b1a 13-14,96-107,164-172
+McpPlugin.Server.Tests/TokenAuthenticationHandlerTests.cs
+  eb7bc09673870b1a 404,420,439
+McpPlugin.Server/src/Webhooks/Extensions/WebhookServiceExtensions.cs
+  eb7bc09673870b1a 37,46,49-53,65
+McpPlugin.Server/src/Hub/BaseHub.cs
+  eb7bc09673870b1a 70-76
+McpPlugin.Server/src/Webhooks/Services/CachedAuthorizationWebhookService.cs
+  eb7bc09673870b1a 1-98
+README.md
+  eb7bc09673870b1a 197-210
+McpPlugin.Server/src/Webhooks/Models/AuthorizationRequest.cs
+  eb7bc09673870b1a 49-51
+McpPlugin.Server/src/Auth/TokenAuthenticationHandler.cs
+  eb7bc09673870b1a 146-148,150
+McpPlugin.Server/src/Webhooks/Config/WebhookOptions.cs
+  eb7bc09673870b1a 41,46-52,94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.10",
+  "base_commit_sha": "cef06ccc8325013201e421ffdd07a432dbb89501",
+  "prompts": {
+    "eb7bc09673870b1a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "23a911dc-1acb-4d91-bfc7-6b07a2f0b4e3",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 1907,
+      "total_deletions": 1758,
+      "accepted_lines": 624,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,23 @@
+McpPlugin.Server/src/Webhooks/Services/WebhookDispatcher.cs
+  4fb52ad248647a35 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "f2c8ebe878399f18f58089bf5d3efd5302b1f76f",
+  "prompts": {
+    "4fb52ad248647a35": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e7fc8125-9ec4-447c-bb1b-d7cf2dbeac1c",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 112,
+      "total_deletions": 112,
+      "accepted_lines": 14,
+      "overriden_lines": 0
+    }
+  }
+}

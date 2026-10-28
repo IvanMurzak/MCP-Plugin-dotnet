@@ -1,0 +1,56 @@
+McpPlugin.Server/src/Api/DirectToolCallEndpoints.cs
+  s_fcd6f47364250d::t_991eb32295dc04 32,35-50,56-57
+  s_fcd6f47364250d::t_b388c49ab2ee63 58-60
+  s_6bb493bd55a8b9::t_9942d304dd4690 61,63-64,73-101,110,112,115
+McpPlugin.Server.Tests/PinnedDirectToolRoutingTests.cs
+  s_fcd6f47364250d::t_90d80b1c205f83 1-29,31-312
+  s_fcd6f47364250d::t_ee74f22b41c9b8 30
+McpPlugin.Server.Tests/PinnedDirectToolAuthGatingTests.cs
+  s_fcd6f47364250d::t_99a8f7e911f64a 29
+  s_fcd6f47364250d::t_2f062d8c85dd91 1-28,30-256,260-323
+  s_fcd6f47364250d::t_2b18bc9f64251b 257-259
+McpPlugin.Server/src/Extension/ExtensionsWebApplication.cs
+  s_da2164df1dd72a::t_773970aabfeaa0 73-77
+docs/architecture-transport-auth.md
+  s_e70383bb4cb548::t_42ec2dacb8ac47 22-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "7b5a2cf95723104a5a8d10553d2029a5dbf84ef7",
+  "prompts": {},
+  "sessions": {
+    "s_6bb493bd55a8b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a129b399ba5e6c407",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_da2164df1dd72a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ecd280e2-56e8-4d9b-b55c-90d0cf973d74",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_e70383bb4cb548": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96b28b90-eda7-4907-9bb9-08e5da0e87d6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_fcd6f47364250d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "30082db9-f9f0-4c45-862a-ff566e97fb0c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

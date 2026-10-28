@@ -1,0 +1,44 @@
+McpPlugin.Server.Tests/PluginCatalogCacheTests.cs
+  s_cebbebcc4fc29d::t_1635e4e099d5f6 371,439-465
+  s_cebbebcc4fc29d::t_24b8395cf4fe46 395-407
+  s_cebbebcc4fc29d::t_31fb0a22261ab8 375,378,381-383
+  s_cebbebcc4fc29d::t_0eeae68f68c332 369,373,473-481
+  s_cebbebcc4fc29d::t_7846594bfcbabf 335,338,344,346-360,363-368
+  s_48def0c32da233::t_c89c0f59263341 370,372,374
+McpPlugin.Server/src/Strategy/PluginCatalogCache.cs
+  s_cebbebcc4fc29d::t_332cb624323aa8 311-317,322,325,330-337,340,344-359,373-375,377-384
+  s_cebbebcc4fc29d::t_59fa154c584560 476-477
+  s_cebbebcc4fc29d::t_f1f995fe520575 74-75
+  s_cebbebcc4fc29d::t_5f5f53383749fe 443-454,460-461
+  s_cebbebcc4fc29d::t_3e9ea3f3288928 153-154,156-163
+  s_cebbebcc4fc29d::t_cdc4e7b9792e66 562-573
+  s_cebbebcc4fc29d::t_89e6104eadc780 538,540-541
+McpPlugin.Server/src/Client/CatalogAwareInvoke.cs
+  s_cebbebcc4fc29d::t_9f957a5018f925 59-80,92-93
+McpPlugin.Server/src/Hub/McpServerHub.cs
+  s_cebbebcc4fc29d::t_e9fad1ca53e5b6 158-159,162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4cb62ed1d19a12b7222aa293e8a7fee7b385aa1f",
+  "prompts": {},
+  "sessions": {
+    "s_48def0c32da233": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b12596e-6fac-4b72-8f4f-08fe9abbc79c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_cebbebcc4fc29d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d41bc346-59f1-482d-9ad0-da592fa07295",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
