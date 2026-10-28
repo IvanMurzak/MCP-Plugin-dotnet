@@ -34,6 +34,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly CompositeDisposable _disposables = new();
         readonly CancellationTokenSource _cancellationTokenSource;
         readonly PluginCatalogCache? _catalog;
+        readonly ToolCallGuard _guard;
 
         public RemoteToolRunner(ILogger<RemoteToolRunner> logger, IHubContext<McpServerHub> remoteAppContext, IDataArguments dataArguments, IRequestTrackingService requestTrackingService, IMcpConnectionStrategy strategy)
             : this(logger, remoteAppContext, dataArguments, requestTrackingService, strategy, catalog: null)
@@ -55,14 +56,25 @@ namespace com.IvanMurzak.McpPlugin.Server
             _requestTrackingService = requestTrackingService ?? throw new ArgumentNullException(nameof(requestTrackingService));
             _strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
             _cancellationTokenSource = _disposables.ToCancellationTokenSource();
+            _guard = new ToolCallGuard(strategy,
+                (connectionId, ct) => ExtensionsMcpServerBuilder.FetchPluginToolsAsync(remoteAppContext, dataArguments.PluginTimeoutMs, connectionId, ct),
+                TimeSpan.FromMilliseconds(dataArguments.GetToolTimeoutMs()), dataArguments.GetPluginReconnectWait(), _logger);
         }
 
         public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request) => RunCallTool(request, default);
+
+        /// <summary>
+        /// Validates the arguments, then sends the call (see <see cref="ToolCallGuard"/>): under one
+        /// deadline, and again only when the plugin answered that it did not execute it.
+        /// </summary>
         public async Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request, CancellationToken cancellationToken = default)
         {
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
-            cancellationToken = linkedCts.Token;
+            return await _guard.CallAsync(request, ct => SendCallAsync(request, ct), linkedCts.Token);
+        }
 
+        async Task<ResponseData<ResponseCallTool>> SendCallAsync(RequestCallTool request, CancellationToken cancellationToken)
+        {
             var toolTimeoutMs = _dataArguments.GetToolTimeoutMs();
             var response = await _requestTrackingService.TrackRequestAsync(
                 request.RequestID,
@@ -99,7 +111,12 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             var response = await CatalogAwareInvoke.ListAsync<RequestListTool, ResponseListTool[]>(
                 _logger, _remoteAppContext, nameof(IClientToolHub.RunListTool), request, _dataArguments,
-                _strategy, _catalog, PluginCatalogKind.Tools, cancellationToken);
+                _strategy, _catalog, PluginCatalogKind.Tools, cancellationToken,
+                onAnswered: (connectionId, answer) =>
+                {
+                    if (answer.Status == ResponseStatus.Success)
+                        _guard.Remember(connectionId, answer.Value);
+                });
 
             if (response.Status == ResponseStatus.Error)
                 return ResponseData<ResponseListTool[]>.Error(request.RequestID, response.Message ?? "Got an error during listing tools", response.ErrorKind, response.HttpStatusCode);

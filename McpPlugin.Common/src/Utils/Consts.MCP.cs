@@ -106,7 +106,17 @@ namespace com.IvanMurzak.McpPlugin.Common
                     public const string ProjectPathHashLegacy = "project_path_hash_legacy";
 
                     public const string MachineName = "machine_name";
+
+                    /// <summary>
+                    /// The plugin's role, <c>editor</c> or <c>runtime</c> (see <see cref="ClientRoles"/>). Read in
+                    /// every auth mode: the server keeps one connection per role and routes to the editor.
+                    /// <see cref="ClientRoleHeader"/> is the header alternative.
+                    /// </summary>
+                    public const string ClientRole = "client_role";
                 }
+
+                /// <summary>Header alternative to the <see cref="HubQuery.ClientRole"/> hub query parameter.</summary>
+                public const string ClientRoleHeader = "X-Client-Role";
 
                 public static partial class Env
                 {

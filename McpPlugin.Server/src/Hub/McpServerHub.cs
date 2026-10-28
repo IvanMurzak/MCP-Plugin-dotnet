@@ -79,7 +79,12 @@ namespace com.IvanMurzak.McpPlugin.Server
                 return;
 
             // A reconnecting plugin takes its remembered lists back (or a replaced instance's are dropped).
-            Catalog?.OnPluginConnected(Context.ConnectionId);
+            // A plugin whose role is decided at its handshake does this in PerformVersionHandshake.
+            var catalog = Catalog;
+            if (_strategy is IPluginRoleStrategy roles && roles.Registry.GetRole(Context.ConnectionId) == ClientRole.Editor)
+                OnEditorRouted(roles, catalog);
+            else
+                catalog?.OnPluginConnected(Context.ConnectionId);
 
             var allActiveClients = _strategy.GetAllClientData(Context.ConnectionId, _sessionTracker);
             _logger.LogDebug("{method}. {guid}. Sending initial client data. Count: {count}",
@@ -160,6 +165,37 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// </summary>
         PluginCatalogCache? Catalog
             => Context?.GetHttpContext()?.RequestServices?.GetService(typeof(PluginCatalogCache)) as PluginCatalogCache;
+
+        /// <summary>
+        /// This connection is now the editor agents are routed to: its remembered lists come back. When a
+        /// game stood in for the editor, agents may have listed the game's tools, so the editor's next tool
+        /// change is forwarded even if it looks unchanged.
+        /// </summary>
+        void OnEditorRouted(IPluginRoleStrategy roles, PluginCatalogCache? catalog)
+        {
+            if (roles.TakeRuntimeServed())
+                catalog?.NoteToolListMissed();
+            catalog?.OnPluginConnected(Context.ConnectionId);
+        }
+
+        /// <summary>A compatible handshake: a plugin that did not declare its role gets one from its environment now.</summary>
+        void ClassifyPlugin(string? environment)
+        {
+            if (_strategy is not IPluginRoleStrategy roles)
+                return;
+            try
+            {
+                var clients = Clients;
+                if (roles.OnPluginHandshake(GetType(), Context.ConnectionId, environment, _logger,
+                        (id, reason) => _ = clients.Client(id).ForceDisconnect(reason)))
+                    OnEditorRouted(roles, Catalog);
+            }
+            catch (Exception ex)
+            {
+                // Never fail a handshake over role bookkeeping.
+                _logger.LogWarning(ex, "{guid} Could not classify plugin connection '{connectionId}'.", _guid, Context.ConnectionId);
+            }
+        }
 
         static string? QueryValue(Microsoft.AspNetCore.Http.IQueryCollection? query, string key)
         {
@@ -293,7 +329,11 @@ namespace com.IvanMurzak.McpPlugin.Server
                     _logger.LogInformation("Version handshake successful. Plugin: {pluginVersion}, API: {apiVersion}, Environment: {environment}",
                         request.PluginVersion, request.ApiVersion, request.Environment);
 
-                    var pluginToken = ClientUtils.GetTokenByConnectionId(Context.ConnectionId);
+                    // Classified only after an accepted handshake: a refused plugin must not replace a working one.
+                    ClassifyPlugin(request.Environment);
+
+                    var pluginToken = ClientUtils.GetTokenByConnectionId(Context.ConnectionId)
+                        ?? (_strategy as IPluginRoleStrategy)?.Registry.GetToken(Context.ConnectionId);
                     _webhookCollector.OnPluginConnected(Context.ConnectionId, pluginToken, request.Environment, request.PluginVersion);
                 }
 

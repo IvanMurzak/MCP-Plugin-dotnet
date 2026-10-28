@@ -118,30 +118,38 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public void OnPluginConnected_WithMatchingToken_RegistersAndEnforcesSingleConnection()
+        public void OnPluginConnected_WithMatchingToken_RegistersAndReplacesOnlyTheSameRole()
         {
             var strategy = NewConfiguredStrategy();
             var logger = new Mock<ILogger>().Object;
             var existingId = "conn-token-existing";
+            var gameId = "conn-token-game";
             var newId = "conn-token-new";
             var disconnected = new List<string>();
-
-            ClientUtils.AddClient(typeof(McpServerHub), existingId, logger, Secret);
+            Action<string, string?> disconnect = (id, _) => disconnected.Add(id);
 
             try
             {
-                strategy.OnPluginConnected(typeof(McpServerHub), newId, Secret, logger,
-                    (id, _) => disconnected.Add(id));
+                strategy.OnPluginConnected(typeof(McpServerHub), existingId, Secret, ClientRole.Editor, logger, disconnect);
+                strategy.OnPluginConnected(typeof(McpServerHub), gameId, Secret, ClientRole.Runtime, logger, disconnect);
+
+                // A game never evicts the editor, in token mode too.
+                disconnected.ShouldBeEmpty();
+                ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldContain(existingId);
+
+                // A newer editor (role from its handshake) replaces the older editor, not the game.
+                strategy.OnPluginConnected(typeof(McpServerHub), newId, Secret, logger, disconnect);
+                strategy.OnPluginHandshake(typeof(McpServerHub), newId, "Godot 4.5", logger, disconnect).ShouldBeTrue();
 
                 ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldContain(newId);
-                // Single-connection invariant: the previous plugin is disconnected + removed.
-                disconnected.ShouldContain(existingId);
+                disconnected.ShouldBe(new[] { existingId });
                 ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldNotContain(existingId);
+                strategy.Registry.WithRole(ClientRole.Runtime).ShouldBe(new[] { gameId });
             }
             finally
             {
-                ClientUtils.RemoveClient(typeof(McpServerHub), existingId, logger);
-                ClientUtils.RemoveClient(typeof(McpServerHub), newId, logger);
+                foreach (var id in new[] { existingId, gameId, newId })
+                    strategy.OnPluginDisconnected(typeof(McpServerHub), id, logger);
             }
         }
 

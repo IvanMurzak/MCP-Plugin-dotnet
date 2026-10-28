@@ -43,12 +43,7 @@ namespace com.IvanMurzak.McpPlugin
             {
                 var connectionConfig = _serviceProvider.GetRequiredService<IOptions<ConnectionConfig>>().Value;
 
-                // Instance-metadata handshake (mcp-authorize b7): the non-secret identity fields ride as
-                // query parameters so the server can register this editor session in its account+instance
-                // pairing plane (b3). The credential (JWT) itself NEVER goes in the query — it is presented
-                // via AccessTokenProvider (the Authorization header) below.
-                var baseUrl = connectionConfig.Host + endpoint;
-                var url = connectionConfig.InstanceMetadata?.AppendToUrl(baseUrl) ?? baseUrl;
+                var url = BuildHubUrl(connectionConfig, endpoint);
 
                 var hubConnectionBuilder = new HubConnectionBuilder()
                     .WithUrl(url, options =>
@@ -111,6 +106,21 @@ namespace com.IvanMurzak.McpPlugin
                     _logger.LogError($"TypeInitializer Inner Exception: {tie.InnerException}");
                 throw;
             }
+        }
+
+        /// <summary>
+        /// The hub URL with its non-secret query parameters: the instance metadata (mcp-authorize b7), so the
+        /// server can register this editor session in its account+instance pairing plane (b3), and the
+        /// plugin's <see cref="ConnectionConfig.ClientRole"/>. The credential (JWT) itself NEVER goes in the
+        /// query: it is presented via AccessTokenProvider (the Authorization header).
+        /// </summary>
+        internal static string BuildHubUrl(ConnectionConfig connectionConfig, string endpoint)
+        {
+            var baseUrl = connectionConfig.Host + endpoint;
+            var url = connectionConfig.InstanceMetadata?.AppendToUrl(baseUrl) ?? baseUrl;
+            return url
+                + (url.IndexOf('?') < 0 ? "?" : "&")
+                + Consts.MCP.Server.HubQuery.ClientRole + "=" + ClientRoles.ToWire(connectionConfig.ClientRole);
         }
 
         /// <summary>

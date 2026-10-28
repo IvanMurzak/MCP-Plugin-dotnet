@@ -89,45 +89,55 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public void OnPluginConnected_RegistersClient()
+        public void OnPluginConnected_RegistersTheEditorAtItsHandshake()
         {
             // Arrange
             var logger = new Mock<ILogger>().Object;
             var connectionId = "conn-local-1";
             var disconnected = new List<string>();
 
-            // Act
+            // Act: no declared role, so the role (and the routing) waits for the handshake.
             _strategy.OnPluginConnected(typeof(McpServerHub), connectionId, null, logger,
                 (id, _) => disconnected.Add(id));
+            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldNotContain(connectionId);
+            _strategy.OnPluginHandshake(typeof(McpServerHub), connectionId, "Godot 4.5", logger,
+                (id, _) => disconnected.Add(id)).ShouldBeTrue();
 
             // Assert - client should be registered
             ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldContain(connectionId);
+            disconnected.ShouldBeEmpty();
 
             // Cleanup
-            ClientUtils.RemoveClient(typeof(McpServerHub), connectionId, logger);
+            _strategy.OnPluginDisconnected(typeof(McpServerHub), connectionId, logger);
         }
 
         [Fact]
-        public void OnPluginConnected_DisconnectsOtherClients()
+        public void OnPluginConnected_DisconnectsTheOlderConnectionOfTheSameRoleOnly()
         {
             // Arrange
             var logger = new Mock<ILogger>().Object;
             var existingId = "conn-local-existing";
+            var gameId = "conn-local-game";
             var newId = "conn-local-new";
             var disconnected = new List<string>();
+            Action<string, string?> disconnect = (id, _) => disconnected.Add(id);
 
-            ClientUtils.AddClient(typeof(McpServerHub), existingId, logger);
+            _strategy.OnPluginConnected(typeof(McpServerHub), existingId, null, ClientRole.Editor, logger, disconnect);
 
             // Act
-            _strategy.OnPluginConnected(typeof(McpServerHub), newId, null, logger,
-                (id, _) => disconnected.Add(id));
+            _strategy.OnPluginConnected(typeof(McpServerHub), gameId, null, ClientRole.Runtime, logger, disconnect);
+            disconnected.ShouldBeEmpty("a game must not evict the editor");
+            _strategy.OnPluginConnected(typeof(McpServerHub), newId, null, ClientRole.Editor, logger, disconnect);
 
             // Assert
-            disconnected.ShouldContain(existingId);
+            disconnected.ShouldBe(new[] { existingId });
+            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldContain(newId);
+            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldNotContain(existingId);
+            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldNotContain(gameId, "only editors are routed while one is connected");
 
             // Cleanup
-            ClientUtils.RemoveClient(typeof(McpServerHub), existingId, logger);
-            ClientUtils.RemoveClient(typeof(McpServerHub), newId, logger);
+            foreach (var id in new[] { existingId, gameId, newId })
+                _strategy.OnPluginDisconnected(typeof(McpServerHub), id, logger);
         }
 
         [Fact]
