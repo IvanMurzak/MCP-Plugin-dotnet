@@ -17,21 +17,19 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
     public class ResponseListTool
     {
         public string Name { get; set; } = string.Empty;
-        private bool _visible = true;
-
         /// <summary>
         /// Whether the tool is listed in MCP <c>tools/list</c> (custom property). A hidden tool still runs
         /// through <c>tools/call</c>. Not serialized itself: the wire carries it as <see cref="Enabled"/>.
         /// </summary>
         [JsonIgnore]
-        public bool Visible { get => _visible; set => _visible = value; }
+        public bool Visible { get; set; } = true;
 
         /// <summary>
         /// Wire member of <see cref="Visible"/> (its old name). It stays the serialized member, under whatever
         /// naming policy the hub uses, so plugins and servers of older McpPlugin versions keep exchanging catalogues.
         /// </summary>
         [Obsolete("Renamed to Visible: the flag only controls whether the tool is listed in tools/list; tools/call still runs it. Kept as the wire member.")]
-        public bool Enabled { get => _visible; set => _visible = value; }
+        public bool Enabled { get => Visible; set => Visible = value; }
         public string? Title { get; set; }
         public string? Description { get; set; }
         public JsonElement InputSchema { get; set; }

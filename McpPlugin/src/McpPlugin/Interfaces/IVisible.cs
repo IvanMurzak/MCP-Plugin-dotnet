@@ -18,4 +18,10 @@ namespace com.IvanMurzak.McpPlugin
     {
         bool Visible { set; get; }
     }
+
+    /// <summary>Shared wording of the <c>[Obsolete]</c> aliases left by the Enabled to Visible rename.</summary>
+    internal static class VisibilityRename
+    {
+        internal const string Note = ": the flag only controls whether the tool is listed in tools/list; tools/call still runs it.";
+    }
 }

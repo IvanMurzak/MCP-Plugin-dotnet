@@ -79,11 +79,11 @@ namespace com.IvanMurzak.McpPlugin
             .Where(kvp => kvp.Value.Visible)
             .Sum(kvp => kvp.Value.SkillMetadataTokenCount);
 
-        [Obsolete("Renamed to VisibleToolsCount: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        [Obsolete("Renamed to VisibleToolsCount" + VisibilityRename.Note)]
         public int EnabledToolsCount => VisibleToolsCount;
-        [Obsolete("Renamed to VisibleToolsTokenCount: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        [Obsolete("Renamed to VisibleToolsTokenCount" + VisibilityRename.Note)]
         public int EnabledToolsTokenCount => VisibleToolsTokenCount;
-        [Obsolete("Renamed to VisibleToolsSkillMetadataTokenCount: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        [Obsolete("Renamed to VisibleToolsSkillMetadataTokenCount" + VisibilityRename.Note)]
         public int EnabledToolsSkillMetadataTokenCount => VisibleToolsSkillMetadataTokenCount;
 
         private IToolBinding? _toolBinding;
@@ -144,9 +144,9 @@ namespace com.IvanMurzak.McpPlugin
 
             return runner.Visible;
         }
-        [Obsolete("Renamed to IsToolVisible: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        [Obsolete("Renamed to IsToolVisible" + VisibilityRename.Note)]
         public bool IsToolEnabled(string name) => IsToolVisible(name);
-        [Obsolete("Renamed to SetToolVisible: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        [Obsolete("Renamed to SetToolVisible" + VisibilityRename.Note)]
         public bool SetToolEnabled(string name, bool enabled) => SetToolVisible(name, enabled);
         public bool SetToolVisible(string name, bool visible)
         {

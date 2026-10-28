@@ -33,7 +33,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>Whether the tool is listed in <c>tools/list</c>. A hidden tool still runs through <c>tools/call</c>.</summary>
         public bool Visible { get; set; } = true;
         /// <summary>Old name of <see cref="Visible"/>.</summary>
-        [Obsolete("Renamed to Visible: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        [Obsolete("Renamed to Visible" + VisibilityRename.Note)]
         public bool Enabled { get => Visible; set => Visible = value; }
         public McpToolType ToolType { get; protected set; } = McpToolType.Standard;
         public string? Title { get; protected set; }

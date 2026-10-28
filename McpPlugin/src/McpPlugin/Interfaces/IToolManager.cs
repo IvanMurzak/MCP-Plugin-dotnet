@@ -76,15 +76,15 @@ namespace com.IvanMurzak.McpPlugin
         bool SetToolVisible(string name, bool visible);
 
         // Old names, kept as aliases until the next major release.
-        [Obsolete("Renamed to VisibleToolsCount: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        [Obsolete("Renamed to VisibleToolsCount" + VisibilityRename.Note)]
         int EnabledToolsCount => VisibleToolsCount;
-        [Obsolete("Renamed to VisibleToolsTokenCount: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        [Obsolete("Renamed to VisibleToolsTokenCount" + VisibilityRename.Note)]
         int EnabledToolsTokenCount => VisibleToolsTokenCount;
-        [Obsolete("Renamed to VisibleToolsSkillMetadataTokenCount: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        [Obsolete("Renamed to VisibleToolsSkillMetadataTokenCount" + VisibilityRename.Note)]
         int EnabledToolsSkillMetadataTokenCount => VisibleToolsSkillMetadataTokenCount;
-        [Obsolete("Renamed to IsToolVisible: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        [Obsolete("Renamed to IsToolVisible" + VisibilityRename.Note)]
         bool IsToolEnabled(string name) => IsToolVisible(name);
-        [Obsolete("Renamed to SetToolVisible: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        [Obsolete("Renamed to SetToolVisible" + VisibilityRename.Note)]
         bool SetToolEnabled(string name, bool enabled) => SetToolVisible(name, enabled);
     }
 }

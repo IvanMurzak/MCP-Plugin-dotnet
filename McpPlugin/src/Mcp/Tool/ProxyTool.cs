@@ -71,7 +71,7 @@ namespace com.IvanMurzak.McpPlugin
         public bool Visible { get; set; } = true;
 
         /// <summary>Old name of <see cref="Visible"/>.</summary>
-        [Obsolete("Renamed to Visible: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        [Obsolete("Renamed to Visible" + VisibilityRename.Note)]
         public bool Enabled { get => Visible; set => Visible = value; }
 
         /// <summary>

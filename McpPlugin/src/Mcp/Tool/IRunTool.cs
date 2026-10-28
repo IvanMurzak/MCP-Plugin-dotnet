@@ -21,7 +21,7 @@ namespace com.IvanMurzak.McpPlugin
     public interface IRunTool : IVisible
     {
         /// <summary>Old name of <see cref="IVisible.Visible"/>, kept as an alias until the next major release.</summary>
-        [Obsolete("Renamed to Visible: the flag only controls whether the tool is listed in tools/list; tools/call still runs it.")]
+        [Obsolete("Renamed to Visible" + VisibilityRename.Note)]
         bool Enabled { get => Visible; set => Visible = value; }
 
         string Name { get; }
