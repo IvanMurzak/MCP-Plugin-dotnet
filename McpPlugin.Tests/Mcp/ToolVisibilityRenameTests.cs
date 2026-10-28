@@ -105,6 +105,35 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         }
 
         [Fact]
+        public void ImplementationWrittenBeforeTheRename_StillWorks_ThroughVisible()
+        {
+            var legacy = new LegacyEnabledOnlyTool();
+            IRunTool tool = legacy;
+
+            tool.Visible = false;
+            legacy.Enabled.ShouldBeFalse();
+            tool.Visible.ShouldBeFalse();
+
+            legacy.Enabled = true;
+            tool.Visible.ShouldBeTrue();
+        }
+
+        [Fact]
+        public async Task ImplementationWrittenBeforeTheRename_IsCountedByTheManager()
+        {
+            var toolManager = BuildManager();
+            var legacy = new LegacyEnabledOnlyTool();
+            toolManager.AddTool(legacy.Name, legacy).ShouldBeTrue();
+
+            toolManager.SetToolVisible(legacy.Name, false).ShouldBeTrue();
+            legacy.Enabled.ShouldBeFalse();
+            toolManager.VisibleToolsCount.ShouldBe(2);
+
+            var list = await toolManager.RunListTool(new RequestListTool());
+            list.Value!.Single(t => t.Name == legacy.Name).Visible.ShouldBeFalse();
+        }
+
+        [Fact]
         public void OldAttributeName_SetsTheVisibleValue()
         {
             var attr = new AiToolAttribute("t") { Enabled = false };
@@ -126,6 +155,26 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         {
             public bool Visible { get; set; } = true;
             public string Name => "replay-like";
+            public string? Title => null;
+            public string? Description => null;
+            public string? SkillDescription => null;
+            public string? SkillBody => null;
+            public System.Text.Json.Nodes.JsonNode? InputSchema => null;
+            public System.Text.Json.Nodes.JsonNode? OutputSchema => null;
+            public bool? ReadOnlyHint => null;
+            public bool? DestructiveHint => null;
+            public bool? IdempotentHint => null;
+            public bool? OpenWorldHint => null;
+            public int TokenCount => 0;
+            public Task<ResponseCallTool> Run(string requestId, IReadOnlyDictionary<string, JsonElement>? namedParameters, System.Threading.CancellationToken cancellationToken = default)
+                => Task.FromResult(ResponseCallTool.Success("ok"));
+        }
+
+        /// <summary>An implementation written before the rename (e.g. the Unreal bridge's proxy tool): only Enabled.</summary>
+        private sealed class LegacyEnabledOnlyTool : IRunTool
+        {
+            public bool Enabled { get; set; } = true;
+            public string Name => "legacy-enabled-only";
             public string? Title => null;
             public string? Description => null;
             public string? SkillDescription => null;
