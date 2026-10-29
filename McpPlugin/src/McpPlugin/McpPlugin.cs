@@ -133,6 +133,9 @@ namespace com.IvanMurzak.McpPlugin
                         return;
                     }
 
+                    if (!CanNotifyServer())
+                        return;
+
                     await _mcpManagerHub.NotifyAboutUpdatedTools(new Common.Model.RequestToolsUpdated());
                 })
                 .AddTo(_disposables);
@@ -167,6 +170,9 @@ namespace com.IvanMurzak.McpPlugin
                         return;
                     }
 
+                    if (!CanNotifyServer())
+                        return;
+
                     await _mcpManagerHub.NotifyAboutUpdatedPrompts(new Common.Model.RequestPromptsUpdated());
                 })
                 .AddTo(_disposables);
@@ -188,9 +194,23 @@ namespace com.IvanMurzak.McpPlugin
                         return;
                     }
 
+                    if (!CanNotifyServer())
+                        return;
+
                     await _mcpManagerHub.NotifyAboutUpdatedResources(new Common.Model.RequestResourcesUpdated());
                 })
                 .AddTo(_disposables);
+        }
+
+        /// <summary>False when disconnected and KeepConnected is off (or Connect not called yet): the plugin re-sends its tools on connect.</summary>
+        private bool CanNotifyServer()
+        {
+            if (_mcpManagerHub.ConnectionState.CurrentValue == HubConnectionState.Connected
+                || _mcpManagerHub.KeepConnected.CurrentValue)
+                return true;
+
+            _logger.LogDebug("Not connected and auto-reconnect is off, server not notified.");
+            return false;
         }
 
         public bool GenerateSkillFilesIfNeeded(string? path = null)
