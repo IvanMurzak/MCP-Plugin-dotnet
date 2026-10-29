@@ -222,7 +222,12 @@ namespace com.IvanMurzak.McpPlugin.Server
             // Every plugin-side close keeps the lists for the reconnect grace: the server cannot tell a
             // recompile from a closed project. See PluginCatalogCache for what drops them early.
             Catalog?.OnPluginDisconnected(Context.ConnectionId);
-            return base.OnDisconnectedAsync(exception);
+            var wasRuntime = _strategy is IPluginRoleStrategy roles && roles.Registry.GetRole(Context.ConnectionId) == ClientRole.Runtime;
+            var disconnected = base.OnDisconnectedAsync(exception);
+            // The game's own tools were part of tools/list (see RemoteToolRunner): agents list again without them.
+            if (wasRuntime)
+                _eventAppToolsChange.OnNext(new HubEventToolsChange.EventData { ConnectionId = Context.ConnectionId, Request = new RequestToolsUpdated() });
+            return disconnected;
         }
 
         public Task<ResponseData> NotifyAboutUpdatedTools(RequestToolsUpdated request) => NotifyAboutUpdatedTools(request, default);

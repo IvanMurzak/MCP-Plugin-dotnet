@@ -48,6 +48,15 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         public static string RuntimeSystem() => "runtime";
     }
 
+#pragma warning disable CS0618 // the legacy alias must keep working
+    [McpPluginToolType(Target = ToolTarget.Runtime)]
+    public static class LegacyAliasGameToolClass
+    {
+        [AiTool("legacy-game-tool")]
+        public static string Run() => "game";
+    }
+#pragma warning restore CS0618
+
     /// <summary>
     /// Wave-6 finding: a game-only [AiToolType] tool declared in the game assembly was also registered by the editor
     /// (same assembly scan). A tool whose target does not include the plugin's <see cref="ClientRole"/> is skipped.
@@ -147,6 +156,25 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var json = JsonSerializer.Serialize(new ResponseListTool { Name = "t", Target = ToolTarget.Runtime, InputSchema = JsonDocument.Parse("{}").RootElement }, options);
             JsonSerializer.Deserialize<ResponseListTool>(json, options)!.Target.ShouldBe(ToolTarget.Runtime);
             JsonSerializer.Deserialize<ResponseListTool>("{\"name\":\"t\"}", options)!.Target.ShouldBeNull("an older plugin sends no target");
+        }
+
+        [Theory]
+        [InlineData(ClientRole.Editor, false)]
+        [InlineData(ClientRole.Runtime, true)]
+        public void LegacyToolTypeAlias_AndExplicitRunners_AreFiltered(ClientRole role, bool registered)
+        {
+            var runner = RunTool.CreateFromStaticMethod(new Reflector(), null, "explicit-game-tool",
+                typeof(GameOnlyToolClass).GetMethod(nameof(GameOnlyToolClass.SceneTree))!);
+            runner.Target = ToolTarget.Runtime;
+            using var plugin = new McpPluginBuilder(new Version(), _loggerProvider)
+                .SetConfig(new ConnectionConfig { ClientRole = role, GenerateSkillFiles = false })
+                .WithTools(typeof(LegacyAliasGameToolClass))
+                .AddTool("explicit-game-tool", runner)
+                .Build(new Reflector());
+
+            var names = ToolNames(plugin);
+            names.Contains("legacy-game-tool").ShouldBe(registered);
+            names.Contains("explicit-game-tool").ShouldBe(registered);
         }
 
         [Theory]

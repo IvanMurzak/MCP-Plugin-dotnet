@@ -32,6 +32,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
     public sealed class RuntimeToolRoutingTests
     {
         const string GameTool = "game-scene-tree-summary";
+        static readonly TimeSpan Timeout = TimeSpan.FromSeconds(30);
 
         static ResponseListTool Tool(string name, ToolTarget? target = null) => new ResponseListTool
         {
@@ -63,11 +64,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             await using var _ = editor;
             await using var __ = game;
 
-            var (isError, text) = await client.CallAsync(GameTool, new { });
+            var (isError, text) = await client.CallAsync(GameTool, new { }).WaitAsync(Timeout);
             isError.ShouldBeFalse(text);
             text.ShouldBe("game:" + GameTool);
 
-            (await client.CallAsync("echo", new { })).Text.ShouldBe("editor:echo", "a tool both have still goes to the editor");
+            (await client.CallAsync("echo", new { }).WaitAsync(Timeout)).Text.ShouldBe("editor:echo", "a tool both have still goes to the editor");
             editor.Calls.Select(c => c.Name).ShouldBe(new[] { "echo" });
         }
 
@@ -83,7 +84,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             await using var _ = editor;
             await using var __ = game;
 
-            (await client.CallAsync(GameTool, new { })).Text.ShouldBe("game:" + GameTool);
+            (await client.CallAsync(GameTool, new { }).WaitAsync(Timeout)).Text.ShouldBe("game:" + GameTool);
             editor.Calls.ShouldBeEmpty();
         }
 
@@ -98,7 +99,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             await using var _ = editor;
             await using var __ = game;
 
-            (await client.CallAsync("game-only", new { })).Text.ShouldBe("game:game-only");
+            (await client.CallAsync("game-only", new { }).WaitAsync(Timeout)).Text.ShouldBe("game:game-only");
             editor.Calls.ShouldBeEmpty();
         }
 
@@ -113,7 +114,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             await using var _ = editor;
             await using var __ = game;
 
-            (await client.CallAsync("shared", new { })).Text.ShouldBe("editor:shared");
+            (await client.CallAsync("shared", new { }).WaitAsync(Timeout)).Text.ShouldBe("editor:shared");
             game.Calls.ShouldBeEmpty();
         }
 
@@ -128,7 +129,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             await using var _ = editor;
             await using var __ = game;
 
-            var response = await client.RawAsync("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/list\"}");
+            var response = await client.RawAsync("{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/list\"}").WaitAsync(Timeout);
             var names = response["result"]!["tools"]!.AsArray().Select(t => t!["name"]!.GetValue<string>()).ToList();
             names.ShouldBe(new[] { "echo", "editor-only", GameTool }, ignoreOrder: true);
         }
@@ -163,6 +164,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             using (PluginRoleRouting.Prefer(ClientRole.Runtime))
                 strategy.ResolveConnectionId(null, 0).ShouldBe("game");
             PluginRoleRouting.Preferred.ShouldBeNull();
+        }
+
+        [Fact]
+        public void PreferredRuntime_WithNoRuntime_ResolvesNothing_NotTheEditor()
+        {
+            // The call waits for the game (or fails as not connected) instead of running a game-only tool in the editor.
+            var strategy = new NoAuthMcpStrategy();
+            strategy.Registry.Add("editor", ClientRole.Editor, null);
+            using (PluginRoleRouting.Prefer(ClientRole.Runtime))
+                strategy.ResolveConnectionId(null, 0).ShouldBeNull();
         }
     }
 }

@@ -217,7 +217,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             if (string.Equals(target, runtime, StringComparison.Ordinal))
                 return false; // the runtime already serves (no editor)
 
-            var runtimeTools = await GetListedAsync(runtime, request.Name, cancellationToken);
+            // The runtime's list is trusted as cached (re-listed on tools/list, see RemoteToolRunner): most calls are editor
+            // tools it does not have, and re-listing a game for each would slow every call down.
+            var runtimeTools = await GetListedAsync(runtime, request.Name, refreshIfMissing: false, cancellationToken);
             if (runtimeTools == null || !runtimeTools.Targets.TryGetValue(request.Name, out var runtimeTarget))
                 return false;
             if (runtimeTarget == ToolTarget.Runtime)
@@ -225,15 +227,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             if (target == null)
                 return false; // the editor is reloading: wait for it, as for any tool both may have
 
-            var editorTools = await GetListedAsync(target, request.Name, cancellationToken);
+            // Rare (the runtime has the tool): re-list the editor when it seems to lack it, it may have just been added.
+            var editorTools = await GetListedAsync(target, request.Name, refreshIfMissing: true, cancellationToken);
             return editorTools != null && !editorTools.Failed && !editorTools.Targets.ContainsKey(request.Name);
         }
 
-        /// <summary>The tools <paramref name="connectionId"/> listed, listed again when <paramref name="toolName"/> is missing from an older list.</summary>
-        async Task<SchemaSnapshot?> GetListedAsync(string connectionId, string toolName, CancellationToken cancellationToken)
+        /// <summary>
+        /// The tools <paramref name="connectionId"/> listed (listed now when it has not, or its failed list is old); with
+        /// <paramref name="refreshIfMissing"/>, listed again when <paramref name="toolName"/> is not in it.
+        /// </summary>
+        async Task<SchemaSnapshot?> GetListedAsync(string connectionId, string toolName, bool refreshIfMissing, CancellationToken cancellationToken)
         {
             if (_schemas.TryGetValue(connectionId, out var snapshot)
-                && (snapshot.Failed ? snapshot.Age.Elapsed < FailedListRetryAge : snapshot.Targets.ContainsKey(toolName) || snapshot.Age.Elapsed < SchemaRecheckAge))
+                && (snapshot.Failed ? snapshot.Age.Elapsed < FailedListRetryAge : !refreshIfMissing || snapshot.Targets.ContainsKey(toolName)))
                 return snapshot;
             return await RefreshSchemasAsync(connectionId, cancellationToken);
         }

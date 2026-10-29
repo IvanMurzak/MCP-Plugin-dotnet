@@ -35,6 +35,8 @@ which wins). At `Build()` a plugin skips every tool whose target does not includ
 `Build()`.
 
 ```csharp
+using com.IvanMurzak.McpPlugin.Common; // ToolTarget
+
 [AiToolType(Target = ToolTarget.Runtime)] // the editor scans this assembly too, but never registers these
 public static class GameTools
 {
@@ -47,6 +49,10 @@ Mark every game-only tool `Runtime`: engines that compile the game and the edito
 otherwise register it in the editor as well, and the editor answers it. The server routes a call of a tool that
 only the runtime has (listed as `Runtime`, or not listed by the editor) to the runtime even while the editor is
 connected, and adds such tools to `tools/list`. The target travels as `ResponseListTool.Target` (null = `Both`).
+
+The role is read once, at `Build()`: tools added later (`IToolManager.AddTool`) are not filtered. The editor's
+generated SKILL.md files no longer include `Runtime` tools (they are not registered there); a game build that
+generates skills includes them.
 
 ### Global skill metadata
 

@@ -130,15 +130,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 
         /// <summary>
         /// The editor (by token, else the best one); else, unless an editor left within <see cref="EditorReconnectWindow"/>, a runtime.
-        /// A request routed to the runtime (<see cref="PluginRoleRouting.Preferred"/>) gets the runtime while one is connected.
+        /// A request routed to the runtime (<see cref="PluginRoleRouting.Preferred"/>) gets the runtime, or nothing while none
+        /// is connected (it then waits for one like any call): never the editor, which does not run game-only tools.
         /// </summary>
         public string? ResolveConnectionId(string? token, int retryOffset)
         {
             if (PluginRoleRouting.Preferred == ClientRole.Runtime)
             {
                 var preferred = Registry.WithRole(ClientRole.Runtime);
-                if (preferred.Count > 0)
-                    return preferred[Math.Abs(retryOffset) % preferred.Count];
+                return preferred.Count > 0 ? preferred[Math.Abs(retryOffset) % preferred.Count] : null;
             }
 
             var editor = ClientUtils.GetConnectionIdByToken(token) ?? ClientUtils.GetBestConnectionId(RoutedHubType, retryOffset);
