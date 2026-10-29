@@ -88,6 +88,12 @@ jobs:
           }
           [Console]::Error.WriteLine('chain: no Python 3.9+ on PATH that runs and reports an absolute, space-free sys.executable (tried python, python3; never py)'); exit 2
 
+      # Offline unit tests of the release dependency guard (a fake nuget.org; the guard itself runs
+      # only in release.yml, where it refuses pre-release pins and local feeds). Before `chain feed`
+      # so they see the committed tree; a failure still leaves a chain leg record (`if: always()`).
+      - name: Release dependency guard unit tests
+        run: ${{ env.CHAIN_PY }} -m unittest discover -s scripts -p "test_release_dependency_guard.py" -v
+
       # `test` restores the whole solution, so it consumes every edge of this node: no --edges.
       - name: chain feed
         id: chain

@@ -29,8 +29,9 @@ cd DemoWebApp && dotnet run port=11111 client-transport=stdio
 - `DemoWebApp/`, `DemoConsoleApp/` — runnable demos.
 - `commands/` — maintainer Python, stdlib only (version bump, ReflectorNet update, release notes);
   their unit tests are `scripts/test_commands.py`.
-- `scripts/` + `tests/chain-fixtures/` — chain-testing fixture tooling (`docs/chain-fixtures.md`) and
-  `phase2_gate_matrix.py` (the Phase-2 gate as one command).
+- `scripts/` + `tests/chain-fixtures/` — chain-testing fixture tooling (`docs/chain-fixtures.md`),
+  `phase2_gate_matrix.py` (the Phase-2 gate as one command) and `release_dependency_guard.py`
+  (release.yml's first check: no pre-release/unpublished pins, no local feed).
 - `docs/agents/` — agent reference docs (below); other `docs/` — design notes and migration guides.
 - `.specify/`, `specs/` — spec-kit constitution, templates and feature specs.
 

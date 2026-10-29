@@ -6,6 +6,11 @@ name: release
 #   gh workflow run release.yml -R IvanMurzak/MCP-Plugin-dotnet --ref main -f dry_run=true
 #   gh workflow run release.yml -R IvanMurzak/MCP-Plugin-dotnet --ref main -f dry_run=false
 #
+# The first job's FIRST check is the release dependency guard (scripts/release_dependency_guard.py):
+# a pre-release (`-` suffix, e.g. ReflectorNet 5.5.1-dev.<sha>) or unpublished NuGet pin of a packed
+# project, or a local restore feed (Directory.Build.props / nuget.config, e.g. prerelease-packages/),
+# FAILS every run, dry runs included. Every other job needs that job, so nothing is built or published.
+#
 # Order: guards -> full tests + pack rehearsal -> NuGet publish (deploy.yml, --skip-duplicate)
 # -> wait until all three packages are live on NuGet -> tag + GitHub Release.
 # The tag/Release come LAST so a re-dispatch after a failed publish/verification is possible
@@ -39,6 +44,19 @@ jobs:
       prev_tag: ${{ steps.prev_tag.outputs.tag }}
       tag_exists: ${{ steps.tag_exists.outputs.exists }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      # FIRST check, before anything is built or published (dry runs included): every NuGet pin of
+      # the three packed projects (and the props/nuget.config that feed them) must be a published
+      # nuget.org release, restored without a local feed. FAILS while main builds against an
+      # unreleased ReflectorNet from prerelease-packages/. nuget.org unreachable fails it too.
+      - name: Release dependency guard (no pre-release / unpublished pins, no local feed)
+        run: python3 scripts/release_dependency_guard.py
+
       - name: Ref guard (a real release runs only on main)
         env:
           DRY_RUN: ${{ inputs.dry_run }}
@@ -49,12 +67,6 @@ jobs:
             echo "::error::A real (non-dry-run) release must be dispatched on refs/heads/main, got '$REF'."
             exit 1
           fi
-
-      - name: Checkout repository
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-          fetch-tags: true
 
       - name: Get version from csproj
         id: get_version
