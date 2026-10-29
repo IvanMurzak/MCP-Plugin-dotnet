@@ -28,7 +28,7 @@ from typing import List, Optional, Sequence
 ROOT = Path(__file__).resolve().parents[1]
 CONFIGURATION = "Release"
 
-# (title, test project, test filter, what failed)
+# (title, test project, test filter, failure message)
 SUITES = (
     ("Phase-2 isolation/selection/pin/Origin/stdio matrix (McpPlugin.Server.Tests)",
      "McpPlugin.Server.Tests/McpPlugin.Server.Tests.csproj", "FullyQualifiedName~IsolationMatrix",
@@ -39,42 +39,40 @@ SUITES = (
 )
 
 
-class GateFailure(Exception):
-    def __init__(self, message: str, code: int):
-        super().__init__(message)
-        self.code = code
+def dotnet(args: Sequence[str]) -> int:
+    return subprocess.run(["dotnet", *args], cwd=ROOT).returncode
 
 
-def dotnet(args: Sequence[str], failure: str) -> None:
-    code = subprocess.run(["dotnet", *args], cwd=ROOT).returncode
-    if code != 0:
-        raise GateFailure(failure, code)
-
-
-def run(build: bool) -> None:
+def run(build: bool) -> int:
+    """0 on PASS, else the exit code of the first failing dotnet command."""
     if build:
         print(f"== restore + build ({CONFIGURATION}) ==", flush=True)
-        dotnet(["restore"], "restore failed")
-        dotnet(["build", "--no-restore", "--configuration", CONFIGURATION], "build failed")
+        for args, failure in ((["restore"], "restore failed"),
+                              (["build", "--no-restore", "--configuration", CONFIGURATION], "build failed")):
+            code = dotnet(args)
+            if code != 0:
+                return fail(failure, code)
 
     for title, project, test_filter, failure in SUITES:
         print(f"\n== {title} ==", flush=True)
-        dotnet(["test", project, "--no-build", "--configuration", CONFIGURATION, "--verbosity", "normal",
-                "--filter", test_filter, "--", "RunConfiguration.TreatNoTestsAsError=true"], failure)
+        code = dotnet(["test", project, "--no-build", "--configuration", CONFIGURATION, "--verbosity", "normal",
+                       "--filter", test_filter, "--", "RunConfiguration.TreatNoTestsAsError=true"])
+        if code != 0:
+            return fail(failure, code)
 
     print("\n== Phase-2 gate: PASS ==")
+    return 0
+
+
+def fail(failure: str, code: int) -> int:
+    print(f"\n== Phase-2 gate: FAIL ({failure}) ==")
+    return code
 
 
 def main(argv: Optional[List[str]] = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     parser.add_argument("--no-build", action="store_true", help="reuse an existing Release build")
-    args = parser.parse_args(argv)
-    try:
-        run(build=not args.no_build)
-    except GateFailure as exc:
-        print(f"\n== Phase-2 gate: FAIL ({exc}) ==")
-        return exc.code
-    return 0
+    return run(build=not parser.parse_args(argv).no_build)
 
 
 if __name__ == "__main__":

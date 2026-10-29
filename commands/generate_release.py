@@ -4,7 +4,7 @@ Generate Markdown release notes for the commits between two refs.
 
 Writes `release_<from>_to_<to>.md` in the current directory: a compare link, then one line per
 commit (newest first) with its short SHA, subject and GitHub author login (`gh api`). A commit whose
-GitHub author cannot be resolved is skipped with a warning, as the PowerShell original did.
+GitHub author cannot be resolved is skipped with a warning (it gets no line).
 
 Usage:
     python commands/generate_release.py --version-from 8.13.0 --version-to 8.13.1
@@ -37,11 +37,10 @@ def repo_url() -> str:
 def github_login(repo_path: str, sha: str) -> Optional[str]:
     data = capture("gh", "api", f"repos/{repo_path}/commits/{sha}",
                    "--jq", ".author.login // .commit.author.name").rstrip("\r\n")
-    if data.strip() and not data.startswith("{"):
-        return data
     if data.startswith("{"):
         print(f"GitHub API error for commit {sha}: {data}")
-    return None
+        return None
+    return data if data.strip() else None
 
 
 def generate(version_from: str, version_to: str) -> Path:
@@ -55,17 +54,16 @@ def generate(version_from: str, version_to: str) -> Path:
         "",
         "## Commit Summary (Newest → Oldest)",
     ]
-    for sha in capture("git", "log", "--pretty=format:%H", f"{version_from}..{version_to}").splitlines():
+    log = capture("git", "log", "--pretty=format:%H%x09%s", f"{version_from}..{version_to}")
+    for sha, _, message in (line.partition("\t") for line in log.splitlines()):
         username = github_login(repo_path, sha)
         if not username:
             print(f"Using git fallback for commit {sha}")
             continue
-        message = capture("git", "log", "-1", "--pretty=format:%s", sha)
-        short_sha = capture("git", "log", "-1", "--pretty=format:%h", sha)[:6]
-        lines.append(f"- [`{short_sha}`]({url}/commit/{sha}) — {message} by @{username}")
+        lines.append(f"- [`{sha[:6]}`]({url}/commit/{sha}) — {message} by @{username}")
 
     path = Path(f"release_{version_from}_to_{version_to}.md")
-    # Text mode writes the platform newline after every line, like Add-Content did.
+    # Text mode writes the platform newline after every line.
     with path.open("w", encoding="utf-8") as f:
         f.writelines(line + "\n" for line in lines)
     print(f"Release notes generated successfully in {path}")

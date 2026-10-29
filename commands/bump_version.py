@@ -27,8 +27,8 @@ from typing import List, Optional
 ROOT = Path(__file__).resolve().parents[1]
 VERSION_SOURCE = "McpPlugin/McpPlugin.csproj"
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(-[a-zA-Z0-9\-\.]+)?(\+[a-zA-Z0-9\-\.]+)?$")
-CSPROJ_VERSION_RE = re.compile(r"<Version>[\d\.]+</Version>", re.IGNORECASE)
-CURRENT_VERSION_RE = re.compile(r"<Version>([\d\.]+)</Version>", re.IGNORECASE)
+CSPROJ_VERSION_RE = re.compile(r"<Version>([\d\.]+)</Version>", re.IGNORECASE)
+CSPROJ_REPLACE = "<Version>{VERSION}</Version>"
 
 
 @dataclass(frozen=True)
@@ -42,12 +42,9 @@ class VersionFile:
 VERSION_FILES = (
     VersionFile("McpPlugin.Server/server.json", re.compile(r'"version":\s*"[\d\.]+"', re.IGNORECASE),
                 '"version": "{VERSION}"', "Server JSON version (2 occurrences)"),
-    VersionFile("McpPlugin.Common/McpPlugin.Common.csproj", CSPROJ_VERSION_RE,
-                "<Version>{VERSION}</Version>", "Common csproj XML version"),
-    VersionFile("McpPlugin.Server/McpPlugin.Server.csproj", CSPROJ_VERSION_RE,
-                "<Version>{VERSION}</Version>", "Server csproj XML version"),
-    VersionFile(VERSION_SOURCE, CSPROJ_VERSION_RE,
-                "<Version>{VERSION}</Version>", "Plugin csproj XML version"),
+    VersionFile("McpPlugin.Common/McpPlugin.Common.csproj", CSPROJ_VERSION_RE, CSPROJ_REPLACE, "Common csproj XML version"),
+    VersionFile("McpPlugin.Server/McpPlugin.Server.csproj", CSPROJ_VERSION_RE, CSPROJ_REPLACE, "Server csproj XML version"),
+    VersionFile(VERSION_SOURCE, CSPROJ_VERSION_RE, CSPROJ_REPLACE, "Plugin csproj XML version"),
     VersionFile("McpPlugin.Common/src/Utils/Consts.cs",
                 re.compile(r'public const string PluginVersion = "[\d\.]+"', re.IGNORECASE),
                 'public const string PluginVersion = "{VERSION}"', "Consts.cs PluginVersion constant"),
@@ -57,13 +54,12 @@ VERSION_FILES = (
 @dataclass
 class Change:
     path: Path
-    description: str
     matches: int
     content: str
 
 
 def read_text(path: Path) -> str:
-    # newline="" keeps CRLF/LF exactly as on disk; utf-8-sig drops a BOM like Get-Content did.
+    # newline="" keeps CRLF/LF exactly as on disk; utf-8-sig drops a BOM (written back without one).
     with path.open("r", encoding="utf-8-sig", newline="") as f:
         return f.read()
 
@@ -74,14 +70,14 @@ def write_text(path: Path, content: str) -> None:
 
 
 def is_semantic_version(version: str) -> bool:
-    return bool(version and version.strip()) and SEMVER_RE.match(version) is not None
+    return SEMVER_RE.match(version) is not None
 
 
 def current_version(root: Path) -> str:
     path = root / VERSION_SOURCE
     if not path.is_file():
         raise RuntimeError(f"Could not find McpPlugin.csproj at: {path}")
-    match = CURRENT_VERSION_RE.search(read_text(path))
+    match = CSPROJ_VERSION_RE.search(read_text(path))
     if not match:
         raise RuntimeError("Could not extract current version from McpPlugin.csproj")
     return match.group(1)
@@ -101,7 +97,7 @@ def plan_changes(root: Path, new_version: str) -> List[Change]:
             print(f"[warn] No matches found in: {vf.path}")
             print(f"   Pattern: {vf.pattern.pattern}")
             continue
-        changes.append(Change(path, vf.description, count, new_content))
+        changes.append(Change(path, count, new_content))
         print(f"[edit] {vf.description}: {count} occurrence(s)")
         for match in vf.pattern.finditer(content):
             print(f"   {match.group(0)} -> {replacement}")
@@ -159,7 +155,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = parser.parse_args(argv)
     try:
         return run(args.root, args.new_version, args.what_if)
-    except Exception as exc:  # mirror the .ps1 catch-all: report and exit 1
+    except Exception as exc:  # any error: report it and exit 1
         print(f"\n[fail] Script failed: {exc}")
         return 1
 

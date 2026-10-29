@@ -38,7 +38,7 @@ def current_package_version(project: Path) -> Optional[str]:
 
 
 def dotnet(*args: str) -> subprocess.CompletedProcess:
-    # Output is captured (the .ps1 did `2>&1` into a variable) and shown only on failure.
+    # stdout and stderr are captured together and shown only on failure.
     return subprocess.run(["dotnet", *args], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                           text=True, encoding="utf-8", errors="replace")
 
@@ -94,7 +94,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = parser.parse_args(argv)
     try:
         return run(args.root, args.what_if)
-    except Exception as exc:  # mirror the .ps1 catch-all: report and exit 1
+    except Exception as exc:  # any error: report it and exit 1
         print(f"\n[fail] Script failed: {exc}")
         return 1
 

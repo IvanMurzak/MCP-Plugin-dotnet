@@ -9,7 +9,7 @@ gained a `CancellationToken` parameter. Callers keep compiling (the parameter is
 > `McpPlugin/McpPlugin.csproj` is the single source of truth for all three packages, and pushing a
 > new value to `main` is what triggers `release.yml` to publish to NuGet (see
 > `docs/agents/release.md`). The bump to `8.0.0` is therefore made by the release run, via
-> `commands/bump-version.ps1 8.0.0` (now `python commands/bump_version.py --new-version 8.0.0`), not by a feature PR.
+> `commands/bump-version.ps1 8.0.0`, not by a feature PR.
 
 ## What changed
 

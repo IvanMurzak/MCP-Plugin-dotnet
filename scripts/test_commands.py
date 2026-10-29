@@ -196,13 +196,11 @@ class GenerateReleaseTests(unittest.TestCase):
     def test_writes_compare_link_and_commit_lines(self):
         outputs = {
             ("git", "remote", "get-url", "origin"): "git@github.com:IvanMurzak/MCP-Plugin-dotnet.git\n",
-            ("git", "log", "--pretty=format:%H", "1.0.0..1.1.0"): "aaaaaaaaaa\nbbbbbbbbbb",
+            ("git", "log", "--pretty=format:%H%x09%s", "1.0.0..1.1.0"): "aaaaaaaaaa\tfeat: thing\nbbbbbbbbbb\tfix: other",
             ("gh", "api", "repos/IvanMurzak/MCP-Plugin-dotnet/commits/aaaaaaaaaa",
              "--jq", ".author.login // .commit.author.name"): "octo\n",
             ("gh", "api", "repos/IvanMurzak/MCP-Plugin-dotnet/commits/bbbbbbbbbb",
              "--jq", ".author.login // .commit.author.name"): "",
-            ("git", "log", "-1", "--pretty=format:%s", "aaaaaaaaaa"): "feat: thing",
-            ("git", "log", "-1", "--pretty=format:%h", "aaaaaaaaaa"): "aaaaaaa",
         }
         with mock.patch.object(generate_release, "capture", side_effect=lambda *a: outputs.get(a, "")):
             _, out = run_quiet(generate_release.main, ["--version-from", "1.0.0", "--version-to", "1.1.0"])
@@ -217,7 +215,7 @@ class GenerateReleaseTests(unittest.TestCase):
             "## Commit Summary (Newest → Oldest)",
             f"- [`aaaaaa`]({url}/commit/aaaaaaaaaa) — feat: thing by @octo",
         ]) + "\n")
-        # An unresolved GitHub author is skipped, as the PowerShell original did.
+        # A commit whose GitHub author is unresolved gets no line.
         self.assertIn("Using git fallback for commit bbbbbbbbbb", out)
 
 
