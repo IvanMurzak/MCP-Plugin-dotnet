@@ -964,6 +964,73 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             result.ShouldBeFalse("Connect should return false because DisconnectImmediate canceled it");
         }
 
+        [Fact]
+        public async Task DisconnectImmediate_DuringConnect_DoesNotWarn()
+        {
+            // Unity exits play mode right after the domain reload of a PlayMode test run, while the plugin is
+            // still connecting: a cancellation we asked for is not worth a warning.
+            var logger = new CapturingLogger();
+            var connectionCreated = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _mockHubConnectionProvider
+                .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                .ReturnsAsync(() =>
+                {
+                    connectionCreated.TrySetResult(true);
+                    return CreateMockHubConnection();
+                });
+
+            await using var connectionManager = new ConnectionManager(
+                logger, _testVersion, _testEndpoint, _mockHubConnectionProvider.Object);
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var connectTask = Task.Run(() => connectionManager.Connect(cts.Token));
+            await connectionCreated.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+            // Inside the 1 s stabilization delay that follows the HubConnection creation.
+            connectionManager.DisconnectImmediate();
+
+            (await connectTask.WaitAsync(TimeSpan.FromSeconds(5))).ShouldBeFalse();
+            logger.Warnings.ShouldNotContain(w => w.Contains("canceled", StringComparison.OrdinalIgnoreCase));
+        }
+
+        [Fact]
+        public async Task DisconnectImmediate_DuringTransportStart_DoesNotWarn()
+        {
+            // A server that accepts the socket and never answers keeps StartAsync in flight.
+            var logger = new CapturingLogger();
+            var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+            listener.Start();
+            try
+            {
+                var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+                _mockHubConnectionProvider
+                    .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                    .ReturnsAsync(() => new HubConnectionBuilder()
+                        .WithUrl($"http://127.0.0.1:{port}/hub", options =>
+                        {
+                            options.Transports = HttpTransportType.WebSockets;
+                            options.SkipNegotiation = true;
+                        })
+                        .Build());
+
+                await using var connectionManager = new ConnectionManager(
+                    logger, _testVersion, _testEndpoint, _mockHubConnectionProvider.Object);
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                var connectTask = Task.Run(() => connectionManager.Connect(cts.Token));
+                using var socket = await listener.AcceptTcpClientAsync().WaitAsync(TimeSpan.FromSeconds(10));
+
+                connectionManager.DisconnectImmediate();
+
+                (await connectTask.WaitAsync(TimeSpan.FromSeconds(5))).ShouldBeFalse();
+                logger.Warnings.ShouldBeEmpty();
+            }
+            finally
+            {
+                listener.Stop();
+            }
+        }
+
         #endregion
 
         #region InvokeAsync Tests

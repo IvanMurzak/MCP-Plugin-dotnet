@@ -43,7 +43,7 @@ namespace com.IvanMurzak.McpPlugin
 
             if (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogWarning("{class}[{guid}] {method} Connection canceled before starting for endpoint: {endpoint}",
+                _logger.LogDebug("{class}[{guid}] {method} Connection canceled before starting for endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(Connect), Endpoint);
                 return false;
             }
@@ -190,7 +190,7 @@ namespace com.IvanMurzak.McpPlugin
             }
             catch (OperationCanceledException)
             {
-                _logger.LogWarning("{class}[{guid}] {method} Connection canceled while waiting for gate for endpoint: {endpoint}",
+                _logger.LogDebug("{class}[{guid}] {method} Connection canceled while waiting for gate for endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(Connect), Endpoint);
                 return false;
             }
@@ -199,7 +199,7 @@ namespace com.IvanMurzak.McpPlugin
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    _logger.LogWarning("{class}[{guid}] {method} Connection canceled before starting for endpoint: {endpoint}",
+                    _logger.LogDebug("{class}[{guid}] {method} Connection canceled before starting for endpoint: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(Connect), Endpoint);
                     return false;
                 }
@@ -245,7 +245,7 @@ namespace com.IvanMurzak.McpPlugin
                 var completedTask = await Task.WhenAny(ongoingTask, Task.Delay(Timeout.Infinite, cancellationToken));
                 if (completedTask != ongoingTask)
                 {
-                    _logger.LogWarning("{class}[{guid}] {method} Waiting for ongoing connection was canceled for endpoint: {endpoint}",
+                    _logger.LogDebug("{class}[{guid}] {method} Waiting for ongoing connection was canceled for endpoint: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(WaitForConnectionCompletion), Endpoint);
                     return false;
                 }
@@ -253,7 +253,7 @@ namespace com.IvanMurzak.McpPlugin
             }
             catch (OperationCanceledException)
             {
-                _logger.LogWarning("{class}[{guid}] {method} Ongoing connection was canceled for endpoint: {endpoint}",
+                _logger.LogDebug("{class}[{guid}] {method} Ongoing connection was canceled for endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(WaitForConnectionCompletion), Endpoint);
                 return false;
             }
@@ -275,7 +275,7 @@ namespace com.IvanMurzak.McpPlugin
 
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    _logger.LogWarning("{class}[{guid}] {method} Connection canceled before creating HubConnection for endpoint: {endpoint}",
+                    _logger.LogDebug("{class}[{guid}] {method} Connection canceled before creating HubConnection for endpoint: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(InternalConnect), Endpoint);
                     return false;
                 }
@@ -288,7 +288,7 @@ namespace com.IvanMurzak.McpPlugin
 
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    _logger.LogWarning("{class}[{guid}] {method} Connection canceled before starting connection loop for endpoint: {endpoint}",
+                    _logger.LogDebug("{class}[{guid}] {method} Connection canceled before starting connection loop for endpoint: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(InternalConnect), Endpoint);
                     return false;
                 }
@@ -300,16 +300,16 @@ namespace com.IvanMurzak.McpPlugin
 
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    _logger.LogWarning("{class}[{guid}] {method} Connection canceled before starting connection loop for endpoint: {endpoint}",
+                    _logger.LogDebug("{class}[{guid}] {method} Connection canceled before starting connection loop for endpoint: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(InternalConnect), Endpoint);
                     return false;
                 }
 
                 return await StartConnectionLoop(cancellationToken, firstOutcome);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogWarning("{class}[{guid}] {method} Connection was canceled for endpoint: {endpoint}",
+                _logger.LogDebug("{class}[{guid}] {method} Connection was canceled for endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(InternalConnect), Endpoint);
                 return false;
             }
@@ -398,7 +398,7 @@ namespace com.IvanMurzak.McpPlugin
 
             if (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogWarning("{class}[{guid}] {method} Connection canceled before setting up HubConnection for endpoint: {endpoint}",
+                _logger.LogDebug("{class}[{guid}] {method} Connection canceled before setting up HubConnection for endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(CreateHubConnectionIfNeeded), Endpoint);
 
                 try
@@ -750,6 +750,15 @@ namespace com.IvanMurzak.McpPlugin
                 var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
                 var completedTask = await Task.WhenAny(connectionTask, timeoutTask);
 
+                // WhenAny does not throw: a cancellation we asked for would read as a timeout or a failure.
+                if (cancellationToken.IsCancellationRequested && !connectionTask.IsCompletedSuccessfully)
+                {
+                    _logger.LogDebug("{class}[{guid}] {method} Connection attempt canceled for endpoint: {endpoint}",
+                        nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint);
+                    _ = connectionTask.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
+                    return ConnectionAttemptResult.Failed;
+                }
+
                 if (completedTask == timeoutTask)
                 {
                     _logger.LogWarning("{class}[{guid}] {method} Connection attempt timed out after 30 seconds for endpoint: {endpoint}",
@@ -776,9 +785,9 @@ namespace com.IvanMurzak.McpPlugin
                         return ConnectionAttemptResult.AuthRejected;
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
-                _logger.LogWarning("{class}[{guid}] {method} Connection attempt canceled for endpoint: {endpoint}",
+                _logger.LogDebug("{class}[{guid}] {method} Connection attempt canceled for endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint);
             }
             catch (HubException ex)
