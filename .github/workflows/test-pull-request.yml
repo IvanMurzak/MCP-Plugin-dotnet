@@ -93,6 +93,12 @@ jobs:
         id: chain
         run: ${{ env.CHAIN_PY }} .github/scripts/chain_feed.py apply --node mcp-plugin-dotnet --job test
 
+      # Offline unit tests of the release dependency guard (a fake nuget.org; the guard itself runs
+      # only in release.yml, where it refuses pre-release pins and local feeds). After the chain
+      # resolver/feed steps, so a failure here still leaves a chain leg record.
+      - name: Release dependency guard unit tests
+        run: ${{ env.CHAIN_PY }} -m unittest discover -s scripts -p "test_release_dependency_guard.py" -v
+
       - name: Restore dependencies
         working-directory: ./
         run: dotnet restore
