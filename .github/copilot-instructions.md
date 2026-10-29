@@ -26,7 +26,7 @@
 - **Build**: `dotnet build McpPlugin.sln`
 - **Test**: `dotnet test` (Runs `McpPlugin.Tests` and `McpPlugin.Server.Tests`)
   - Testing uses **xUnit**, **Shouldly**, and **Moq**.
-- **Automation**: Check `commands/` for PowerShell scripts (e.g., `bump-version.ps1`, `update-reflectornet.ps1`).
+- **Automation**: Check `commands/` for the Python maintainer scripts (e.g., `bump_version.py`, `update_reflectornet.py`).
 
 ## Project Conventions
 

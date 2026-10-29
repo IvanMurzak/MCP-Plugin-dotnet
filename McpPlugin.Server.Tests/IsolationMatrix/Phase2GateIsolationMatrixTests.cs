@@ -48,7 +48,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.IsolationMatrix
     /// the b8 matrix — run over a REAL loopback host / REAL sockets in
     /// <see cref="Phase2GateTransportMatrixTests"/> (sibling file). The suite is deliberately
     /// hermetic (no external AS, no multi-process orchestration) so it is a stable CI gate; see the
-    /// runnable wrapper <c>scripts/phase2-gate-matrix.sh</c> / <c>.ps1</c> to invoke it standalone.</para>
+    /// runnable wrapper <c>scripts/phase2_gate_matrix.py</c> to invoke it standalone.</para>
     /// </summary>
     [Collection("McpPlugin.Server")]
     public sealed class Phase2GateIsolationMatrixTests : IDisposable
