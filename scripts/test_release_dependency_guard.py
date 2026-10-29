@@ -2,8 +2,6 @@
 
 Run: python -m unittest discover -s scripts -p "test_release_dependency_guard.py"
 """
-from __future__ import annotations
-
 import importlib.util
 import json
 import sys

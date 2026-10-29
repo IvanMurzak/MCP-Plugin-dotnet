@@ -375,7 +375,8 @@ def unknown_packable_projects(root: Path) -> list[Problem]:
     known = {(root / p).resolve() for p in PACKED_PROJECTS}
     problems: list[Problem] = []
     for path in sorted(root.rglob("*.csproj")):
-        if path.resolve() in known or any(part in SKIP_DIRS or part.startswith(".") for part in path.relative_to(root).parts[:-1]):
+        folders = path.relative_to(root).parts[:-1]
+        if path.resolve() in known or any(f in SKIP_DIRS or f.startswith(".") for f in folders):
             continue
         text = path.read_text(encoding="utf-8-sig")
         if re.search(r"<IsPackable>\s*true\s*</IsPackable>", text, re.IGNORECASE):
