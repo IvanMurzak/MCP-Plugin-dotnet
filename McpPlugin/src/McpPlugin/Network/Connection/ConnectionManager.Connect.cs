@@ -307,8 +307,7 @@ namespace com.IvanMurzak.McpPlugin
 
                 return await StartConnectionLoop(cancellationToken, firstOutcome);
             }
-            // Timeouts are not cancellations here: a canceled connect was asked for (Disconnect, caller), so Debug.
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 _logger.LogDebug("{class}[{guid}] {method} Connection was canceled for endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(InternalConnect), Endpoint);
@@ -777,7 +776,7 @@ namespace com.IvanMurzak.McpPlugin
                         return ConnectionAttemptResult.AuthRejected;
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 _logger.LogDebug("{class}[{guid}] {method} Connection attempt canceled for endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint);
