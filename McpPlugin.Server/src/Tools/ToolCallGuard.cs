@@ -140,7 +140,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                     if (IsServerTimeout(response) || (response.Status != ResponseStatus.Success && IsDeadline(deadline, cancellationToken)))
                         return TimedOut(request, sent, response.Message);
 
-                    var notExecuted = IsNotExecuted(response);
+                    var notExecuted = ResponseCallTool.IsNotExecuted(response);
                     if (notExecuted && elapsed.Elapsed < resendDeadline)
                     {
                         _logger.LogInformation("Tool '{tool}': the plugin did not execute it ({message}); sending it again once the plugin is back.", request.Name, response.Message);
@@ -365,8 +365,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             => response.Status == ResponseStatus.Error
                 && response.ErrorKind == ResponseErrorKind.Timeout
                 && response.HttpStatusCode == ClientUtils.ServerTimeoutStatusCode;
-
-        static bool IsNotExecuted(ResponseData<ResponseCallTool> response) => ResponseCallTool.IsNotExecuted(response);
 
         /// <summary>A reload-gate refusal without the not-executed status; not one for a plugin that is shutting down.</summary>
         static bool IsReloadRefusal(ResponseData<ResponseCallTool> response)
