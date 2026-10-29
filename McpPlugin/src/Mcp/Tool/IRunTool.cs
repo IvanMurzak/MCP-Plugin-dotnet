@@ -77,6 +77,12 @@ namespace com.IvanMurzak.McpPlugin
         McpToolType ToolType => McpToolType.Standard;
 
         /// <summary>
+        /// Which plugin connections register this tool (<see cref="Common.ToolTarget"/>). A plugin built for another
+        /// <see cref="Common.ClientRole"/> skips it. Defaults to <see cref="Common.ToolTarget.Both"/>.
+        /// </summary>
+        Common.ToolTarget Target => Common.ToolTarget.Both;
+
+        /// <summary>
         /// If true, the tool only reads or queries data and does not modify system state.
         /// </summary>
         bool? ReadOnlyHint { get; }

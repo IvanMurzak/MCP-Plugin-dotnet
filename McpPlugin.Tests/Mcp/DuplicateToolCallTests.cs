@@ -120,6 +120,51 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         }
 
         [Fact]
+        public async Task NotExecutedAnswer_IsForgotten_SoTheServersResendRuns()
+        {
+            // Wave-6 finding: a same-id re-send after NotExecuted got the cached refusal back and never reached the tool.
+            var runs = 0;
+            var tools = new Mock<IToolManager>();
+            tools.Setup(t => t.RunCallTool(It.IsAny<RequestCallTool>()))
+                .Returns(() => Task.FromResult(Interlocked.Increment(ref runs) == 1
+                    ? ResponseCallTool.NotExecuted("Reloading; the call was not executed.").Pack("request-1")
+                    : ResponseCallTool.Success("ran").Pack("request-1")));
+            var systemTools = new Mock<ISystemToolManager>();
+            systemTools.Setup(t => t.RunSystemTool(It.IsAny<RequestCallTool>(), It.IsAny<CancellationToken>()))
+                .Returns(() => Task.FromResult(Interlocked.Increment(ref runs) == 3
+                    ? ResponseCallTool.NotExecuted("Reloading; the call was not executed.").Pack("request-2")
+                    : ResponseCallTool.Success("ran").Pack("request-2")));
+            var manager = new McpManager(NullLogger<McpManager>.Instance, new Reflector(), tools.Object, systemTools: systemTools.Object);
+
+            ResponseCallTool.IsNotExecuted(await manager.ToolHub!.RunCallTool(Call("request-1"))).ShouldBeTrue();
+            var resent = await manager.ToolHub.RunCallTool(Call("request-1"));
+            resent.Status.ShouldBe(ResponseStatus.Success);
+            runs.ShouldBe(2);
+            (await manager.ToolHub.RunCallTool(Call("request-1"))).ShouldBeSameAs(resent, "a result that ran is kept as before");
+            runs.ShouldBe(2);
+
+            ResponseCallTool.IsNotExecuted(await manager.SystemToolHub!.RunSystemTool(Call("request-2"))).ShouldBeTrue();
+            (await manager.SystemToolHub.RunSystemTool(Call("request-2"))).Status.ShouldBe(ResponseStatus.Success);
+            runs.ShouldBe(4);
+        }
+
+        [Fact]
+        public async Task OtherErrors_AreStillAnsweredFromTheFirstRun()
+        {
+            var runs = 0;
+            var guard = new DuplicateRequestGuard<ResponseData<ResponseCallTool>>(forget: ResponseCallTool.IsNotExecuted);
+            Task<ResponseData<ResponseCallTool>> Run()
+            {
+                Interlocked.Increment(ref runs);
+                return Task.FromResult(ResponseCallTool.Error("boom", ResponseErrorKind.Unavailable).Pack("x"));
+            }
+
+            var first = await guard.Run("x", Run);
+            (await guard.Run("x", Run)).ShouldBeSameAs(first);
+            runs.ShouldBe(1, "only a not-executed refusal is forgotten; an error that may have run is not re-run");
+        }
+
+        [Fact]
         public async Task Guard_CancelledRun_IsForgotten_SoALaterCopyRuns()
         {
             var guard = new DuplicateRequestGuard<int>();

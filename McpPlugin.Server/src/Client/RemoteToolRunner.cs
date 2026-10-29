@@ -9,6 +9,8 @@
 */
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
@@ -109,11 +111,13 @@ namespace com.IvanMurzak.McpPlugin.Server
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
             cancellationToken = linkedCts.Token;
 
+            string? answeredBy = null;
             var response = await CatalogAwareInvoke.ListAsync<RequestListTool, ResponseListTool[]>(
                 _logger, _remoteAppContext, nameof(IClientToolHub.RunListTool), request, _dataArguments,
                 _strategy, _catalog, PluginCatalogKind.Tools, cancellationToken,
                 onAnswered: (connectionId, answer) =>
                 {
+                    answeredBy = connectionId;
                     if (answer.Status == ResponseStatus.Success)
                         _guard.Remember(connectionId, answer.Value);
                 });
@@ -121,7 +125,46 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (response.Status == ResponseStatus.Error)
                 return ResponseData<ResponseListTool[]>.Error(request.RequestID, response.Message ?? "Got an error during listing tools", response.ErrorKind, response.HttpStatusCode);
 
+            if (response.Value != null)
+                response.Value = await AddRuntimeOnlyToolsAsync(response.Value, answeredBy, cancellationToken);
             return response;
+        }
+
+        /// <summary>
+        /// While an editor answers <c>tools/list</c>, a connected runtime's tools that the editor does not have (game-only
+        /// tools, <see cref="ToolTarget.Runtime"/>) are listed too: their calls go to the runtime (see <see cref="ToolCallGuard"/>).
+        /// A runtime that does not answer in time adds nothing.
+        /// </summary>
+        async Task<ResponseListTool[]> AddRuntimeOnlyToolsAsync(ResponseListTool[] tools, string? answeredBy, CancellationToken cancellationToken)
+        {
+            if (_strategy is not IPluginRoleStrategy roles)
+                return tools;
+            var runtimes = roles.Registry.WithRole(ClientRole.Runtime);
+            if (runtimes.Count == 0 || runtimes.Contains(answeredBy ?? string.Empty))
+                return tools;
+
+            var runtime = runtimes[0];
+            ResponseListTool[]? runtimeTools;
+            try
+            {
+                runtimeTools = await ExtensionsMcpServerBuilder.FetchPluginToolsAsync(_remoteAppContext, _dataArguments.PluginTimeoutMs, runtime, cancellationToken);
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                return tools;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                _logger.LogDebug(ex, "Could not list the runtime's tools.");
+                return tools;
+            }
+            if (runtimeTools == null)
+                return tools;
+
+            _guard.Remember(runtime, runtimeTools);
+            var listed = new HashSet<string>(tools.Select(tool => tool.Name), StringComparer.Ordinal);
+            var runtimeOnly = runtimeTools.Where(tool => tool?.Name != null && !listed.Contains(tool.Name)).ToArray();
+            return runtimeOnly.Length == 0 ? tools : tools.Concat(runtimeOnly).ToArray();
         }
 
         public void Dispose()

@@ -9,6 +9,7 @@
 */
 
 using System;
+using com.IvanMurzak.McpPlugin.Common;
 
 namespace com.IvanMurzak.McpPlugin
 {
@@ -52,6 +53,22 @@ namespace com.IvanMurzak.McpPlugin
 
         /// <summary>Gets the Visible value, or null if it was not explicitly set.</summary>
         public bool? VisibleValue => _visibleSet ? _visible : null;
+
+        private ToolTarget _target = ToolTarget.Both;
+        private bool _targetSet;
+
+        /// <summary>
+        /// Which plugin connections register this tool (see <see cref="AiToolTypeAttribute.Target"/>). When not set,
+        /// the class's <see cref="AiToolTypeAttribute.Target"/> applies (<see cref="ToolTarget.Both"/> by default).
+        /// </summary>
+        public ToolTarget Target
+        {
+            get => _target;
+            set { _target = value; _targetSet = true; }
+        }
+
+        /// <summary>Gets the Target value, or null if it was not explicitly set.</summary>
+        public ToolTarget? TargetValue => _targetSet ? _target : null;
 
         /// <summary>Old name of <see cref="Visible"/>.</summary>
         [Obsolete("Renamed to Visible" + VisibilityRename.Note)]

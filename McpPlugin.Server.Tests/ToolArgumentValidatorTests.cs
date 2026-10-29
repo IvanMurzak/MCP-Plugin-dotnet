@@ -65,8 +65,22 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public void NullRequired_IsMissing()
-            => Assert.Contains("missing required argument 'query'", Validate("{\"query\":null}"));
+        public void NullRequired_IsAWrongType_NotMissing()
+        {
+            var error = Validate("{\"query\":null,\"label\":\"l\"}");
+            Assert.Equal("[invalid_params] Invalid params for tool 'rql-query': argument 'query' must be a string, got null.", error);
+        }
+
+        [Theory]
+        [InlineData("42", "a number (42)")]
+        [InlineData("true", "a boolean (true)")]
+        [InlineData("null", "null")]
+        public void PresentRequiredOfTheWrongType_IsNeverReportedAsMissing(string query, string got)
+        {
+            var error = Validate("{\"query\":" + query + ",\"label\":\"l\"}");
+            Assert.Contains($"argument 'query' must be a string, got {got}", error);
+            Assert.DoesNotContain("required", error);
+        }
 
         [Fact]
         public void NumberForString_IsRejected()

@@ -33,7 +33,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
     ///   whose role is not known yet replaces nothing and is never routed to.</item>
     ///   <item>Agents are routed to the editor. A runtime serves only when no editor is connected and none
     ///   disconnected within <see cref="EditorReconnectWindow"/> (a standalone game build), so calls made
-    ///   during an editor reload wait for the editor instead of reaching the game.</item>
+    ///   during an editor reload wait for the editor instead of reaching the game. The exception is a call of
+    ///   a tool only the runtime has (<see cref="PluginRoleRouting"/>): it goes to the runtime.</item>
     ///   <item>Only editors enter <see cref="ClientUtils"/>' plugin list, so the remembered lists of
     ///   <see cref="PluginCatalogCache"/> stay the editor's.</item>
     /// </list>
@@ -127,9 +128,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             }
         }
 
-        /// <summary>The editor (by token, else the best one); else, unless an editor left within <see cref="EditorReconnectWindow"/>, a runtime.</summary>
+        /// <summary>
+        /// The editor (by token, else the best one); else, unless an editor left within <see cref="EditorReconnectWindow"/>, a runtime.
+        /// A request routed to the runtime (<see cref="PluginRoleRouting.Preferred"/>) gets the runtime while one is connected.
+        /// </summary>
         public string? ResolveConnectionId(string? token, int retryOffset)
         {
+            if (PluginRoleRouting.Preferred == ClientRole.Runtime)
+            {
+                var preferred = Registry.WithRole(ClientRole.Runtime);
+                if (preferred.Count > 0)
+                    return preferred[Math.Abs(retryOffset) % preferred.Count];
+            }
+
             var editor = ClientUtils.GetConnectionIdByToken(token) ?? ClientUtils.GetBestConnectionId(RoutedHubType, retryOffset);
             if (editor != null || Registry.EditorLeftWithin(EditorReconnectWindow))
                 return editor;
@@ -143,10 +154,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 
         public bool TakeRuntimeServed() => Interlocked.Exchange(ref _runtimeServed, 0) == 1;
 
-        /// <summary>A runtime's list changes reach agents only while they are routed to it (the same rule as <see cref="ResolveConnectionId"/>).</summary>
-        public bool ShouldNotifySession(string pluginConnectionId, string sessionId)
-            => Registry.GetRole(pluginConnectionId) != ClientRole.Runtime
-                || (!ClientUtils.GetAllConnectionIds(RoutedHubType).Any() && !Registry.EditorLeftWithin(EditorReconnectWindow));
+        /// <summary>
+        /// Every connection's list changes reach agents: a runtime's tools that the editor does not have are part of
+        /// <c>tools/list</c> while an editor is connected too (see <see cref="RemoteToolRunner"/>).
+        /// </summary>
+        public bool ShouldNotifySession(string pluginConnectionId, string sessionId) => true;
 
         // One project: a broadcast reaches at most the one editor the agents are routed to.
         public NotificationTarget ResolveNotificationTarget(string? routingToken) => NotificationTarget.Broadcast();

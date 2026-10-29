@@ -15,6 +15,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
@@ -51,6 +52,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
     /// <summary>
     /// What <see cref="RemoteToolRunner"/> checks around sending a tool call:
     /// <list type="number">
+    ///   <item><b>Role.</b> A tool only the runtime has (one it lists as <see cref="ToolTarget.Runtime"/>, or one the
+    ///   routed editor does not list) goes to the runtime (<see cref="PluginRoleRouting"/>), even while an editor is
+    ///   connected.</item>
     ///   <item><b>Arguments.</b> Lone UTF-16 surrogates and arguments that do not fit the tool's input
     ///   schema (<see cref="ToolArgumentValidator"/>) are refused before the call is sent.</item>
     ///   <item><b>One deadline.</b> The whole call, including waiting for a reconnecting plugin and a
@@ -117,6 +121,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
 
             try
             {
+                // Everything below, the sends included, resolves its target through this routing.
+                using var routing = await RoutesToRuntimeAsync(request, deadline.Token)
+                    ? PluginRoleRouting.Prefer(ClientRole.Runtime)
+                    : null;
+
                 var invalid = FindInvalidText(request) ?? await ValidateArgumentsAsync(request, deadline.Token);
                 if (invalid != null)
                     return Fail(request, invalid, ResponseErrorKind.BadRequest, 400);
@@ -190,6 +199,45 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             return _reconnectWait < left ? _reconnectWait : left;
         }
 
+        // ───────────────────────────── role ─────────────────────────────
+
+        /// <summary>
+        /// True when the call must reach the runtime although agents are routed elsewhere: the runtime lists the tool as
+        /// <see cref="ToolTarget.Runtime"/>, or the editor agents are routed to does not list it while the runtime does.
+        /// </summary>
+        async Task<bool> RoutesToRuntimeAsync(RequestCallTool request, CancellationToken cancellationToken)
+        {
+            if (_strategy is not IPluginRoleStrategy roles || string.IsNullOrEmpty(request.Name))
+                return false;
+            var runtimes = roles.Registry.WithRole(ClientRole.Runtime);
+            if (runtimes.Count == 0)
+                return false;
+            var runtime = runtimes[0];
+            var target = CurrentTarget();
+            if (string.Equals(target, runtime, StringComparison.Ordinal))
+                return false; // the runtime already serves (no editor)
+
+            var runtimeTools = await GetListedAsync(runtime, request.Name, cancellationToken);
+            if (runtimeTools == null || !runtimeTools.Targets.TryGetValue(request.Name, out var runtimeTarget))
+                return false;
+            if (runtimeTarget == ToolTarget.Runtime)
+                return true;
+            if (target == null)
+                return false; // the editor is reloading: wait for it, as for any tool both may have
+
+            var editorTools = await GetListedAsync(target, request.Name, cancellationToken);
+            return editorTools != null && !editorTools.Failed && !editorTools.Targets.ContainsKey(request.Name);
+        }
+
+        /// <summary>The tools <paramref name="connectionId"/> listed, listed again when <paramref name="toolName"/> is missing from an older list.</summary>
+        async Task<SchemaSnapshot?> GetListedAsync(string connectionId, string toolName, CancellationToken cancellationToken)
+        {
+            if (_schemas.TryGetValue(connectionId, out var snapshot)
+                && (snapshot.Failed ? snapshot.Age.Elapsed < FailedListRetryAge : snapshot.Targets.ContainsKey(toolName) || snapshot.Age.Elapsed < SchemaRecheckAge))
+                return snapshot;
+            return await RefreshSchemasAsync(connectionId, cancellationToken);
+        }
+
         // ───────────────────────────── arguments ─────────────────────────────
 
         /// <summary>
@@ -243,7 +291,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             }
             // Validation is best effort: without a schema the plugin checks the arguments itself. Remembered,
             // so a plugin that cannot list in time does not slow every call down.
-            return Store(target, new SchemaSnapshot(new Dictionary<string, JsonElement>(), Stopwatch.StartNew(), failed: true));
+            return Store(target, new SchemaSnapshot(new Dictionary<string, JsonElement>(), new Dictionary<string, ToolTarget>(), Stopwatch.StartNew(), failed: true));
         }
 
         /// <summary>Caches the input schemas of a tool list the plugin on <paramref name="connectionId"/> answered.</summary>
@@ -252,12 +300,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             if (string.IsNullOrEmpty(connectionId) || tools == null)
                 return null;
             var byName = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+            var targets = new Dictionary<string, ToolTarget>(StringComparer.Ordinal);
             foreach (var tool in tools)
             {
-                if (tool?.Name != null && tool.InputSchema.ValueKind == JsonValueKind.Object)
+                if (tool?.Name == null)
+                    continue;
+                targets[tool.Name] = tool.Target ?? ToolTarget.Both;
+                if (tool.InputSchema.ValueKind == JsonValueKind.Object)
                     byName[tool.Name] = tool.InputSchema.Clone();
             }
-            return Store(connectionId, new SchemaSnapshot(byName, Stopwatch.StartNew(), failed: false));
+            return Store(connectionId, new SchemaSnapshot(byName, targets, Stopwatch.StartNew(), failed: false));
         }
 
         SchemaSnapshot Store(string connectionId, SchemaSnapshot snapshot)
@@ -270,14 +322,18 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
 
         internal sealed class SchemaSnapshot
         {
-            public SchemaSnapshot(IReadOnlyDictionary<string, JsonElement> byName, Stopwatch age, bool failed)
+            public SchemaSnapshot(IReadOnlyDictionary<string, JsonElement> byName, IReadOnlyDictionary<string, ToolTarget> targets, Stopwatch age, bool failed)
             {
                 ByName = byName;
+                Targets = targets;
                 Age = age;
                 Failed = failed;
             }
 
             public IReadOnlyDictionary<string, JsonElement> ByName { get; }
+
+            /// <summary>Every listed tool and its <see cref="ToolTarget"/>.</summary>
+            public IReadOnlyDictionary<string, ToolTarget> Targets { get; }
             public Stopwatch Age { get; }
 
             /// <summary>The list could not be fetched: nothing is validated until it is retried.</summary>
@@ -310,10 +366,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 && response.ErrorKind == ResponseErrorKind.Timeout
                 && response.HttpStatusCode == ClientUtils.ServerTimeoutStatusCode;
 
-        static bool IsNotExecuted(ResponseData<ResponseCallTool> response)
-            => response.Status == ResponseStatus.Error
-                && response.ErrorKind == ResponseErrorKind.Unavailable
-                && response.HttpStatusCode == ResponseCallTool.NotExecutedStatusCode;
+        static bool IsNotExecuted(ResponseData<ResponseCallTool> response) => ResponseCallTool.IsNotExecuted(response);
 
         /// <summary>A reload-gate refusal without the not-executed status; not one for a plugin that is shutting down.</summary>
         static bool IsReloadRefusal(ResponseData<ResponseCallTool> response)

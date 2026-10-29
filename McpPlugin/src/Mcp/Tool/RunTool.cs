@@ -36,6 +36,8 @@ namespace com.IvanMurzak.McpPlugin
         [Obsolete("Renamed to Visible" + VisibilityRename.Note)]
         public bool Enabled { get => Visible; set => Visible = value; }
         public McpToolType ToolType { get; protected set; } = McpToolType.Standard;
+        /// <summary>Which plugin connections register this tool (from <see cref="AiToolAttribute.Target"/> / <see cref="AiToolTypeAttribute.Target"/>).</summary>
+        public Common.ToolTarget Target { get; set; } = Common.ToolTarget.Both;
         public string? Title { get; protected set; }
         public bool? ReadOnlyHint { get; protected set; }
         public bool? DestructiveHint { get; protected set; }
