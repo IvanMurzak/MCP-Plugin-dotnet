@@ -750,6 +750,15 @@ namespace com.IvanMurzak.McpPlugin
                 var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
                 var completedTask = await Task.WhenAny(connectionTask, timeoutTask);
 
+                // WhenAny does not throw: a cancellation we asked for would read as a timeout or a failure.
+                if (cancellationToken.IsCancellationRequested && !connectionTask.IsCompletedSuccessfully)
+                {
+                    _logger.LogDebug("{class}[{guid}] {method} Connection attempt canceled for endpoint: {endpoint}",
+                        nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint);
+                    _ = connectionTask.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
+                    return ConnectionAttemptResult.Failed;
+                }
+
                 if (completedTask == timeoutTask)
                 {
                     _logger.LogWarning("{class}[{guid}] {method} Connection attempt timed out after 30 seconds for endpoint: {endpoint}",

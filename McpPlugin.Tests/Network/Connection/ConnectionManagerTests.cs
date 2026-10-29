@@ -993,6 +993,44 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             logger.Warnings.ShouldNotContain(w => w.Contains("canceled", StringComparison.OrdinalIgnoreCase));
         }
 
+        [Fact]
+        public async Task DisconnectImmediate_DuringTransportStart_DoesNotWarn()
+        {
+            // A server that accepts the socket and never answers keeps StartAsync in flight.
+            var logger = new CapturingLogger();
+            var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+            listener.Start();
+            try
+            {
+                var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+                _mockHubConnectionProvider
+                    .Setup(x => x.CreateConnectionAsync(_testEndpoint))
+                    .ReturnsAsync(() => new HubConnectionBuilder()
+                        .WithUrl($"http://127.0.0.1:{port}/hub", options =>
+                        {
+                            options.Transports = HttpTransportType.WebSockets;
+                            options.SkipNegotiation = true;
+                        })
+                        .Build());
+
+                await using var connectionManager = new ConnectionManager(
+                    logger, _testVersion, _testEndpoint, _mockHubConnectionProvider.Object);
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                var connectTask = Task.Run(() => connectionManager.Connect(cts.Token));
+                using var socket = await listener.AcceptTcpClientAsync().WaitAsync(TimeSpan.FromSeconds(10));
+
+                connectionManager.DisconnectImmediate();
+
+                (await connectTask.WaitAsync(TimeSpan.FromSeconds(5))).ShouldBeFalse();
+                logger.Warnings.ShouldBeEmpty();
+            }
+            finally
+            {
+                listener.Stop();
+            }
+        }
+
         #endregion
 
         #region InvokeAsync Tests
