@@ -49,7 +49,9 @@ def fake_registry(published=PUBLISHED, fail=False):
     return guard.NuGetRegistry(fetch)
 
 
-def csproj(reflectornet="5.5.0", signalr="8.0.15", extra="", packable=True):
+def csproj(reflectornet="5.5.0", signalr="8.0.15", extra="", packable=True,
+           reference="./../McpPlugin.Common/McpPlugin.Common.csproj"):
+    project_reference = f'<ProjectReference Include="{reference}" />' if reference else ""
     return textwrap.dedent(f"""\
         <Project Sdk="Microsoft.NET.Sdk">
           <PropertyGroup>
@@ -57,7 +59,7 @@ def csproj(reflectornet="5.5.0", signalr="8.0.15", extra="", packable=True):
             <Version>8.13.1</Version>
           </PropertyGroup>
           <ItemGroup>
-            <ProjectReference Include="./../McpPlugin.Common/McpPlugin.Common.csproj" />
+            {project_reference}
             <PackageReference Include="com.IvanMurzak.ReflectorNet" Version="{reflectornet}" />
             <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="{signalr}" />
             <PackageReference Include="R3" Version="1.3.0" />{extra}
@@ -71,7 +73,7 @@ class Fixture:
 
     def __init__(self, root: Path, reflectornet="5.5.0", feed=False):
         self.root = root
-        self.write(COMMON, csproj(reflectornet))
+        self.write(COMMON, csproj(reflectornet, reference=None))
         self.write(PLUGIN, csproj(reflectornet))
         self.write(SERVER, csproj(reflectornet, signalr="10.0.3",
                                   extra='\n    <PackageReference Include="ModelContextProtocol" Version="1.4.0" />'))
@@ -169,7 +171,7 @@ class GuardTests(unittest.TestCase):
         fixture = Fixture(self.root)
         fixture.write("Directory.Build.props",
                       "<Project><PropertyGroup><ReflectorNetVersion>5.6.0-rc.2</ReflectorNetVersion></PropertyGroup></Project>")
-        fixture.write(COMMON, csproj("$(ReflectorNetVersion)"))
+        fixture.write(COMMON, csproj("$(ReflectorNetVersion)", reference=None))
         self.assertEqual([(COMMON, "com.IvanMurzak.ReflectorNet 5.6.0-rc.2 is a pre-release version")], self.problems())
 
     def test_central_package_versions_and_nuget_config_feed(self):
@@ -197,12 +199,24 @@ class GuardTests(unittest.TestCase):
 
     def test_floating_and_open_versions_are_not_pins(self):
         fixture = Fixture(self.root)
-        fixture.write(COMMON, csproj("5.*"))
+        fixture.write(COMMON, csproj("5.*", reference=None))
         fixture.write(PLUGIN, csproj("(,5.5.0]"))
         self.assertEqual([(COMMON, "com.IvanMurzak.ReflectorNet: floating version '5.*' is not a pin"),
                           (PLUGIN, "com.IvanMurzak.ReflectorNet: version range '(,5.5.0]' without a lower bound "
                                    "is not a pin")],
                          self.problems())
+
+    def test_version_and_version_override_are_both_checked(self):
+        fixture = Fixture(self.root)
+        fixture.write(COMMON, csproj(reference=None, extra='\n    <PackageReference Include="ModelContextProtocol" '
+                                                          'Version="1.5.0-dev" VersionOverride="1.4.0" />'))
+        self.assertEqual([(COMMON, "ModelContextProtocol 1.5.0-dev is a pre-release version")], self.problems())
+
+    def test_project_reference_to_an_unpublished_project_fails(self):
+        fixture = Fixture(self.root)
+        fixture.write(PLUGIN, csproj(reference=r"..\McpPlugin.NullEngine\McpPlugin.NullEngine.csproj"))
+        self.assertEqual([(PLUGIN, r"references the unpublished project '..\McpPlugin.NullEngine\McpPlugin.NullEngine.csproj' "
+                                   "(dotnet pack turns it into a NuGet dependency nobody publishes)")], self.problems())
 
     def test_restore_sources_property_with_url_passes(self):
         fixture = Fixture(self.root)
@@ -224,10 +238,11 @@ class GuardTests(unittest.TestCase):
         fixture.write("McpPlugin/nuget.config", '<configuration><fallbackPackageFolders>'
                       '<add key="f" value="./feed" /></fallbackPackageFolders></configuration>')
         fixture.write("Directory.Build.props", "<Project><PropertyGroup>"
-                      "<RestoreFallbackFolders>C:\\packages</RestoreFallbackFolders></PropertyGroup></Project>")
+                      "<RestoreAdditionalProjectFallbackFolders>C:\\packages</RestoreAdditionalProjectFallbackFolders>"
+                      "</PropertyGroup></Project>")
         problems = self.problems()
         self.assertIn(("McpPlugin/nuget.config", "fallback folder 'f' is the local feed './feed'"), problems)
-        self.assertTrue(any(f == "Directory.Build.props" and m.startswith("RestoreFallbackFolders adds the local")
+        self.assertTrue(any(f == "Directory.Build.props" and m.startswith("RestoreAdditionalProjectFallbackFolders adds the local")
                             for f, m in problems))
         self.assertEqual(2, len(problems))
 
@@ -253,7 +268,8 @@ class GuardTests(unittest.TestCase):
     def test_this_repository_layout_is_understood(self):
         """Offline: the real checkout has the three packed projects and the guard finds pins in each."""
         pins, problems = guard.collect(guard.ROOT)
-        self.assertEqual({COMMON, PLUGIN, SERVER}, {guard.rel(p.file, guard.ROOT) for p in pins})
+        # A superset: under a chain lock, chain_feed.py adds a root Directory.Build.targets override pin.
+        self.assertLessEqual({COMMON, PLUGIN, SERVER}, {guard.rel(p.file, guard.ROOT) for p in pins})
         self.assertFalse([p for p in problems if "update scripts/release_dependency_guard.py" in p.message], problems)
 
 

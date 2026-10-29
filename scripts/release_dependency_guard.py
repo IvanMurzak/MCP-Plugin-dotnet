@@ -16,8 +16,9 @@ What it checks (everything the release publishes: the three NuGet packages packe
     folders, MSBuild `$(Property)` versions resolved: a pre-release version (any `-` suffix), a
     floating version or a version not listed on nuget.org fails;
   * a local (non-URL) NuGet restore source: `RestoreSources` / `RestoreAdditionalProjectSources` /
-    `RestoreFallbackFolders` in those files, or a `nuget.config` package source / fallback folder above
+    `RestoreFallbackFolders` / `RestoreAdditionalProjectFallbackFolders` in those files, or a `nuget.config` package source / fallback folder above
     the projects;
+  * a `ProjectReference` of a packed project to a project the release does not publish;
   * a packable project the guard does not know about (the guard is then out of date).
 nuget.org being unreachable fails the run too (fail closed). Test, demo and harness projects ship
 nothing and are not scanned.
@@ -54,7 +55,8 @@ PACKED_PROJECTS = (
 # MSBuild item types that pin a NuGet package version.
 PACKAGE_ITEMS = {"PackageReference", "PackageVersion", "GlobalPackageReference", "PackageDownload"}
 # MSBuild properties that add NuGet restore sources.
-RESTORE_SOURCE_PROPERTIES = {"RestoreSources", "RestoreAdditionalProjectSources", "RestoreFallbackFolders"}
+RESTORE_SOURCE_PROPERTIES = {"RestoreSources", "RestoreAdditionalProjectSources", "RestoreFallbackFolders",
+                             "RestoreAdditionalProjectFallbackFolders"}
 SKIP_DIRS = {"bin", "obj", "node_modules", "prerelease-packages", "publish", "packages", "TestResults", "nupkg"}
 PROPERTY_RE = re.compile(r"\$\(([A-Za-z_][A-Za-z0-9_.-]*)\)")
 
@@ -271,22 +273,21 @@ def is_url(source: str) -> bool:
     return re.match(r"^[a-z][a-z0-9+.-]*://", source, re.IGNORECASE) is not None and not source.lower().startswith("file:")
 
 
-def item_version(element: ET.Element) -> Optional[str]:
-    """The version an item pins; `VersionOverride` wins over `Version` (central package management)."""
-    for name in ("VersionOverride", "Version", "version"):
-        if element.get(name) is not None:
-            return element.get(name)
-    for name in ("VersionOverride", "Version"):
-        child = next((c for c in element if isinstance(c.tag, str) and _local(c.tag) == name), None)
-        if child is not None and child.text:
-            return child.text.strip()
-    return None
+def item_versions(element: ET.Element) -> list[str]:
+    """Every version an item may pin: `Version` and `VersionOverride` (which one wins depends on central
+    package management, so both are checked), as attributes or child elements."""
+    versions = [element.get(name) for name in ("VersionOverride", "Version", "version") if element.get(name) is not None]
+    versions += [c.text.strip() for c in element
+                 if isinstance(c.tag, str) and _local(c.tag) in ("VersionOverride", "Version") and c.text]
+    return versions
 
 
 def scan_msbuild(project: Path, root: Path) -> tuple[list[Pin], list[Problem]]:
     pins: list[Pin] = []
     problems: list[Problem] = []
-    chain = msbuild_chain(project.resolve(), root)
+    chain_project = project.resolve()
+    chain = msbuild_chain(chain_project, root)
+    packed = {(root / p).resolve() for p in PACKED_PROJECTS}
     properties = read_properties(chain)
     for path in chain:
         text = path.read_text(encoding="utf-8-sig")
@@ -301,18 +302,25 @@ def scan_msbuild(project: Path, root: Path) -> tuple[list[Pin], list[Problem]]:
             name = _local(element.tag)
             if name in PACKAGE_ITEMS or (name == "dependency" and path.suffix == ".nuspec"):
                 package = element.get("Include") or element.get("Update") or element.get("id")
-                raw = item_version(element)
-                if not package or raw is None:
-                    continue  # a version-less reference takes its pin from a PackageVersion scanned here too
-                line = line_of(text, f'"{package}"', raw) or line_of(text, package, raw)
-                for version in resolve(raw, properties, path):
-                    if PROPERTY_RE.search(version):
-                        problems.append(Problem(path, line, f"{package}: cannot resolve version '{raw}'"))
-                        continue
-                    versions, error = nuget_versions_in(version)
-                    if error:
-                        problems.append(Problem(path, line, f"{package}: {error}"))
-                    pins.extend(Pin(package, v, path, line) for v in versions)
+                if not package:
+                    continue
+                # A version-less reference takes its pin from a PackageVersion scanned here too.
+                for raw in item_versions(element):
+                    line = line_of(text, f'"{package}"', raw) or line_of(text, package, raw)
+                    for version in resolve(raw, properties, path):
+                        if PROPERTY_RE.search(version):
+                            problems.append(Problem(path, line, f"{package}: cannot resolve version '{raw}'"))
+                            continue
+                        versions, error = nuget_versions_in(version)
+                        if error:
+                            problems.append(Problem(path, line, f"{package}: {error}"))
+                        pins.extend(Pin(package, v, path, line) for v in versions)
+            elif name == "ProjectReference" and path == chain_project and element.get("Include"):
+                target = (path.parent / element.get("Include").replace("\\", "/")).resolve()
+                if target not in packed:
+                    problems.append(Problem(path, line_of(text, element.get("Include")),
+                                            f"references the unpublished project '{element.get('Include')}' "
+                                            f"(dotnet pack turns it into a NuGet dependency nobody publishes)"))
             elif name in RESTORE_SOURCE_PROPERTIES and element.text:
                 for entry in element.text.split(";"):
                     entry = entry.strip()
