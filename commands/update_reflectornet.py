@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import re
 import subprocess
+import sys
 from pathlib import Path
 from typing import List, Optional
 
@@ -100,4 +101,6 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 
 if __name__ == "__main__":
+    # dotnet output is shown on failure; a Windows code-page console may not encode all of it.
+    sys.stdout.reconfigure(errors="backslashreplace")
     raise SystemExit(main())

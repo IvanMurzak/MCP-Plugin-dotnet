@@ -14,14 +14,17 @@ from __future__ import annotations
 import argparse
 import re
 import subprocess
+import sys
 from pathlib import Path
 from typing import List, Optional
 
 
 def capture(*args: str) -> str:
-    """stdout of a command ("" when it fails or is not installed); stderr is discarded."""
+    """stdout of a command ("" when it fails or is not installed). git's stderr (e.g. `fatal: bad
+    revision`) reaches the console; gh's is discarded (its failures are reported per commit)."""
+    stderr = subprocess.DEVNULL if args[0] == "gh" else None
     try:
-        result = subprocess.run(list(args), stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        result = subprocess.run(list(args), stdout=subprocess.PIPE, stderr=stderr,
                                 text=True, encoding="utf-8", errors="replace")
     except OSError:
         return ""
@@ -45,7 +48,7 @@ def github_login(repo_path: str, sha: str) -> Optional[str]:
 
 def generate(version_from: str, version_to: str) -> Path:
     url = repo_url()
-    repo_path = url.replace("https://github.com/", "")
+    repo_path = re.sub(r"^https://github\.com/", "", url, flags=re.IGNORECASE)
     lines = [
         "## Comparison",
         f"See every change: [Compare {version_from}...{version_to}]({url}/compare/{version_from}...{version_to})",
@@ -80,4 +83,6 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 
 if __name__ == "__main__":
+    # Commit subjects and gh errors may hold characters a Windows code-page console cannot encode.
+    sys.stdout.reconfigure(errors="backslashreplace")
     raise SystemExit(main())

@@ -144,7 +144,7 @@ class BumpVersionTests(TempTree):
         self.assertEqual(code, 1)
         self.assertIn("Could not find McpPlugin.csproj", out)
 
-    def test_no_matches_anywhere_fails(self):
+    def test_unreadable_version_source_fails(self):
         for rel in FILES:
             if rel != "McpPlugin/McpPlugin.csproj":
                 (self.root / rel).unlink()
