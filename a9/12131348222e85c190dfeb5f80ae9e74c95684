@@ -1,0 +1,83 @@
+McpPlugin.Server.Tests/RealPluginNotExecutedResendTests.cs
+  s_7bc72ecaebd05d::t_b40eb560d53508 1-75
+McpPlugin.Common/src/ToolTarget.cs
+  s_7bc72ecaebd05d::t_9397b260755b69 36-39,41
+  s_7bc72ecaebd05d::t_a7abc5bd025ddc 1-35,40,42-43
+McpPlugin.Tests/Mcp/McpBuilderTests_ToolTarget.cs
+  s_7bc72ecaebd05d::t_765b5409f165ad 1-160
+  s_7bc72ecaebd05d::t_4ae19d0d4204b5 161
+McpPlugin.Server.Tests/RuntimeToolRoutingTests.cs
+  s_7bc72ecaebd05d::t_16005e8e630b5e 1-168
+McpPlugin.Server/src/Strategy/PluginRoleRouting.cs
+  s_7bc72ecaebd05d::t_47d2d1b39d182c 1-45
+McpPlugin.Common/src/Data/Response/Tool/List/ResponseListTool.cs
+  s_7bc72ecaebd05d::t_f60b49916adaf8 65-71
+McpPlugin.Tests/Mcp/NullableParameterSchemaTests.cs
+  s_7bc72ecaebd05d::t_f92a6e0f4b20ab 1-62
+.gitignore
+  s_7bc72ecaebd05d::t_fe3e03ad891cb9 36-37
+Directory.Build.props
+  s_7bc72ecaebd05d::t_82a7d61af6b1be 3-12
+Dockerfile.local
+  s_7bc72ecaebd05d::t_bcb11f43e7993f 15-17
+McpPlugin.Common/McpPlugin.Common.csproj
+  s_7bc72ecaebd05d::t_08769103d34208 28
+McpPlugin.Common/src/Data/Response/Tool/Call/ResponseCallTool.Static.cs
+  s_7bc72ecaebd05d::t_21b688fb5da198 56-62
+McpPlugin.Server.Tests/ToolArgumentValidatorTests.cs
+  s_7bc72ecaebd05d::t_69116536dd6601 68-83
+McpPlugin.Server/McpPlugin.Server.csproj
+  s_7bc72ecaebd05d::t_51c9a9222d768a 37
+McpPlugin.Server/src/Client/RemoteToolRunner.cs
+  s_7bc72ecaebd05d::t_f0b5495b0d68ea 12-13,114,120,128-129,133-169
+McpPlugin.Server/src/Strategy/SingleProjectMcpStrategy.cs
+  s_7bc72ecaebd05d::t_fd21633673ed43 36-37,131-134,137-143,157-161
+McpPlugin.Server/src/Tools/ToolArgumentValidator.cs
+  s_7bc72ecaebd05d::t_54417f31d1a5d8 61-62,66,68-71,86,95-98
+McpPlugin.Server/src/Tools/ToolCallGuard.cs
+  s_7bc72ecaebd05d::t_70a237212c4510 18,55-57,124-128,202-240,294,303,306-309,312,325,328,334-336,369
+McpPlugin.Tests/Mcp/DuplicateToolCallTests.cs
+  s_7bc72ecaebd05d::t_efe41ec345c19d 122-166
+McpPlugin/McpPlugin.csproj
+  s_7bc72ecaebd05d::t_38a70e1ae4d222 39
+McpPlugin/src/Mcp/DuplicateRequestGuard.cs
+  s_7bc72ecaebd05d::t_6d163eb997de83 28-30,46,50,52,55,140-144
+McpPlugin/src/Mcp/McpManager.TrackedHubs.cs
+  s_7bc72ecaebd05d::t_b00624230b8d1d 24-25,36-37
+McpPlugin/src/Mcp/McpToolManager.cs
+  s_7bc72ecaebd05d::t_e1698e147f36ea 241-242
+McpPlugin/src/Mcp/Tool/IRunTool.cs
+  s_7bc72ecaebd05d::t_c2a8ae23bdf476 79-84
+McpPlugin/src/Mcp/Tool/RunTool.cs
+  s_7bc72ecaebd05d::t_7230eeef59505e 39-40
+McpPlugin/src/McpPlugin/Attribute/Tool/AiToolAttribute.cs
+  s_7bc72ecaebd05d::t_f4b9f98ab9aaca 12,57-72
+McpPlugin/src/McpPlugin/Attribute/Tool/AiToolTypeAttribute.cs
+  s_7bc72ecaebd05d::t_5640677bc84e14 12,20-29
+McpPlugin/src/McpPlugin/Builder/Data/RunToolFactory.cs
+  s_7bc72ecaebd05d::t_a59f7472a5efdc 27-28,53-54
+McpPlugin/src/McpPlugin/Builder/Data/ToolMethodData.cs
+  s_7bc72ecaebd05d::t_12e7c38cbdd85c 12,14,25-32
+McpPlugin/src/McpPlugin/Builder/McpPluginBuilder.cs
+  s_7bc72ecaebd05d::t_e7e13f74da3f9c 15,341-349,351-357,379-406
+README.md
+  s_7bc72ecaebd05d::t_7a363560ba96ca 245
+docs/agents/patterns.md
+  s_7bc72ecaebd05d::t_f4a102f826f165 29-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a912131348222e85c190dfeb5f80ae9e74c95684",
+  "prompts": {},
+  "sessions": {
+    "s_7bc72ecaebd05d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40274cb2-edf8-49ba-9a73-33b83cb5be53",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
