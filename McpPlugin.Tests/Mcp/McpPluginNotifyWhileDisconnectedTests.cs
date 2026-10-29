@@ -10,7 +10,6 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -36,21 +35,21 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         const string ToolName = "notify-tool";
 
         [Fact]
-        public async Task ToolVisibilityChange_WhileNotConnected_DoesNotWarn()
+        public void ToolVisibilityChange_WhileNotConnected_DoesNotWarn()
         {
             var logger = new CapturingLogger();
             using var plugin = new McpPluginBuilder(new Version())
                 .SetConfig(new ConnectionConfig { GenerateSkillFiles = false })
-                .AddLogging(builder => builder.AddProvider(new SingleLoggerProvider(logger)).SetMinimumLevel(LogLevel.Trace))
+                .AddLogging(builder => builder.AddProvider(new SingleLoggerProvider(logger)))
                 .AddTool(ToolName, new MockRunTool(ToolName))
                 .Build(new Reflector());
 
             plugin.KeepConnected.CurrentValue.ShouldBeFalse();
 
+            // The subscription runs synchronously up to its first await, which is where the warning was logged.
             plugin.McpManager.ToolManager!.SetToolVisible(ToolName, false);
-            await Task.Delay(300); // the notification runs in a fire-and-forget subscription
 
-            logger.Warnings.Where(w => w.Contains("auto-reconnect disabled")).ShouldBeEmpty();
+            logger.Warnings.ShouldNotContain(w => w.Contains("auto-reconnect disabled"));
         }
 
         sealed class SingleLoggerProvider : ILoggerProvider

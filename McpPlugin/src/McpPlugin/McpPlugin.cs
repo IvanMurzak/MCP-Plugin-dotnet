@@ -202,11 +202,7 @@ namespace com.IvanMurzak.McpPlugin
                 .AddTo(_disposables);
         }
 
-        /// <summary>
-        /// False when the hub is not connected and will not connect on its own (KeepConnected is off,
-        /// or Connect was not called yet, as right after a domain reload). A notification sent then
-        /// reaches nothing and only logs a warning; the plugin re-sends its tools on the next connect.
-        /// </summary>
+        /// <summary>False when disconnected and KeepConnected is off (or Connect not called yet): the plugin re-sends its tools on connect.</summary>
         private bool CanNotifyServer()
         {
             if (_mcpManagerHub.ConnectionState.CurrentValue == HubConnectionState.Connected
