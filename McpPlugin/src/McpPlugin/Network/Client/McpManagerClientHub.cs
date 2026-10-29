@@ -257,13 +257,27 @@ namespace com.IvanMurzak.McpPlugin
         public Task<McpClientData[]> GetMcpClientData()
         {
             _logger.LogTrace("{class}.{method}", nameof(IServerMcpManager), nameof(IServerMcpManager.GetMcpClientData));
+            if (!IsConnectedForStatusQuery(nameof(IServerMcpManager.GetMcpClientData)))
+                return Task.FromResult<McpClientData[]>(default!);
             return _connectionManager.InvokeAsync<McpClientData[]>(nameof(IServerMcpManager.GetMcpClientData), _cancellationTokenSource.Token);
         }
 
         public Task<McpServerData> GetMcpServerData()
         {
             _logger.LogTrace("{class}.{method}", nameof(IServerMcpManager), nameof(IServerMcpManager.GetMcpServerData));
+            if (!IsConnectedForStatusQuery(nameof(IServerMcpManager.GetMcpServerData)))
+                return Task.FromResult<McpServerData>(default!);
             return _connectionManager.InvokeAsync<McpServerData>(nameof(IServerMcpManager.GetMcpServerData), _cancellationTokenSource.Token);
+        }
+
+        // A status query answers "what does the server know" and never connects: a connect it started was canceled by a
+        // disconnect (e.g. Unity exiting play mode) and logged warnings. Not connected: no data, as when the connect fails.
+        private bool IsConnectedForStatusQuery(string method)
+        {
+            if (ConnectionState.CurrentValue == HubConnectionState.Connected)
+                return true;
+            _logger.LogDebug("{class}.{method} skipped: not connected.", nameof(IServerMcpManager), method);
+            return false;
         }
 
         protected override Task OnConnectedAsync(CancellationToken cancellationToken)

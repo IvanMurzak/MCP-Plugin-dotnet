@@ -52,6 +52,40 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             logger.Warnings.ShouldNotContain(w => w.Contains("auto-reconnect disabled"));
         }
 
+        // Unity's AI Game Developer window asks for server and client data on every state change. While the plugin was
+        // connecting that query joined the connect, and Unity exiting play mode canceled it: "EnsureConnection Failed
+        // to establish connection". A status query answers what is known and never connects.
+        [Fact]
+        public async Task StatusQuery_WhileConnecting_ReturnsNoDataAndDoesNotWarn()
+        {
+            // Accepts the socket and never answers, so the plugin stays connecting.
+            var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, 0);
+            listener.Start();
+            try
+            {
+                var port = ((System.Net.IPEndPoint)listener.LocalEndpoint).Port;
+                var logger = new CapturingLogger();
+                using var plugin = new McpPluginBuilder(new Version())
+                    .SetConfig(new ConnectionConfig { Host = $"http://127.0.0.1:{port}", GenerateSkillFiles = false })
+                    .AddLogging(builder => builder.AddProvider(new SingleLoggerProvider(logger)))
+                    .Build(new Reflector());
+
+                _ = plugin.Connect();
+                using var socket = await listener.AcceptTcpClientAsync().WaitAsync(TimeSpan.FromSeconds(10));
+
+                (await plugin.McpManagerHub!.GetMcpServerData().WaitAsync(TimeSpan.FromSeconds(1))).ShouldBeNull();
+                (await plugin.McpManagerHub!.GetMcpClientData().WaitAsync(TimeSpan.FromSeconds(1))).ShouldBeNull();
+
+                plugin.DisconnectImmediate();
+
+                logger.Warnings.ShouldNotContain(w => w.Contains("EnsureConnection"));
+            }
+            finally
+            {
+                listener.Stop();
+            }
+        }
+
         sealed class SingleLoggerProvider : ILoggerProvider
         {
             readonly ILogger _logger;
