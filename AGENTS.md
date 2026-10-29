@@ -16,7 +16,7 @@ cd DemoWebApp && dotnet run port=11111 client-transport=stdio
 
 - ALL `.cs` files must start with the ASCII art Apache 2.0 license header — copy from any existing file.
 - Namespaces are reverse-domain `com.IvanMurzak.McpPlugin.*` — not standard C# convention.
-- Version is single-sourced in `McpPlugin/McpPlugin.csproj`; use `commands/bump-version.ps1` to change it.
+- Version is single-sourced in `McpPlugin/McpPlugin.csproj`; use `python commands/bump_version.py --new-version <x.y.z>` to change it.
 - Public API changes here cascade to Unity-MCP and downstream extensions — call them out to the owner in the PR.
 
 ## Layout
@@ -27,8 +27,10 @@ cd DemoWebApp && dotnet run port=11111 client-transport=stdio
 - `McpPlugin.Tests.LockHarness/`, `McpPlugin.Tests.RefreshHarness/` — helper processes used by tests.
 - `McpPlugin.NullEngine/` — engine-free test host (see its README).
 - `DemoWebApp/`, `DemoConsoleApp/` — runnable demos.
-- `commands/` — maintainer PowerShell (version bump, ReflectorNet update, release notes).
-- `scripts/` + `tests/chain-fixtures/` — chain-testing fixture tooling (`docs/chain-fixtures.md`).
+- `commands/` — maintainer Python, stdlib only (version bump, ReflectorNet update, release notes);
+  their unit tests are `scripts/test_commands.py`.
+- `scripts/` + `tests/chain-fixtures/` — chain-testing fixture tooling (`docs/chain-fixtures.md`) and
+  `phase2_gate_matrix.py` (the Phase-2 gate as one command).
 - `docs/agents/` — agent reference docs (below); other `docs/` — design notes and migration guides.
 - `.specify/`, `specs/` — spec-kit constitution, templates and feature specs.
 

@@ -162,7 +162,7 @@ SynchronizationContext by default, unlike `System.Reactive`.
   - MAJOR: Breaking API or protocol changes.
   - MINOR: New backward-compatible features.
   - PATCH: Bug fixes and internal improvements.
-- `commands/bump-version.ps1` MUST be used to propagate version changes across all three
+- `commands/bump_version.py` MUST be used to propagate version changes across all three
   projects. Manual edits to version fields in individual project files are NOT permitted.
 
 ### Release Gate (CI/CD)
