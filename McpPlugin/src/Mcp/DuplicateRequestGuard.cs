@@ -25,7 +25,9 @@ namespace com.IvanMurzak.McpPlugin
     /// task. Defense in depth against a server that re-sends a tool call (older McpPlugin.Server
     /// versions re-sent a tool call that was slower than <c>plugin-timeout</c>, so a slow tool ran up
     /// to ten times). A request without an id always runs, and a cancelled run is forgotten so a later
-    /// copy runs instead of receiving the cancellation.
+    /// copy runs instead of receiving the cancellation. So is a run whose result says it did not run
+    /// (see the <c>forget</c> constructor argument, e.g. <c>ResponseCallTool.NotExecuted</c>): the server
+    /// re-sends such a call with the same id, and that copy must reach the tool.
     /// <para>At most <see cref="DefaultMaxCompletedEntries"/> finished results are kept (oldest go first;
     /// running entries are never evicted). The guard lives in memory, so a host reload (e.g. a Unity
     /// domain reload triggered by the tool itself) forgets it: an older server's re-send after the
@@ -41,13 +43,16 @@ namespace com.IvanMurzak.McpPlugin
         readonly long _retentionTicks;
         readonly long _sweepIntervalTicks;
         readonly int _maxCompletedEntries;
+        readonly Func<T, bool>? _forget;
         long _lastSweep;
 
         /// <param name="clock">Timestamp source in <see cref="Stopwatch.Frequency"/> ticks; tests inject one.</param>
+        /// <param name="forget">True for a result that is not kept: a later copy of the request runs again.</param>
         public DuplicateRequestGuard(ILogger? logger = null, TimeSpan? retention = null,
-            int maxCompletedEntries = DefaultMaxCompletedEntries, Func<long>? clock = null)
+            int maxCompletedEntries = DefaultMaxCompletedEntries, Func<long>? clock = null, Func<T, bool>? forget = null)
         {
             _logger = logger;
+            _forget = forget;
             _clock = clock ?? Stopwatch.GetTimestamp;
             _lastSweep = _clock();
             _maxCompletedEntries = Math.Max(1, maxCompletedEntries);
@@ -132,7 +137,11 @@ namespace com.IvanMurzak.McpPlugin
             {
                 try
                 {
-                    return await run().ConfigureAwait(false);
+                    var result = await run().ConfigureAwait(false);
+                    // The run said it did not happen: forget it so the re-send of this id runs.
+                    if (_owner._forget != null && _owner._forget(result))
+                        _owner.Remove(_requestId, this);
+                    return result;
                 }
                 catch (OperationCanceledException)
                 {

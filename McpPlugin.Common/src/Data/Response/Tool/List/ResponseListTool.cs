@@ -62,6 +62,13 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         /// </remarks>
         public string? SkillBody { get; set; }
 
+        /// <summary>
+        /// The connections that register this tool (<see cref="ToolTarget"/>); null for
+        /// <see cref="ToolTarget.Both"/> and for plugins that predate it. The server routes a call of a
+        /// <see cref="ToolTarget.Runtime"/> tool to the runtime connection while an editor is connected too.
+        /// </summary>
+        public ToolTarget? Target { get; set; }
+
         public ResponseListTool() { }
     }
 }

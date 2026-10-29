@@ -58,13 +58,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             foreach (var name in required)
             {
                 // A required argument whose schema is not stated plainly ($ref, untyped, not listed) is left to the
-                // plugin: ReflectorNet lists a nullable parameter without a default as required, and accepts it missing.
+                // plugin: ReflectorNet before 5.5.1 listed a nullable parameter without a default (an int? is a $ref)
+                // as required, and the plugin accepts it missing.
                 if (!properties.HasValue || !TryGetProperty(properties.Value, name, out var propSchema) || !(AllowedTypes(propSchema) is { } allowed))
                     continue;
                 var present = TryGetArgument(arguments, name, out var value) && value.ValueKind != JsonValueKind.Undefined;
-                // An explicit null passes for a required argument whose schema allows null; the type check below covers the rest.
-                if (!present || (value.ValueKind == JsonValueKind.Null && !allowed.Contains("null") && !IsNullable(propSchema)))
+                if (!present)
                     problems.Add($"missing required argument '{name}' ({DescribeTypes(allowed)})");
+                // An explicit null passes for a required argument whose schema allows null. Otherwise it is there with the
+                // wrong type, and says so (the type check below skips nulls); other types are checked below.
+                else if (value.ValueKind == JsonValueKind.Null && !allowed.Contains("null") && !IsNullable(propSchema))
+                    problems.Add(WrongType(name, allowed, value));
             }
 
             if (properties.HasValue)
@@ -79,7 +83,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                     var allowed = AllowedTypes(propSchema);
                     if (allowed == null || allowed.Any(type => Matches(value, type, propSchema)))
                         continue;
-                    problems.Add($"argument '{argument.Key}' must be {DescribeTypes(allowed)}, got {Describe(value)}");
+                    problems.Add(WrongType(argument.Key, allowed, value));
                 }
             }
 
@@ -87,6 +91,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 return null;
             return $"{ToolCallErrors.InvalidParams} Invalid params for tool '{toolName}': {string.Join("; ", problems)}.";
         }
+
+        /// <summary>An argument that is present with a JSON type its schema does not allow.</summary>
+        static string WrongType(string name, IReadOnlyList<string> allowed, JsonElement value)
+            => $"argument '{name}' must be {DescribeTypes(allowed)}, got {Describe(value)}";
 
         /// <summary>OpenAPI-style <c>"nullable": true</c>.</summary>
         static bool IsNullable(JsonElement propertySchema)

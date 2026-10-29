@@ -9,7 +9,9 @@
 */
 
 using System;
+using System.Linq;
 using System.Reflection;
+using com.IvanMurzak.McpPlugin.Common;
 
 namespace com.IvanMurzak.McpPlugin
 {
@@ -19,6 +21,14 @@ namespace com.IvanMurzak.McpPlugin
         public Type ClassType { get; set; }
         public MethodInfo MethodInfo { get; set; }
         public AiToolAttribute Attribute { get; set; }
+
+        /// <summary>
+        /// Which plugin connections register the tool: the tool's own <see cref="AiToolAttribute.Target"/>, else its
+        /// class's <see cref="AiToolTypeAttribute.Target"/>, else <see cref="ToolTarget.Both"/>.
+        /// </summary>
+        public ToolTarget Target => Attribute.TargetValue
+            ?? ClassType?.GetCustomAttributes(typeof(AiToolTypeAttribute), inherit: false).Cast<AiToolTypeAttribute>().FirstOrDefault()?.Target
+            ?? ToolTarget.Both;
 
         public ToolMethodData(Type classType, MethodInfo methodInfo, AiToolAttribute attribute)
         {

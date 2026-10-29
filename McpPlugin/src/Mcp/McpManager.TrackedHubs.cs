@@ -21,7 +21,8 @@ namespace com.IvanMurzak.McpPlugin
         /// The hubs the MCP server calls: they forward to the managers and count each call, prompt get and
         /// resource read in <see cref="RequestActivity"/>. List requests pass through uncounted. A tool or
         /// system tool call whose request id is already running or just finished is not run again
-        /// (see <see cref="DuplicateRequestGuard{T}"/>).
+        /// (see <see cref="DuplicateRequestGuard{T}"/>), unless it answered that it did not run
+        /// (<see cref="ResponseCallTool.NotExecuted"/>): the server's re-send of that id runs.
         /// </summary>
         sealed class TrackedHubs : IClientToolHub, IClientPromptHub, IClientResourceHub, IClientSystemToolHub
         {
@@ -32,8 +33,8 @@ namespace com.IvanMurzak.McpPlugin
             public TrackedHubs(McpManager owner)
             {
                 _owner = owner;
-                _toolCalls = new(owner._logger);
-                _systemToolCalls = new(owner._logger);
+                _toolCalls = new(owner._logger, forget: ResponseCallTool.IsNotExecuted);
+                _systemToolCalls = new(owner._logger, forget: ResponseCallTool.IsNotExecuted);
             }
 
             McpRequestActivity Activity => _owner.RequestActivity;

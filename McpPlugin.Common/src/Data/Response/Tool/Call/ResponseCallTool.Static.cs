@@ -53,6 +53,13 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         public static ResponseCallTool NotExecuted(string message)
             => Error(message, ResponseErrorKind.Unavailable, NotExecutedStatusCode);
 
+        /// <summary>True for a <see cref="NotExecuted"/> refusal as the server receives it (packed in a <see cref="ResponseData{T}"/>).</summary>
+        public static bool IsNotExecuted(ResponseData<ResponseCallTool>? response)
+            => response != null
+                && response.Status == ResponseStatus.Error
+                && response.ErrorKind == ResponseErrorKind.Unavailable
+                && response.HttpStatusCode == NotExecutedStatusCode;
+
         public static ResponseCallTool Success(string? message = null)
         {
             return new ResponseCallTool(

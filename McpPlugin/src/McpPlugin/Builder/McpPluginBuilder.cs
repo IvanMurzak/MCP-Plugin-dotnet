@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Skills;
@@ -337,13 +338,23 @@ namespace com.IvanMurzak.McpPlugin
             var standardRunners = _toolRunners.Where(r => r.Value.ToolType == McpToolType.Standard).ToDictionary(r => r.Key, r => r.Value);
             var systemRunners = _toolRunners.Where(r => r.Value.ToolType == McpToolType.System).ToDictionary(r => r.Key, r => r.Value);
 
-            _services.AddSingleton(new ToolRunnerCollection(reflector, _loggerProvider?.CreateLogger(nameof(ToolRunnerCollection)))
-                .Add(standardMethods)
-                .Add(standardRunners));
+            // Tools whose Target does not include this plugin's role are not registered (resolved once the config is
+            // final, so a role set through WithConfig / SetConfig before Build() counts).
+            _services.AddSingleton(sp =>
+            {
+                var role = ResolveClientRole(sp);
+                return new ToolRunnerCollection(reflector, _loggerProvider?.CreateLogger(nameof(ToolRunnerCollection)))
+                    .Add(ForRole(standardMethods, role))
+                    .Add(ForRole(standardRunners, role));
+            });
 
-            _services.AddSingleton(new SystemToolRunnerCollection(reflector, _loggerProvider?.CreateLogger(nameof(SystemToolRunnerCollection)))
-                .Add(systemMethods)
-                .Add(systemRunners));
+            _services.AddSingleton(sp =>
+            {
+                var role = ResolveClientRole(sp);
+                return new SystemToolRunnerCollection(reflector, _loggerProvider?.CreateLogger(nameof(SystemToolRunnerCollection)))
+                    .Add(ForRole(systemMethods, role))
+                    .Add(ForRole(systemRunners, role));
+            });
 
             _services.AddSingleton(new PromptRunnerCollection(reflector, _loggerProvider?.CreateLogger(nameof(PromptRunnerCollection)))
                 .Add(_promptMethods)
@@ -363,6 +374,34 @@ namespace com.IvanMurzak.McpPlugin
             isBuilt = true;
 
             return ServiceProvider.GetRequiredService<IMcpPlugin>();
+        }
+
+        /// <summary>
+        /// The role this plugin registers tools for: <see cref="ConnectionConfig.ClientRole"/>, or
+        /// <see cref="ClientRole.Runtime"/> when the version-handshake environment ends in
+        /// <see cref="ClientRoles.RuntimeEnvironmentSuffix"/> (the same rule the hub connection declares).
+        /// </summary>
+        static ClientRole ResolveClientRole(IServiceProvider services)
+        {
+            var environment = services.GetService<Version>()?.Environment;
+            var config = services.GetService<IOptions<ConnectionConfig>>()?.Value;
+            return config != null
+                ? HubConnectionProvider.EffectiveRole(config, environment)
+                : ClientRoles.FromEnvironment(environment);
+        }
+
+        IEnumerable<ToolMethodData> ForRole(IEnumerable<ToolMethodData> methods, ClientRole role)
+            => methods.Where(method => KeepForRole(method.Name, method.Target, role));
+
+        Dictionary<string, IRunTool> ForRole(Dictionary<string, IRunTool> runners, ClientRole role)
+            => runners.Where(runner => KeepForRole(runner.Key, runner.Value.Target, role)).ToDictionary(runner => runner.Key, runner => runner.Value);
+
+        bool KeepForRole(string name, ToolTarget target, ClientRole role)
+        {
+            if (target.Includes(role))
+                return true;
+            _logger?.LogDebug("Tool '{0}' is not registered: its target is {1} and this plugin is the {2}.", name, target, ClientRoles.ToWire(role));
+            return false;
         }
 
         protected virtual void ThrowIfBuilt()

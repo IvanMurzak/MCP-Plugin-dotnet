@@ -9,6 +9,8 @@
 */
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
@@ -109,11 +111,17 @@ namespace com.IvanMurzak.McpPlugin.Server
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
             cancellationToken = linkedCts.Token;
 
+            // A connected runtime is listed alongside, so a slow game adds no time unless it is slower than the editor.
+            var runtime = (_strategy as IPluginRoleStrategy)?.Registry.WithRole(ClientRole.Runtime).FirstOrDefault();
+            var runtimeList = runtime == null ? null : ListRuntimeAsync(runtime, cancellationToken);
+
+            string? answeredBy = null;
             var response = await CatalogAwareInvoke.ListAsync<RequestListTool, ResponseListTool[]>(
                 _logger, _remoteAppContext, nameof(IClientToolHub.RunListTool), request, _dataArguments,
                 _strategy, _catalog, PluginCatalogKind.Tools, cancellationToken,
                 onAnswered: (connectionId, answer) =>
                 {
+                    answeredBy = connectionId;
                     if (answer.Status == ResponseStatus.Success)
                         _guard.Remember(connectionId, answer.Value);
                 });
@@ -121,7 +129,46 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (response.Status == ResponseStatus.Error)
                 return ResponseData<ResponseListTool[]>.Error(request.RequestID, response.Message ?? "Got an error during listing tools", response.ErrorKind, response.HttpStatusCode);
 
+            if (response.Value != null && runtimeList != null && runtime != answeredBy)
+                response.Value = AddRuntimeOnlyTools(response.Value, await runtimeList);
             return response;
+        }
+
+        /// <summary>The longest a runtime's tool list may take while an editor answers <c>tools/list</c>.</summary>
+        static readonly TimeSpan RuntimeListTimeout = TimeSpan.FromSeconds(3);
+
+        /// <summary>
+        /// The runtime's tools (cached for call routing), or null when it does not answer within
+        /// <see cref="RuntimeListTimeout"/>. Never throws: the editor's list is answered without them.
+        /// </summary>
+        async Task<ResponseListTool[]?> ListRuntimeAsync(string runtime, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var timeoutMs = (int)Math.Min(_dataArguments.PluginTimeoutMs, RuntimeListTimeout.TotalMilliseconds);
+                var tools = await ExtensionsMcpServerBuilder.FetchPluginToolsAsync(_remoteAppContext, timeoutMs, runtime, cancellationToken);
+                if (tools != null)
+                    _guard.Remember(runtime, tools);
+                return tools;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Could not list the runtime's tools.");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// While an editor answers <c>tools/list</c>, a connected runtime's tools that the editor does not have (game-only
+        /// tools, <see cref="ToolTarget.Runtime"/>) are listed too: their calls go to the runtime (see <see cref="ToolCallGuard"/>).
+        /// </summary>
+        static ResponseListTool[] AddRuntimeOnlyTools(ResponseListTool[] tools, ResponseListTool[]? runtimeTools)
+        {
+            if (runtimeTools == null)
+                return tools;
+            var listed = new HashSet<string>(tools.Select(tool => tool.Name), StringComparer.Ordinal);
+            var runtimeOnly = runtimeTools.Where(tool => tool?.Name != null && !listed.Contains(tool.Name)).ToArray();
+            return runtimeOnly.Length == 0 ? tools : tools.Concat(runtimeOnly).ToArray();
         }
 
         public void Dispose()

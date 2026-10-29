@@ -33,6 +33,8 @@ ScaffoldingReadMe.txt
 
 # NuGet Packages
 *.nupkg
+# TEMPORARY: the committed pre-release feed (see Directory.Build.props)
+!prerelease-packages/*.nupkg
 # NuGet Symbol Packages
 *.snupkg
 

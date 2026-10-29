@@ -238,7 +238,8 @@ namespace com.IvanMurzak.McpPlugin
                             ReadOnlyHint = kvp.Value.ReadOnlyHint,
                             DestructiveHint = kvp.Value.DestructiveHint,
                             IdempotentHint = kvp.Value.IdempotentHint,
-                            OpenWorldHint = kvp.Value.OpenWorldHint
+                            OpenWorldHint = kvp.Value.OpenWorldHint,
+                            Target = kvp.Value.Target is 0 or Common.ToolTarget.Both ? null : kvp.Value.Target
                         };
                         if (kvp.Value.OutputSchema == null)
                             return response;

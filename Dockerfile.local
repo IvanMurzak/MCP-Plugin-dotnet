@@ -12,6 +12,9 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
 # Copy project files first for layer caching on restore
+# TEMPORARY: the pre-release feed restore needs (see Directory.Build.props)
+COPY Directory.Build.props .
+COPY prerelease-packages/ prerelease-packages/
 COPY McpPlugin.Common/McpPlugin.Common.csproj McpPlugin.Common/
 COPY McpPlugin.Server/McpPlugin.Server.csproj McpPlugin.Server/
 COPY DemoWebApp/DemoWebApp.csproj DemoWebApp/

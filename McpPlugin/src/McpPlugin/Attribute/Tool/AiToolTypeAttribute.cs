@@ -9,6 +9,7 @@
 */
 
 using System;
+using com.IvanMurzak.McpPlugin.Common;
 
 namespace com.IvanMurzak.McpPlugin
 {
@@ -16,5 +17,15 @@ namespace com.IvanMurzak.McpPlugin
     public class AiToolTypeAttribute : Attribute
     {
         public string? Path { get; set; }
+
+        /// <summary>
+        /// Which plugin connections register the tools of this class: <see cref="ToolTarget.Both"/> (the default),
+        /// <see cref="ToolTarget.Editor"/> or <see cref="ToolTarget.Runtime"/>. Mark game-only tools
+        /// <see cref="ToolTarget.Runtime"/>: an editor that scans the same assembly then skips them, and the server
+        /// routes their calls to the running game even while the editor is connected. A tool's own
+        /// <see cref="AiToolAttribute.Target"/> overrides this. The plugin's role is
+        /// <see cref="ConnectionConfig.ClientRole"/> (or a handshake environment ending in <c>(runtime)</c>).
+        /// </summary>
+        public ToolTarget Target { get; set; } = ToolTarget.Both;
     }
 }

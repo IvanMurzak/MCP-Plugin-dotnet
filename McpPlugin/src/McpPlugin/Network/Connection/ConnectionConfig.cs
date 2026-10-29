@@ -81,8 +81,10 @@ namespace com.IvanMurzak.McpPlugin
         /// routes agents to the editor, so a game build must declare itself a runtime or it replaces the editor:
         /// set <see cref="Common.ClientRole.Runtime"/>, or end the handshake environment with
         /// <see cref="ClientRoles.RuntimeEnvironmentSuffix"/> (either one makes the connection a runtime). Read
-        /// when each HubConnection is built, so set it before connecting. Runtime-only host fact; never serialized
-        /// to the on-disk connection config (an override must repeat <c>[JsonIgnore]</c>).
+        /// when each HubConnection is built, so set it before connecting. It also decides, once at
+        /// <see cref="McpPluginBuilder.Build"/>, which tools are registered (<see cref="Common.ToolTarget"/>), so set it
+        /// before Build() and do not change it afterwards. Tools added after Build() are not filtered. Runtime-only
+        /// host fact; never serialized to the on-disk connection config (an override must repeat <c>[JsonIgnore]</c>).
         /// </summary>
         [JsonIgnore]
         public virtual ClientRole ClientRole { get; set; } = ClientRole.Editor;

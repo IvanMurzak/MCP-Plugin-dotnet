@@ -24,8 +24,8 @@ namespace com.IvanMurzak.McpPlugin
         {
             var attr = method.Attribute;
 
-            return method.MethodInfo.IsStatic
-                ? (IRunTool)RunTool.CreateFromStaticMethod(
+            var tool = method.MethodInfo.IsStatic
+                ? RunTool.CreateFromStaticMethod(
                     reflector: reflector,
                     logger: logger,
                     name: attr.Name,
@@ -50,6 +50,8 @@ namespace com.IvanMurzak.McpPlugin
                     openWorldHint: attr.OpenWorldHintValue,
                     visible: attr.VisibleValue,
                     toolType: attr.ToolType);
+            tool.Target = method.Target;
+            return tool;
         }
     }
 }
