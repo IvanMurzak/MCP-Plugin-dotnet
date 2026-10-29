@@ -63,7 +63,7 @@ jobs:
           echo "current-version=$version" >> $GITHUB_OUTPUT
           echo "Version: $version"
 
-      # The five files commands/bump-version.ps1 rewrites must all agree with the source of
+      # The five files commands/bump_version.py rewrites must all agree with the source of
       # truth, or the packs/metadata would ship mixed versions (was asserted by the local
       # release script after the bump; now enforced at release time).
       - name: Version consistency guard
@@ -110,7 +110,7 @@ jobs:
             if [ "$DRY_RUN" = "true" ]; then
               echo "::warning::Tag '$VERSION' already exists. Dry run continues; a real release of this version would FAIL here. Bump <Version> first."
             else
-              echo "::error::Tag '$VERSION' already exists: version $VERSION is already released. Bump <Version> (commands/bump-version.ps1) and merge before dispatching a release."
+              echo "::error::Tag '$VERSION' already exists: version $VERSION is already released. Bump <Version> (commands/bump_version.py) and merge before dispatching a release."
               exit 1
             fi
           else
