@@ -10,7 +10,6 @@
 #nullable enable
 using System;
 using System.Collections.Concurrent;
-using System.Globalization;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tools
 {
@@ -66,18 +65,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             var cut = text.IndexOfAny(new[] { '-', '+' });
             if (cut >= 0)
                 text = text.Substring(0, cut);
-            var parts = text.Split('.');
-            if (parts.Length < 2 || parts.Length > 4)
-                return false;
-            var numbers = new int[3];
-            for (var i = 0; i < parts.Length; i++)
-            {
-                if (!int.TryParse(parts[i], NumberStyles.None, CultureInfo.InvariantCulture, out var n))
-                    return false;
-                if (i < 3)
-                    numbers[i] = n;
-            }
-            return new System.Version(numbers[0], numbers[1], numbers[2]) >= FirstEnforcedVersion;
+            return System.Version.TryParse(text, out var version)
+                && new System.Version(version.Major, version.Minor, Math.Max(version.Build, 0)) >= FirstEnforcedVersion;
         }
     }
 }
