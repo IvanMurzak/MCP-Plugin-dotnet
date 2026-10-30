@@ -27,6 +27,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         readonly Func<DateTimeOffset> _clock;
         long _sequence;
         DateTimeOffset? _lastEditorDisconnect;
+        /// <summary>The legacy connections the last replacement removed (see <see cref="ReplacedWasLegacy"/>).</summary>
+        readonly HashSet<string> _lastReplacedLegacy = new HashSet<string>(StringComparer.Ordinal);
 
         public PluginConnectionRegistry(Func<DateTimeOffset>? clock = null)
         {
@@ -97,12 +99,28 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             // The rivals: the same role between 8.14+ plugins; every classified connection when either side is legacy.
             var others = _connections.Where(pair => pair.Key != connectionId && pair.Value.Role.HasValue
                 && (legacy || pair.Value.Legacy == true || pair.Value.Role == role)).ToList();
+            _lastReplacedLegacy.Clear();
             var replaced = others.Any(pair => pair.Value.Sequence > sequence)
                 ? new List<string> { connectionId } // a newer rival is already registered
                 : others.Select(pair => pair.Key).ToList();
             foreach (var id in replaced)
+            {
+                if (_connections.TryGetValue(id, out var gone) && gone.Legacy == true)
+                    _lastReplacedLegacy.Add(id);
                 _connections.Remove(id);
+            }
             return replaced;
+        }
+
+        /// <summary>
+        /// True when <paramref name="connectionId"/> was a legacy (pre-8.14) connection removed by the last
+        /// replacement (<see cref="Add"/> / <see cref="TryClassify(string, ClientRole, bool, out string?, out IReadOnlyList{string})"/>).
+        /// Read right after that call, under the caller's own lock.
+        /// </summary>
+        public bool ReplacedWasLegacy(string connectionId)
+        {
+            lock (_gate)
+                return _lastReplacedLegacy.Contains(connectionId);
         }
 
         /// <summary>
@@ -119,7 +137,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                     return false;
                 }
                 role = entry.Role;
-                if (role == ClientRole.Editor)
+                // A pre-8.14 plugin knows no roles (it only holds the editor slot): its leaving does not hold 8.14
+                // runtimes back for the editor reconnect window, as server 9.2.x had no such window.
+                if (role == ClientRole.Editor && entry.Legacy != true)
                     _lastEditorDisconnect = _clock();
                 return true;
             }

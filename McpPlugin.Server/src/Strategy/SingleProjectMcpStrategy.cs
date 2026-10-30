@@ -89,7 +89,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 var replaced = Registry.Add(connectionId, declaredRole, token);
                 if (declaredRole == ClientRole.Editor && !replaced.Contains(connectionId))
                     ClientUtils.AddClient(hubType, connectionId, logger, token);
-                Disconnect(hubType, replaced, declaredRole, logger, disconnectClient);
+                Disconnect(hubType, replaced, declaredRole, newcomerLegacy: false, logger, disconnectClient);
             }
         }
 
@@ -113,22 +113,34 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 var routedEditor = role == ClientRole.Editor && !replaced.Contains(connectionId);
                 if (routedEditor)
                     ClientUtils.AddClient(hubType, connectionId, logger, token);
-                Disconnect(hubType, replaced, role, logger, disconnectClient);
+                Disconnect(hubType, replaced, role, legacy, logger, disconnectClient);
                 return routedEditor;
             }
         }
 
-        void Disconnect(Type hubType, IReadOnlyList<string> replaced, ClientRole? role, ILogger logger, Action<string, string?> disconnectClient)
+        void Disconnect(Type hubType, IReadOnlyList<string> replaced, ClientRole? role, bool newcomerLegacy,
+            ILogger logger, Action<string, string?> disconnectClient)
         {
             foreach (var id in replaced)
             {
-                logger.LogInformation("auth={0}: disconnecting {1} connection '{2}' (replaced by a newer one).", AuthOption, Describe(role), id);
                 // Removed at once, so routing cannot pick it before OnPluginDisconnected fires.
                 if (ClientUtils.IsConnected(hubType, id))
                     ClientUtils.RemoveClient(hubType, id, logger);
+                if (newcomerLegacy || Registry.ReplacedWasLegacy(id))
+                {
+                    // A pre-8.14 plugin on either side: server 9.2.x's exact newest-wins wording. A pre-8.14 plugin reads
+                    // the reason (a "Token"/"Authorization" substring means an auth failure to it), so keep it verbatim.
+                    logger.LogInformation("{0}: disconnecting other client '{1}' for {2}.", LegacyModeName, id, hubType.Name);
+                    disconnectClient(id, $"A newer plugin connection has replaced this one ({LegacyModeName} allows only one connection).");
+                    continue;
+                }
+                logger.LogInformation("auth={0}: disconnecting {1} connection '{2}' (replaced by a newer one).", AuthOption, Describe(role), id);
                 disconnectClient(id, $"A newer {Describe(role)} connection has replaced this one (auth={AuthOption} keeps one editor and one runtime connection).");
             }
         }
+
+        /// <summary>The mode name server 9.2.x (McpPlugin 8.13) used in its replacement messages.</summary>
+        string LegacyModeName => AuthOption == Consts.MCP.Server.AuthOption.none ? "no-auth mode" : $"auth={AuthOption} mode";
 
         public virtual void OnPluginDisconnected(Type hubType, string connectionId, ILogger logger)
         {

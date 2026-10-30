@@ -36,14 +36,29 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         readonly NoAuthMcpStrategy _strategy = new();
         readonly ILogger _logger = new Mock<ILogger>().Object;
         readonly List<string> _disconnected = new();
+        readonly List<string?> _reasons = new();
         readonly List<string> _ids = new();
+
+        void Drop(string id, string? reason)
+        {
+            _disconnected.Add(id);
+            _reasons.Add(reason);
+        }
 
         void Connect(string id, string environment, string? mcpPluginVersion)
         {
-            _ids.Add(id);
-            _strategy.OnPluginConnected(typeof(McpServerHub), id, null, _logger, (c, _) => _disconnected.Add(c));
-            _strategy.OnPluginHandshake(typeof(McpServerHub), id, environment, mcpPluginVersion, _logger, (c, _) => _disconnected.Add(c));
+            ConnectOnly(id);
+            Handshake(id, environment, mcpPluginVersion);
         }
+
+        void ConnectOnly(string id)
+        {
+            _ids.Add(id);
+            _strategy.OnPluginConnected(typeof(McpServerHub), id, null, _logger, Drop);
+        }
+
+        void Handshake(string id, string environment, string? mcpPluginVersion)
+            => _strategy.OnPluginHandshake(typeof(McpServerHub), id, environment, mcpPluginVersion, _logger, Drop);
 
         string? Routed() => _strategy.ResolveConnectionId(null, 0);
 
@@ -60,7 +75,31 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             Connect("legacy-game", Game, null);
 
             _disconnected.ShouldBe(new[] { "legacy-editor" });
+            _reasons.ShouldBe(new[] { "A newer plugin connection has replaced this one (no-auth mode allows only one connection)." });
             Routed().ShouldBe("legacy-game");
+            ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldContain("legacy-game");
+        }
+
+        [Fact]
+        public void OldPlugins_HandshakingOutOfConnectOrder_TheLaterConnectionWins()
+        {
+            ConnectOnly("order-first");
+            ConnectOnly("order-second");
+            Handshake("order-second", Editor, null);
+            Handshake("order-first", Editor, null);
+
+            _disconnected.ShouldBe(new[] { "order-first" });
+            Routed().ShouldBe("order-second");
+        }
+
+        [Fact]
+        public void AnOldEditorLeaving_DoesNotHoldANewGameBack()
+        {
+            Connect("left-old-editor", Editor, null);
+            _strategy.OnPluginDisconnected(typeof(McpServerHub), "left-old-editor", _logger);
+            Connect("left-new-game", Game, New);
+
+            Routed().ShouldBe("left-new-game", "9.2.x had no editor reconnect window");
         }
 
         [Fact]
@@ -102,6 +141,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             Connect("mixed-new-game", Game, New);
 
             _disconnected.ShouldBe(new[] { "mixed-old-editor" });
+            _reasons.ShouldBe(new[] { "A newer plugin connection has replaced this one (no-auth mode allows only one connection)." });
+            Routed().ShouldBe("mixed-new-game");
             using (PluginRoleRouting.Prefer(ClientRole.Runtime))
                 Routed().ShouldBe("mixed-new-game");
         }
@@ -112,8 +153,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             // Declaring client_role at connect is an 8.14+ feature: the newcomer is modern, the existing one legacy.
             Connect("declared-old-editor", Editor, null);
             _ids.Add("declared-new-game");
-            _strategy.OnPluginConnected(typeof(McpServerHub), "declared-new-game", null, ClientRole.Runtime, _logger,
-                (c, _) => _disconnected.Add(c));
+            _strategy.OnPluginConnected(typeof(McpServerHub), "declared-new-game", null, ClientRole.Runtime, _logger, Drop);
 
             _disconnected.ShouldBe(new[] { "declared-old-editor" });
             ClientUtils.GetAllConnectionIds(typeof(McpServerHub)).ShouldNotContain("declared-old-editor");
