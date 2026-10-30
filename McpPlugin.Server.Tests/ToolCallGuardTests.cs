@@ -71,6 +71,56 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
+        public async Task McpPlugin814Connection_OmittedRequiredArgument_IsRejected()
+        {
+            await using var host = await NoneAuthMcpHost.StartAsync();
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Godot 4.5");
+            editor.McpPluginVersion = "8.14.0";
+            await editor.StartAsync();
+
+            var (isError, text) = await client.CallAsync("rql-query", new { });
+            isError.ShouldBeTrue();
+            text.ShouldContain("missing required argument 'query'");
+            editor.Calls.ShouldNotContain(c => c.Name == "rql-query");
+        }
+
+        [Fact]
+        public async Task OldPluginConnection_OmittedRequiredArgument_IsForwardedAsBefore()
+        {
+            // A plugin on McpPlugin before 8.14.0 sends no mcpPluginVersion. Its ReflectorNet lists every
+            // parameter without a default as required while its binder fills an omitted one, so the call ran.
+            await using var host = await NoneAuthMcpHost.StartAsync();
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Godot 4.5");
+            editor.McpPluginVersion = null;
+            await editor.StartAsync();
+
+            var (isError, text) = await client.CallAsync("rql-query", new { });
+            isError.ShouldBeFalse(text);
+            text.ShouldBe("editor:rql-query");
+
+            var (status, _) = await client.RestAsync("rql-query", "{}");
+            status.ShouldBe(200);
+            editor.Calls.Count(c => c.Name == "rql-query").ShouldBe(2);
+        }
+
+        [Fact]
+        public async Task OldPluginConnection_WrongArgumentType_IsStillRejected()
+        {
+            await using var host = await NoneAuthMcpHost.StartAsync();
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Godot 4.5");
+            editor.McpPluginVersion = null;
+            await editor.StartAsync();
+
+            var (isError, text) = await client.CallAsync("rql-query", new { query = 123 });
+            isError.ShouldBeTrue();
+            text.ShouldContain("argument 'query' must be a string, got a number (123)");
+            editor.Calls.ShouldNotContain(c => c.Name == "rql-query");
+        }
+
+        [Fact]
         public async Task LoneSurrogate_GetsAClearError()
         {
             await using var host = await NoneAuthMcpHost.StartAsync();

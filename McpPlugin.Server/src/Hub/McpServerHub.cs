@@ -20,6 +20,7 @@ using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Auth.OAuth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
+using com.IvanMurzak.McpPlugin.Server.Tools;
 using com.IvanMurzak.McpPlugin.Server.Webhooks;
 using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
 using Microsoft.AspNetCore.SignalR;
@@ -219,6 +220,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 return Task.CompletedTask;
 
             _webhookCollector.OnPluginDisconnected(Context.ConnectionId);
+            PluginArgumentPolicy.Forget(Context.ConnectionId);
             // Every plugin-side close keeps the lists for the reconnect grace: the server cannot tell a
             // recompile from a closed project. See PluginCatalogCache for what drops them early.
             Catalog?.OnPluginDisconnected(Context.ConnectionId);
@@ -336,6 +338,8 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                     // Classified only after an accepted handshake: a refused plugin must not replace a working one.
                     ClassifyPlugin(request.Environment);
+                    // Which argument checks this plugin gets (McpPlugin 8.14.0+ reports its version).
+                    PluginArgumentPolicy.Record(Context.ConnectionId, request.McpPluginVersion);
 
                     var pluginToken = ClientUtils.GetTokenByConnectionId(Context.ConnectionId)
                         ?? (_strategy as IPluginRoleStrategy)?.Registry.GetToken(Context.ConnectionId);

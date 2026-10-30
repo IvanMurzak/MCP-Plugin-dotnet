@@ -430,6 +430,10 @@ docker run -p 8080:8080 mcp-bridge port=8080 client-transport=streamableHttp
 - **`DemoConsoleApp`**: A sample client application demonstrating how to expose tools.
 - **`DemoWebApp`**: A sample server application demonstrating how to host the MCP bridge.
 
+## Compatibility
+
+Tool-call argument checks (McpPlugin.Server 8.14.0+): a plugin on McpPlugin **8.14.0** or newer (it reports `mcpPluginVersion` in its handshake) gets server-side required-argument validation; an older plugin keeps its previous behaviour, an omitted required argument is forwarded as before. Argument type checks apply to every plugin. The field is optional on the wire: a server before 8.14.0 ignores it.
+
 ## Migration guides
 
 - **[Migrating to 8.0.0](docs/migration-8.0.0.md)** — three methods on `IClientPromptHub` /

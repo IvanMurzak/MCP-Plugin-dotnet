@@ -265,16 +265,18 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 fresh = true;
             }
 
-            var problem = Check(schemas, request);
+            // A plugin on McpPlugin before 8.14.0 keeps its previous behaviour for omitted required arguments.
+            var checkMissingRequired = PluginArgumentPolicy.IsEnforced(target);
+            var problem = Check(schemas, request, checkMissingRequired);
             if (problem == null || fresh || schemas == null || schemas.Age.Elapsed < SchemaRecheckAge)
                 return problem;
 
-            return Check(await RefreshSchemasAsync(target, cancellationToken), request);
+            return Check(await RefreshSchemasAsync(target, cancellationToken), request, checkMissingRequired);
         }
 
-        static string? Check(SchemaSnapshot? schemas, RequestCallTool request)
+        static string? Check(SchemaSnapshot? schemas, RequestCallTool request, bool checkMissingRequired)
             => schemas != null && schemas.ByName.TryGetValue(request.Name, out var schema)
-                ? ToolArgumentValidator.Validate(request.Name, schema, request.Arguments)
+                ? ToolArgumentValidator.Validate(request.Name, schema, request.Arguments, checkMissingRequired)
                 : null; // a tool this connection did not list: the plugin answers that itself
 
         async Task<SchemaSnapshot?> RefreshSchemasAsync(string target, CancellationToken cancellationToken)

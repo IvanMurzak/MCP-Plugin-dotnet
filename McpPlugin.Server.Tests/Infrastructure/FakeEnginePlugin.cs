@@ -63,6 +63,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
 
         public string Name { get; }
 
+        /// <summary>The <c>mcpPluginVersion</c> the handshake reports; null plays a plugin built before McpPlugin 8.14.0.</summary>
+        public string? McpPluginVersion { get; set; } = Consts.PluginVersion;
+
         /// <summary>Cancelled when the plugin is disposed: a handler that "hangs" waits on it, so it never outlives the test.</summary>
         public CancellationToken Disposed => _disposed.Token;
         public ConcurrentQueue<RequestCallTool> Calls { get; } = new ConcurrentQueue<RequestCallTool>();
@@ -112,6 +115,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
                 ApiVersion = _apiVersion,
                 PluginVersion = "0.0.0-test",
                 Environment = _environment,
+                McpPluginVersion = McpPluginVersion,
             });
             if (!handshake.Compatible)
                 throw new InvalidOperationException("Handshake refused: " + handshake.Message);

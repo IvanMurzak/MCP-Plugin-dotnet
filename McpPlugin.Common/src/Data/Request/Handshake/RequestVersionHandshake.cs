@@ -24,5 +24,14 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
 
         [JsonPropertyName("environment")]
         public string Environment { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The McpPlugin library version the plugin is built on (<see cref="Consts.PluginVersion"/>), sent
+        /// since 8.14.0; <see cref="PluginVersion"/> is the host's own version (Unity-MCP 1.6.0, ...).
+        /// Absent from older plugins, so the server keeps their previous behaviour (see
+        /// <c>PluginArgumentPolicy</c>). Optional on the wire: an older server ignores it.
+        /// </summary>
+        [JsonPropertyName("mcpPluginVersion")]
+        public string? McpPluginVersion { get; set; }
     }
 }

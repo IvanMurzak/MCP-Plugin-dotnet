@@ -35,9 +35,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
 
         /// <summary>
         /// Returns null when the arguments fit <paramref name="inputSchema"/>, otherwise an error naming
-        /// every offending argument.
+        /// every offending argument. With <paramref name="checkMissingRequired"/> false (a plugin built on
+        /// McpPlugin before 8.14.0, see <see cref="PluginArgumentPolicy"/>) an omitted required argument is left
+        /// to the plugin, as before 8.14.0; every type check still applies.
         /// </summary>
-        public static string? Validate(string toolName, JsonElement inputSchema, IReadOnlyDictionary<string, JsonElement>? arguments)
+        public static string? Validate(string toolName, JsonElement inputSchema, IReadOnlyDictionary<string, JsonElement>? arguments,
+            bool checkMissingRequired = true)
         {
             if (inputSchema.ValueKind != JsonValueKind.Object)
                 return null;
@@ -64,7 +67,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                     continue;
                 var present = TryGetArgument(arguments, name, out var value) && value.ValueKind != JsonValueKind.Undefined;
                 if (!present)
-                    problems.Add($"missing required argument '{name}' ({DescribeTypes(allowed)})");
+                {
+                    if (checkMissingRequired)
+                        problems.Add($"missing required argument '{name}' ({DescribeTypes(allowed)})");
+                }
                 // An explicit null passes for a required argument whose schema allows null. Otherwise it is there with the
                 // wrong type, and says so (the type check below skips nulls); other types are checked below.
                 else if (value.ValueKind == JsonValueKind.Null && !allowed.Contains("null") && !IsNullable(propSchema))
