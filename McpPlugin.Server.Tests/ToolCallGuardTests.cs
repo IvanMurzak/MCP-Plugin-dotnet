@@ -137,6 +137,41 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
+        public async Task OldPluginConnection_ReloadRefusal_IsReturnedAsThePluginSentIt()
+        {
+            // 9.2.x returned an old plugin's own error at once; the 8.14 guard waits and rewrites it for 8.14 plugins.
+            await using var host = await NoneAuthMcpHost.StartAsync(null, "plugin-reconnect-wait-seconds=60");
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Godot 4.5", onCall: (_, request)
+                => Task.FromResult(FakeEnginePlugin.Error(request, GodotPendingRefusal, ResponseErrorKind.Unavailable)));
+            editor.McpPluginVersion = null;
+            await editor.StartAsync();
+
+            var watch = Stopwatch.StartNew();
+            var (isError, text) = await client.CallAsync("echo", new { });
+            isError.ShouldBeTrue();
+            text.ShouldContain(GodotPendingRefusal);
+            text.ShouldNotContain("[plugin_reloading]");
+            watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(10));
+            editor.Calls.Count(c => c.Name == "echo").ShouldBe(1);
+        }
+
+        [Fact]
+        public async Task OldPluginConnection_LoneSurrogate_IsStillRefused()
+        {
+            await using var host = await NoneAuthMcpHost.StartAsync();
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Godot 4.5");
+            editor.McpPluginVersion = null;
+            await editor.StartAsync();
+
+            var (status, body) = await client.RestAsync("rql-query", "{\"query\":\"a\\udc00\"}");
+            status.ShouldBe(400);
+            body!["error"]!.GetValue<string>().ShouldStartWith("[invalid_utf16]");
+            editor.Calls.ShouldBeEmpty();
+        }
+
+        [Fact]
         public async Task McpPlugin814Connection_StringForAnObjectParameter_IsRejected()
         {
             await using var host = await NoneAuthMcpHost.StartAsync();
