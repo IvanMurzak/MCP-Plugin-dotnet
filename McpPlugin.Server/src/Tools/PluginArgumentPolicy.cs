@@ -14,14 +14,14 @@ using System.Collections.Concurrent;
 namespace com.IvanMurzak.McpPlugin.Server.Tools
 {
     /// <summary>
-    /// Which plugin connections get the server-side "missing required argument" check.
+    /// Which plugin connections get the server-side tool-argument validation (<see cref="ToolArgumentValidator"/>).
     /// <para>
     /// A plugin built on McpPlugin before 8.14.0 (ReflectorNet before 5.5.1) lists every parameter without a
-    /// default as <c>required</c>, while its binder fills an omitted one with null/0, so its tools ran with
-    /// such arguments left out. Only a connection whose handshake reports <c>mcpPluginVersion</c> 8.14.0 or
-    /// newer is held to its <c>required</c> list; an older or unknown plugin keeps its previous behaviour
-    /// (the type checks still apply to everyone). Keyed by SignalR connection id: recorded at the accepted
-    /// version handshake, forgotten when the connection closes.
+    /// default as <c>required</c>, while its binder fills an omitted or null one with null/0, and its binder may
+    /// accept values the schema check would refuse. Server 9.2.x validated nothing, so only a connection whose
+    /// handshake reports <c>mcpPluginVersion</c> 8.14.0 or newer is validated; an older plugin, or one with no or
+    /// an unparsable version, gets its calls forwarded exactly as before. Keyed by SignalR connection id:
+    /// recorded at the accepted version handshake, forgotten when the connection closes.
     /// </para>
     /// </summary>
     public static class PluginArgumentPolicy
@@ -47,7 +47,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
         }
 
         /// <summary>
-        /// Whether calls to <paramref name="connectionId"/> get the missing-required check: only after a handshake
+        /// Whether calls to <paramref name="connectionId"/> are validated: only after a handshake
         /// that reported McpPlugin 8.14.0 or newer. An unknown connection keeps the lenient (previous) behaviour.
         /// </summary>
         public static bool IsEnforced(string? connectionId)

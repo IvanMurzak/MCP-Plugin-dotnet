@@ -35,12 +35,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
 
         /// <summary>
         /// Returns null when the arguments fit <paramref name="inputSchema"/>, otherwise an error naming
-        /// every offending argument. With <paramref name="checkMissingRequired"/> false (a plugin built on
-        /// McpPlugin before 8.14.0, see <see cref="PluginArgumentPolicy"/>) an omitted or explicitly null required
-        /// argument is left to the plugin, as before 8.14.0; every type check of a present value still applies.
+        /// every offending argument.
         /// </summary>
-        public static string? Validate(string toolName, JsonElement inputSchema, IReadOnlyDictionary<string, JsonElement>? arguments,
-            bool checkMissingRequired = true)
+        public static string? Validate(string toolName, JsonElement inputSchema, IReadOnlyDictionary<string, JsonElement>? arguments)
         {
             if (inputSchema.ValueKind != JsonValueKind.Object)
                 return null;
@@ -67,14 +64,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                     continue;
                 var present = TryGetArgument(arguments, name, out var value) && value.ValueKind != JsonValueKind.Undefined;
                 if (!present)
-                {
-                    if (checkMissingRequired)
-                        problems.Add($"missing required argument '{name}' ({DescribeTypes(allowed)})");
-                }
+                    problems.Add($"missing required argument '{name}' ({DescribeTypes(allowed)})");
                 // An explicit null passes for a required argument whose schema allows null. Otherwise it is there with the
-                // wrong type, and says so (the type check below skips nulls); other types are checked below. A plugin
-                // before 8.14.0 binds an explicit null like an omitted argument, so it keeps getting it.
-                else if (checkMissingRequired && value.ValueKind == JsonValueKind.Null && !allowed.Contains("null") && !IsNullable(propSchema))
+                // wrong type, and says so (the type check below skips nulls); other types are checked below.
+                else if (value.ValueKind == JsonValueKind.Null && !allowed.Contains("null") && !IsNullable(propSchema))
                     problems.Add(WrongType(name, allowed, value));
             }
 

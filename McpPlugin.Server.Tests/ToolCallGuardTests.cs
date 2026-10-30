@@ -110,18 +110,51 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public async Task OldPluginConnection_WrongArgumentType_IsStillRejected()
+        public async Task OldPluginConnection_WrongArgumentTypes_AreForwardedAsBefore()
         {
+            // Server 9.2.x validated nothing: an old plugin's own binder decides, e.g. it may parse a JSON string
+            // given for an object parameter. The server forwards such calls unchanged.
             await using var host = await NoneAuthMcpHost.StartAsync();
             using var client = new ToolCallClient(host);
             await using var editor = client.Plugin("editor", "Godot 4.5");
             editor.McpPluginVersion = null;
+            editor.Tools = editor.Tools.Append(new ResponseListTool
+            {
+                Name = "set-settings",
+                InputSchema = System.Text.Json.JsonDocument.Parse(
+                    "{\"type\":\"object\",\"properties\":{\"settings\":{\"type\":\"object\"}},\"required\":[\"settings\"]}").RootElement.Clone(),
+            }).ToArray();
             await editor.StartAsync();
 
-            var (isError, text) = await client.CallAsync("rql-query", new { query = 123 });
+            var (isError, text) = await client.CallAsync("set-settings", new { settings = "{\"a\":1}" });
+            isError.ShouldBeFalse(text);
+            text.ShouldBe("editor:set-settings");
+
+            (isError, text) = await client.CallAsync("rql-query", new { query = 123 });
+            isError.ShouldBeFalse(text);
+            editor.Calls.Count(c => c.Name == "set-settings").ShouldBe(1);
+            editor.Calls.Count(c => c.Name == "rql-query").ShouldBe(1);
+        }
+
+        [Fact]
+        public async Task McpPlugin814Connection_StringForAnObjectParameter_IsRejected()
+        {
+            await using var host = await NoneAuthMcpHost.StartAsync();
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Godot 4.5");
+            editor.McpPluginVersion = "8.14.0";
+            editor.Tools = editor.Tools.Append(new ResponseListTool
+            {
+                Name = "set-settings",
+                InputSchema = System.Text.Json.JsonDocument.Parse(
+                    "{\"type\":\"object\",\"properties\":{\"settings\":{\"type\":\"object\"}},\"required\":[\"settings\"]}").RootElement.Clone(),
+            }).ToArray();
+            await editor.StartAsync();
+
+            var (isError, text) = await client.CallAsync("set-settings", new { settings = "{\"a\":1}" });
             isError.ShouldBeTrue();
-            text.ShouldContain("argument 'query' must be a string, got a number (123)");
-            editor.Calls.ShouldNotContain(c => c.Name == "rql-query");
+            text.ShouldContain("argument 'settings' must be an object");
+            editor.Calls.ShouldNotContain(c => c.Name == "set-settings");
         }
 
         [Fact]

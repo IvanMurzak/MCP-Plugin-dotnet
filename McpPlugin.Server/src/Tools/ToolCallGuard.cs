@@ -257,6 +257,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             var target = CurrentTarget();
             if (target == null)
                 return null; // no plugin right now: the call waits for one, and the plugin validates
+            // A plugin before McpPlugin 8.14.0 (or one that reported no version) gets no server-side argument
+            // validation: its calls are forwarded as server 9.2.x forwarded them (see PluginArgumentPolicy).
+            if (!PluginArgumentPolicy.IsEnforced(target))
+                return null;
 
             var fresh = false;
             if (!_schemas.TryGetValue(target, out var schemas) || (schemas.Failed && schemas.Age.Elapsed >= FailedListRetryAge))
@@ -265,18 +269,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 fresh = true;
             }
 
-            // A plugin on McpPlugin before 8.14.0 keeps its previous behaviour for omitted required arguments.
-            var checkMissingRequired = PluginArgumentPolicy.IsEnforced(target);
-            var problem = Check(schemas, request, checkMissingRequired);
+            var problem = Check(schemas, request);
             if (problem == null || fresh || schemas == null || schemas.Age.Elapsed < SchemaRecheckAge)
                 return problem;
 
-            return Check(await RefreshSchemasAsync(target, cancellationToken), request, checkMissingRequired);
+            return Check(await RefreshSchemasAsync(target, cancellationToken), request);
         }
 
-        static string? Check(SchemaSnapshot? schemas, RequestCallTool request, bool checkMissingRequired)
+        static string? Check(SchemaSnapshot? schemas, RequestCallTool request)
             => schemas != null && schemas.ByName.TryGetValue(request.Name, out var schema)
-                ? ToolArgumentValidator.Validate(request.Name, schema, request.Arguments, checkMissingRequired)
+                ? ToolArgumentValidator.Validate(request.Name, schema, request.Arguments)
                 : null; // a tool this connection did not list: the plugin answers that itself
 
         async Task<SchemaSnapshot?> RefreshSchemasAsync(string target, CancellationToken cancellationToken)
