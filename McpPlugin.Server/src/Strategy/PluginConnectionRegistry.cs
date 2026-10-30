@@ -41,8 +41,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         {
             lock (_gate)
             {
-                _connections[connectionId] = new Entry(role, token, ++_sequence);
-                return role.HasValue ? ReplaceLocked(connectionId, role.Value) : Array.Empty<string>();
+                // A role declared at connect means an 8.14+ plugin (older plugins declare none).
+                _connections[connectionId] = new Entry(role, token, ++_sequence) { Legacy = role.HasValue ? false : (bool?)null };
+                return role.HasValue ? ReplaceLocked(connectionId, role.Value, legacy: false) : Array.Empty<string>();
             }
         }
 
@@ -67,6 +68,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         /// connection is gone or already has a role: a declared role wins over the handshake.
         /// </summary>
         public bool TryClassify(string connectionId, ClientRole role, out string? token, out IReadOnlyList<string> replaced)
+            => TryClassify(connectionId, role, legacy: false, out token, out replaced);
+
+        /// <summary>
+        /// The classification of a plugin that is <paramref name="legacy"/> (built before McpPlugin 8.14.0) or not.
+        /// Between a legacy connection and any other, the newest replaces the older whatever their roles (server
+        /// 9.2.x's newest-wins); between 8.14+ plugins only the same role is replaced.
+        /// </summary>
+        public bool TryClassify(string connectionId, ClientRole role, bool legacy, out string? token, out IReadOnlyList<string> replaced)
         {
             token = null;
             replaced = Array.Empty<string>();
@@ -75,18 +84,21 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 if (!_connections.TryGetValue(connectionId, out var entry) || entry.Role.HasValue)
                     return false;
                 entry.Role = role;
+                entry.Legacy = legacy;
                 token = entry.Token;
-                replaced = ReplaceLocked(connectionId, role);
+                replaced = ReplaceLocked(connectionId, role, legacy);
                 return true;
             }
         }
 
-        IReadOnlyList<string> ReplaceLocked(string connectionId, ClientRole role)
+        IReadOnlyList<string> ReplaceLocked(string connectionId, ClientRole role, bool legacy)
         {
             var sequence = _connections[connectionId].Sequence;
-            var others = _connections.Where(pair => pair.Value.Role == role && pair.Key != connectionId).ToList();
+            // The rivals: the same role between 8.14+ plugins; every classified connection when either side is legacy.
+            var others = _connections.Where(pair => pair.Key != connectionId && pair.Value.Role.HasValue
+                && (legacy || pair.Value.Legacy == true || pair.Value.Role == role)).ToList();
             var replaced = others.Any(pair => pair.Value.Sequence > sequence)
-                ? new List<string> { connectionId } // a newer connection of this role is already registered
+                ? new List<string> { connectionId } // a newer rival is already registered
                 : others.Select(pair => pair.Key).ToList();
             foreach (var id in replaced)
                 _connections.Remove(id);
@@ -141,6 +153,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             }
 
             public ClientRole? Role { get; set; }
+            /// <summary>True for a plugin before McpPlugin 8.14.0; null while not known (no role yet).</summary>
+            public bool? Legacy { get; set; }
             public string? Token { get; }
             public long Sequence { get; }
         }

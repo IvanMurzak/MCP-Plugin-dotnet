@@ -180,14 +180,14 @@ namespace com.IvanMurzak.McpPlugin.Server
         }
 
         /// <summary>A compatible handshake: a plugin that did not declare its role gets one from its environment now.</summary>
-        void ClassifyPlugin(string? environment)
+        void ClassifyPlugin(string? environment, string? mcpPluginVersion)
         {
             if (_strategy is not IPluginRoleStrategy roles)
                 return;
             try
             {
                 var clients = Clients;
-                if (roles.OnPluginHandshake(GetType(), Context.ConnectionId, environment, _logger,
+                if (roles.OnPluginHandshake(GetType(), Context.ConnectionId, environment, mcpPluginVersion, _logger,
                         (id, reason) => _ = clients.Client(id).ForceDisconnect(reason)))
                     OnEditorRouted(roles, Catalog);
             }
@@ -336,10 +336,11 @@ namespace com.IvanMurzak.McpPlugin.Server
                     _logger.LogInformation("Version handshake successful. Plugin: {pluginVersion}, API: {apiVersion}, Environment: {environment}",
                         request.PluginVersion, request.ApiVersion, request.Environment);
 
-                    // Classified only after an accepted handshake: a refused plugin must not replace a working one.
-                    ClassifyPlugin(request.Environment);
-                    // Which argument checks this plugin gets (McpPlugin 8.14.0+ reports its version).
+                    // Which argument checks this plugin gets (McpPlugin 8.14.0+ reports its version); recorded before
+                    // the classification, which makes the connection routable.
                     PluginArgumentPolicy.Record(Context.ConnectionId, request.McpPluginVersion);
+                    // Classified only after an accepted handshake: a refused plugin must not replace a working one.
+                    ClassifyPlugin(request.Environment, request.McpPluginVersion);
 
                     var pluginToken = ClientUtils.GetTokenByConnectionId(Context.ConnectionId)
                         ?? (_strategy as IPluginRoleStrategy)?.Registry.GetToken(Context.ConnectionId);

@@ -37,6 +37,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
     ///   a tool only the runtime has (<see cref="PluginRoleRouting"/>): it goes to the runtime.</item>
     ///   <item>Only editors enter <see cref="ClientUtils"/>' plugin list, so the remembered lists of
     ///   <see cref="PluginCatalogCache"/> stay the editor's.</item>
+    ///   <item>A plugin built before McpPlugin 8.14.0 (its handshake reports no <c>mcpPluginVersion</c> 8.14.0+)
+    ///   keeps the pre-8.14 behaviour: it is routed as the one connection, and whenever the new or an existing
+    ///   connection is such a legacy plugin the newest connection replaces every older one, whatever its role
+    ///   (server 9.2.x's newest-wins). The editor/runtime roles apply only between 8.14+ plugins.</item>
     /// </list>
     /// </summary>
     public abstract class SingleProjectMcpStrategy : IMcpConnectionStrategy, IPluginRoleStrategy
@@ -90,14 +94,22 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         }
 
         public bool OnPluginHandshake(Type hubType, string connectionId, string? environment, ILogger logger, Action<string, string?> disconnectClient)
+            => OnPluginHandshake(hubType, connectionId, environment, Consts.PluginVersion, logger, disconnectClient);
+
+        public bool OnPluginHandshake(Type hubType, string connectionId, string? environment, string? mcpPluginVersion,
+            ILogger logger, Action<string, string?> disconnectClient)
         {
-            var role = ClientRoles.FromEnvironment(environment);
+            // A plugin before McpPlugin 8.14.0 knows no roles: it takes the editor slot and the newest connection wins.
+            var legacy = !Tools.PluginArgumentPolicy.EnforcesRequired(mcpPluginVersion);
+            var role = legacy ? ClientRole.Editor : ClientRoles.FromEnvironment(environment);
             lock (_gate)
             {
-                if (!Registry.TryClassify(connectionId, role, out var token, out var replaced))
+                if (!Registry.TryClassify(connectionId, role, legacy, out var token, out var replaced))
                     return false;
 
-                logger.LogInformation("auth={0}: plugin connection '{1}' is {2} (handshake environment '{3}').", AuthOption, connectionId, Describe(role), environment);
+                logger.LogInformation("auth={0}: plugin connection '{1}' is {2} (handshake environment '{3}', McpPlugin {4}).",
+                    AuthOption, connectionId, legacy ? "a pre-8.14 plugin (newest wins)" : Describe(role), environment,
+                    mcpPluginVersion ?? "before 8.14.0");
                 var routedEditor = role == ClientRole.Editor && !replaced.Contains(connectionId);
                 if (routedEditor)
                     ClientUtils.AddClient(hubType, connectionId, logger, token);

@@ -39,6 +39,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         bool OnPluginHandshake(Type hubType, string connectionId, string? environment,
             ILogger logger, Action<string, string?> disconnectClient);
 
+        /// <summary>
+        /// The handshake overload with the McpPlugin version the plugin reported (<c>mcpPluginVersion</c>, null
+        /// before 8.14.0). A strategy may keep the pre-8.14 connection behaviour for older plugins; by default the
+        /// version is ignored.
+        /// </summary>
+        bool OnPluginHandshake(Type hubType, string connectionId, string? environment, string? mcpPluginVersion,
+            ILogger logger, Action<string, string?> disconnectClient)
+            => OnPluginHandshake(hubType, connectionId, environment, logger, disconnectClient);
+
         /// <summary>True (once) when a runtime served agents in place of an editor since the last call.</summary>
         bool TakeRuntimeServed();
     }
