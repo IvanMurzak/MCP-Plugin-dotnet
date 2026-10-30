@@ -303,7 +303,8 @@ namespace com.IvanMurzak.McpPlugin
                         RequestID = Guid.NewGuid().ToString(),
                         ApiVersion = _apiVersion.Api,
                         PluginVersion = _apiVersion.Plugin,
-                        Environment = _apiVersion.Environment
+                        Environment = _apiVersion.Environment,
+                        McpPluginVersion = Consts.PluginVersion
                     },
                     cancellationToken: attemptCts.Token);
 

@@ -37,6 +37,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
     ///   a tool only the runtime has (<see cref="PluginRoleRouting"/>): it goes to the runtime.</item>
     ///   <item>Only editors enter <see cref="ClientUtils"/>' plugin list, so the remembered lists of
     ///   <see cref="PluginCatalogCache"/> stay the editor's.</item>
+    ///   <item>A plugin built before McpPlugin 8.14.0 (its handshake reports no <c>mcpPluginVersion</c> 8.14.0+)
+    ///   keeps the pre-8.14 behaviour: it is routed as the one connection, and whenever the new or an existing
+    ///   connection is such a legacy plugin the newest connection replaces every older one, whatever its role
+    ///   (server 9.2.x's newest-wins). The editor/runtime roles apply only between 8.14+ plugins.</item>
     /// </list>
     /// </summary>
     public abstract class SingleProjectMcpStrategy : IMcpConnectionStrategy, IPluginRoleStrategy
@@ -85,38 +89,58 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 var replaced = Registry.Add(connectionId, declaredRole, token);
                 if (declaredRole == ClientRole.Editor && !replaced.Contains(connectionId))
                     ClientUtils.AddClient(hubType, connectionId, logger, token);
-                Disconnect(hubType, replaced, declaredRole, logger, disconnectClient);
+                Disconnect(hubType, replaced, declaredRole, newcomerLegacy: false, logger, disconnectClient);
             }
         }
 
         public bool OnPluginHandshake(Type hubType, string connectionId, string? environment, ILogger logger, Action<string, string?> disconnectClient)
+            => OnPluginHandshake(hubType, connectionId, environment, Consts.PluginVersion, logger, disconnectClient);
+
+        public bool OnPluginHandshake(Type hubType, string connectionId, string? environment, string? mcpPluginVersion,
+            ILogger logger, Action<string, string?> disconnectClient)
         {
-            var role = ClientRoles.FromEnvironment(environment);
+            // A plugin before McpPlugin 8.14.0 knows no roles: it takes the editor slot and the newest connection wins.
+            var legacy = !Tools.PluginArgumentPolicy.EnforcesRequired(mcpPluginVersion);
+            var role = legacy ? ClientRole.Editor : ClientRoles.FromEnvironment(environment);
             lock (_gate)
             {
-                if (!Registry.TryClassify(connectionId, role, out var token, out var replaced))
+                if (!Registry.TryClassify(connectionId, role, legacy, out var token, out var replaced))
                     return false;
 
-                logger.LogInformation("auth={0}: plugin connection '{1}' is {2} (handshake environment '{3}').", AuthOption, connectionId, Describe(role), environment);
+                logger.LogInformation("auth={0}: plugin connection '{1}' is {2} (handshake environment '{3}', McpPlugin {4}).",
+                    AuthOption, connectionId, legacy ? "a pre-8.14 plugin (newest wins)" : Describe(role), environment,
+                    mcpPluginVersion ?? "before 8.14.0");
                 var routedEditor = role == ClientRole.Editor && !replaced.Contains(connectionId);
                 if (routedEditor)
                     ClientUtils.AddClient(hubType, connectionId, logger, token);
-                Disconnect(hubType, replaced, role, logger, disconnectClient);
+                Disconnect(hubType, replaced, role, legacy, logger, disconnectClient);
                 return routedEditor;
             }
         }
 
-        void Disconnect(Type hubType, IReadOnlyList<string> replaced, ClientRole? role, ILogger logger, Action<string, string?> disconnectClient)
+        void Disconnect(Type hubType, IReadOnlyList<string> replaced, ClientRole? role, bool newcomerLegacy,
+            ILogger logger, Action<string, string?> disconnectClient)
         {
             foreach (var id in replaced)
             {
-                logger.LogInformation("auth={0}: disconnecting {1} connection '{2}' (replaced by a newer one).", AuthOption, Describe(role), id);
                 // Removed at once, so routing cannot pick it before OnPluginDisconnected fires.
                 if (ClientUtils.IsConnected(hubType, id))
                     ClientUtils.RemoveClient(hubType, id, logger);
+                if (newcomerLegacy || Registry.ReplacedWasLegacy(id))
+                {
+                    // A pre-8.14 plugin on either side: server 9.2.x's exact newest-wins wording. A pre-8.14 plugin reads
+                    // the reason (a "Token"/"Authorization" substring means an auth failure to it), so keep it verbatim.
+                    logger.LogInformation("{0}: disconnecting other client '{1}' for {2}.", LegacyModeName, id, hubType.Name);
+                    disconnectClient(id, $"A newer plugin connection has replaced this one ({LegacyModeName} allows only one connection).");
+                    continue;
+                }
+                logger.LogInformation("auth={0}: disconnecting {1} connection '{2}' (replaced by a newer one).", AuthOption, Describe(role), id);
                 disconnectClient(id, $"A newer {Describe(role)} connection has replaced this one (auth={AuthOption} keeps one editor and one runtime connection).");
             }
         }
+
+        /// <summary>The mode name server 9.2.x (McpPlugin 8.13) used in its replacement messages.</summary>
+        string LegacyModeName => AuthOption == Consts.MCP.Server.AuthOption.none ? "no-auth mode" : $"auth={AuthOption} mode";
 
         public virtual void OnPluginDisconnected(Type hubType, string connectionId, ILogger logger)
         {

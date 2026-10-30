@@ -114,6 +114,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
         public async Task<ResponseData<ResponseCallTool>> CallAsync(RequestCallTool request,
             Func<CancellationToken, Task<ResponseData<ResponseCallTool>>> send, CancellationToken cancellationToken)
         {
+            // A connected plugin built before McpPlugin 8.14.0 (no or an older mcpPluginVersion) gets its calls
+            // forwarded exactly as server 9.2.x forwarded them: no argument validation, no whole-call deadline,
+            // no reload/re-send rewriting. Only text no plugin can receive (a lone UTF-16 surrogate, which the
+            // SignalR JSON writer cannot serialize) is refused with a clear error. With no plugin connected the
+            // call is guarded: the reconnecting plugin's version is not known yet.
+            if (CurrentTarget() is { } connected && !PluginArgumentPolicy.IsEnforced(connected))
+            {
+                var unsendable = FindInvalidText(request);
+                return unsendable != null
+                    ? Fail(request, unsendable, ResponseErrorKind.BadRequest, 400)
+                    : await send(cancellationToken);
+            }
+
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             deadline.CancelAfter(_toolTimeout);
             var elapsed = Stopwatch.StartNew();
@@ -257,6 +270,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             var target = CurrentTarget();
             if (target == null)
                 return null; // no plugin right now: the call waits for one, and the plugin validates
+            // A plugin before McpPlugin 8.14.0 (or one that reported no version) gets no server-side argument
+            // validation (see PluginArgumentPolicy and CallAsync's pass-through).
+            if (!PluginArgumentPolicy.IsEnforced(target))
+                return null;
 
             var fresh = false;
             if (!_schemas.TryGetValue(target, out var schemas) || (schemas.Failed && schemas.Age.Elapsed >= FailedListRetryAge))

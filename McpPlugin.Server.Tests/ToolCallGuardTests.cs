@@ -71,6 +71,128 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
+        public async Task McpPlugin814Connection_OmittedRequiredArgument_IsRejected()
+        {
+            await using var host = await NoneAuthMcpHost.StartAsync();
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Godot 4.5");
+            editor.McpPluginVersion = "8.14.0";
+            await editor.StartAsync();
+
+            var (isError, text) = await client.CallAsync("rql-query", new { });
+            isError.ShouldBeTrue();
+            text.ShouldContain("missing required argument 'query'");
+            editor.Calls.ShouldNotContain(c => c.Name == "rql-query");
+        }
+
+        [Fact]
+        public async Task OldPluginConnection_OmittedRequiredArgument_IsForwardedAsBefore()
+        {
+            // A plugin on McpPlugin before 8.14.0 sends no mcpPluginVersion. Its ReflectorNet lists every
+            // parameter without a default as required while its binder fills an omitted one, so the call ran.
+            await using var host = await NoneAuthMcpHost.StartAsync();
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Godot 4.5");
+            editor.McpPluginVersion = null;
+            await editor.StartAsync();
+
+            var (isError, text) = await client.CallAsync("rql-query", new { });
+            isError.ShouldBeFalse(text);
+            text.ShouldBe("editor:rql-query");
+
+            var (status, _) = await client.RestAsync("rql-query", "{}");
+            status.ShouldBe(200);
+
+            // An explicit null binds like an omitted argument in such a plugin: forwarded too.
+            (isError, text) = await client.CallAsync("rql-query", new { query = (string?)null });
+            isError.ShouldBeFalse(text);
+            editor.Calls.Count(c => c.Name == "rql-query").ShouldBe(3);
+        }
+
+        [Fact]
+        public async Task OldPluginConnection_WrongArgumentTypes_AreForwardedAsBefore()
+        {
+            // Server 9.2.x validated nothing: an old plugin's own binder decides, e.g. it may parse a JSON string
+            // given for an object parameter. The server forwards such calls unchanged.
+            await using var host = await NoneAuthMcpHost.StartAsync();
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Godot 4.5");
+            editor.McpPluginVersion = null;
+            editor.Tools = editor.Tools.Append(new ResponseListTool
+            {
+                Name = "set-settings",
+                InputSchema = System.Text.Json.JsonDocument.Parse(
+                    "{\"type\":\"object\",\"properties\":{\"settings\":{\"type\":\"object\"}},\"required\":[\"settings\"]}").RootElement.Clone(),
+            }).ToArray();
+            await editor.StartAsync();
+
+            var (isError, text) = await client.CallAsync("set-settings", new { settings = "{\"a\":1}" });
+            isError.ShouldBeFalse(text);
+            text.ShouldBe("editor:set-settings");
+
+            (isError, text) = await client.CallAsync("rql-query", new { query = 123 });
+            isError.ShouldBeFalse(text);
+            editor.Calls.Count(c => c.Name == "set-settings").ShouldBe(1);
+            editor.Calls.Count(c => c.Name == "rql-query").ShouldBe(1);
+        }
+
+        [Fact]
+        public async Task OldPluginConnection_ReloadRefusal_IsReturnedAsThePluginSentIt()
+        {
+            // 9.2.x returned an old plugin's own error at once; the 8.14 guard waits and rewrites it for 8.14 plugins.
+            await using var host = await NoneAuthMcpHost.StartAsync(null, "plugin-reconnect-wait-seconds=60");
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Godot 4.5", onCall: (_, request)
+                => Task.FromResult(FakeEnginePlugin.Error(request, GodotPendingRefusal, ResponseErrorKind.Unavailable)));
+            editor.McpPluginVersion = null;
+            await editor.StartAsync();
+
+            var watch = Stopwatch.StartNew();
+            var (isError, text) = await client.CallAsync("echo", new { });
+            isError.ShouldBeTrue();
+            text.ShouldContain(GodotPendingRefusal);
+            text.ShouldNotContain("[plugin_reloading]");
+            watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(10));
+            editor.Calls.Count(c => c.Name == "echo").ShouldBe(1);
+        }
+
+        [Fact]
+        public async Task OldPluginConnection_LoneSurrogate_IsStillRefused()
+        {
+            await using var host = await NoneAuthMcpHost.StartAsync();
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Godot 4.5");
+            editor.McpPluginVersion = null;
+            await editor.StartAsync();
+
+            var (status, body) = await client.RestAsync("rql-query", "{\"query\":\"a\\udc00\"}");
+            status.ShouldBe(400);
+            body!["error"]!.GetValue<string>().ShouldStartWith("[invalid_utf16]");
+            editor.Calls.ShouldBeEmpty();
+        }
+
+        [Fact]
+        public async Task McpPlugin814Connection_StringForAnObjectParameter_IsRejected()
+        {
+            await using var host = await NoneAuthMcpHost.StartAsync();
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Godot 4.5");
+            editor.McpPluginVersion = "8.14.0";
+            editor.Tools = editor.Tools.Append(new ResponseListTool
+            {
+                Name = "set-settings",
+                InputSchema = System.Text.Json.JsonDocument.Parse(
+                    "{\"type\":\"object\",\"properties\":{\"settings\":{\"type\":\"object\"}},\"required\":[\"settings\"]}").RootElement.Clone(),
+            }).ToArray();
+            await editor.StartAsync();
+
+            var (isError, text) = await client.CallAsync("set-settings", new { settings = "{\"a\":1}" });
+            isError.ShouldBeTrue();
+            text.ShouldContain("argument 'settings' must be an object");
+            editor.Calls.ShouldNotContain(c => c.Name == "set-settings");
+        }
+
+        [Fact]
         public async Task LoneSurrogate_GetsAClearError()
         {
             await using var host = await NoneAuthMcpHost.StartAsync();

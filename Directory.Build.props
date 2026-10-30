@@ -1,14 +1,10 @@
 <Project>
 
-  <!-- TEMPORARY pre-release feed: ReflectorNet is integrated unreleased as a -dev package committed under
-       prerelease-packages/ (com.IvanMurzak.ReflectorNet 5.5.1-dev.ec3702e: nullable parameters without a default
-       are not required in tool input schemas). Before a release: pin a published ReflectorNet, delete
-       prerelease-packages/, this property, the .gitignore exception and the Dockerfile.local COPY lines.
-
-       (History: this file used to be intentionally empty after the v8/v10 Microsoft.Extensions pins it held were
-       dropped together with the MCP dependency of McpPlugin and McpPlugin.Common.) -->
-  <PropertyGroup>
-    <RestoreAdditionalProjectSources>$(RestoreAdditionalProjectSources);$(MSBuildThisFileDirectory)prerelease-packages</RestoreAdditionalProjectSources>
-  </PropertyGroup>
+  <!-- Intentionally empty. Previously pinned v8 Microsoft.Extensions / System.Text.Json
+       packages to work around a v8/v10 conflict introduced by ModelContextProtocol 1.2.0.
+       The MCP dependency has been removed from McpPlugin and McpPlugin.Common (the
+       compiled DLLs never referenced MCP types), so transitive resolution is now
+       coherent: SignalR.Client 8.0.15 pulls the v8 stack naturally, and
+       McpPlugin.Server keeps its own v10 stack via SignalR.Client 10.0.3. -->
 
 </Project>

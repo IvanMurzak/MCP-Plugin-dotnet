@@ -20,6 +20,7 @@ using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Auth.OAuth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
+using com.IvanMurzak.McpPlugin.Server.Tools;
 using com.IvanMurzak.McpPlugin.Server.Webhooks;
 using com.IvanMurzak.McpPlugin.Server.Webhooks.Services;
 using Microsoft.AspNetCore.SignalR;
@@ -179,14 +180,14 @@ namespace com.IvanMurzak.McpPlugin.Server
         }
 
         /// <summary>A compatible handshake: a plugin that did not declare its role gets one from its environment now.</summary>
-        void ClassifyPlugin(string? environment)
+        void ClassifyPlugin(string? environment, string? mcpPluginVersion)
         {
             if (_strategy is not IPluginRoleStrategy roles)
                 return;
             try
             {
                 var clients = Clients;
-                if (roles.OnPluginHandshake(GetType(), Context.ConnectionId, environment, _logger,
+                if (roles.OnPluginHandshake(GetType(), Context.ConnectionId, environment, mcpPluginVersion, _logger,
                         (id, reason) => _ = clients.Client(id).ForceDisconnect(reason)))
                     OnEditorRouted(roles, Catalog);
             }
@@ -218,6 +219,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (_connectionRejected)
                 return Task.CompletedTask;
 
+            PluginArgumentPolicy.Forget(Context.ConnectionId);
             _webhookCollector.OnPluginDisconnected(Context.ConnectionId);
             // Every plugin-side close keeps the lists for the reconnect grace: the server cannot tell a
             // recompile from a closed project. See PluginCatalogCache for what drops them early.
@@ -334,8 +336,11 @@ namespace com.IvanMurzak.McpPlugin.Server
                     _logger.LogInformation("Version handshake successful. Plugin: {pluginVersion}, API: {apiVersion}, Environment: {environment}",
                         request.PluginVersion, request.ApiVersion, request.Environment);
 
+                    // Which argument checks this plugin gets (McpPlugin 8.14.0+ reports its version); recorded before
+                    // the classification, which makes the connection routable.
+                    PluginArgumentPolicy.Record(Context.ConnectionId, request.McpPluginVersion);
                     // Classified only after an accepted handshake: a refused plugin must not replace a working one.
-                    ClassifyPlugin(request.Environment);
+                    ClassifyPlugin(request.Environment, request.McpPluginVersion);
 
                     var pluginToken = ClientUtils.GetTokenByConnectionId(Context.ConnectionId)
                         ?? (_strategy as IPluginRoleStrategy)?.Registry.GetToken(Context.ConnectionId);

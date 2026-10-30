@@ -430,6 +430,10 @@ docker run -p 8080:8080 mcp-bridge port=8080 client-transport=streamableHttp
 - **`DemoConsoleApp`**: A sample client application demonstrating how to expose tools.
 - **`DemoWebApp`**: A sample server application demonstrating how to host the MCP bridge.
 
+## Compatibility
+
+Tool-call argument checks (McpPlugin.Server 8.14.0+): a plugin on McpPlugin **8.14.0** or newer (it reports `mcpPluginVersion` in its handshake) gets server-side tool-argument validation (required arguments and types) and the 8.14 call guard (one whole-call deadline, reload/re-send handling); an older plugin, or one that reports no version, has its calls forwarded as server 9.2.x forwarded them: no argument validation, no whole-call deadline, no rewriting of its errors. Only a call carrying a lone UTF-16 surrogate, which cannot be delivered to any plugin, is refused with a clear error. Connections keep 9.2.x's newest-wins replacement too: the editor/runtime roles (the editor is kept when a game connects, game-only tools go to the game) apply only when both connections are 8.14+ plugins. One timing difference remains: an old plugin's connection replaces the previous one at its version handshake (milliseconds after connecting), not at connect. The field is optional on the wire: a server before 8.14.0 ignores it.
+
 ## Migration guides
 
 - **[Migrating to 8.0.0](docs/migration-8.0.0.md)** — three methods on `IClientPromptHub` /
