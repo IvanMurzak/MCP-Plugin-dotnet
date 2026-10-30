@@ -432,7 +432,7 @@ docker run -p 8080:8080 mcp-bridge port=8080 client-transport=streamableHttp
 
 ## Compatibility
 
-Tool-call argument checks (McpPlugin.Server 8.14.0+): a plugin on McpPlugin **8.14.0** or newer (it reports `mcpPluginVersion` in its handshake) gets server-side required-argument validation; an older plugin keeps its previous behaviour, an omitted required argument is forwarded as before. Argument type checks apply to every plugin. The field is optional on the wire: a server before 8.14.0 ignores it.
+Tool-call argument checks (McpPlugin.Server 8.14.0+): a plugin on McpPlugin **8.14.0** or newer (it reports `mcpPluginVersion` in its handshake) gets server-side required-argument validation; an older plugin keeps its previous behaviour: an omitted or null required argument is forwarded as before. Argument type checks apply to every plugin. The field is optional on the wire: a server before 8.14.0 ignores it.
 
 ## Migration guides
 
