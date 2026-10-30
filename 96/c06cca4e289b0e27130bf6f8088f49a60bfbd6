@@ -1,0 +1,27 @@
+McpPlugin.Server.Tests/ToolCallGuardTests.cs
+  s_7bc72ecaebd05d::t_8dd7d84ba5a16e 113,115-116,121-126,129-154,156-157
+McpPlugin.Server/src/Tools/PluginArgumentPolicy.cs
+  s_7bc72ecaebd05d::t_ec088eb3738d4e 17,20-24,50
+McpPlugin.Server/src/Tools/ToolArgumentValidator.cs
+  s_7bc72ecaebd05d::t_ed663d0d5f0a6e 38,40,67,69-70
+McpPlugin.Server/src/Tools/ToolCallGuard.cs
+  s_7bc72ecaebd05d::t_5a3be2554a6c4f 260-263,272,276,279,281
+README.md
+  s_7bc72ecaebd05d::t_bbc41e12cac564 435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "96c06cca4e289b0e27130bf6f8088f49a60bfbd6",
+  "prompts": {},
+  "sessions": {
+    "s_7bc72ecaebd05d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40274cb2-edf8-49ba-9a73-33b83cb5be53",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
