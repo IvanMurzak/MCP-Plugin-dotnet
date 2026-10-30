@@ -72,6 +72,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             ToolArgumentValidator.Validate("t", schema, empty).ShouldNotBeNull().ShouldContain("missing required argument 'note'");
             ToolArgumentValidator.Validate("t", schema, empty, checkMissingRequired: false).ShouldBeNull();
 
+            var nullNote = new Dictionary<string, JsonElement> { ["note"] = JsonDocument.Parse("null").RootElement, ["value"] = JsonDocument.Parse("1").RootElement };
+            ToolArgumentValidator.Validate("t", schema, nullNote).ShouldNotBeNull().ShouldContain("argument 'note' must be a string, got null");
+            ToolArgumentValidator.Validate("t", schema, nullNote, checkMissingRequired: false).ShouldBeNull();
+
             var wrong = new Dictionary<string, JsonElement> { ["value"] = JsonDocument.Parse("\"many\"").RootElement };
             ToolArgumentValidator.Validate("t", schema, wrong, checkMissingRequired: false)
                 .ShouldNotBeNull().ShouldContain("argument 'value' must be an integer, got a string");

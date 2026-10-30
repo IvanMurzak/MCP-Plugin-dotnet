@@ -219,8 +219,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (_connectionRejected)
                 return Task.CompletedTask;
 
-            _webhookCollector.OnPluginDisconnected(Context.ConnectionId);
             PluginArgumentPolicy.Forget(Context.ConnectionId);
+            _webhookCollector.OnPluginDisconnected(Context.ConnectionId);
             // Every plugin-side close keeps the lists for the reconnect grace: the server cannot tell a
             // recompile from a closed project. See PluginCatalogCache for what drops them early.
             Catalog?.OnPluginDisconnected(Context.ConnectionId);

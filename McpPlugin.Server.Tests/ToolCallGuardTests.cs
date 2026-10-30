@@ -102,7 +102,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             var (status, _) = await client.RestAsync("rql-query", "{}");
             status.ShouldBe(200);
-            editor.Calls.Count(c => c.Name == "rql-query").ShouldBe(2);
+
+            // An explicit null binds like an omitted argument in such a plugin: forwarded too.
+            (isError, text) = await client.CallAsync("rql-query", new { query = (string?)null });
+            isError.ShouldBeFalse(text);
+            editor.Calls.Count(c => c.Name == "rql-query").ShouldBe(3);
         }
 
         [Fact]
