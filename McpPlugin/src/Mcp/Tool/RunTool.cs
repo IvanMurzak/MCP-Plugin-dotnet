@@ -10,6 +10,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
@@ -368,10 +369,12 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// True when an exception a tool threw is a bug or fault in the plugin rather than something the request
         /// caused: <see cref="NullReferenceException"/>, <see cref="IndexOutOfRangeException"/>,
-        /// <see cref="InvalidCastException"/>, <see cref="NotImplementedException"/>, <see cref="OutOfMemoryException"/>,
-        /// <see cref="TypeLoadException"/> and <see cref="MissingMemberException"/> (a plugin built against other
-        /// assemblies), and <see cref="OperationCanceledException"/> (the call was cancelled, it did not fail on its
-        /// content). Subclasses count too. Reflection and single-exception aggregate wrappers are looked through.
+        /// <see cref="InvalidCastException"/>, <see cref="NotImplementedException"/>, <see cref="ObjectDisposedException"/>,
+        /// <see cref="OutOfMemoryException"/>; a plugin built against other assemblies or failing to load
+        /// (<see cref="TypeLoadException"/>, <see cref="MissingMemberException"/>, <see cref="TypeInitializationException"/>,
+        /// <see cref="FileLoadException"/>, <see cref="BadImageFormatException"/>, <see cref="InvalidProgramException"/>);
+        /// and <see cref="TimeoutException"/> / <see cref="OperationCanceledException"/> (the call ran out of time or was
+        /// cancelled, it did not fail on its content). Subclasses count too. Reflection and single-exception aggregate wrappers are looked through.
         /// Every other exception, a plain <see cref="Exception"/> included, is the tool rejecting what was sent.
         /// </summary>
         internal static bool IsFrameworkFault(Exception exception)
@@ -390,9 +393,15 @@ namespace com.IvanMurzak.McpPlugin
                 or IndexOutOfRangeException
                 or InvalidCastException
                 or NotImplementedException
+                or ObjectDisposedException
                 or OutOfMemoryException
                 or TypeLoadException
                 or MissingMemberException
+                or TypeInitializationException
+                or FileLoadException
+                or BadImageFormatException
+                or InvalidProgramException
+                or TimeoutException
                 or OperationCanceledException;
         }
 

@@ -28,12 +28,11 @@ The legacy `[McpPluginToolType]` / `[McpPluginTool]` / `[McpPluginPrompt]` / `[M
 
 ### Throwing from a tool
 
-A tool that throws is reported as the caller's fault (kind `BadRequest`, HTTP 422 on `POST /api/tools/{name}`)
-unless the exception is a fault type (`NullReferenceException`, `IndexOutOfRangeException`, `InvalidCastException`,
-`NotImplementedException`, `OutOfMemoryException`, `TypeLoadException`, `MissingMemberException`,
-`OperationCanceledException`, subclasses included), which stays `Internal` / 500. So throw a plain or custom exception
-with an actionable message when the request cannot be done, and never let a fault type escape for bad input. The
-rule lives in `RunTool.IsFrameworkFault`; the full table is in the README ("Tool errors and HTTP status").
+An `[AiTool]` method that throws is reported as the caller's fault (kind `BadRequest`, HTTP 422 on
+`POST /api/tools/{name}`) unless the exception is a fault type (`NullReferenceException`, `IndexOutOfRangeException`, `InvalidCastException`, `NotImplementedException`, `ObjectDisposedException`, `OutOfMemoryException`, `TypeLoadException`, `MissingMemberException`, `TypeInitializationException`, `FileLoadException`, `BadImageFormatException`, `InvalidProgramException`, `TimeoutException`, `OperationCanceledException`, subclasses included), which stays
+`Internal` / 500. So throw a plain or custom exception with an actionable message when the request cannot be done,
+and never let a fault type escape for bad input. The rule lives in `RunTool.IsFrameworkFault`; the full table is in
+the README ("Tool errors and HTTP status").
 
 ### Game-only (runtime) and editor-only tools
 

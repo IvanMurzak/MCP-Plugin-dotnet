@@ -208,24 +208,29 @@ public static void UpdateUser(UserProfile profile) {
 
 ### ⚠️ Tool errors and HTTP status
 
-How a failing tool is reported on the server's direct HTTP endpoint (`POST /api/tools/{name}`). The MCP channel
-(`/mcp`) is not affected: every tool error there is an ordinary `tools/call` result with `isError: true` and the
-tool's message.
+How a failing `[AiTool]` method (a reflected `RunTool`) is reported on the server's direct HTTP endpoint
+(`POST /api/tools/{name}`). The MCP channel (`/mcp`) is not affected: every tool error there is an ordinary
+`tools/call` result with `isError: true` and the tool's message. (A hand-written `IRunTool` / `ProxyTool` that throws
+keeps the managers' own mapping: `ArgumentException` 400, `KeyNotFoundException` 404, `InvalidOperationException`
+409, `TimeoutException` 504, anything else 500.)
 
 | The tool... | Kind | HTTP |
 | --- | --- | --- |
 | returns `ResponseCallTool.Error(message)` (or `Unprocessable(message)`) | `BadRequest` | 400 (422) |
-| receives arguments that cannot be bound (wrong type, duplicate name) | `BadRequest` | 400 |
-| **throws** a fault type: `NullReferenceException`, `IndexOutOfRangeException`, `InvalidCastException`, `NotImplementedException`, `OutOfMemoryException`, `TypeLoadException`, `MissingMemberException`, `OperationCanceledException` (and subclasses) | `Internal` | 500 |
+| receives arguments that cannot be bound (ReflectorNet throws `ArgumentException`; `JsonException` on the named-argument path) | `BadRequest` | 400 |
+| **throws** a fault type: `NullReferenceException`, `IndexOutOfRangeException`, `InvalidCastException`, `NotImplementedException`, `ObjectDisposedException`, `OutOfMemoryException`, `TypeLoadException`, `MissingMemberException`, `TypeInitializationException`, `FileLoadException`, `BadImageFormatException`, `InvalidProgramException`, `TimeoutException`, `OperationCanceledException` (and subclasses) | `Internal` | 500 |
 | **throws** anything else: `Exception`, `InvalidOperationException`, `NotSupportedException`, your own exception types | `BadRequest` | 422 |
+| succeeds, but its result cannot be serialized | `Internal` | 500 |
 
 The rule for tool authors: throwing means "I could not do what was asked" (invalid code to compile, an object that
 does not exist, an operation the target cannot do), which is the caller's problem, so it is 422. A 500 is kept for
-exception types that point at a bug in the tool itself. If your tool rejects input, throw a plain or custom exception
-with a message the agent can act on, or return `ResponseCallTool.Error(message)`; do not let a
-`NullReferenceException` escape for missing input. The message is the same in both cases:
-`Tool execution failed for '<tool>': <exception message>`. An `ArgumentException` thrown directly by an `async` tool
-is reported like a binding failure (400). A tool that succeeds but returns a value that cannot be serialized is 500.
+exception types that point at a bug in the tool or a broken plugin. If your tool rejects input, throw a plain or
+custom exception with a message the agent can act on, or return `ResponseCallTool.Error(message)`; do not let a
+`NullReferenceException` escape for missing input. The message is the same for 422 and 500:
+`Tool execution failed for '<tool>': <message>`, where `<message>` is the thrown exception's message (for an `async`
+tool whose exception carries an inner exception, the inner one's). Edge cases: an `ArgumentException` thrown directly by an `async` tool is reported like a binding
+failure (400); anything else thrown while the tool's instance is created or its arguments are converted (outside the
+binding row above) counts as thrown by the tool. The rule lives in `RunTool.IsFrameworkFault`.
 
 Since McpPlugin 8.15.0. The 422 travels as the existing `BadRequest` kind plus `HttpStatusCode = 422`, which every
 server since McpPlugin 7.0.0 honours, so a new plugin on an older server also gets 422. A plugin before 8.15.0 sends

@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -151,6 +152,30 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 response.ErrorKind.ShouldBe(ResponseErrorKind.BadRequest);
                 response.HttpStatusCode.ShouldBe(422);
             }
+        }
+
+        [Theory]
+        [MemberData(nameof(FrameworkFaultCases))]
+        public void IsFrameworkFault_ClassifiesThroughWrappers(Exception exception, bool expected)
+        {
+            RunTool.IsFrameworkFault(exception).ShouldBe(expected);
+            RunTool.IsFrameworkFault(new TargetInvocationException(exception)).ShouldBe(expected);
+            RunTool.IsFrameworkFault(new TargetInvocationException(new AggregateException(exception))).ShouldBe(expected);
+        }
+
+        public static IEnumerable<object[]> FrameworkFaultCases()
+        {
+            yield return new object[] { new ObjectDisposedException("service"), true };
+            yield return new object[] { new TypeInitializationException("T", null), true };
+            yield return new object[] { new FileLoadException("assembly"), true };
+            yield return new object[] { new BadImageFormatException("image"), true };
+            yield return new object[] { new InvalidProgramException("il"), true };
+            yield return new object[] { new TimeoutException("main thread"), true };
+            yield return new object[] { new MissingFieldException("field"), true };
+            // the classification looks at the thrown exception, not at an inner one it carries
+            yield return new object[] { new InvalidOperationException("failed", new NullReferenceException()), false };
+            yield return new object[] { new AggregateException(new NullReferenceException(), new Exception()), false };
+            yield return new object[] { new FormatException("bad input"), false };
         }
 
         // A tool that succeeded but returned something the plugin cannot serialize is our fault, not the request's.
