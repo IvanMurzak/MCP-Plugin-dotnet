@@ -337,12 +337,13 @@ namespace com.IvanMurzak.McpPlugin
         /// The tool (or its argument binding) threw. The request's content caused it unless the exception is a
         /// <see cref="IsFrameworkFault">framework fault</see>: a fault is <see cref="ResponseErrorKind.Internal"/>
         /// (HTTP 500), anything else is <see cref="ResponseCallTool.Unprocessable"/> (HTTP 422). Same message either way.
+        /// <paramref name="fault"/> forces 500 (a failure after the tool succeeded).
         /// </summary>
-        private ResponseCallTool ExecutionFailed(string requestId, Exception ex)
+        private ResponseCallTool ExecutionFailed(string requestId, Exception ex, bool fault = false)
         {
             var errorMessage = $"Tool execution failed for '{Title ?? this.Method?.Name}': {(ex.InnerException ?? ex).Message}";
             _logger?.LogError(ex, $"{errorMessage}\n{ex.StackTrace}");
-            var response = IsFrameworkFault(ex)
+            var response = fault || IsFrameworkFault(ex)
                 ? ResponseCallTool.Error(errorMessage, ResponseErrorKind.Internal)
                 : ResponseCallTool.Unprocessable(errorMessage);
             return response.SetRequestID(requestId);
@@ -360,11 +361,7 @@ namespace com.IvanMurzak.McpPlugin
             }
             catch (Exception ex)
             {
-                var errorMessage = $"Tool execution failed for '{Title ?? this.Method?.Name}': {ex.Message}";
-                _logger?.LogError(ex, $"{errorMessage}\n{ex.StackTrace}");
-                return ResponseCallTool
-                    .Error(errorMessage, ResponseErrorKind.Internal)
-                    .SetRequestID(requestId);
+                return ExecutionFailed(requestId, ex, fault: true);
             }
         }
 
