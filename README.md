@@ -219,6 +219,8 @@ keeps the managers' own mapping: `ArgumentException` 400, `KeyNotFoundException`
 | returns `ResponseCallTool.Error(message)` (or `Unprocessable(message)`) | `BadRequest` | 400 (422) |
 | receives arguments that cannot be bound (ReflectorNet throws `ArgumentException`; `JsonException` on the named-argument path) | `BadRequest` | 400 |
 | **throws** a fault type: `NullReferenceException`, `IndexOutOfRangeException`, `InvalidCastException`, `NotImplementedException`, `ObjectDisposedException`, `OutOfMemoryException`, `TypeLoadException`, `MissingMemberException`, `TypeInitializationException`, `FileLoadException`, `BadImageFormatException`, `InvalidProgramException`, `TimeoutException`, `OperationCanceledException` (and subclasses) | `Internal` | 500 |
+| **throws** `ToolUnavailableException(message)`: the host cannot serve the call right now (starting, compiling, reloading) | `Unavailable` | 503 |
+| **throws** `ToolUnavailableException(message, notExecuted: true)`: the same, and the tool did nothing yet | `Unavailable` (`ResponseCallTool.NotExecuted`) | 503 |
 | **throws** anything else: `Exception`, `InvalidOperationException`, `NotSupportedException`, your own exception types | `BadRequest` | 422 |
 | succeeds, but its result cannot be serialized | `Internal` | 500 |
 
@@ -235,6 +237,16 @@ binding row above) counts as thrown by the tool. The rule lives in `RunTool.IsFr
 Since McpPlugin 8.15.0. The 422 travels as the existing `BadRequest` kind plus `HttpStatusCode = 422`, which every
 server since McpPlugin 7.0.0 honours, so a new plugin on an older server also gets 422. A plugin before 8.15.0 sends
 `Internal` for every thrown exception, which stays 500 on any server.
+
+`ToolUnavailableException` (since McpPlugin 8.16.0) is for a failure that is nobody's fault in the request: the
+editor is compiling, a service the tool needs is not built yet. Pass `notExecuted: true` only when the tool changed
+nothing before it threw, and only for a state a plugin reload ends (a pending script reload): a server with the call
+guard (McpPlugin.Server 8.14.0+, for plugins on 8.14.0+) then sends the call again, after the plugin reconnects or
+every couple of seconds while it stays connected, within its reconnect wait; when the window ends it answers 503 with
+a `[plugin_reloading]` error that ends with the tool's message. Without it the kind carries no status, so no server
+sends the call again (it may have done part of its work) and the tool's message comes back as is. Every server since
+McpPlugin 7.0.0 maps `Unavailable` to 503. Keep the phrase "this call was not run" out of the message: the call guard
+reads it as a reload-gate refusal. A hand-written `IRunTool` that throws it gets the same kind and status.
 
 ### 🔍 Fuzzy Matching
 

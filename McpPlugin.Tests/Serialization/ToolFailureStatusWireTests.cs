@@ -40,10 +40,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
             return options.PayloadSerializerOptions;
         }
 
-        static async Task<string> ToolFailureOnTheWire()
+        static async Task<string> ToolFailureOnTheWire(string toolMethod = nameof(CompilingTool.Execute))
         {
             var builder = new McpPluginBuilder(new Version());
-            var method = typeof(CompilingTool).GetMethod(nameof(CompilingTool.Execute));
+            var method = typeof(CompilingTool).GetMethod(toolMethod);
             builder.WithTool("script-execute", "Execute script", typeof(CompilingTool), method!);
             var plugin = builder.Build(new Reflector());
 
@@ -82,6 +82,23 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
             LegacyDirectHttpErrorMapper.GetStatusCode(legacy, 500).ShouldBe(422);
         }
 
+        // ToolUnavailableException (McpPlugin 8.16.0): an old server reads it and its direct endpoint answers 503.
+        [Theory]
+        [InlineData(nameof(CompilingTool.Unavailable), null)]
+        [InlineData(nameof(CompilingTool.NotExecuted), 503)]
+        public async Task OldServer_DeserializesToolUnavailable_AndItsDirectEndpointAnswers503(string method, int? status)
+        {
+            var json = await ToolFailureOnTheWire(method);
+
+            var legacy = JsonSerializer.Deserialize<LegacyResponseData>(json, LegacyOptions(HubPayloadOptions()))!;
+
+            legacy.Status.ShouldBe(LegacyResponseStatus.Error);
+            legacy.ErrorKind.ShouldBe(LegacyResponseErrorKind.Unavailable);
+            legacy.HttpStatusCode.ShouldBe(status);
+            legacy.Message.ShouldBe("Tool execution failed for 'Execute script': Scripts are compiling");
+            LegacyDirectHttpErrorMapper.GetStatusCode(legacy, 500).ShouldBe(503);
+        }
+
         [Fact]
         public void ServerIgnoringTheStatus_StillBlamesTheRequest_With400()
         {
@@ -100,6 +117,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Serialization
         sealed class CompilingTool
         {
             public string Execute() => throw new Exception("Compilation failed: CS1002 ; expected");
+
+            public string Unavailable() => throw new ToolUnavailableException("Scripts are compiling");
+
+            public string NotExecuted() => throw new ToolUnavailableException("Scripts are compiling", notExecuted: true);
         }
 
         // ── frozen McpPlugin 8.13 / 8.14 shapes ──
