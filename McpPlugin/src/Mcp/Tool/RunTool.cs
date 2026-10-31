@@ -348,12 +348,13 @@ namespace com.IvanMurzak.McpPlugin
             _logger?.LogError(ex, $"{errorMessage}\n{ex.StackTrace}");
             var response = fault || IsFrameworkFault(ex)
                 ? ResponseCallTool.Error(errorMessage, ResponseErrorKind.Internal)
-                : Unwrap(ex) is ToolUnavailableException unavailable
-                    // The plain kind carries no status: Unavailable + 503 is the not-executed marker a server re-sends.
-                    ? unavailable.NotExecuted
-                        ? ResponseCallTool.NotExecuted(errorMessage)
-                        : ResponseCallTool.Error(errorMessage, ResponseErrorKind.Unavailable)
-                    : ResponseCallTool.Unprocessable(errorMessage);
+                : Unwrap(ex) switch
+                {
+                    ToolUnavailableException { NotExecuted: true } => ResponseCallTool.NotExecuted(errorMessage),
+                    // No status on the plain kind: Unavailable + 503 is the not-executed marker a server re-sends.
+                    ToolUnavailableException => ResponseCallTool.Error(errorMessage, ResponseErrorKind.Unavailable),
+                    _ => ResponseCallTool.Unprocessable(errorMessage),
+                };
             return response.SetRequestID(requestId);
         }
 
