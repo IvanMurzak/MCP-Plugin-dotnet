@@ -126,7 +126,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             var (status, body) = await client.RestAsync("echo", "{}").WaitAsync(TimeSpan.FromSeconds(30));
             status.ShouldBe(503);
-            body!["error"]!.GetValue<string>().ShouldContain(UnavailableMessage);
+            var error = body!["error"]!.GetValue<string>();
+            error.ShouldStartWith("[plugin_reloading]");
+            error.ShouldEndWith("Plugin: " + UnavailableMessage);
             editor.Calls.Count.ShouldBeGreaterThan(1, "re-sent while the window was open");
         }
 

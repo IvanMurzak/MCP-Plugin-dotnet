@@ -344,17 +344,16 @@ namespace com.IvanMurzak.McpPlugin
         /// </summary>
         private ResponseCallTool ExecutionFailed(string requestId, Exception ex, bool fault = false)
         {
-            var errorMessage = $"Tool execution failed for '{Title ?? this.Method?.Name}': {(ex.InnerException ?? ex).Message}";
+            var thrown = Unwrap(ex);
+            // A ToolUnavailableException keeps its own message whatever wraps it (an AggregateException from a blocking wait).
+            var reported = thrown is ToolUnavailableException ? thrown : ex.InnerException ?? ex;
+            var errorMessage = $"Tool execution failed for '{Title ?? this.Method?.Name}': {reported.Message}";
             _logger?.LogError(ex, $"{errorMessage}\n{ex.StackTrace}");
             var response = fault || IsFrameworkFault(ex)
                 ? ResponseCallTool.Error(errorMessage, ResponseErrorKind.Internal)
-                : Unwrap(ex) switch
-                {
-                    ToolUnavailableException { NotExecuted: true } => ResponseCallTool.NotExecuted(errorMessage),
-                    // No status on the plain kind: Unavailable + 503 is the not-executed marker a server re-sends.
-                    ToolUnavailableException => ResponseCallTool.Error(errorMessage, ResponseErrorKind.Unavailable),
-                    _ => ResponseCallTool.Unprocessable(errorMessage),
-                };
+                : thrown is ToolUnavailableException
+                    ? ResponseCallTool.Error(errorMessage, ResponseErrorKind.Unavailable, ToolUnavailableException.StatusCodeOf(thrown))
+                    : ResponseCallTool.Unprocessable(errorMessage);
             return response.SetRequestID(requestId);
         }
 

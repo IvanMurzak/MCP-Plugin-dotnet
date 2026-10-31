@@ -212,6 +212,28 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             response.ErrorKind.ShouldBe(ResponseErrorKind.Unavailable);
             response.HttpStatusCode.ShouldBeNull();
+            response.GetMessage().ShouldBe("Tool execution failed for 'UnavailableInAggregate': scripts are compiling");
+        }
+
+        // A hand-written IRunTool that throws it goes through the managers' own mapping: the same kind and status.
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task Managers_ThrownToolUnavailable_IsUnavailable_NotExecutedOnlyWhenDeclared(bool notExecuted)
+        {
+            var exception = new ToolUnavailableException("compiling", notExecuted);
+            var request = new RequestCallTool("request-1", ThrowingTool.ToolName, EmptyArgs);
+
+            foreach (var response in new[]
+            {
+                await ToolManager(new ThrowingTool(exception)).RunCallTool(request),
+                await SystemToolManager(new ThrowingTool(exception)).RunSystemTool(request),
+            })
+            {
+                response.ErrorKind.ShouldBe(ResponseErrorKind.Unavailable);
+                ResponseCallTool.IsNotExecuted(response).ShouldBe(notExecuted);
+                response.HttpStatusCode.ShouldBe(notExecuted ? ResponseCallTool.NotExecutedStatusCode : (int?)null);
+            }
         }
 
         [Theory]
@@ -313,6 +335,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             yield return new object[] { new KeyNotFoundException("missing key"), ResponseErrorKind.NotFound };
             yield return new object[] { new InvalidOperationException("bad state"), ResponseErrorKind.Conflict };
             yield return new object[] { new TimeoutException("too slow"), ResponseErrorKind.Timeout };
+            yield return new object[] { new ToolUnavailableException("compiling"), ResponseErrorKind.Unavailable };
             yield return new object[] { new ApplicationException("bug"), ResponseErrorKind.Internal };
         }
 

@@ -240,10 +240,13 @@ server since McpPlugin 7.0.0 honours, so a new plugin on an older server also ge
 
 `ToolUnavailableException` (since McpPlugin 8.16.0) is for a failure that is nobody's fault in the request: the
 editor is compiling, a service the tool needs is not built yet. Pass `notExecuted: true` only when the tool changed
-nothing before it threw: a server with the call guard (McpPlugin.Server 8.14.0+, for plugins on 8.14.0+) then sends
-the call again once the plugin is back, within its reconnect wait, and answers 503 with the tool's message if the
-window ends first. Without it the kind carries no status, so the call is never sent again (it may have done part of
-its work). Every server since McpPlugin 7.0.0 maps `Unavailable` to 503.
+nothing before it threw, and only for a state a plugin reload ends (a pending script reload): a server with the call
+guard (McpPlugin.Server 8.14.0+, for plugins on 8.14.0+) then sends the call again, after the plugin reconnects or
+every couple of seconds while it stays connected, within its reconnect wait; when the window ends it answers 503 with
+a `[plugin_reloading]` error that ends with the tool's message. Without it the kind carries no status, so no server
+sends the call again (it may have done part of its work) and the tool's message comes back as is. Every server since
+McpPlugin 7.0.0 maps `Unavailable` to 503. Keep the phrase "this call was not run" out of the message: the call guard
+reads it as a reload-gate refusal. A hand-written `IRunTool` that throws it gets the same kind and status.
 
 ### 🔍 Fuzzy Matching
 

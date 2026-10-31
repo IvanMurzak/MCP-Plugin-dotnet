@@ -90,12 +90,15 @@ namespace com.IvanMurzak.McpPlugin
             catch (Exception ex)
             {
                 _logger.LogError(ex, "System tool '{name}' failed.", name);
-                return ResponseData<ResponseCallTool>.Error(request.RequestID, $"System tool '{name}' failed: {ex.Message}", ClassifyException(ex));
+                return ResponseData<ResponseCallTool>.Error(request.RequestID, $"System tool '{name}' failed: {ex.Message}",
+                    ClassifyException(ex), ToolUnavailableException.StatusCodeOf(ex));
             }
         }
 
         static ResponseErrorKind ClassifyException(Exception ex)
         {
+            if (ex is ToolUnavailableException)
+                return ResponseErrorKind.Unavailable;
             if (ex is ArgumentException || ex is FormatException || ex is JsonException)
                 return ResponseErrorKind.BadRequest;
             if (ex is FileNotFoundException || ex is DirectoryNotFoundException || ex is KeyNotFoundException)
