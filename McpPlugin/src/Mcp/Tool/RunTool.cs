@@ -257,11 +257,11 @@ namespace com.IvanMurzak.McpPlugin
 
             RequestID = requestId;
             var binding = _bound?.Binding;
+            object? result;
             try
             {
                 // Invoke the method (static or instance)
-                var result = await Invoke(cancellationToken, parameters);
-                return ProcessInvokeResult(requestId, result, binding);
+                result = await Invoke(cancellationToken, parameters);
             }
             catch (ArgumentException ex)
             {
@@ -281,12 +281,9 @@ namespace com.IvanMurzak.McpPlugin
             }
             catch (Exception ex)
             {
-                var errorMessage = $"Tool execution failed for '{Title ?? this.Method?.Name}': {(ex.InnerException ?? ex).Message}";
-                _logger?.LogError(ex, $"{errorMessage}\n{ex.StackTrace}");
-                return ResponseCallTool
-                    .Error(errorMessage, ResponseErrorKind.Internal)
-                    .SetRequestID(requestId);
+                return ExecutionFailed(requestId, ex);
             }
+            return ProcessResultSafely(requestId, result, binding);
         }
 
         /// <summary>
@@ -305,13 +302,13 @@ namespace com.IvanMurzak.McpPlugin
 
             RequestID = requestId;
             var binding = _bound?.Binding;
+            object? result;
             try
             {
                 var finalParameters = ConvertNamedParameters(namedParameters);
 
                 // Invoke the method (static or instance)
-                var result = await InvokeDict(finalParameters, cancellationToken);
-                return ProcessInvokeResult(requestId, result, binding);
+                result = await InvokeDict(finalParameters, cancellationToken);
             }
             catch (ArgumentException ex)
             {
@@ -331,12 +328,75 @@ namespace com.IvanMurzak.McpPlugin
             }
             catch (Exception ex)
             {
-                var errorMessage = $"Tool execution failed for '{Title ?? this.Method?.Name}': {(ex.InnerException ?? ex).Message}";
+                return ExecutionFailed(requestId, ex);
+            }
+            return ProcessResultSafely(requestId, result, binding);
+        }
+
+        /// <summary>
+        /// The tool (or its argument binding) threw. The request's content caused it unless the exception is a
+        /// <see cref="IsFrameworkFault">framework fault</see>: a fault is <see cref="ResponseErrorKind.Internal"/>
+        /// (HTTP 500), anything else is <see cref="ResponseCallTool.Unprocessable"/> (HTTP 422). Same message either way.
+        /// </summary>
+        private ResponseCallTool ExecutionFailed(string requestId, Exception ex)
+        {
+            var errorMessage = $"Tool execution failed for '{Title ?? this.Method?.Name}': {(ex.InnerException ?? ex).Message}";
+            _logger?.LogError(ex, $"{errorMessage}\n{ex.StackTrace}");
+            var response = IsFrameworkFault(ex)
+                ? ResponseCallTool.Error(errorMessage, ResponseErrorKind.Internal)
+                : ResponseCallTool.Unprocessable(errorMessage);
+            return response.SetRequestID(requestId);
+        }
+
+        /// <summary>
+        /// Turns the tool's return value into the response. The tool has already succeeded here, so a failure
+        /// (a result that cannot be serialized, a binding that cannot render it) is ours: HTTP 500.
+        /// </summary>
+        private ResponseCallTool ProcessResultSafely(string requestId, object? result, IToolBinding? binding)
+        {
+            try
+            {
+                return ProcessInvokeResult(requestId, result, binding);
+            }
+            catch (Exception ex)
+            {
+                var errorMessage = $"Tool execution failed for '{Title ?? this.Method?.Name}': {ex.Message}";
                 _logger?.LogError(ex, $"{errorMessage}\n{ex.StackTrace}");
                 return ResponseCallTool
                     .Error(errorMessage, ResponseErrorKind.Internal)
                     .SetRequestID(requestId);
             }
+        }
+
+        /// <summary>
+        /// True when an exception a tool threw is a bug or fault in the plugin rather than something the request
+        /// caused: <see cref="NullReferenceException"/>, <see cref="IndexOutOfRangeException"/>,
+        /// <see cref="InvalidCastException"/>, <see cref="NotImplementedException"/>, <see cref="OutOfMemoryException"/>,
+        /// <see cref="TypeLoadException"/> and <see cref="MissingMemberException"/> (a plugin built against other
+        /// assemblies), and <see cref="OperationCanceledException"/> (the call was cancelled, it did not fail on its
+        /// content). Subclasses count too. Reflection and single-exception aggregate wrappers are looked through.
+        /// Every other exception, a plain <see cref="Exception"/> included, is the tool rejecting what was sent.
+        /// </summary>
+        internal static bool IsFrameworkFault(Exception exception)
+        {
+            var ex = exception;
+            while (true)
+            {
+                if (ex is TargetInvocationException { InnerException: { } invoked })
+                    ex = invoked;
+                else if (ex is AggregateException aggregate && aggregate.InnerExceptions.Count == 1)
+                    ex = aggregate.InnerExceptions[0];
+                else
+                    break;
+            }
+            return ex is NullReferenceException
+                or IndexOutOfRangeException
+                or InvalidCastException
+                or NotImplementedException
+                or OutOfMemoryException
+                or TypeLoadException
+                or MissingMemberException
+                or OperationCanceledException;
         }
 
         /// <summary>

@@ -60,6 +60,21 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
                 && response.ErrorKind == ResponseErrorKind.Unavailable
                 && response.HttpStatusCode == NotExecutedStatusCode;
 
+        /// <summary>
+        /// HTTP status (422 Unprocessable Content) that, with <see cref="ResponseErrorKind.BadRequest"/>, says the
+        /// tool ran and failed on what the request asked for (see <see cref="Unprocessable"/>).
+        /// </summary>
+        public const int UnprocessableStatusCode = 422;
+
+        /// <summary>
+        /// A tool that ran and failed because of the request's content (code that does not compile, an operation
+        /// the target cannot do), not because of a fault in the plugin. The direct HTTP endpoint answers 422; on the
+        /// MCP channel it is an ordinary error result. The kind stays <see cref="ResponseErrorKind.BadRequest"/>, an
+        /// existing member, so servers of any version deserialize it and none blames itself for it.
+        /// </summary>
+        public static ResponseCallTool Unprocessable(string message)
+            => Error(message, ResponseErrorKind.BadRequest, UnprocessableStatusCode);
+
         public static ResponseCallTool Success(string? message = null)
         {
             return new ResponseCallTool(

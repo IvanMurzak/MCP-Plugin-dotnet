@@ -206,6 +206,31 @@ public static void UpdateUser(UserProfile profile) {
 }
 ```
 
+### ⚠️ Tool errors and HTTP status
+
+How a failing tool is reported on the server's direct HTTP endpoint (`POST /api/tools/{name}`). The MCP channel
+(`/mcp`) is not affected: every tool error there is an ordinary `tools/call` result with `isError: true` and the
+tool's message.
+
+| The tool... | Kind | HTTP |
+| --- | --- | --- |
+| returns `ResponseCallTool.Error(message)` (or `Unprocessable(message)`) | `BadRequest` | 400 (422) |
+| receives arguments that cannot be bound (wrong type, duplicate name) | `BadRequest` | 400 |
+| **throws** a fault type: `NullReferenceException`, `IndexOutOfRangeException`, `InvalidCastException`, `NotImplementedException`, `OutOfMemoryException`, `TypeLoadException`, `MissingMemberException`, `OperationCanceledException` (and subclasses) | `Internal` | 500 |
+| **throws** anything else: `Exception`, `InvalidOperationException`, `NotSupportedException`, your own exception types | `BadRequest` | 422 |
+
+The rule for tool authors: throwing means "I could not do what was asked" (invalid code to compile, an object that
+does not exist, an operation the target cannot do), which is the caller's problem, so it is 422. A 500 is kept for
+exception types that point at a bug in the tool itself. If your tool rejects input, throw a plain or custom exception
+with a message the agent can act on, or return `ResponseCallTool.Error(message)`; do not let a
+`NullReferenceException` escape for missing input. The message is the same in both cases:
+`Tool execution failed for '<tool>': <exception message>`. An `ArgumentException` thrown directly by an `async` tool
+is reported like a binding failure (400). A tool that succeeds but returns a value that cannot be serialized is 500.
+
+Since McpPlugin 8.15.0. The 422 travels as the existing `BadRequest` kind plus `HttpStatusCode = 422`, which every
+server since McpPlugin 7.0.0 honours, so a new plugin on an older server also gets 422. A plugin before 8.15.0 sends
+`Internal` for every thrown exception, which stays 500 on any server.
+
 ### 🔍 Fuzzy Matching
 
 You can configure how strictly the AI must match your method names. This is useful when LLMs use slightly different terminology:
