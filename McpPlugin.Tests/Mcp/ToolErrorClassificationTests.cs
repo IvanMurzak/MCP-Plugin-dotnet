@@ -11,6 +11,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading;
@@ -72,8 +73,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             response.ErrorKind.ShouldBe(expected);
         }
 
+        // A tool that throws a plain exception failed on what the request asked for (Unity's script-execute
+        // throws Exception("Compilation failed...") for the agent's invalid code): BadRequest + 422, so the
+        // direct HTTP endpoint answers 422, not 500. BadRequest (not a new kind) keeps older servers working.
         [Fact]
-        public async Task RunCallTool_ReflectedToolExecutionFailure_IsInternal()
+        public async Task RunCallTool_ReflectedToolExecutionFailure_IsUnprocessable()
         {
             var reflector = new Reflector();
             var builder = new McpPluginBuilder(new Version());
@@ -85,22 +89,136 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 new RequestCallTool("request-1", "reflected-throw", EmptyArgs));
 
             response.Status.ShouldBe(ResponseStatus.Error);
-            response.ErrorKind.ShouldBe(ResponseErrorKind.Internal);
+            response.ErrorKind.ShouldBe(ResponseErrorKind.BadRequest);
+            response.HttpStatusCode.ShouldBe(ResponseCallTool.UnprocessableStatusCode);
+            response.Value!.HttpStatusCode.ShouldBe(422);
+            response.Value.GetMessage().ShouldBe("Tool execution failed for 'Reflected Throw': reflected tool failed");
         }
 
-        // ResponseCallTool.Error(string) defaults to BadRequest, so each exception catch in RunTool must
-        // name Internal itself. The named-argument path is pinned above; this pins the positional one.
-        [Fact]
-        public async Task RunTool_PositionalRun_ToolExecutionFailure_IsInternal()
+        [Theory]
+        [MemberData(nameof(ToolBodyExceptionCases))]
+        public async Task RunTool_NamedRun_ClassifiesToolBodyExceptions(string exception, bool async, bool frameworkFault)
         {
-            var method = typeof(ReflectedThrowingTool).GetMethod(nameof(ReflectedThrowingTool.ThrowStatic));
-            var tool = RunTool.CreateFromStaticMethod(new Reflector(), NullLogger.Instance, "reflected-throw", method!);
+            var tool = ToolBodyThrowingTool(async);
 
-            var response = await tool.Run("request-1", CancellationToken.None);
+            var response = await tool.Run("request-1", ToolBodyArgs(exception), CancellationToken.None);
+
+            AssertToolBodyFailure(response, exception, frameworkFault);
+        }
+
+        [Theory]
+        [MemberData(nameof(ToolBodyExceptionCases))]
+        public async Task RunTool_PositionalRun_ClassifiesToolBodyExceptions(string exception, bool async, bool frameworkFault)
+        {
+            var tool = ToolBodyThrowingTool(async);
+
+            var response = await tool.Run("request-1", CancellationToken.None, exception);
+
+            AssertToolBodyFailure(response, exception, frameworkFault);
+        }
+
+        public static IEnumerable<object[]> ToolBodyExceptionCases()
+        {
+            foreach (var async in new[] { false, true })
+            {
+                // the request's content: HTTP 422
+                yield return new object[] { nameof(Exception), async, false };
+                yield return new object[] { nameof(InvalidOperationException), async, false };
+                yield return new object[] { nameof(NotSupportedException), async, false };
+                yield return new object[] { nameof(ApplicationException), async, false };
+                yield return new object[] { "Custom", async, false };
+                // a fault in the plugin: HTTP 500
+                yield return new object[] { nameof(NullReferenceException), async, true };
+                yield return new object[] { nameof(IndexOutOfRangeException), async, true };
+                yield return new object[] { nameof(InvalidCastException), async, true };
+                yield return new object[] { nameof(NotImplementedException), async, true };
+                yield return new object[] { nameof(MissingMethodException), async, true };
+                yield return new object[] { nameof(TaskCanceledException), async, true };
+            }
+        }
+
+        static void AssertToolBodyFailure(ResponseCallTool response, string exception, bool frameworkFault)
+        {
+            response.Status.ShouldBe(ResponseStatus.Error);
+            response.RequestID.ShouldBe("request-1");
+            response.GetMessage().ShouldBe($"Tool execution failed for 'Tool Body Throw': thrown {exception}");
+            if (frameworkFault)
+            {
+                response.ErrorKind.ShouldBe(ResponseErrorKind.Internal);
+                response.HttpStatusCode.ShouldBeNull();
+            }
+            else
+            {
+                response.ErrorKind.ShouldBe(ResponseErrorKind.BadRequest);
+                response.HttpStatusCode.ShouldBe(422);
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(FrameworkFaultCases))]
+        public void IsFrameworkFault_ClassifiesThroughWrappers(Exception exception, bool expected)
+        {
+            RunTool.IsFrameworkFault(exception).ShouldBe(expected);
+            RunTool.IsFrameworkFault(new TargetInvocationException(exception)).ShouldBe(expected);
+            RunTool.IsFrameworkFault(new TargetInvocationException(new AggregateException(exception))).ShouldBe(expected);
+        }
+
+        public static IEnumerable<object[]> FrameworkFaultCases()
+        {
+            yield return new object[] { new ObjectDisposedException("service"), true };
+            yield return new object[] { new TypeInitializationException("T", null), true };
+            yield return new object[] { new FileLoadException("assembly"), true };
+            yield return new object[] { new BadImageFormatException("image"), true };
+            yield return new object[] { new InvalidProgramException("il"), true };
+            yield return new object[] { new TimeoutException("main thread"), true };
+            yield return new object[] { new MissingFieldException("field"), true };
+            // the classification looks at the thrown exception, not at an inner one it carries
+            yield return new object[] { new InvalidOperationException("failed", new NullReferenceException()), false };
+            yield return new object[] { new AggregateException(new NullReferenceException(), new Exception()), false };
+            yield return new object[] { new FormatException("bad input"), false };
+        }
+
+        // A tool that succeeded but returned something the plugin cannot serialize is our fault, not the request's.
+        [Fact]
+        public async Task RunTool_UnserializableResult_IsInternal()
+        {
+            var method = typeof(ReflectedThrowingTool).GetMethod(nameof(ReflectedThrowingTool.Unserializable));
+            var tool = RunTool.CreateFromStaticMethod(new Reflector(), NullLogger.Instance, "unserializable", method!);
+
+            var response = await tool.Run("request-1", EmptyArgs, CancellationToken.None);
 
             response.Status.ShouldBe(ResponseStatus.Error);
             response.ErrorKind.ShouldBe(ResponseErrorKind.Internal);
+            response.HttpStatusCode.ShouldBeNull();
         }
+
+        // Argument binding failures are unchanged: 400 with the binding message, no 422.
+        [Fact]
+        public async Task RunTool_ArgumentBindingFailure_StaysBadRequestWithout422()
+        {
+            var method = typeof(ReflectedThrowingTool).GetMethod(nameof(ReflectedThrowingTool.Typed));
+            var tool = RunTool.CreateFromStaticMethod(new Reflector(), NullLogger.Instance, "typed", method!, title: "Typed");
+            var args = new Dictionary<string, JsonElement> { ["count"] = JsonSerializer.SerializeToElement("not a number") };
+
+            // 'count' cannot bind: binding fails before the tool body runs
+            var response = await tool.Run("request-1", args, CancellationToken.None);
+
+            response.Status.ShouldBe(ResponseStatus.Error);
+            response.ErrorKind.ShouldBe(ResponseErrorKind.BadRequest);
+            response.HttpStatusCode.ShouldBeNull();
+            response.GetMessage()!.ShouldStartWith("Parameter validation failed for tool 'Typed'");
+        }
+
+        static RunTool ToolBodyThrowingTool(bool async)
+        {
+            var method = typeof(ReflectedThrowingTool).GetMethod(async
+                ? nameof(ReflectedThrowingTool.ThrowNamedAsync)
+                : nameof(ReflectedThrowingTool.ThrowNamed));
+            return RunTool.CreateFromStaticMethod(new Reflector(), NullLogger.Instance, "tool-body-throw", method!, title: "Tool Body Throw");
+        }
+
+        static IReadOnlyDictionary<string, JsonElement> ToolBodyArgs(string exception)
+            => new Dictionary<string, JsonElement> { ["exception"] = JsonSerializer.SerializeToElement(exception) };
 
         [Fact]
         public async Task RunSystemTool_UnknownTool_IsNotFound()
@@ -190,7 +308,43 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         {
             public string Throw() => throw new ApplicationException("reflected tool failed");
 
-            public static string ThrowStatic() => throw new ApplicationException("reflected tool failed");
+            public static string ThrowNamed(string exception) => throw Create(exception);
+
+            public static async Task<string> ThrowNamedAsync(string exception)
+            {
+                await Task.Yield();
+                throw Create(exception);
+            }
+
+            public static int Typed(int count) => count;
+
+            // A delegate: System.Text.Json cannot serialize it.
+            public static Action Unserializable() => () => { };
+
+            static Exception Create(string name)
+            {
+                var message = "thrown " + name;
+                return name switch
+                {
+                    nameof(Exception) => new Exception(message),
+                    nameof(InvalidOperationException) => new InvalidOperationException(message),
+                    nameof(NotSupportedException) => new NotSupportedException(message),
+                    nameof(ApplicationException) => new ApplicationException(message),
+                    "Custom" => new CustomToolException(message),
+                    nameof(NullReferenceException) => new NullReferenceException(message),
+                    nameof(IndexOutOfRangeException) => new IndexOutOfRangeException(message),
+                    nameof(InvalidCastException) => new InvalidCastException(message),
+                    nameof(NotImplementedException) => new NotImplementedException(message),
+                    nameof(MissingMethodException) => new MissingMethodException(message),
+                    nameof(TaskCanceledException) => new TaskCanceledException(message),
+                    _ => throw new ArgumentOutOfRangeException(nameof(name), name, null)
+                };
+            }
+        }
+
+        sealed class CustomToolException : Exception
+        {
+            public CustomToolException(string message) : base(message) { }
         }
     }
 }
