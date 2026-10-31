@@ -87,6 +87,65 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             body!["error"]!.GetValue<string>().ShouldBe(ToolMessage);
         }
 
+        const string UnavailableMessage = "Tool execution failed for 'Execute script': " + Tools.Compiling;
+
+        // ToolUnavailableException without notExecuted: 503 with the tool's message, and the call is never sent again
+        // (the tool may have done part of its work).
+        [Theory]
+        [InlineData("8.16.0")]
+        [InlineData("8.14.0")]
+        [InlineData(null)]
+        public async Task ToolUnavailable_Is503WithTheToolsMessage_AndIsNotResent(string? pluginVersion)
+        {
+            await using var host = await NoneAuthMcpHost.StartAsync();
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Unity 6", onCall: RealTool(nameof(Tools.Unavailable)));
+            editor.McpPluginVersion = pluginVersion;
+            await editor.StartAsync();
+
+            var (status, body) = await client.RestAsync("echo", "{}");
+            status.ShouldBe(503);
+            body!["error"]!.GetValue<string>().ShouldBe(UnavailableMessage);
+            editor.Calls.Count.ShouldBe(1);
+
+            var (isError, text) = await client.CallAsync("echo", new { });
+            isError.ShouldBeTrue();
+            text.ShouldBe(UnavailableMessage);
+            editor.Calls.Count.ShouldBe(2);
+        }
+
+        // ToolUnavailableException(notExecuted: true) from an 8.14+ plugin: the call guard sends it again while the
+        // reconnect window is open, then reports the refusal (with the tool's message) as 503.
+        [Fact]
+        public async Task ToolNotExecuted_IsResentByTheCallGuard_ThenIs503()
+        {
+            await using var host = await NoneAuthMcpHost.StartAsync(null, "tool-timeout=3000", "plugin-reconnect-wait-seconds=60");
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Unity 6", onCall: RealTool(nameof(Tools.NotExecuted)));
+            await editor.StartAsync();
+
+            var (status, body) = await client.RestAsync("echo", "{}").WaitAsync(TimeSpan.FromSeconds(30));
+            status.ShouldBe(503);
+            body!["error"]!.GetValue<string>().ShouldContain(UnavailableMessage);
+            editor.Calls.Count.ShouldBeGreaterThan(1, "re-sent while the window was open");
+        }
+
+        // A plugin before 8.14 skips the call guard: the not-executed refusal comes back as sent, once.
+        [Fact]
+        public async Task ToolNotExecuted_FromAPluginWithoutTheCallGuard_Is503AndSentOnce()
+        {
+            await using var host = await NoneAuthMcpHost.StartAsync();
+            using var client = new ToolCallClient(host);
+            await using var editor = client.Plugin("editor", "Unity 6", onCall: RealTool(nameof(Tools.NotExecuted)));
+            editor.McpPluginVersion = null;
+            await editor.StartAsync();
+
+            var (status, body) = await client.RestAsync("echo", "{}");
+            status.ShouldBe(503);
+            body!["error"]!.GetValue<string>().ShouldBe(UnavailableMessage);
+            editor.Calls.Count.ShouldBe(1);
+        }
+
         /// <summary>Answers every call by running <paramref name="method"/> through a real <see cref="McpToolManager"/>.</summary>
         static Func<FakeEnginePlugin, RequestCallTool, Task<ResponseData<ResponseCallTool>>> RealTool(string method)
         {
@@ -102,6 +161,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             public static string CompileFails() => throw new Exception(CompileError);
 
             public static string Bug() => throw new NullReferenceException("bug");
+
+            public const string Compiling = "Scripts are compiling; retry in a few seconds.";
+
+            public static string Unavailable() => throw new ToolUnavailableException(Compiling);
+
+            public static string NotExecuted() => throw new ToolUnavailableException(Compiling, notExecuted: true);
         }
     }
 }

@@ -154,6 +154,66 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             }
         }
 
+        // A host that cannot serve the call right now (Unity compiling, a reflector not built yet) is Unavailable, HTTP 503.
+        // Only a tool that declares it did nothing gets the not-executed status (503) a server re-sends; the plain kind
+        // carries no status, so a server never re-sends a call that may have done part of its work.
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        [InlineData(true, true)]
+        public async Task RunTool_ToolUnavailable_IsUnavailable(bool async, bool notExecuted)
+        {
+            var method = typeof(ReflectedThrowingTool).GetMethod(async
+                ? nameof(ReflectedThrowingTool.UnavailableAsync)
+                : nameof(ReflectedThrowingTool.Unavailable));
+            var tool = RunTool.CreateFromStaticMethod(new Reflector(), NullLogger.Instance, "unavailable", method!, title: "Unavailable");
+            var args = new Dictionary<string, JsonElement> { ["notExecuted"] = JsonSerializer.SerializeToElement(notExecuted) };
+
+            var named = await tool.Run("request-1", args, CancellationToken.None);
+            var positional = await tool.Run("request-1", CancellationToken.None, notExecuted);
+
+            foreach (var response in new[] { named, positional })
+            {
+                response.Status.ShouldBe(ResponseStatus.Error);
+                response.RequestID.ShouldBe("request-1");
+                response.ErrorKind.ShouldBe(ResponseErrorKind.Unavailable);
+                response.HttpStatusCode.ShouldBe(notExecuted ? ResponseCallTool.NotExecutedStatusCode : (int?)null);
+                response.GetMessage().ShouldBe("Tool execution failed for 'Unavailable': scripts are compiling");
+            }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task RunCallTool_ToolUnavailable_IsNotExecutedOnlyWhenDeclared(bool notExecuted)
+        {
+            var tools = new ToolRunnerCollection(new Reflector(), NullLogger.Instance);
+            tools["unavailable"] = RunTool.CreateFromStaticMethod(new Reflector(), NullLogger.Instance, "unavailable",
+                typeof(ReflectedThrowingTool).GetMethod(nameof(ReflectedThrowingTool.Unavailable))!);
+            var manager = new McpToolManager(NullLogger<McpToolManager>.Instance, new Reflector(), tools);
+            var args = new Dictionary<string, JsonElement> { ["notExecuted"] = JsonSerializer.SerializeToElement(notExecuted) };
+
+            var response = await manager.RunCallTool(new RequestCallTool("request-1", "unavailable", args));
+
+            response.Status.ShouldBe(ResponseStatus.Error);
+            response.ErrorKind.ShouldBe(ResponseErrorKind.Unavailable);
+            ResponseCallTool.IsNotExecuted(response).ShouldBe(notExecuted);
+        }
+
+        // Thrown from a blocking wait (Task.Wait / .Result) it arrives in an AggregateException: still Unavailable.
+        [Fact]
+        public async Task RunTool_ToolUnavailableInsideAggregate_IsUnavailable()
+        {
+            var method = typeof(ReflectedThrowingTool).GetMethod(nameof(ReflectedThrowingTool.UnavailableInAggregate));
+            var tool = RunTool.CreateFromStaticMethod(new Reflector(), NullLogger.Instance, "unavailable", method!);
+
+            var response = await tool.Run("request-1", EmptyArgs, CancellationToken.None);
+
+            response.ErrorKind.ShouldBe(ResponseErrorKind.Unavailable);
+            response.HttpStatusCode.ShouldBeNull();
+        }
+
         [Theory]
         [MemberData(nameof(FrameworkFaultCases))]
         public void IsFrameworkFault_ClassifiesThroughWrappers(Exception exception, bool expected)
@@ -317,6 +377,17 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             }
 
             public static int Typed(int count) => count;
+
+            public static string Unavailable(bool notExecuted) => throw new ToolUnavailableException("scripts are compiling", notExecuted);
+
+            public static async Task<string> UnavailableAsync(bool notExecuted)
+            {
+                await Task.Yield();
+                throw new ToolUnavailableException("scripts are compiling", notExecuted);
+            }
+
+            public static string UnavailableInAggregate()
+                => Task.Run(new Func<string>(() => throw new ToolUnavailableException("scripts are compiling"))).Result;
 
             // A delegate: System.Text.Json cannot serialize it.
             public static Action Unserializable() => () => { };

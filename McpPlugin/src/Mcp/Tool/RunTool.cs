@@ -337,7 +337,9 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// The tool (or its argument binding) threw. The request's content caused it unless the exception is a
         /// <see cref="IsFrameworkFault">framework fault</see>: a fault is <see cref="ResponseErrorKind.Internal"/>
-        /// (HTTP 500), anything else is <see cref="ResponseCallTool.Unprocessable"/> (HTTP 422). Same message either way.
+        /// (HTTP 500), a <see cref="ToolUnavailableException"/> is <see cref="ResponseErrorKind.Unavailable"/> (HTTP 503,
+        /// <see cref="ResponseCallTool.NotExecuted"/> when it says so), anything else is
+        /// <see cref="ResponseCallTool.Unprocessable"/> (HTTP 422). Same message either way.
         /// <paramref name="fault"/> forces 500 (a failure after the tool succeeded).
         /// </summary>
         private ResponseCallTool ExecutionFailed(string requestId, Exception ex, bool fault = false)
@@ -346,7 +348,12 @@ namespace com.IvanMurzak.McpPlugin
             _logger?.LogError(ex, $"{errorMessage}\n{ex.StackTrace}");
             var response = fault || IsFrameworkFault(ex)
                 ? ResponseCallTool.Error(errorMessage, ResponseErrorKind.Internal)
-                : ResponseCallTool.Unprocessable(errorMessage);
+                : Unwrap(ex) is ToolUnavailableException unavailable
+                    // The plain kind carries no status: Unavailable + 503 is the not-executed marker a server re-sends.
+                    ? unavailable.NotExecuted
+                        ? ResponseCallTool.NotExecuted(errorMessage)
+                        : ResponseCallTool.Error(errorMessage, ResponseErrorKind.Unavailable)
+                    : ResponseCallTool.Unprocessable(errorMessage);
             return response.SetRequestID(requestId);
         }
 
@@ -378,18 +385,7 @@ namespace com.IvanMurzak.McpPlugin
         /// Every other exception, a plain <see cref="Exception"/> included, is the tool rejecting what was sent.
         /// </summary>
         internal static bool IsFrameworkFault(Exception exception)
-        {
-            var ex = exception;
-            while (true)
-            {
-                if (ex is TargetInvocationException { InnerException: { } invoked })
-                    ex = invoked;
-                else if (ex is AggregateException aggregate && aggregate.InnerExceptions.Count == 1)
-                    ex = aggregate.InnerExceptions[0];
-                else
-                    break;
-            }
-            return ex is NullReferenceException
+            => Unwrap(exception) is NullReferenceException
                 or IndexOutOfRangeException
                 or InvalidCastException
                 or NotImplementedException
@@ -403,6 +399,20 @@ namespace com.IvanMurzak.McpPlugin
                 or InvalidProgramException
                 or TimeoutException
                 or OperationCanceledException;
+
+        /// <summary>The exception the tool threw: reflection and single-exception aggregate wrappers are looked through.</summary>
+        static Exception Unwrap(Exception exception)
+        {
+            var ex = exception;
+            while (true)
+            {
+                if (ex is TargetInvocationException { InnerException: { } invoked })
+                    ex = invoked;
+                else if (ex is AggregateException aggregate && aggregate.InnerExceptions.Count == 1)
+                    ex = aggregate.InnerExceptions[0];
+                else
+                    return ex;
+            }
         }
 
         /// <summary>
