@@ -95,24 +95,28 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         /// <summary>
         /// Whether this agent can consume an MCP config entry for <paramref name="transport"/> (default: every
-        /// transport). For an unsupported transport <see cref="Describe"/> returns only an alert and
-        /// <see cref="AgentConfiguratorDescription.TransportSupported"/> = <c>false</c>; engines must not offer Configure.
+        /// transport). When it can't, <see cref="IsConfigured"/> / <see cref="GetStatus"/> report nothing and
+        /// engines must not offer Configure; <see cref="GetSetupKind"/> says what to show instead.
         /// </summary>
         public virtual bool SupportsTransport(Common.Consts.MCP.Server.TransportMethod transport) => true;
 
         /// <summary>
-        /// Step-by-step instructions for a transport this agent has no config-file entry for
-        /// (<see cref="SupportsTransport"/> is <c>false</c>) but can still be set up by hand in its own UI — e.g.
-        /// adding the Cloud URL as a Claude custom connector. <c>null</c> (default) means there is no such path,
-        /// and <see cref="Describe"/> shows <see cref="UnsupportedTransportMessage"/> instead.
+        /// How the user sets this agent up for <paramref name="transport"/> under <paramref name="settings"/>
+        /// (the connection mode can matter). Default: <see cref="AgentSetupKind.ConfigFile"/> when
+        /// <see cref="SupportsTransport"/>, else <see cref="AgentSetupKind.Unsupported"/>. An agent returning
+        /// <see cref="AgentSetupKind.Manual"/> must override <see cref="BuildManualSetupSections"/>.
         /// </summary>
-        protected virtual IReadOnlyList<ConfigurationSection>? BuildManualSetupSections(
+        public virtual AgentSetupKind GetSetupKind(
             AgentConfiguratorSettings settings,
             Common.Consts.MCP.Server.TransportMethod transport)
-            => null;
+            => SupportsTransport(transport) ? AgentSetupKind.ConfigFile : AgentSetupKind.Unsupported;
 
-        /// <summary>The alert <see cref="Describe"/> shows for an unsupported transport with no manual setup.</summary>
-        protected virtual string UnsupportedTransportMessage(AgentConfiguratorSettings settings) =>
+        /// <summary>The steps <see cref="Describe"/> shows for <see cref="AgentSetupKind.Manual"/> (built from redacted settings).</summary>
+        protected virtual IReadOnlyList<ConfigurationSection> BuildManualSetupSections(AgentConfiguratorSettings settings)
+            => System.Array.Empty<ConfigurationSection>();
+
+        /// <summary>The alert <see cref="Describe"/> shows for <see cref="AgentSetupKind.Unsupported"/>.</summary>
+        protected virtual string UnsupportedTransportMessage =>
             $"{AgentName} supports only the stdio transport. Select the Custom connection and the stdio transport, then press Configure.";
 
         /// <summary>
@@ -338,33 +342,33 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             ILogger? logger = null)
         {
             // Every user-visible section is built from the redacted snapshot, so no override can render the raw project key.
-            var display = settings.ForDisplay();
-
-            if (!SupportsTransport(transport))
+            var setupKind = GetSetupKind(settings, transport);
+            if (setupKind != AgentSetupKind.ConfigFile)
             {
-                // Nothing to write for this transport: no status, config preview or troubleshooting. Either the
-                // agent's own manual setup steps, or an alert naming the setup that works.
-                var manual = BuildManualSetupSections(display, transport);
+                // Nothing to write: no status, config preview or troubleshooting.
                 return new AgentConfiguratorDescription(
                     agentName: AgentName,
                     agentId: AgentId,
                     iconName: IconName,
                     isConfigured: false,
                     isInstalled: false,
-                    sections: manual ?? new[]
-                    {
-                        new ConfigurationSection("Transport Not Supported", true, new[]
+                    sections: setupKind == AgentSetupKind.Manual
+                        ? BuildManualSetupSections(settings.ForDisplay())
+                        : new[]
                         {
-                            ConfigurationItem.Alert(UnsupportedTransportMessage(display))
-                        })
-                    },
+                            new ConfigurationSection("Transport Not Supported", true, new[]
+                            {
+                                ConfigurationItem.Alert(UnsupportedTransportMessage)
+                            })
+                        },
                     links: BuildLinks(),
-                    transportSupported: false,
-                    manualSetup: manual != null);
+                    setupKind: setupKind);
             }
 
-            // Status compares against what Configure REALLY writes (the unredacted settings).
+            // Status compares against what Configure REALLY writes (the unredacted settings). It runs before
+            // ForDisplay() so the clone inherits the already-resolved identity / marker caches.
             var status = GetStatus(settings, transport, logger);
+            var display = settings.ForDisplay();
             var sections = BuildSections(display, transport, logger);
 
             // Append the per-agent Troubleshooting section(s) after the configuration sections,
@@ -429,11 +433,15 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// "Troubleshooting" section of <see cref="ConfigurationItem.Description"/> items.
         /// </summary>
         protected static IReadOnlyList<ConfigurationSection> TroubleshootingSection(params string[] lines)
+            => new[] { DescriptionSection("Troubleshooting", lines) };
+
+        /// <summary>A collapsed section of plain-text <see cref="ConfigurationItem.Description"/> lines.</summary>
+        protected static ConfigurationSection DescriptionSection(string heading, params string[] lines)
         {
             var items = new ConfigurationItem[lines.Length];
             for (var i = 0; i < lines.Length; i++)
                 items[i] = ConfigurationItem.Description(lines[i]);
-            return new[] { new ConfigurationSection("Troubleshooting", false, items) };
+            return new ConfigurationSection(heading, false, items);
         }
 
         /// <summary>

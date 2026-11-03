@@ -41,13 +41,13 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
 
         // Claude reaches a custom connector from Anthropic's cloud, never from this machine: the public Cloud URL
         // works, a local (loopback / LAN) server does not. Nothing is written, so the user adds it by hand once.
-        protected override IReadOnlyList<ConfigurationSection>? BuildManualSetupSections(
-            AgentConfiguratorSettings settings, TransportMethod transport)
-        {
-            if (settings.ConnectionMode != ConnectionMode.Cloud)
-                return null;
+        public override AgentSetupKind GetSetupKind(AgentConfiguratorSettings settings, TransportMethod transport)
+            => transport == TransportMethod.stdio ? AgentSetupKind.ConfigFile
+                : settings.ConnectionMode == ConnectionMode.Cloud ? AgentSetupKind.Manual
+                : AgentSetupKind.Unsupported;
 
-            return new[]
+        protected override IReadOnlyList<ConfigurationSection> BuildManualSetupSections(AgentConfiguratorSettings settings)
+            => new[]
             {
                 new ConfigurationSection("Add as a Claude Connector", true, new[]
                 {
@@ -60,17 +60,14 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
                     ConfigurationItem.Description("4. Click Continue, keep the detected sign-in settings, click Add, then sign in with your AI Game Developer account."),
                     ConfigurationItem.Description("5. In a chat, make sure the connector is turned on in the connectors menu.")
                 }),
-                new ConfigurationSection("Notes", false, new[]
-                {
-                    ConfigurationItem.Description("- The URL is unique to this project: add one connector per project."),
-                    ConfigurationItem.Description("- The Free Claude plan allows one custom connector."),
-                    ConfigurationItem.Description("- On Team and Enterprise plans an organization Owner adds it in Organization settings > Connectors; members then click Connect."),
-                    ConfigurationItem.Description("- For a local server without the Cloud, select the Custom connection and the stdio transport instead.")
-                })
+                DescriptionSection("Notes",
+                    "- The URL is unique to this project: add one connector per project.",
+                    "- The Free Claude plan allows one custom connector.",
+                    "- On Team and Enterprise plans an organization Owner adds it in Organization settings > Connectors; members then click Connect.",
+                    "- For a local server without the Cloud, select the Custom connection and the stdio transport instead.")
             };
-        }
 
-        protected override string UnsupportedTransportMessage(AgentConfiguratorSettings settings) =>
+        protected override string UnsupportedTransportMessage =>
             "Claude Desktop can't use a local server over HTTP: it skips an HTTP entry in claude_desktop_config.json, and " +
             "Claude connectors reach servers from Anthropic's cloud, not from this computer. Select the stdio transport and press Configure, " +
             "or switch the connection to Cloud and add it as a Claude connector.";

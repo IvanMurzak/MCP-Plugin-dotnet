@@ -100,6 +100,20 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         }
     }
 
+    /// <summary>How the user sets an agent up for one transport (and connection mode).</summary>
+    public enum AgentSetupKind
+    {
+        /// <summary>The engine writes the agent's config file: offer Configure / Reconfigure / Remove and a status.</summary>
+        ConfigFile,
+        /// <summary>
+        /// Nothing is written: the sections are steps the user follows in the agent's own UI (e.g. adding a
+        /// Claude custom connector). Render them normally; no Configure / Remove, no configured status.
+        /// </summary>
+        Manual,
+        /// <summary>No setup works for this transport: the sections hold one alert naming the setup that does.</summary>
+        Unsupported
+    }
+
     /// <summary>
     /// The three configuration states a configurator distinguishes for the active transport,
     /// mirroring Unity's absent / configured-current / configured-but-stale distinction
@@ -164,19 +178,14 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// <summary>The ordered UI sections to render.</summary>
         public IReadOnlyList<ConfigurationSection> Sections { get; }
 
-        /// <summary>
-        /// Whether the agent supports the described transport. When <c>false</c> the sections hold only an alert
-        /// and the engine must not offer Configure (see <see cref="AiAgentConfigurator.SupportsTransport"/>).
-        /// </summary>
-        public bool TransportSupported { get; }
+        /// <summary>How the user sets this agent up for the described transport (see <see cref="AiAgentConfigurator.GetSetupKind"/>).</summary>
+        public AgentSetupKind SetupKind { get; }
 
         /// <summary>
-        /// <c>true</c> when <see cref="TransportSupported"/> is <c>false</c> but the sections are step-by-step
-        /// instructions the user follows in the agent's own UI (e.g. adding a Claude custom connector), not an
-        /// error. The engine renders the sections normally, offers no Configure / Remove and shows no
-        /// configured status: nothing is written, so nothing can be detected.
+        /// <c>true</c> when the engine writes a config file for the described transport
+        /// (<see cref="SetupKind"/> is <see cref="AgentSetupKind.ConfigFile"/>); otherwise offer no Configure.
         /// </summary>
-        public bool ManualSetup { get; }
+        public bool TransportSupported => SetupKind == AgentSetupKind.ConfigFile;
 
         /// <summary>
         /// The notice to show after writing or removing the config for the described transport, or <c>null</c>
@@ -194,7 +203,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             IReadOnlyList<ConfigurationSection> sections,
             ConfiguratorStatus status,
             IReadOnlyList<ConfigurationItem>? links)
-            : this(agentName, agentId, iconName, isConfigured, isInstalled, sections, status, links, transportSupported: true)
+            : this(agentName, agentId, iconName, isConfigured, isInstalled, sections, status, links, restartNotice: null)
         {
         }
 
@@ -210,7 +219,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             IReadOnlyList<ConfigurationItem>? links,
             bool transportSupported,
             string? restartNotice)
-            : this(agentName, agentId, iconName, isConfigured, isInstalled, sections, status, links, transportSupported, restartNotice, manualSetup: false)
+            : this(agentName, agentId, iconName, isConfigured, isInstalled, sections, status, links, restartNotice,
+                transportSupported ? AgentSetupKind.ConfigFile : AgentSetupKind.Unsupported)
         {
         }
 
@@ -223,9 +233,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             IReadOnlyList<ConfigurationSection> sections,
             ConfiguratorStatus status = ConfiguratorStatus.NotConfigured,
             IReadOnlyList<ConfigurationItem>? links = null,
-            bool transportSupported = true,
             string? restartNotice = null,
-            bool manualSetup = false)
+            AgentSetupKind setupKind = AgentSetupKind.ConfigFile)
         {
             AgentName = agentName;
             AgentId = agentId;
@@ -235,9 +244,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Sections = sections;
             Status = status;
             Links = links ?? System.Array.Empty<ConfigurationItem>();
-            TransportSupported = transportSupported;
             RestartNotice = restartNotice;
-            ManualSetup = manualSetup;
+            SetupKind = setupKind;
         }
     }
 }

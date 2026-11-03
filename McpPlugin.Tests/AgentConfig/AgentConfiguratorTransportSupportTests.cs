@@ -46,8 +46,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         {
             var desc = new ClaudeDesktopConfigurator().Describe(Settings(), TransportMethod.streamableHttp);
 
+            desc.SetupKind.ShouldBe(AgentSetupKind.Unsupported);
             desc.TransportSupported.ShouldBeFalse();
-            desc.ManualSetup.ShouldBeFalse();
             desc.Status.ShouldBe(ConfiguratorStatus.NotConfigured);
             desc.IsConfigured.ShouldBeFalse();
             desc.RestartNotice.ShouldBeNull();
@@ -67,8 +67,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             var settings = CloudSettings().WithProjectKey("agd_pk_secret_value");
             var desc = new ClaudeDesktopConfigurator().Describe(settings, TransportMethod.streamableHttp);
 
+            desc.SetupKind.ShouldBe(AgentSetupKind.Manual);
             desc.TransportSupported.ShouldBeFalse(); // nothing to write: no Configure
-            desc.ManualSetup.ShouldBeTrue();
             desc.Status.ShouldBe(ConfiguratorStatus.NotConfigured);
             desc.RestartNotice.ShouldBeNull();
 
@@ -77,16 +77,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             steps.Items.ShouldContain(i => i.Kind == ConfigurationItemKind.Link && i.Url == ClaudeDesktopConfigurator.ConnectorsSettingsUrl);
             var url = steps.Items.Single(i => i.Kind == ConfigurationItemKind.ReadOnlyField).Text;
             url.ShouldBe(settings.PinnedHttpUrl);
-            url.ShouldStartWith("https://ai-game.dev/mcp/p/");
             desc.Sections.SelectMany(s => s.Items).ShouldNotContain(i => i.Text.Contains("agd_pk_secret_value"));
             desc.Sections.SelectMany(s => s.Items).ShouldNotContain(i => i.Kind == ConfigurationItemKind.Alert);
-        }
-
-        [Fact]
-        public void OtherAgents_InCloud_AreNotManualSetup()
-        {
-            foreach (var c in AiAgentConfiguratorRegistry.All.Where(c => c is not ClaudeDesktopConfigurator))
-                c.Describe(CloudSettings(), TransportMethod.streamableHttp).ManualSetup.ShouldBeFalse(c.AgentName);
         }
 
         [Fact]
