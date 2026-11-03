@@ -576,11 +576,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             var trimmed = host?.Trim();
             if (string.IsNullOrEmpty(trimmed))
                 return $"http://localhost:{port}";
-            if (TryGetExplicitPort(trimmed) != null
-                || !Uri.TryCreate(trimmed, UriKind.Absolute, out var uri)
-                || !uri.IsLoopback
-                || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            if (TryGetExplicitPort(trimmed) != null || !HostScope.IsLoopback(trimmed))
                 return trimmed!;
+            var uri = new Uri(trimmed!, UriKind.Absolute);
             return $"{uri.Scheme}://{uri.Host}:{port}";
         }
 

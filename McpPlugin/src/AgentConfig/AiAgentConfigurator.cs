@@ -94,32 +94,23 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public virtual bool SupportsOAuth => true;
 
         /// <summary>
-        /// Whether this agent can consume an MCP config entry for <paramref name="transport"/>. Default
-        /// <c>true</c> for every transport. An agent that can only spawn a stdio server from its config
-        /// file (Claude Desktop rejects an HTTP entry in <c>claude_desktop_config.json</c> as "not a valid
-        /// MCP server configuration") overrides this. For an unsupported transport <see cref="Describe"/>
-        /// returns <see cref="AgentConfiguratorDescription.TransportSupported"/> = <c>false</c> and an alert
-        /// that names the supported setup; the engine UI MUST NOT offer Configure for it.
+        /// Whether this agent can consume an MCP config entry for <paramref name="transport"/> (default: every
+        /// transport). For an unsupported transport <see cref="Describe"/> returns only an alert and
+        /// <see cref="AgentConfiguratorDescription.TransportSupported"/> = <c>false</c>; engines must not offer Configure.
         /// </summary>
         public virtual bool SupportsTransport(Common.Consts.MCP.Server.TransportMethod transport) => true;
 
         /// <summary>
-        /// The alert shown instead of the configuration sections when the active transport is not
-        /// supported (<see cref="SupportsTransport"/> is <c>false</c>). Names the setup that works.
+        /// The notice an engine shows after it writes or removes this agent's config for <paramref name="transport"/>,
+        /// or <c>null</c>. Only stdio agents get one: they spawn the server themselves and read their MCP config
+        /// only at startup, so a running agent keeps the old setup until it restarts.
         /// </summary>
-        protected virtual string UnsupportedTransportMessage =>
-            $"{AgentName} supports only the stdio transport. Select the Custom connection and the stdio transport, then press Configure.";
+        public string? GetRestartNotice(Common.Consts.MCP.Server.TransportMethod transport)
+            => transport == Common.Consts.MCP.Server.TransportMethod.stdio ? RestartNoticeText : null;
 
-        /// <summary>
-        /// The notice an engine shows after it writes or removes this agent's MCP config for
-        /// <paramref name="transport"/>, or <c>null</c> when none is needed. A stdio agent spawns the MCP
-        /// server itself and reads its config only at startup, so a running agent keeps the old setup until
-        /// it is restarted. HTTP agents connect to the already-running server, so no notice by default.
-        /// </summary>
-        public virtual string? GetRestartNotice(Common.Consts.MCP.Server.TransportMethod transport)
-            => transport == Common.Consts.MCP.Server.TransportMethod.stdio
-                ? $"Restart {AgentName} to apply the new MCP configuration. It reads its MCP configuration only at startup."
-                : null;
+        /// <summary>The stdio restart notice text (see <see cref="GetRestartNotice"/>).</summary>
+        protected virtual string RestartNoticeText =>
+            $"Restart {AgentName} to apply the new MCP configuration. It reads its MCP configuration only at startup.";
 
         /// <summary>
         /// Builds the STDIO transport config for the given settings. Override per agent.
@@ -328,8 +319,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         {
             if (!SupportsTransport(transport))
             {
-                // Nothing to configure for this transport: no status (an entry on disk belongs to the
-                // supported transport), no config preview, no troubleshooting — only the way out.
+                // No status, config preview or troubleshooting: only the setup that works.
                 return new AgentConfiguratorDescription(
                     agentName: AgentName,
                     agentId: AgentId,
@@ -340,10 +330,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                     {
                         new ConfigurationSection("Transport Not Supported", true, new[]
                         {
-                            ConfigurationItem.Alert(UnsupportedTransportMessage)
+                            ConfigurationItem.Alert($"{AgentName} supports only the stdio transport. Select the Custom connection and the stdio transport, then press Configure.")
                         })
                     },
-                    status: ConfiguratorStatus.NotConfigured,
                     links: BuildLinks(),
                     transportSupported: false);
             }

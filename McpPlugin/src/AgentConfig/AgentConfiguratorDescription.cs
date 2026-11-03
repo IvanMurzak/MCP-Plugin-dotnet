@@ -165,16 +165,14 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public IReadOnlyList<ConfigurationSection> Sections { get; }
 
         /// <summary>
-        /// Whether the agent supports the described transport. When <c>false</c> the sections carry only an
-        /// alert naming the supported setup, and the engine MUST NOT offer Configure / Reconfigure for this
-        /// transport (it would write an entry the agent rejects). See <see cref="AiAgentConfigurator.SupportsTransport"/>.
+        /// Whether the agent supports the described transport. When <c>false</c> the sections hold only an alert
+        /// and the engine must not offer Configure (see <see cref="AiAgentConfigurator.SupportsTransport"/>).
         /// </summary>
         public bool TransportSupported { get; }
 
         /// <summary>
-        /// The notice the engine shows after it writes or removes this agent's config for the described
-        /// transport (e.g. "Restart Claude Desktop …"), or <c>null</c> when none is needed.
-        /// See <see cref="AiAgentConfigurator.GetRestartNotice"/>.
+        /// The notice to show after writing or removing the config for the described transport, or <c>null</c>
+        /// (see <see cref="AiAgentConfigurator.GetRestartNotice"/>).
         /// </summary>
         public string? RestartNotice { get; }
 

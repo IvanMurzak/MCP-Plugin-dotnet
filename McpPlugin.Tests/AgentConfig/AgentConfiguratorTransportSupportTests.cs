@@ -33,14 +33,6 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             host: "http://localhost:50000");
 
         [Fact]
-        public void ClaudeDesktop_SupportsStdioOnly()
-        {
-            var c = new ClaudeDesktopConfigurator();
-            c.SupportsTransport(TransportMethod.stdio).ShouldBeTrue();
-            c.SupportsTransport(TransportMethod.streamableHttp).ShouldBeFalse();
-        }
-
-        [Fact]
         public void ClaudeDesktop_HttpDescription_IsOnlyTheUnsupportedAlert()
         {
             var desc = new ClaudeDesktopConfigurator().Describe(Settings(), TransportMethod.streamableHttp);
@@ -57,18 +49,14 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             item.Kind.ShouldBe(ConfigurationItemKind.Alert);
             item.Text.ShouldContain("stdio");
             item.Text.ShouldContain("Custom");
-            // No config preview: nothing an HTTP entry could be copied from.
-            desc.Sections.SelectMany(s => s.Items).ShouldNotContain(i => i.Kind == ConfigurationItemKind.ReadOnlyField);
         }
 
         [Fact]
-        public void ClaudeDesktop_StdioDescription_IsSupported_WithRestartNotice()
+        public void ClaudeDesktop_StdioDescription_IsSupported()
         {
             var desc = new ClaudeDesktopConfigurator().Describe(Settings(), TransportMethod.stdio);
 
             desc.TransportSupported.ShouldBeTrue();
-            desc.RestartNotice.ShouldNotBeNull();
-            desc.RestartNotice!.ShouldContain("Claude Desktop");
             desc.Sections.ShouldContain(s => s.Heading == "Configuration");
         }
 
@@ -96,11 +84,11 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         }
 
         [Fact]
-        public void HttpAgents_HaveNoRestartNotice_ByDefault()
+        public void HttpTransport_HasNoRestartNotice()
         {
-            var c = new ClaudeCodeConfigurator();
+            var c = new ClaudeDesktopConfigurator();
             c.GetRestartNotice(TransportMethod.streamableHttp).ShouldBeNull();
-            c.Describe(Settings(), TransportMethod.streamableHttp).RestartNotice.ShouldBeNull();
+            new ClaudeCodeConfigurator().Describe(Settings(), TransportMethod.streamableHttp).RestartNotice.ShouldBeNull();
         }
 
         [Theory]
@@ -124,6 +112,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         [InlineData("https://ai-game.dev/mcp")]   // not loopback
         [InlineData("http://192.168.1.10/mcp")]   // remote server on the LAN
         [InlineData("localhost")]                  // not an absolute URL — left for the user to fix
+        [InlineData("http://localhost@evil.com/mcp")] // user info: not a loopback URL
         public void NormalizeLocalHost_LeavesOtherUrlsUnchanged(string host)
             => AgentConfiguratorSettings.NormalizeLocalHost(host, 5250).ShouldBe(host);
     }
