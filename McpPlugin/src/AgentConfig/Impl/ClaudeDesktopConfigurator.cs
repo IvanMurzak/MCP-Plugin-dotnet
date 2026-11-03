@@ -64,7 +64,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
                     "- The URL is unique to this project: add one connector per project.",
                     "- The Free Claude plan allows one custom connector.",
                     "- On Team and Enterprise plans an organization Owner adds it in Organization settings > Connectors; members then click Connect.",
-                    "- For a local server without the Cloud, select the Custom connection and the stdio transport instead.")
+                    "- A local server (Custom connection) can't be a Claude connector: Claude reaches connectors from Anthropic's cloud, not from this computer. Where the stdio transport is offered, use it with Configure instead.")
             };
 
         protected override string UnsupportedTransportMessage =>
