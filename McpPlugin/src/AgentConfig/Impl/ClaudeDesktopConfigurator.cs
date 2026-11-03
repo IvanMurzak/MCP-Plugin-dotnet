@@ -36,7 +36,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         // as "not valid MCP server configurations"; remote servers go through its Connectors UI instead.
         public override bool SupportsTransport(TransportMethod transport) => transport == TransportMethod.stdio;
 
-        protected override string RestartNoticeText =>
+        protected override string? RestartNoticeText =>
             "Fully quit Claude Desktop (also from the system tray or menu bar) and start it again. " +
             "It reads claude_desktop_config.json only at startup.";
 

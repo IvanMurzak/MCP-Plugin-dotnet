@@ -72,9 +72,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
         }
 
         [Fact]
-        public void EveryAgent_HasRestartNotice_ForStdio()
+        public void EveryAgentThatWritesAConfig_HasRestartNotice_ForStdio()
         {
-            foreach (var c in AiAgentConfiguratorRegistry.All)
+            foreach (var c in AiAgentConfiguratorRegistry.All.Where(c => c is not CustomConfigurator))
             {
                 var notice = c.GetRestartNotice(TransportMethod.stdio);
                 notice.ShouldNotBeNullOrWhiteSpace(c.AgentName);
@@ -89,6 +89,50 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             var c = new ClaudeDesktopConfigurator();
             c.GetRestartNotice(TransportMethod.streamableHttp).ShouldBeNull();
             new ClaudeCodeConfigurator().Describe(Settings(), TransportMethod.streamableHttp).RestartNotice.ShouldBeNull();
+        }
+
+        [Fact]
+        public void Custom_HasNoRestartNotice()
+            => new CustomConfigurator().GetRestartNotice(TransportMethod.stdio).ShouldBeNull();
+
+        /// <summary>A stdio-only agent like Claude Desktop, but with its config file in a temp folder.</summary>
+        private sealed class StdioOnlyTempConfigurator : AiAgentConfigurator
+        {
+            private readonly string _configPath;
+            public StdioOnlyTempConfigurator(string configPath) => _configPath = configPath;
+            public override string AgentName => "Stdio Only";
+            public override string AgentId => "stdio-only-test";
+            public override string DownloadUrl => string.Empty;
+            public override string? IconName => null;
+            public override bool SupportsTransport(TransportMethod transport) => transport == TransportMethod.stdio;
+            protected override AiAgentConfig CreateStdioConfig(AgentConfiguratorSettings settings, Microsoft.Extensions.Logging.ILogger? logger)
+                => AgentConfigBuilders.JsonStdio(AgentName, _configPath, settings, logger);
+            protected override AiAgentConfig CreateHttpConfig(AgentConfiguratorSettings settings, Microsoft.Extensions.Logging.ILogger? logger)
+                => AgentConfigBuilders.JsonHttp(AgentName, _configPath, settings, logger);
+            protected override System.Collections.Generic.IReadOnlyList<ConfigurationSection> BuildSections(
+                AgentConfiguratorSettings settings, TransportMethod transport, Microsoft.Extensions.Logging.ILogger? logger)
+                => DefaultConfigurationSections(settings, transport, logger);
+        }
+
+        [Fact]
+        public void UnsupportedTransport_MatchingEntryOnDisk_IsNotConfigured_ButStillDetected()
+        {
+            var dir = Path.Combine(Path.GetTempPath(), "mcp-transport-support-" + System.Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            try
+            {
+                var c = new StdioOnlyTempConfigurator(Path.Combine(dir, "config.json"));
+                var settings = Settings();
+                var http = c.GetHttpConfig(settings, credentialMode: settings.ResolveHttpCredentialMode());
+                http.Configure().ShouldBeTrue(); // e.g. an entry an older plugin wrote
+                http.IsConfigured().ShouldBeTrue();
+
+                c.IsConfigured(settings, TransportMethod.streamableHttp).ShouldBeFalse();
+                c.GetStatus(settings, TransportMethod.streamableHttp).ShouldBe(ConfiguratorStatus.NotConfigured);
+                c.IsDetected(settings).ShouldBeTrue(); // still found, so the engine can offer Remove
+                c.GetStatus(settings, TransportMethod.stdio).ShouldBe(ConfiguratorStatus.ReconfigureNeeded);
+            }
+            finally { Directory.Delete(dir, recursive: true); }
         }
 
         [Theory]

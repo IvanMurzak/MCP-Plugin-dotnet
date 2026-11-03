@@ -176,6 +176,20 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// </summary>
         public string? RestartNotice { get; }
 
+        /// <summary>The 8.16 signature, kept so assemblies compiled against it still bind.</summary>
+        public AgentConfiguratorDescription(
+            string agentName,
+            string agentId,
+            string? iconName,
+            bool isConfigured,
+            bool isInstalled,
+            IReadOnlyList<ConfigurationSection> sections,
+            ConfiguratorStatus status,
+            IReadOnlyList<ConfigurationItem>? links)
+            : this(agentName, agentId, iconName, isConfigured, isInstalled, sections, status, links, transportSupported: true)
+        {
+        }
+
         public AgentConfiguratorDescription(
             string agentName,
             string agentId,

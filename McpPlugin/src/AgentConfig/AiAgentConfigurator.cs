@@ -108,8 +108,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public string? GetRestartNotice(Common.Consts.MCP.Server.TransportMethod transport)
             => transport == Common.Consts.MCP.Server.TransportMethod.stdio ? RestartNoticeText : null;
 
-        /// <summary>The stdio restart notice text (see <see cref="GetRestartNotice"/>).</summary>
-        protected virtual string RestartNoticeText =>
+        /// <summary>The stdio restart notice text (see <see cref="GetRestartNotice"/>); <c>null</c> for none.</summary>
+        protected virtual string? RestartNoticeText =>
             $"Restart {AgentName} to apply the new MCP configuration. It reads its MCP configuration only at startup.";
 
         /// <summary>
@@ -259,6 +259,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Common.Consts.MCP.Server.TransportMethod transport,
             ILogger? logger = null)
         {
+            // An entry for an unsupported transport is never usable, even when it matches the settings.
+            if (!SupportsTransport(transport))
+                return false;
             var config = transport == Common.Consts.MCP.Server.TransportMethod.stdio
                 ? GetStdioConfig(settings, logger)
                 : GetHttpConfig(settings, logger, settings.ResolveHttpCredentialMode());
@@ -278,6 +281,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Common.Consts.MCP.Server.TransportMethod transport,
             ILogger? logger = null)
         {
+            if (!SupportsTransport(transport))
+                return ConfiguratorStatus.NotConfigured;
             if (IsConfigured(settings, transport, logger))
                 return ConfiguratorStatus.Configured;
 
