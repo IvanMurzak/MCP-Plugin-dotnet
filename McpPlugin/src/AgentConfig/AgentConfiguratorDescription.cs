@@ -164,6 +164,32 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// <summary>The ordered UI sections to render.</summary>
         public IReadOnlyList<ConfigurationSection> Sections { get; }
 
+        /// <summary>
+        /// Whether the agent supports the described transport. When <c>false</c> the sections hold only an alert
+        /// and the engine must not offer Configure (see <see cref="AiAgentConfigurator.SupportsTransport"/>).
+        /// </summary>
+        public bool TransportSupported { get; }
+
+        /// <summary>
+        /// The notice to show after writing or removing the config for the described transport, or <c>null</c>
+        /// (see <see cref="AiAgentConfigurator.GetRestartNotice"/>).
+        /// </summary>
+        public string? RestartNotice { get; }
+
+        /// <summary>The 8.16 signature, kept so assemblies compiled against it still bind.</summary>
+        public AgentConfiguratorDescription(
+            string agentName,
+            string agentId,
+            string? iconName,
+            bool isConfigured,
+            bool isInstalled,
+            IReadOnlyList<ConfigurationSection> sections,
+            ConfiguratorStatus status,
+            IReadOnlyList<ConfigurationItem>? links)
+            : this(agentName, agentId, iconName, isConfigured, isInstalled, sections, status, links, transportSupported: true)
+        {
+        }
+
         public AgentConfiguratorDescription(
             string agentName,
             string agentId,
@@ -172,7 +198,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             bool isInstalled,
             IReadOnlyList<ConfigurationSection> sections,
             ConfiguratorStatus status = ConfiguratorStatus.NotConfigured,
-            IReadOnlyList<ConfigurationItem>? links = null)
+            IReadOnlyList<ConfigurationItem>? links = null,
+            bool transportSupported = true,
+            string? restartNotice = null)
         {
             AgentName = agentName;
             AgentId = agentId;
@@ -182,6 +210,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Sections = sections;
             Status = status;
             Links = links ?? System.Array.Empty<ConfigurationItem>();
+            TransportSupported = transportSupported;
+            RestartNotice = restartNotice;
         }
     }
 }

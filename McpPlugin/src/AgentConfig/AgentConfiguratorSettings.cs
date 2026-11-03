@@ -561,6 +561,27 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             return port > 0 && port <= Consts.Hub.MaxPort ? port : (int?)null;
         }
 
+        /// <summary>
+        /// Repairs a LOCAL (Custom-mode) server URL the engine connects to and shows in its "Server URL" field:
+        /// an empty value, or a loopback URL with no explicit port (e.g. <c>http://localhost/mcp</c>), becomes
+        /// <c>{scheme}://{host}:{port}</c> — the per-project port the local server binds, with no path. Without
+        /// this the engine dials the scheme default (80) while the written agent configs use the derived port,
+        /// so nothing connects. A URL with an explicit port, a non-loopback URL, and a non-absolute value are
+        /// returned unchanged (trimmed): they carry user intent this method must not override.
+        /// </summary>
+        /// <param name="host">The stored local server URL.</param>
+        /// <param name="port">The engine's derived per-project local port.</param>
+        public static string NormalizeLocalHost(string? host, int port)
+        {
+            var trimmed = host?.Trim();
+            if (string.IsNullOrEmpty(trimmed))
+                return $"http://localhost:{port}";
+            if (TryGetExplicitPort(trimmed) != null || !HostScope.IsLoopback(trimmed))
+                return trimmed!;
+            var uri = new Uri(trimmed!, UriKind.Absolute);
+            return $"{uri.Scheme}://{uri.Host}:{port}";
+        }
+
         /// <summary>Characters that terminate a URL authority. Static so the parse allocates nothing.</summary>
         private static readonly char[] AuthorityTerminators = { '/', '?', '#' };
     }

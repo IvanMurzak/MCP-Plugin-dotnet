@@ -94,6 +94,25 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public virtual bool SupportsOAuth => true;
 
         /// <summary>
+        /// Whether this agent can consume an MCP config entry for <paramref name="transport"/> (default: every
+        /// transport). For an unsupported transport <see cref="Describe"/> returns only an alert and
+        /// <see cref="AgentConfiguratorDescription.TransportSupported"/> = <c>false</c>; engines must not offer Configure.
+        /// </summary>
+        public virtual bool SupportsTransport(Common.Consts.MCP.Server.TransportMethod transport) => true;
+
+        /// <summary>
+        /// The notice an engine shows after it writes or removes this agent's config for <paramref name="transport"/>,
+        /// or <c>null</c>. Only stdio agents get one: they spawn the server themselves and read their MCP config
+        /// only at startup, so a running agent keeps the old setup until it restarts.
+        /// </summary>
+        public string? GetRestartNotice(Common.Consts.MCP.Server.TransportMethod transport)
+            => transport == Common.Consts.MCP.Server.TransportMethod.stdio ? RestartNoticeText : null;
+
+        /// <summary>The stdio restart notice text (see <see cref="GetRestartNotice"/>); <c>null</c> for none.</summary>
+        protected virtual string? RestartNoticeText =>
+            $"Restart {AgentName} to apply the new MCP configuration. It reads its MCP configuration only at startup.";
+
+        /// <summary>
         /// Builds the STDIO transport config for the given settings. Override per agent.
         /// Authorization is applied by <see cref="GetStdioConfig"/>; subclasses build the base entry only.
         /// </summary>
@@ -240,6 +259,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Common.Consts.MCP.Server.TransportMethod transport,
             ILogger? logger = null)
         {
+            // An entry for an unsupported transport is never usable, even when it matches the settings.
+            if (!SupportsTransport(transport))
+                return false;
             var config = transport == Common.Consts.MCP.Server.TransportMethod.stdio
                 ? GetStdioConfig(settings, logger)
                 : GetHttpConfig(settings, logger, settings.ResolveHttpCredentialMode());
@@ -259,6 +281,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Common.Consts.MCP.Server.TransportMethod transport,
             ILogger? logger = null)
         {
+            if (!SupportsTransport(transport))
+                return ConfiguratorStatus.NotConfigured;
             if (IsConfigured(settings, transport, logger))
                 return ConfiguratorStatus.Configured;
 
@@ -298,6 +322,26 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Common.Consts.MCP.Server.TransportMethod transport,
             ILogger? logger = null)
         {
+            if (!SupportsTransport(transport))
+            {
+                // No status, config preview or troubleshooting: only the setup that works.
+                return new AgentConfiguratorDescription(
+                    agentName: AgentName,
+                    agentId: AgentId,
+                    iconName: IconName,
+                    isConfigured: false,
+                    isInstalled: false,
+                    sections: new[]
+                    {
+                        new ConfigurationSection("Transport Not Supported", true, new[]
+                        {
+                            ConfigurationItem.Alert($"{AgentName} supports only the stdio transport. Select the Custom connection and the stdio transport, then press Configure.")
+                        })
+                    },
+                    links: BuildLinks(),
+                    transportSupported: false);
+            }
+
             // Status compares against what Configure REALLY writes; every user-visible section is built from the
             // redacted snapshot, so no BuildSections override can ever render the raw project key.
             var status = GetStatus(settings, transport, logger);
@@ -336,7 +380,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 isInstalled: false,
                 sections: sections,
                 status: status,
-                links: BuildLinks());
+                links: BuildLinks(),
+                restartNotice: GetRestartNotice(transport));
         }
 
         /// <summary>

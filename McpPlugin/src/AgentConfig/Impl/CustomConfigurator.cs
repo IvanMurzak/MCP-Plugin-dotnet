@@ -31,6 +31,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         public string EditableSkillsPath { get; set; } = ".claude/skills";
 
         public override string AgentName => "Other - Custom";
+
+        // Custom writes no config file (the user copies the snippet), so there is nothing to restart for.
+        protected override string? RestartNoticeText => null;
         public override string AgentId => "other-custom";
         public override string DownloadUrl => "NA";
         public override string? SkillsPath => EditableSkillsPath;

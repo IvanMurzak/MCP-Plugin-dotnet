@@ -32,6 +32,14 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "AppData", "Roaming", "Claude", "claude_desktop_config.json")
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support", "Claude", "claude_desktop_config.json");
 
+        // Claude Desktop only spawns stdio servers from claude_desktop_config.json and skips an HTTP entry there
+        // as "not valid MCP server configurations"; remote servers go through its Connectors UI instead.
+        public override bool SupportsTransport(TransportMethod transport) => transport == TransportMethod.stdio;
+
+        protected override string? RestartNoticeText =>
+            "Fully quit Claude Desktop (also from the system tray or menu bar) and start it again. " +
+            "It reads claude_desktop_config.json only at startup.";
+
         protected override AiAgentConfig CreateStdioConfig(AgentConfiguratorSettings settings, ILogger? logger)
             => AgentConfigBuilders.JsonStdio(AgentName, ConfigPath(settings), settings, logger);
 
@@ -42,16 +50,12 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
             => DefaultConfigurationSections(settings, transport, logger);
 
-        // Claude Desktop only supports STDIO; Unity emits the Troubleshooting foldout for stdio
-        // only (the HTTP path shows a "no HTTP support" alert instead, no troubleshooting).
+        // Stdio only: Describe() never builds sections for the unsupported HTTP transport.
         protected override IReadOnlyList<ConfigurationSection> BuildTroubleshootingSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
-            => transport == TransportMethod.stdio
-                ? TroubleshootingSection(
-                    "- Claude Desktop may launch two MCP server instances instead of one. If you must use Claude Desktop, manually terminate one of the instances. This behavior is unreliable — consider switching to Claude Code.",
-                    "- Claude Desktop may not detect runtime updates to MCP tools. Ensure Claude Desktop reads the MCP tools on startup.",
-                    "- Start the plugin first; the connection status should read 'Connecting...'",
-                    "- Restart Claude Desktop after configuration changes")
-                : System.Array.Empty<ConfigurationSection>();
+            => TroubleshootingSection(
+                "- Claude Desktop may launch two MCP server instances instead of one. If you must use Claude Desktop, manually terminate one of the instances. This behavior is unreliable — consider switching to Claude Code.",
+                "- Claude Desktop may not detect runtime updates to MCP tools. Ensure Claude Desktop reads the MCP tools on startup.",
+                "- Start the plugin first; the connection status should read 'Connecting...'");
     }
 }
