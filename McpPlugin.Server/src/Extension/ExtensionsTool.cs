@@ -64,6 +64,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             return new Tool()
             {
                 Name = response.Name,
+                // Mirrored to the top-level `title` (MCP 2025-06-18) as well as `annotations.title`, so clients
+                // reading either field see the same display name.
+                Title = response.Title,
                 Description = response.Description,
                 InputSchema = response.InputSchema,
                 OutputSchema = response.OutputSchema,

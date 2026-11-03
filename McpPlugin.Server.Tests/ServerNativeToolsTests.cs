@@ -108,6 +108,27 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             }
         }
 
+        [Theory]
+        // name, readOnly, destructive, idempotent, openWorld
+        [InlineData(ServerNativeTools.ListInstances, true, false, true, false)]
+        [InlineData(ServerNativeTools.SelectInstance, false, false, true, false)]
+        [InlineData(ServerNativeTools.EnrollPlugin, false, false, false, true)]
+        public void Descriptors_DeclareTitleAndEveryHintExplicitly(string name, bool readOnly, bool destructive, bool idempotent, bool openWorld)
+        {
+            // Tool directories (e.g. the Claude Connectors Directory) reject a tool without a title and an
+            // explicit readOnlyHint/destructiveHint, so every hint is set rather than left to client defaults.
+            var (tools, _, _, _, _) = NewTools();
+            var descriptor = tools.Descriptors.Single(d => d.Name == name);
+
+            descriptor.Title.ShouldNotBeNullOrWhiteSpace();
+            descriptor.Annotations.ShouldNotBeNull();
+            descriptor.Annotations!.Title.ShouldBe(descriptor.Title);
+            descriptor.Annotations.ReadOnlyHint.ShouldBe(readOnly);
+            descriptor.Annotations.DestructiveHint.ShouldBe(destructive);
+            descriptor.Annotations.IdempotentHint.ShouldBe(idempotent);
+            descriptor.Annotations.OpenWorldHint.ShouldBe(openWorld);
+        }
+
         [Fact]
         public void EnrollDescriptor_EngineIsAFreeString_WithoutEnum()
         {

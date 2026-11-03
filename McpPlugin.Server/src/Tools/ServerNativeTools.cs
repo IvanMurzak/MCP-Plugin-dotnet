@@ -268,29 +268,44 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
         {
             return new List<Tool>
             {
-                new Tool
-                {
-                    Name = ListInstances,
-                    Description = "List the live game-engine instances connected for your account (engine, project, machine, connected/last-active), and which one this session has selected.",
-                    InputSchema = Schema("{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}"),
-                    Annotations = new ToolAnnotations { Title = "List engine instances", ReadOnlyHint = true, OpenWorldHint = false }
-                },
-                new Tool
-                {
-                    Name = SelectInstance,
-                    Description = "Set the sticky engine instance for this MCP session. Provide instance_id (preferred) or a unique project_name. May narrow a project pin but never overrides it to another project.",
-                    InputSchema = Schema("{\"type\":\"object\",\"properties\":{\"instance_id\":{\"type\":\"string\",\"description\":\"The instance id from list_engine_instances.\"},\"project_name\":{\"type\":\"string\",\"description\":\"A unique project name (alternative to instance_id).\"}},\"additionalProperties\":false}"),
-                    Annotations = new ToolAnnotations { Title = "Select engine instance", ReadOnlyHint = false, OpenWorldHint = false }
-                },
-                new Tool
-                {
-                    Name = EnrollPlugin,
-                    Description = "Start connecting a new game engine to your account. Returns a one-time enrollment code with instructions for installing the engine plugin.",
-                    InputSchema = Schema("{\"type\":\"object\",\"properties\":{\"engine\":{\"type\":\"string\",\"description\":\"Identifier of the engine plugin to enroll, as the plugin's host documents it.\"}},\"required\":[\"engine\"],\"additionalProperties\":false}"),
-                    Annotations = new ToolAnnotations { Title = "Enroll engine plugin", ReadOnlyHint = false, OpenWorldHint = true }
-                }
+                Descriptor(ListInstances, "List engine instances",
+                    "List the live game-engine instances connected for your account (engine, project, machine, connected/last-active), and which one this session has selected.",
+                    "{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}",
+                    readOnly: true, destructive: false, idempotent: true, openWorld: false),
+                // Replaces only this session's routing selection (reversible; re-selecting is a no-op).
+                Descriptor(SelectInstance, "Select engine instance",
+                    "Set the sticky engine instance for this MCP session. Provide instance_id (preferred) or a unique project_name. May narrow a project pin but never overrides it to another project.",
+                    "{\"type\":\"object\",\"properties\":{\"instance_id\":{\"type\":\"string\",\"description\":\"The instance id from list_engine_instances.\"},\"project_name\":{\"type\":\"string\",\"description\":\"A unique project name (alternative to instance_id).\"}},\"additionalProperties\":false}",
+                    readOnly: false, destructive: false, idempotent: true, openWorld: false),
+                // Mints a new one-time code at the authorization server on every call (not idempotent);
+                // it creates, never deletes or overwrites, so it is not destructive.
+                Descriptor(EnrollPlugin, "Enroll engine plugin",
+                    "Start connecting a new game engine to your account. Returns a one-time enrollment code with instructions for installing the engine plugin.",
+                    "{\"type\":\"object\",\"properties\":{\"engine\":{\"type\":\"string\",\"description\":\"Identifier of the engine plugin to enroll, as the plugin's host documents it.\"}},\"required\":[\"engine\"],\"additionalProperties\":false}",
+                    readOnly: false, destructive: false, idempotent: false, openWorld: true)
             };
         }
+
+        /// <summary>
+        /// A descriptor with its title in both the top-level <c>title</c> and <c>annotations.title</c>, and every
+        /// hint explicit: tool directories (e.g. the Claude Connectors Directory) reject a tool without them.
+        /// </summary>
+        static Tool Descriptor(string name, string title, string description, string inputSchemaJson, bool readOnly, bool destructive, bool idempotent, bool openWorld)
+            => new Tool
+            {
+                Name = name,
+                Title = title,
+                Description = description,
+                InputSchema = Schema(inputSchemaJson),
+                Annotations = new ToolAnnotations
+                {
+                    Title = title,
+                    ReadOnlyHint = readOnly,
+                    DestructiveHint = destructive,
+                    IdempotentHint = idempotent,
+                    OpenWorldHint = openWorld
+                }
+            };
 
         static JsonElement Schema(string json) => JsonSerializer.Deserialize<JsonElement>(json);
     }
