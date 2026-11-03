@@ -133,10 +133,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         }
 
         [Fact]
-        public void ThrowIfInvalid_Assembly_ThrowsForThisTestAssembly()
+        public void ThrowIfAny_Assembly_ThrowsForThisTestAssembly()
         {
             // This test assembly deliberately contains non-compliant fixtures.
-            Should.Throw<InvalidOperationException>(() => AiToolAnnotationsValidator.ThrowIfInvalid(typeof(AiToolAnnotationsValidatorTests).Assembly));
+            Should.Throw<InvalidOperationException>(() => AiToolAnnotationsValidator.ThrowIfAny(
+                AiToolAnnotationsValidator.Validate(typeof(AiToolAnnotationsValidatorTests).Assembly)));
         }
 
         [Fact]

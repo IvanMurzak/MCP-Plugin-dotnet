@@ -18,7 +18,7 @@ namespace com.IvanMurzak.McpPlugin
 {
     public partial class McpPluginBuilder
     {
-        private const BindingFlags MethodBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
+        internal const BindingFlags MethodBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
         private const BindingFlags FieldBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
 
         private void ProcessAllAssemblies()
@@ -136,6 +136,12 @@ namespace com.IvanMurzak.McpPlugin
             }
         }
 
+        /// <summary>The method's tool attribute (at most one, see <see cref="ProcessTypeMethods"/>), or null.</summary>
+        internal static AiToolAttribute? GetToolAttribute(MethodInfo method)
+            => method.GetCustomAttributes(typeof(AiToolAttribute), inherit: false)
+                .Cast<AiToolAttribute>()
+                .FirstOrDefault();
+
         private void ProcessTypeMethods(Type type, bool processTool, bool processPrompt, bool processResource)
         {
             foreach (var method in type.GetMethods(MethodBindingFlags))
@@ -150,9 +156,7 @@ namespace com.IvanMurzak.McpPlugin
                 // errors when consumers gradually swap [McpPlugin*] → [Ai*].
                 if (processTool)
                 {
-                    var toolAttr = method.GetCustomAttributes(typeof(AiToolAttribute), inherit: false)
-                        .Cast<AiToolAttribute>()
-                        .FirstOrDefault();
+                    var toolAttr = GetToolAttribute(method);
                     if (toolAttr != null)
                     {
                         if (string.IsNullOrEmpty(toolAttr.Name))

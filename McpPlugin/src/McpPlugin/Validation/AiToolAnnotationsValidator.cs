@@ -46,7 +46,7 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>A human-readable description of the violation, naming the tool and (when known) its method.</summary>
         public string Message { get; }
 
-        public AiToolAnnotationViolation(string toolName, AiToolAnnotationViolationKind kind, MethodInfo? method = null)
+        internal AiToolAnnotationViolation(string toolName, AiToolAnnotationViolationKind kind, MethodInfo? method = null)
         {
             ToolName = toolName ?? string.Empty;
             Kind = kind;
@@ -73,32 +73,25 @@ namespace com.IvanMurzak.McpPlugin
     /// <code>
     /// AiToolAnnotationsValidator.Validate(typeof(MyTools).Assembly).ShouldBeEmpty();
     /// // or, test-framework neutral:
-    /// AiToolAnnotationsValidator.ThrowIfInvalid(typeof(MyTools).Assembly);
+    /// AiToolAnnotationsValidator.ThrowIfAny(AiToolAnnotationsValidator.Validate(typeof(MyTools).Assembly));
     /// </code>
     /// </summary>
     public static class AiToolAnnotationsValidator
     {
-        const BindingFlags MethodBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance;
-
         /// <summary>
         /// Validates every <see cref="AiToolAttribute"/> method of every <see cref="AiToolTypeAttribute"/> class in
-        /// <paramref name="assemblies"/> (the same classes <c>WithToolsFromAssembly</c> registers). System tools
-        /// (<see cref="McpToolType.System"/>) are skipped: they are never listed to MCP clients.
+        /// <paramref name="assemblies"/> (the same classes <c>WithToolsFromAssembly</c> registers; the builder's
+        /// ignore rules are not applied). System tools (<see cref="McpToolType.System"/>) are skipped: they are
+        /// never listed to MCP clients.
         /// </summary>
         public static IReadOnlyList<AiToolAnnotationViolation> Validate(params Assembly[] assemblies)
-            => Validate((IEnumerable<Assembly>)assemblies);
-
-        /// <inheritdoc cref="Validate(Assembly[])"/>
-        public static IReadOnlyList<AiToolAnnotationViolation> Validate(IEnumerable<Assembly> assemblies)
         {
             if (assemblies == null)
                 throw new ArgumentNullException(nameof(assemblies));
 
             return ValidateTypes(assemblies
-                .Where(assembly => assembly != null)
-                .Distinct()
                 .SelectMany(AssemblyUtils.GetAssemblyTypes)
-                .Where(type => type != null && Attribute.IsDefined(type, typeof(AiToolTypeAttribute))));
+                .Where(type => Attribute.IsDefined(type, typeof(AiToolTypeAttribute))));
         }
 
         /// <summary>
@@ -111,14 +104,11 @@ namespace com.IvanMurzak.McpPlugin
                 throw new ArgumentNullException(nameof(types));
 
             var violations = new List<AiToolAnnotationViolation>();
-            foreach (var type in types.Where(t => t != null).Distinct())
+            foreach (var type in types)
             {
-                foreach (var method in type.GetMethods(MethodBindingFlags))
+                foreach (var method in type.GetMethods(McpPluginBuilder.MethodBindingFlags))
                 {
-                    // Same lookup as the builder's scanner: at most one tool attribute per method.
-                    var attr = method.GetCustomAttributes(typeof(AiToolAttribute), inherit: false)
-                        .Cast<AiToolAttribute>()
-                        .FirstOrDefault();
+                    var attr = McpPluginBuilder.GetToolAttribute(method);
                     if (attr == null || attr.ToolType == McpToolType.System)
                         continue;
 
@@ -139,17 +129,10 @@ namespace com.IvanMurzak.McpPlugin
                 throw new ArgumentNullException(nameof(tools));
 
             var violations = new List<AiToolAnnotationViolation>();
-            foreach (var tool in tools.Where(t => t != null))
+            foreach (var tool in tools)
                 Collect(violations, tool.Name, tool.Title, tool.ReadOnlyHint, tool.DestructiveHint, method: null);
             return violations;
         }
-
-        /// <summary>
-        /// Throws an <see cref="InvalidOperationException"/> listing every violation found by
-        /// <see cref="Validate(Assembly[])"/>; does nothing when there are none.
-        /// </summary>
-        public static void ThrowIfInvalid(params Assembly[] assemblies)
-            => ThrowIfAny(Validate(assemblies));
 
         /// <summary>
         /// Throws an <see cref="InvalidOperationException"/> listing <paramref name="violations"/>; does nothing

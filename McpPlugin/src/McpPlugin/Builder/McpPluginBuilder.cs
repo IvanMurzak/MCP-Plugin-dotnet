@@ -107,9 +107,7 @@ namespace com.IvanMurzak.McpPlugin
 
             // Plural overload: tolerates methods carrying BOTH [AiTool] and the legacy [McpPluginTool]
             // subclass alias without raising AmbiguousMatchException.
-            var attribute = methodInfo.GetCustomAttributes(typeof(AiToolAttribute), inherit: false)
-                .Cast<AiToolAttribute>()
-                .FirstOrDefault();
+            var attribute = GetToolAttribute(methodInfo);
             return WithTool(attribute!, classType, methodInfo);
         }
         public virtual IMcpPluginBuilder WithTool(string name, string? title, Type classType, MethodInfo methodInfo)

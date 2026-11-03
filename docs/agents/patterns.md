@@ -37,7 +37,7 @@ them. An unset hint is omitted from `tools/list`, never defaulted. Guard it with
 
 // test: lists each tool missing a title, missing both safety hints, or marked read-only AND destructive
 AiToolAnnotationsValidator.Validate(typeof(MyTools).Assembly).ShouldBeEmpty();
-AiToolAnnotationsValidator.ThrowIfInvalid(typeof(MyTools).Assembly); // framework-neutral
+AiToolAnnotationsValidator.ThrowIfAny(AiToolAnnotationsValidator.Validate(typeof(MyTools).Assembly)); // framework-neutral
 AiToolAnnotationsValidator.ValidateTools(listedTools);                // a RunListTool catalogue, incl. AddTool tools
 ```
 
