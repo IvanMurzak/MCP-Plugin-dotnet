@@ -104,12 +104,16 @@ namespace com.IvanMurzak.McpPlugin
                 throw new ArgumentNullException(nameof(types));
 
             var violations = new List<AiToolAnnotationViolation>();
+            // A method inherited by several scanned [AiToolType] classes is one tool: report it once.
+            var seen = new HashSet<(Module, int)>();
             foreach (var type in types)
             {
                 foreach (var method in type.GetMethods(McpPluginBuilder.MethodBindingFlags))
                 {
                     var attr = McpPluginBuilder.GetToolAttribute(method);
                     if (attr == null || attr.ToolType == McpToolType.System)
+                        continue;
+                    if (!seen.Add((method.Module, method.MetadataToken)))
                         continue;
 
                     Collect(violations, attr.Name, attr.Title, attr.ReadOnlyHintValue, attr.DestructiveHintValue, method);

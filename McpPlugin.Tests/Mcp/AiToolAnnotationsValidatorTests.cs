@@ -69,6 +69,16 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             public static string NotScanned() => "x";
         }
 
+        [AiToolType]
+        public abstract class BaseTools
+        {
+            [AiTool("validator-inherited")]
+            public string Inherited() => "i";
+        }
+
+        // [AiToolType] is inherited, so an assembly scan visits both classes; the tool is still one tool.
+        public sealed class DerivedTools : BaseTools { }
+
         readonly ITestOutputHelper _output;
 
         public AiToolAnnotationsValidatorTests(ITestOutputHelper output) => _output = output;
@@ -118,6 +128,18 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             names.ShouldNotContain("validator-not-scanned");
             names.ShouldNotContain("validator-read");
             names.ShouldNotContain("validator-system");
+        }
+
+        [Fact]
+        public void ValidateTypes_InheritedTool_IsReportedOnce()
+        {
+            var violations = AiToolAnnotationsValidator.ValidateTypes(new[] { typeof(BaseTools), typeof(DerivedTools) });
+
+            violations.Select(v => (v.ToolName, v.Kind)).OrderBy(x => x.Kind).ShouldBe(new[]
+            {
+                ("validator-inherited", AiToolAnnotationViolationKind.MissingTitle),
+                ("validator-inherited", AiToolAnnotationViolationKind.MissingSafetyHint),
+            });
         }
 
         [Fact]

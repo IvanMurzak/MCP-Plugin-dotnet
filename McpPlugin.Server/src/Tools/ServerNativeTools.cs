@@ -272,7 +272,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                     "List the live game-engine instances connected for your account (engine, project, machine, connected/last-active), and which one this session has selected.",
                     "{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}",
                     readOnly: true, destructive: false, idempotent: true, openWorld: false),
-                // Changes only this session's routing state (additive; re-selecting is a no-op).
+                // Replaces only this session's routing selection (reversible; re-selecting is a no-op).
                 Descriptor(SelectInstance, "Select engine instance",
                     "Set the sticky engine instance for this MCP session. Provide instance_id (preferred) or a unique project_name. May narrow a project pin but never overrides it to another project.",
                     "{\"type\":\"object\",\"properties\":{\"instance_id\":{\"type\":\"string\",\"description\":\"The instance id from list_engine_instances.\"},\"project_name\":{\"type\":\"string\",\"description\":\"A unique project name (alternative to instance_id).\"}},\"additionalProperties\":false}",
