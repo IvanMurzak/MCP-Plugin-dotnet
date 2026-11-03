@@ -43,7 +43,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
         // works, a local (loopback / LAN) server does not. Nothing is written, so the user adds it by hand once.
         public override AgentSetupKind GetSetupKind(AgentConfiguratorSettings settings, TransportMethod transport)
             => transport == TransportMethod.stdio ? AgentSetupKind.ConfigFile
-                : settings.ConnectionMode == ConnectionMode.Cloud ? AgentSetupKind.Manual
+                : transport == TransportMethod.streamableHttp && settings.ConnectionMode == ConnectionMode.Cloud ? AgentSetupKind.Manual
                 : AgentSetupKind.Unsupported;
 
         protected override IReadOnlyList<ConfigurationSection> BuildManualSetupSections(AgentConfiguratorSettings settings)

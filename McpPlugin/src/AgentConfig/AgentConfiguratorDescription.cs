@@ -218,7 +218,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             ConfiguratorStatus status,
             IReadOnlyList<ConfigurationItem>? links,
             bool transportSupported,
-            string? restartNotice)
+            string? restartNotice = null)
             : this(agentName, agentId, iconName, isConfigured, isInstalled, sections, status, links, restartNotice,
                 transportSupported ? AgentSetupKind.ConfigFile : AgentSetupKind.Unsupported)
         {
