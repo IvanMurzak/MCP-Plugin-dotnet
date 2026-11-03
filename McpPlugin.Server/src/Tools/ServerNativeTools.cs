@@ -273,21 +273,27 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                     Name = ListInstances,
                     Description = "List the live game-engine instances connected for your account (engine, project, machine, connected/last-active), and which one this session has selected.",
                     InputSchema = Schema("{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}"),
-                    Annotations = new ToolAnnotations { Title = "List engine instances", ReadOnlyHint = true, OpenWorldHint = false }
+                    Title = "List engine instances",
+                    Annotations = new ToolAnnotations { Title = "List engine instances", ReadOnlyHint = true, DestructiveHint = false, IdempotentHint = true, OpenWorldHint = false }
                 },
                 new Tool
                 {
                     Name = SelectInstance,
                     Description = "Set the sticky engine instance for this MCP session. Provide instance_id (preferred) or a unique project_name. May narrow a project pin but never overrides it to another project.",
                     InputSchema = Schema("{\"type\":\"object\",\"properties\":{\"instance_id\":{\"type\":\"string\",\"description\":\"The instance id from list_engine_instances.\"},\"project_name\":{\"type\":\"string\",\"description\":\"A unique project name (alternative to instance_id).\"}},\"additionalProperties\":false}"),
-                    Annotations = new ToolAnnotations { Title = "Select engine instance", ReadOnlyHint = false, OpenWorldHint = false }
+                    Title = "Select engine instance",
+                    // Changes only this session's routing state (additive, re-selecting is a no-op).
+                    Annotations = new ToolAnnotations { Title = "Select engine instance", ReadOnlyHint = false, DestructiveHint = false, IdempotentHint = true, OpenWorldHint = false }
                 },
                 new Tool
                 {
                     Name = EnrollPlugin,
                     Description = "Start connecting a new game engine to your account. Returns a one-time enrollment code with instructions for installing the engine plugin.",
                     InputSchema = Schema("{\"type\":\"object\",\"properties\":{\"engine\":{\"type\":\"string\",\"description\":\"Identifier of the engine plugin to enroll, as the plugin's host documents it.\"}},\"required\":[\"engine\"],\"additionalProperties\":false}"),
-                    Annotations = new ToolAnnotations { Title = "Enroll engine plugin", ReadOnlyHint = false, OpenWorldHint = true }
+                    Title = "Enroll engine plugin",
+                    // Mints a new one-time code at the authorization server on every call (not idempotent);
+                    // it creates, never deletes or overwrites, so it is not destructive.
+                    Annotations = new ToolAnnotations { Title = "Enroll engine plugin", ReadOnlyHint = false, DestructiveHint = false, IdempotentHint = false, OpenWorldHint = true }
                 }
             };
         }

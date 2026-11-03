@@ -26,6 +26,21 @@ public static class MyTools
 
 The legacy `[McpPluginToolType]` / `[McpPluginTool]` / `[McpPluginPrompt]` / `[McpPluginResource]` / `[McpPluginSkill]` names remain available as `[Obsolete]` subclass aliases of the new `[Ai*]` types, so existing consumer code continues to compile (with a deprecation warning) until callers migrate to the new names.
 
+### Tool annotations (title and hints)
+
+Give every tool a `Title` and an explicit `ReadOnlyHint` or `DestructiveHint` (also `IdempotentHint` /
+`OpenWorldHint` where known): MCP tool directories (e.g. the Claude Connectors Directory) reject tools without
+them. An unset hint is omitted from `tools/list`, never defaulted. Guard it with a unit test in the engine repo:
+
+```csharp
+[AiTool("scene-save", Title = "Save scene", ReadOnlyHint = false, DestructiveHint = true, IdempotentHint = true, OpenWorldHint = false)]
+
+// test: lists each tool missing a title, missing both safety hints, or marked read-only AND destructive
+AiToolAnnotationsValidator.Validate(typeof(MyTools).Assembly).ShouldBeEmpty();
+AiToolAnnotationsValidator.ThrowIfInvalid(typeof(MyTools).Assembly); // framework-neutral
+AiToolAnnotationsValidator.ValidateTools(listedTools);                // a RunListTool catalogue, incl. AddTool tools
+```
+
 ### Throwing from a tool
 
 An `[AiTool]` method that throws is reported as the caller's fault (kind `BadRequest`, HTTP 422 on
