@@ -95,10 +95,29 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
 
         /// <summary>
         /// Whether this agent can consume an MCP config entry for <paramref name="transport"/> (default: every
-        /// transport). For an unsupported transport <see cref="Describe"/> returns only an alert and
-        /// <see cref="AgentConfiguratorDescription.TransportSupported"/> = <c>false</c>; engines must not offer Configure.
+        /// transport). When it can't, <see cref="IsConfigured"/> / <see cref="GetStatus"/> report nothing and
+        /// engines must not offer Configure; <see cref="GetSetupKind"/> says what to show instead.
         /// </summary>
         public virtual bool SupportsTransport(Common.Consts.MCP.Server.TransportMethod transport) => true;
+
+        /// <summary>
+        /// How the user sets this agent up for <paramref name="transport"/> under <paramref name="settings"/>
+        /// (the connection mode can matter). Default: <see cref="AgentSetupKind.ConfigFile"/> when
+        /// <see cref="SupportsTransport"/>, else <see cref="AgentSetupKind.Unsupported"/>. An agent returning
+        /// <see cref="AgentSetupKind.Manual"/> must override <see cref="BuildManualSetupSections"/>.
+        /// </summary>
+        public virtual AgentSetupKind GetSetupKind(
+            AgentConfiguratorSettings settings,
+            Common.Consts.MCP.Server.TransportMethod transport)
+            => SupportsTransport(transport) ? AgentSetupKind.ConfigFile : AgentSetupKind.Unsupported;
+
+        /// <summary>The steps <see cref="Describe"/> shows for <see cref="AgentSetupKind.Manual"/> (built from redacted settings).</summary>
+        protected virtual IReadOnlyList<ConfigurationSection> BuildManualSetupSections(AgentConfiguratorSettings settings)
+            => System.Array.Empty<ConfigurationSection>();
+
+        /// <summary>The alert <see cref="Describe"/> shows for <see cref="AgentSetupKind.Unsupported"/>.</summary>
+        protected virtual string UnsupportedTransportMessage =>
+            $"{AgentName} supports only the stdio transport. Select the Custom connection and the stdio transport, then press Configure.";
 
         /// <summary>
         /// The notice an engine shows after it writes or removes this agent's config for <paramref name="transport"/>,
@@ -322,28 +341,32 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Common.Consts.MCP.Server.TransportMethod transport,
             ILogger? logger = null)
         {
-            if (!SupportsTransport(transport))
+            // Every user-visible section is built from the redacted snapshot, so no override can render the raw project key.
+            var setupKind = GetSetupKind(settings, transport);
+            if (setupKind != AgentSetupKind.ConfigFile)
             {
-                // No status, config preview or troubleshooting: only the setup that works.
+                // Nothing to write: no status, config preview or troubleshooting.
                 return new AgentConfiguratorDescription(
                     agentName: AgentName,
                     agentId: AgentId,
                     iconName: IconName,
                     isConfigured: false,
                     isInstalled: false,
-                    sections: new[]
-                    {
-                        new ConfigurationSection("Transport Not Supported", true, new[]
+                    sections: setupKind == AgentSetupKind.Manual
+                        ? BuildManualSetupSections(settings.ForDisplay())
+                        : new[]
                         {
-                            ConfigurationItem.Alert($"{AgentName} supports only the stdio transport. Select the Custom connection and the stdio transport, then press Configure.")
-                        })
-                    },
+                            new ConfigurationSection("Transport Not Supported", true, new[]
+                            {
+                                ConfigurationItem.Alert(UnsupportedTransportMessage)
+                            })
+                        },
                     links: BuildLinks(),
-                    transportSupported: false);
+                    setupKind: setupKind);
             }
 
-            // Status compares against what Configure REALLY writes; every user-visible section is built from the
-            // redacted snapshot, so no BuildSections override can ever render the raw project key.
+            // Status compares against what Configure REALLY writes (the unredacted settings). It runs before
+            // ForDisplay() so the clone inherits the already-resolved identity / marker caches.
             var status = GetStatus(settings, transport, logger);
             var display = settings.ForDisplay();
             var sections = BuildSections(display, transport, logger);
@@ -410,11 +433,15 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// "Troubleshooting" section of <see cref="ConfigurationItem.Description"/> items.
         /// </summary>
         protected static IReadOnlyList<ConfigurationSection> TroubleshootingSection(params string[] lines)
+            => new[] { DescriptionSection("Troubleshooting", lines) };
+
+        /// <summary>A collapsed section of plain-text <see cref="ConfigurationItem.Description"/> lines.</summary>
+        protected static ConfigurationSection DescriptionSection(string heading, params string[] lines)
         {
             var items = new ConfigurationItem[lines.Length];
             for (var i = 0; i < lines.Length; i++)
                 items[i] = ConfigurationItem.Description(lines[i]);
-            return new[] { new ConfigurationSection("Troubleshooting", false, items) };
+            return new ConfigurationSection(heading, false, items);
         }
 
         /// <summary>

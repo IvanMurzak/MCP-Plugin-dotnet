@@ -32,9 +32,45 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "AppData", "Roaming", "Claude", "claude_desktop_config.json")
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support", "Claude", "claude_desktop_config.json");
 
+        /// <summary>Where a Claude user adds a custom connector (claude.ai and Claude Desktop share the account setting).</summary>
+        public const string ConnectorsSettingsUrl = "https://claude.ai/customize/connectors";
+
         // Claude Desktop only spawns stdio servers from claude_desktop_config.json and skips an HTTP entry there
         // as "not valid MCP server configurations"; remote servers go through its Connectors UI instead.
         public override bool SupportsTransport(TransportMethod transport) => transport == TransportMethod.stdio;
+
+        // Claude reaches a custom connector from Anthropic's cloud, never from this machine: the public Cloud URL
+        // works, a local (loopback / LAN) server does not. Nothing is written, so the user adds it by hand once.
+        public override AgentSetupKind GetSetupKind(AgentConfiguratorSettings settings, TransportMethod transport)
+            => transport == TransportMethod.stdio ? AgentSetupKind.ConfigFile
+                : transport == TransportMethod.streamableHttp && settings.ConnectionMode == ConnectionMode.Cloud ? AgentSetupKind.Manual
+                : AgentSetupKind.Unsupported;
+
+        protected override IReadOnlyList<ConfigurationSection> BuildManualSetupSections(AgentConfiguratorSettings settings)
+            => new[]
+            {
+                new ConfigurationSection("Add as a Claude Connector", true, new[]
+                {
+                    ConfigurationItem.Description("Claude Desktop and Claude in the browser connect to the Cloud server through a custom connector. Add it once in Claude; nothing is written on this computer."),
+                    ConfigurationItem.Description("1. Open Customize > Connectors in Claude:"),
+                    ConfigurationItem.Link("Open Claude Connectors", ConnectorsSettingsUrl),
+                    ConfigurationItem.Description("2. Click + Add, then Add custom connector."),
+                    ConfigurationItem.Description($"3. Name it {AiAgentConfig.DefaultMcpServerName} and paste this server URL:"),
+                    ConfigurationItem.ReadOnlyField(settings.PinnedHttpUrl),
+                    ConfigurationItem.Description("4. Click Continue, keep the detected sign-in settings, click Add, then sign in with your AI Game Developer account."),
+                    ConfigurationItem.Description("5. In a chat, make sure the connector is turned on in the connectors menu.")
+                }),
+                DescriptionSection("Notes",
+                    "- The URL is unique to this project: add one connector per project.",
+                    "- The Free Claude plan allows one custom connector.",
+                    "- On Team and Enterprise plans an organization Owner adds it in Organization settings > Connectors; members then click Connect.",
+                    "- A local server (Custom connection) can't be a Claude connector: Claude reaches connectors from Anthropic's cloud, not from this computer. Where the stdio transport is offered, use it with Configure instead.")
+            };
+
+        protected override string UnsupportedTransportMessage =>
+            "Claude Desktop can't use a local server over HTTP: it skips an HTTP entry in claude_desktop_config.json, and " +
+            "Claude connectors reach servers from Anthropic's cloud, not from this computer. Select the stdio transport and press Configure, " +
+            "or switch the connection to Cloud and add it as a Claude connector.";
 
         protected override string? RestartNoticeText =>
             "Fully quit Claude Desktop (also from the system tray or menu bar) and start it again. " +
