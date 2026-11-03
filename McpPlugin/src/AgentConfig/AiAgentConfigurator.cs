@@ -101,6 +101,21 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public virtual bool SupportsTransport(Common.Consts.MCP.Server.TransportMethod transport) => true;
 
         /// <summary>
+        /// Step-by-step instructions for a transport this agent has no config-file entry for
+        /// (<see cref="SupportsTransport"/> is <c>false</c>) but can still be set up by hand in its own UI — e.g.
+        /// adding the Cloud URL as a Claude custom connector. <c>null</c> (default) means there is no such path,
+        /// and <see cref="Describe"/> shows <see cref="UnsupportedTransportMessage"/> instead.
+        /// </summary>
+        protected virtual IReadOnlyList<ConfigurationSection>? BuildManualSetupSections(
+            AgentConfiguratorSettings settings,
+            Common.Consts.MCP.Server.TransportMethod transport)
+            => null;
+
+        /// <summary>The alert <see cref="Describe"/> shows for an unsupported transport with no manual setup.</summary>
+        protected virtual string UnsupportedTransportMessage(AgentConfiguratorSettings settings) =>
+            $"{AgentName} supports only the stdio transport. Select the Custom connection and the stdio transport, then press Configure.";
+
+        /// <summary>
         /// The notice an engine shows after it writes or removes this agent's config for <paramref name="transport"/>,
         /// or <c>null</c>. Only stdio agents get one: they spawn the server themselves and read their MCP config
         /// only at startup, so a running agent keeps the old setup until it restarts.
@@ -322,30 +337,34 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Common.Consts.MCP.Server.TransportMethod transport,
             ILogger? logger = null)
         {
+            // Every user-visible section is built from the redacted snapshot, so no override can render the raw project key.
+            var display = settings.ForDisplay();
+
             if (!SupportsTransport(transport))
             {
-                // No status, config preview or troubleshooting: only the setup that works.
+                // Nothing to write for this transport: no status, config preview or troubleshooting. Either the
+                // agent's own manual setup steps, or an alert naming the setup that works.
+                var manual = BuildManualSetupSections(display, transport);
                 return new AgentConfiguratorDescription(
                     agentName: AgentName,
                     agentId: AgentId,
                     iconName: IconName,
                     isConfigured: false,
                     isInstalled: false,
-                    sections: new[]
+                    sections: manual ?? new[]
                     {
                         new ConfigurationSection("Transport Not Supported", true, new[]
                         {
-                            ConfigurationItem.Alert($"{AgentName} supports only the stdio transport. Select the Custom connection and the stdio transport, then press Configure.")
+                            ConfigurationItem.Alert(UnsupportedTransportMessage(display))
                         })
                     },
                     links: BuildLinks(),
-                    transportSupported: false);
+                    transportSupported: false,
+                    manualSetup: manual != null);
             }
 
-            // Status compares against what Configure REALLY writes; every user-visible section is built from the
-            // redacted snapshot, so no BuildSections override can ever render the raw project key.
+            // Status compares against what Configure REALLY writes (the unredacted settings).
             var status = GetStatus(settings, transport, logger);
-            var display = settings.ForDisplay();
             var sections = BuildSections(display, transport, logger);
 
             // Append the per-agent Troubleshooting section(s) after the configuration sections,

@@ -171,6 +171,14 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public bool TransportSupported { get; }
 
         /// <summary>
+        /// <c>true</c> when <see cref="TransportSupported"/> is <c>false</c> but the sections are step-by-step
+        /// instructions the user follows in the agent's own UI (e.g. adding a Claude custom connector), not an
+        /// error. The engine renders the sections normally, offers no Configure / Remove and shows no
+        /// configured status: nothing is written, so nothing can be detected.
+        /// </summary>
+        public bool ManualSetup { get; }
+
+        /// <summary>
         /// The notice to show after writing or removing the config for the described transport, or <c>null</c>
         /// (see <see cref="AiAgentConfigurator.GetRestartNotice"/>).
         /// </summary>
@@ -190,6 +198,22 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         {
         }
 
+        /// <summary>The 8.17 signature, kept so assemblies compiled against it still bind.</summary>
+        public AgentConfiguratorDescription(
+            string agentName,
+            string agentId,
+            string? iconName,
+            bool isConfigured,
+            bool isInstalled,
+            IReadOnlyList<ConfigurationSection> sections,
+            ConfiguratorStatus status,
+            IReadOnlyList<ConfigurationItem>? links,
+            bool transportSupported,
+            string? restartNotice)
+            : this(agentName, agentId, iconName, isConfigured, isInstalled, sections, status, links, transportSupported, restartNotice, manualSetup: false)
+        {
+        }
+
         public AgentConfiguratorDescription(
             string agentName,
             string agentId,
@@ -200,7 +224,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             ConfiguratorStatus status = ConfiguratorStatus.NotConfigured,
             IReadOnlyList<ConfigurationItem>? links = null,
             bool transportSupported = true,
-            string? restartNotice = null)
+            string? restartNotice = null,
+            bool manualSetup = false)
         {
             AgentName = agentName;
             AgentId = agentId;
@@ -212,6 +237,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Links = links ?? System.Array.Empty<ConfigurationItem>();
             TransportSupported = transportSupported;
             RestartNotice = restartNotice;
+            ManualSetup = manualSetup;
         }
     }
 }

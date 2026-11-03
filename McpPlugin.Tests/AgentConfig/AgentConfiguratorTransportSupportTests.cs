@@ -32,12 +32,22 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             timeoutMs: 30000,
             host: "http://localhost:50000");
 
+        private static AgentConfiguratorSettings CloudSettings() => new(
+            operatingSystem: OperatingSystemKind.Windows,
+            projectRootPath: Path.GetTempPath(),
+            executableFullPath: "C:/Tools/srv.exe",
+            port: 50000,
+            timeoutMs: 30000,
+            host: "https://ai-game.dev/mcp",
+            connectionMode: ConnectionMode.Cloud);
+
         [Fact]
-        public void ClaudeDesktop_HttpDescription_IsOnlyTheUnsupportedAlert()
+        public void ClaudeDesktop_LocalHttpDescription_IsOnlyTheUnsupportedAlert()
         {
             var desc = new ClaudeDesktopConfigurator().Describe(Settings(), TransportMethod.streamableHttp);
 
             desc.TransportSupported.ShouldBeFalse();
+            desc.ManualSetup.ShouldBeFalse();
             desc.Status.ShouldBe(ConfiguratorStatus.NotConfigured);
             desc.IsConfigured.ShouldBeFalse();
             desc.RestartNotice.ShouldBeNull();
@@ -48,7 +58,35 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Tests
             var item = section.Items.ShouldHaveSingleItem();
             item.Kind.ShouldBe(ConfigurationItemKind.Alert);
             item.Text.ShouldContain("stdio");
-            item.Text.ShouldContain("Custom");
+            item.Text.ShouldContain("Cloud");
+        }
+
+        [Fact]
+        public void ClaudeDesktop_CloudHttpDescription_IsConnectorSteps_WithThePinnedCloudUrl()
+        {
+            var settings = CloudSettings().WithProjectKey("agd_pk_secret_value");
+            var desc = new ClaudeDesktopConfigurator().Describe(settings, TransportMethod.streamableHttp);
+
+            desc.TransportSupported.ShouldBeFalse(); // nothing to write: no Configure
+            desc.ManualSetup.ShouldBeTrue();
+            desc.Status.ShouldBe(ConfiguratorStatus.NotConfigured);
+            desc.RestartNotice.ShouldBeNull();
+
+            var steps = desc.Sections[0];
+            steps.ExpandedFirst.ShouldBeTrue();
+            steps.Items.ShouldContain(i => i.Kind == ConfigurationItemKind.Link && i.Url == ClaudeDesktopConfigurator.ConnectorsSettingsUrl);
+            var url = steps.Items.Single(i => i.Kind == ConfigurationItemKind.ReadOnlyField).Text;
+            url.ShouldBe(settings.PinnedHttpUrl);
+            url.ShouldStartWith("https://ai-game.dev/mcp/p/");
+            desc.Sections.SelectMany(s => s.Items).ShouldNotContain(i => i.Text.Contains("agd_pk_secret_value"));
+            desc.Sections.SelectMany(s => s.Items).ShouldNotContain(i => i.Kind == ConfigurationItemKind.Alert);
+        }
+
+        [Fact]
+        public void OtherAgents_InCloud_AreNotManualSetup()
+        {
+            foreach (var c in AiAgentConfiguratorRegistry.All.Where(c => c is not ClaudeDesktopConfigurator))
+                c.Describe(CloudSettings(), TransportMethod.streamableHttp).ManualSetup.ShouldBeFalse(c.AgentName);
         }
 
         [Fact]
