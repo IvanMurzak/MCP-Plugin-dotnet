@@ -164,6 +164,20 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         /// <summary>The ordered UI sections to render.</summary>
         public IReadOnlyList<ConfigurationSection> Sections { get; }
 
+        /// <summary>
+        /// Whether the agent supports the described transport. When <c>false</c> the sections carry only an
+        /// alert naming the supported setup, and the engine MUST NOT offer Configure / Reconfigure for this
+        /// transport (it would write an entry the agent rejects). See <see cref="AiAgentConfigurator.SupportsTransport"/>.
+        /// </summary>
+        public bool TransportSupported { get; }
+
+        /// <summary>
+        /// The notice the engine shows after it writes or removes this agent's config for the described
+        /// transport (e.g. "Restart Claude Desktop …"), or <c>null</c> when none is needed.
+        /// See <see cref="AiAgentConfigurator.GetRestartNotice"/>.
+        /// </summary>
+        public string? RestartNotice { get; }
+
         public AgentConfiguratorDescription(
             string agentName,
             string agentId,
@@ -172,7 +186,9 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             bool isInstalled,
             IReadOnlyList<ConfigurationSection> sections,
             ConfiguratorStatus status = ConfiguratorStatus.NotConfigured,
-            IReadOnlyList<ConfigurationItem>? links = null)
+            IReadOnlyList<ConfigurationItem>? links = null,
+            bool transportSupported = true,
+            string? restartNotice = null)
         {
             AgentName = agentName;
             AgentId = agentId;
@@ -182,6 +198,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Sections = sections;
             Status = status;
             Links = links ?? System.Array.Empty<ConfigurationItem>();
+            TransportSupported = transportSupported;
+            RestartNotice = restartNotice;
         }
     }
 }

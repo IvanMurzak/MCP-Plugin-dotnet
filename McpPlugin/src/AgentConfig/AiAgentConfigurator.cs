@@ -94,6 +94,34 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
         public virtual bool SupportsOAuth => true;
 
         /// <summary>
+        /// Whether this agent can consume an MCP config entry for <paramref name="transport"/>. Default
+        /// <c>true</c> for every transport. An agent that can only spawn a stdio server from its config
+        /// file (Claude Desktop rejects an HTTP entry in <c>claude_desktop_config.json</c> as "not a valid
+        /// MCP server configuration") overrides this. For an unsupported transport <see cref="Describe"/>
+        /// returns <see cref="AgentConfiguratorDescription.TransportSupported"/> = <c>false</c> and an alert
+        /// that names the supported setup; the engine UI MUST NOT offer Configure for it.
+        /// </summary>
+        public virtual bool SupportsTransport(Common.Consts.MCP.Server.TransportMethod transport) => true;
+
+        /// <summary>
+        /// The alert shown instead of the configuration sections when the active transport is not
+        /// supported (<see cref="SupportsTransport"/> is <c>false</c>). Names the setup that works.
+        /// </summary>
+        protected virtual string UnsupportedTransportMessage =>
+            $"{AgentName} supports only the stdio transport. Select the Custom connection and the stdio transport, then press Configure.";
+
+        /// <summary>
+        /// The notice an engine shows after it writes or removes this agent's MCP config for
+        /// <paramref name="transport"/>, or <c>null</c> when none is needed. A stdio agent spawns the MCP
+        /// server itself and reads its config only at startup, so a running agent keeps the old setup until
+        /// it is restarted. HTTP agents connect to the already-running server, so no notice by default.
+        /// </summary>
+        public virtual string? GetRestartNotice(Common.Consts.MCP.Server.TransportMethod transport)
+            => transport == Common.Consts.MCP.Server.TransportMethod.stdio
+                ? $"Restart {AgentName} to apply the new MCP configuration. It reads its MCP configuration only at startup."
+                : null;
+
+        /// <summary>
         /// Builds the STDIO transport config for the given settings. Override per agent.
         /// Authorization is applied by <see cref="GetStdioConfig"/>; subclasses build the base entry only.
         /// </summary>
@@ -298,6 +326,28 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
             Common.Consts.MCP.Server.TransportMethod transport,
             ILogger? logger = null)
         {
+            if (!SupportsTransport(transport))
+            {
+                // Nothing to configure for this transport: no status (an entry on disk belongs to the
+                // supported transport), no config preview, no troubleshooting — only the way out.
+                return new AgentConfiguratorDescription(
+                    agentName: AgentName,
+                    agentId: AgentId,
+                    iconName: IconName,
+                    isConfigured: false,
+                    isInstalled: false,
+                    sections: new[]
+                    {
+                        new ConfigurationSection("Transport Not Supported", true, new[]
+                        {
+                            ConfigurationItem.Alert(UnsupportedTransportMessage)
+                        })
+                    },
+                    status: ConfiguratorStatus.NotConfigured,
+                    links: BuildLinks(),
+                    transportSupported: false);
+            }
+
             // Status compares against what Configure REALLY writes; every user-visible section is built from the
             // redacted snapshot, so no BuildSections override can ever render the raw project key.
             var status = GetStatus(settings, transport, logger);
@@ -336,7 +386,8 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig
                 isInstalled: false,
                 sections: sections,
                 status: status,
-                links: BuildLinks());
+                links: BuildLinks(),
+                restartNotice: GetRestartNotice(transport));
         }
 
         /// <summary>

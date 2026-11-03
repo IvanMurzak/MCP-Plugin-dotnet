@@ -32,6 +32,18 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "AppData", "Roaming", "Claude", "claude_desktop_config.json")
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Library", "Application Support", "Claude", "claude_desktop_config.json");
 
+        // Claude Desktop only spawns stdio servers from claude_desktop_config.json; an HTTP entry there is
+        // skipped with "not valid MCP server configurations". Remote servers go through its Connectors UI.
+        public override bool SupportsTransport(TransportMethod transport) => transport == TransportMethod.stdio;
+
+        protected override string UnsupportedTransportMessage =>
+            "Claude Desktop supports only the stdio transport: it skips an HTTP entry in claude_desktop_config.json. " +
+            "Select the Custom connection and the stdio transport, then press Configure.";
+
+        public override string? GetRestartNotice(TransportMethod transport) =>
+            "Fully quit Claude Desktop (also from the system tray or menu bar) and start it again. " +
+            "It reads claude_desktop_config.json only at startup.";
+
         protected override AiAgentConfig CreateStdioConfig(AgentConfiguratorSettings settings, ILogger? logger)
             => AgentConfigBuilders.JsonStdio(AgentName, ConfigPath(settings), settings, logger);
 
@@ -42,8 +54,7 @@ namespace com.IvanMurzak.McpPlugin.AgentConfig.Impl
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
             => DefaultConfigurationSections(settings, transport, logger);
 
-        // Claude Desktop only supports STDIO; Unity emits the Troubleshooting foldout for stdio
-        // only (the HTTP path shows a "no HTTP support" alert instead, no troubleshooting).
+        // HTTP never reaches here: Describe() returns the "Transport Not Supported" alert for it.
         protected override IReadOnlyList<ConfigurationSection> BuildTroubleshootingSections(
             AgentConfiguratorSettings settings, TransportMethod transport, ILogger? logger)
             => transport == TransportMethod.stdio
