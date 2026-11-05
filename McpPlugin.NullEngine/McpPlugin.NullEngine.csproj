@@ -24,7 +24,7 @@
 
   <ItemGroup>
     <!-- McpPlugin ONLY. No reference to McpPlugin.Server: this process is a plugin CLIENT, and the
-         two pin different SignalR major versions (client 8.0.33, server 10.0.14). -->
+         two pin different SignalR major versions (client 8.0.x, server 10.0.x). -->
     <ProjectReference Include="../McpPlugin/McpPlugin.csproj" />
   </ItemGroup>
 
