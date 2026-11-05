@@ -1,10 +1,15 @@
 <Project>
 
-  <!-- Intentionally empty. Previously pinned v8 Microsoft.Extensions / System.Text.Json
-       packages to work around a v8/v10 conflict introduced by ModelContextProtocol 1.2.0.
-       The MCP dependency has been removed from McpPlugin and McpPlugin.Common (the
-       compiled DLLs never referenced MCP types), so transitive resolution is now
-       coherent: SignalR.Client 8.0.15 pulls the v8 stack naturally, and
-       McpPlugin.Server keeps its own v10 stack via SignalR.Client 10.0.3. -->
+  <!-- Fail restore on any known-vulnerable package (direct or transitive) at moderate or
+       above (NU1902 moderate, NU1903 high, NU1904 critical), so an advisory such as
+       GHSA-334f-vvp4-7g6p cannot ship again unnoticed in the published packages.
+       Package versions are set per project: McpPlugin / McpPlugin.Common stay on the
+       netstandard2.1-compatible SignalR 8.0.x line, McpPlugin.Server uses 10.0.x. -->
+  <PropertyGroup>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>moderate</NuGetAuditLevel>
+    <WarningsAsErrors>$(WarningsAsErrors);NU1902;NU1903;NU1904</WarningsAsErrors>
+  </PropertyGroup>
 
 </Project>
