@@ -10,8 +10,13 @@
 
 #nullable enable
 using System.Text.Json.Nodes;
+using System.Threading;
+using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Server.Transport;
+using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
+using Moq;
 using Shouldly;
 using Xunit;
 
@@ -19,46 +24,42 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 {
     public class InitializeHandshakeOnlyFilterTests
     {
-        static JsonRpcRequest Request(string method, string? metaVersion = null, string? headerVersion = null)
+        static JsonRpcRequest Request(string method, string? metaVersion = null)
         {
             var parameters = new JsonObject();
             if (metaVersion != null)
                 parameters["_meta"] = new JsonObject { [MetaKeys.ProtocolVersion] = metaVersion };
-            var request = new JsonRpcRequest { Id = new RequestId(1), Method = method, Params = parameters };
-            if (headerVersion != null)
-                request.Context = new JsonRpcMessageContext { ProtocolVersion = headerVersion };
-            return request;
+            return new JsonRpcRequest { Id = new RequestId(1), Method = method, Params = parameters };
+        }
+
+        /// <summary>Runs the filter; returns whether it passed the message on to the next handler.</summary>
+        static async Task<bool> RunAsync(JsonRpcRequest request)
+        {
+            var passed = false;
+            var handler = InitializeHandshakeOnlyFilter.Apply((_, _) => { passed = true; return Task.CompletedTask; });
+            await handler(new MessageContext(new Mock<McpServer>().Object, request), CancellationToken.None);
+            return passed;
         }
 
         [Fact]
-        public void ServerDiscover_IsRefused_EvenWithoutDeclaredVersion()
+        public async Task ServerDiscover_IsRefusedWithUnsupportedProtocolVersion_AndTheInitializeEraList()
         {
-            InitializeHandshakeOnlyFilter.TryGetRefusedVersion(Request(RequestMethods.ServerDiscover), out var requested).ShouldBeTrue();
-            requested.ShouldBe("2026-07-28");
+            var ex = await Should.ThrowAsync<UnsupportedProtocolVersionException>(
+                () => RunAsync(Request(RequestMethods.ServerDiscover, metaVersion: "2026-07-28")));
+
+            ex.ErrorCode.ShouldBe(McpErrorCode.UnsupportedProtocolVersion);
+            ex.Requested.ShouldBe("2026-07-28");
+            ex.Supported.ShouldBe(InitializeHandshakeOnlyFilter.SupportedProtocolVersions);
+            ex.Supported.ShouldNotContain("2026-07-28");
         }
 
         [Fact]
-        public void ModernMetaVersion_IsRefused()
+        public async Task OtherRequests_PassThrough_EvenWhenDeclaringAModernVersion()
         {
-            InitializeHandshakeOnlyFilter.TryGetRefusedVersion(Request(RequestMethods.ToolsList, metaVersion: "2026-07-28"), out var requested).ShouldBeTrue();
-            requested.ShouldBe("2026-07-28");
-        }
-
-        [Fact]
-        public void ModernHeaderVersion_IsRefused()
-        {
-            InitializeHandshakeOnlyFilter.TryGetRefusedVersion(Request(RequestMethods.ToolsList, headerVersion: "2026-07-28"), out _).ShouldBeTrue();
-        }
-
-        [Theory]
-        [InlineData(null)]
-        [InlineData("2025-11-25")]
-        [InlineData("2025-06-18")]
-        [InlineData("2024-11-05")]
-        public void InitializeEraRequests_PassThrough(string? headerVersion)
-        {
-            InitializeHandshakeOnlyFilter.TryGetRefusedVersion(Request(RequestMethods.Initialize, headerVersion: headerVersion), out _).ShouldBeFalse();
-            InitializeHandshakeOnlyFilter.TryGetRefusedVersion(Request(RequestMethods.ToolsCall, headerVersion: headerVersion), out _).ShouldBeFalse();
+            // The SDK has already committed a declared 2026-07-28 to the session for these; refusing would strand it.
+            (await RunAsync(Request(RequestMethods.ToolsList, metaVersion: "2026-07-28"))).ShouldBeTrue();
+            (await RunAsync(Request(RequestMethods.Initialize))).ShouldBeTrue();
+            (await RunAsync(Request(RequestMethods.ToolsCall))).ShouldBeTrue();
         }
     }
 }
