@@ -49,7 +49,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                 logger?.Debug("Http transport configuration. IdleTimeout={idleTimeoutSeconds}s, MaxIdleSessionCount={maxIdleSessionCount}",
                     dataArguments.IdleTimeoutSeconds, dataArguments.MaxIdleSessionCount);
 
-                options.Stateless = false;
+                // Stateful, explicitly: SDK 2.x defaults to Stateless. Every session-scoped feature
+                // here depends on a session — RunSessionHandler (McpServerService lifetime, ambient
+                // token / session id), replace-by-identity, unsolicited list_changed notifications.
+                // A 2026-07-28 client is refused with -32022 and falls back to the initialize
+                // handshake, so it gets a session too. The stateful-only knobs below are marked
+                // obsolete (MCP9006: "back-compat for initialize clients") but still govern exactly
+                // those sessions, which is every session this server has.
+                options.SessionMode = ModelContextProtocol.AspNetCore.HttpServerSessionMode.Stateful;
+#pragma warning disable MCP9006
                 options.PerSessionExecutionContext = true;
                 options.IdleTimeout = TimeSpan.FromSeconds(dataArguments.IdleTimeoutSeconds);
                 // Hard ceiling on retained idle sessions. Without this the SDK default (10,000)
@@ -57,6 +65,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                 // SseEventWriter buffer (up to tens of MiB), which leaked multi-GB in production.
                 // Active sessions (in-flight request / open SSE stream) are never pruned by this.
                 options.MaxIdleSessionCount = dataArguments.MaxIdleSessionCount;
+#pragma warning restore MCP9006
                 // ConfigureSessionOptions cannot replace RunSessionHandler here because we need
                 // full session lifecycle management (StartAsync/StopAsync for McpServerService).
                 // Suppressing MCPEXP002 as RunSessionHandler is the only mechanism that provides
