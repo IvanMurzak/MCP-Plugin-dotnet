@@ -85,6 +85,38 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
+        public async Task ValidToken_WithSubject_DoesNotAddSessionOwnerFallback()
+        {
+            var (handler, context, scheme) = Create(new FakeValidator(OAuthValidationResult.Success("jwt", "user-9", "mcp:agent")));
+            context.Request.Headers["Authorization"] = "Bearer some.jwt.token";
+            context.Request.Path = new PathString("/mcp");
+            await handler.InitializeAsync(scheme, context);
+
+            var result = await handler.AuthenticateAsync();
+
+            result.Succeeded.ShouldBeTrue();
+            result.Principal!.FindFirst(System.Security.Claims.ClaimTypes.Upn).ShouldBeNull();
+        }
+
+        [Fact]
+        public async Task ValidToken_WithoutSubject_GetsSessionOwnerClaim_ButNoAccountIdentity()
+        {
+            // MCP SDK >= 1.4.2 refuses (403) a stateful session for an authenticated principal with no
+            // NameIdentifier / sub / UPN claim; the fallback owner keeps such a token usable without
+            // inventing an account for ConnectionIdentity.
+            var (handler, context, scheme) = Create(new FakeValidator(OAuthValidationResult.Success("jwt", null, "mcp:agent")));
+            context.Request.Headers["Authorization"] = "Bearer some.jwt.token";
+            context.Request.Path = new PathString("/mcp");
+            await handler.InitializeAsync(scheme, context);
+
+            var result = await handler.AuthenticateAsync();
+
+            result.Succeeded.ShouldBeTrue();
+            result.Principal!.HasClaim(System.Security.Claims.ClaimTypes.Upn, TokenAuthenticationHandler.OAuthNoSubjectSessionOwner).ShouldBeTrue();
+            ConnectionIdentity.FromPrincipal(result.Principal).ShouldBeNull();
+        }
+
+        [Fact]
         public async Task InvalidToken_OnMcpPath_Fails()
         {
             var validator = new FakeValidator(OAuthValidationResult.Fail("jwt", "invalid signature"));

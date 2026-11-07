@@ -40,6 +40,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         /// </summary>
         public const string ProjectPinClaimType = "agd_project_pin";
 
+        // Session owners for a principal with no `sub`. Since ModelContextProtocol.AspNetCore 1.4.2 a stateful
+        // MCP session refuses (403) an authenticated principal without a NameIdentifier, `sub` or UPN claim.
+        // Every holder of the offline shared secret is the same operator, so one constant owner keeps the
+        // pre-1.4.2 behaviour (all such sessions shared the `null` owner). It goes in ClaimTypes.Upn, the SDK's
+        // last fallback, because ConnectionIdentity.FromPrincipal reads only `sub` / NameIdentifier: no account
+        // identity is invented.
+        public const string LocalTokenSessionOwner = "mcp-local-token";
+        public const string OAuthNoSubjectSessionOwner = "mcp-oauth-no-subject";
+
         readonly IAuthorizationWebhookService _authorizationWebhookService;
         readonly IOAuthTokenValidator? _oauthValidator;
         bool _authorizationUnavailable;
@@ -159,7 +168,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                     : AuthenticateResult.Fail("Invalid token.");
             }
 
-            var claims = new List<Claim> { new Claim(TokenClaimType, token) };
+            var claims = new List<Claim>
+            {
+                new Claim(TokenClaimType, token),
+                new Claim(ClaimTypes.Upn, LocalTokenSessionOwner)
+            };
             var identity = new ClaimsIdentity(claims, SchemeName);
             var principal = new ClaimsPrincipal(identity);
             return AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName));
@@ -220,6 +233,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             {
                 claims.Add(new Claim(SubjectClaimType, validation.Subject!));
                 claims.Add(new Claim(ClaimTypes.NameIdentifier, validation.Subject!));
+            }
+            else
+            {
+                claims.Add(new Claim(ClaimTypes.Upn, OAuthNoSubjectSessionOwner));
             }
             if (!string.IsNullOrEmpty(validation.Scope))
                 claims.Add(new Claim(ScopeClaimType, validation.Scope!));

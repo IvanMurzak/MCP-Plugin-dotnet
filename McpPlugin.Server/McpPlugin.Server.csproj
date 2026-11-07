@@ -37,8 +37,8 @@
     <PackageReference Include="com.IvanMurzak.ReflectorNet" Version="5.5.1" />
     <!-- >= 10.0.13: GHSA-334f-vvp4-7g6p / CVE-2026-70159 (SignalR.Common DoS). -->
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.14" />
-    <PackageReference Include="ModelContextProtocol" Version="1.4.0" />
-    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
+    <PackageReference Include="ModelContextProtocol" Version="1.4.2" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="1.4.2" />
     <PackageReference Include="NLog.Web.AspNetCore" Version="6.1.2" />
     <PackageReference Include="R3" Version="1.3.0" />
   </ItemGroup>
