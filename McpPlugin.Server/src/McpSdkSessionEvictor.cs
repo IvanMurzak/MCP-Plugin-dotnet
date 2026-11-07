@@ -47,12 +47,12 @@ namespace com.IvanMurzak.McpPlugin.Server
     /// cancellation token, disposing the session is also what unwinds our
     /// <c>StreamableHttpTransportLayer</c> handler and therefore what removes the
     /// <see cref="IMcpSessionTracker"/> row. Doing it the other way round — cancelling our own token and
-    /// hoping the SDK notices — does NOT work: nothing in 1.4.0 attaches a continuation to
+    /// hoping the SDK notices — does NOT work: nothing in 1.4.0–1.4.2 attaches a continuation to
     /// <c>ServerRunTask</c> that removes the session, so the entry would survive in
     /// <c>_sessions</c> until the idle reaper ran.</para>
     ///
     /// <para><b>Reflection here is a deliberate, loud dependency, not a shortcut.</b> There is no public
-    /// or DI-typed API in 1.4.0 to evict a session by id, and no <c>InternalsVisibleTo</c>. The
+    /// or DI-typed API in 1.4.0–1.4.2 to evict a session by id, and no <c>InternalsVisibleTo</c>. The
     /// alternatives were (a) wait for the client to send <c>DELETE</c> — which is precisely what a crashed
     /// or force-killed app can never do, i.e. the case this whole rule exists for — or (b) wait for the
     /// idle reaper, i.e. keep the six-hour pile-up. So the binding is resolved ONCE, its failure is

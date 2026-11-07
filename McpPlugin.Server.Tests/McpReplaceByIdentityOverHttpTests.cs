@@ -64,7 +64,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
         /// <summary>
         /// The tripwire for an SDK bump. The eviction seam reaches an <c>internal</c> SDK type by
-        /// reflection because 1.4.0 exposes no public or DI-typed way to evict a session by id. If a future
+        /// reflection because 1.4.0–1.4.2 expose no public or DI-typed way to evict a session by id. If a future
         /// bump moves or renames that seam, replace-by-identity silently stops terminating SDK sessions and
         /// the six-hour pile-up returns <b>with no functional symptom</b>. This test is what turns that
         /// silent regression into a red build.
