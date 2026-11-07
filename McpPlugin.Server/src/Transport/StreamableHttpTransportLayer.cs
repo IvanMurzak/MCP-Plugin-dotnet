@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
+using ModelContextProtocol.AspNetCore;
 using NLog;
 
 namespace com.IvanMurzak.McpPlugin.Server.Transport
@@ -49,14 +50,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                 logger?.Debug("Http transport configuration. IdleTimeout={idleTimeoutSeconds}s, MaxIdleSessionCount={maxIdleSessionCount}",
                     dataArguments.IdleTimeoutSeconds, dataArguments.MaxIdleSessionCount);
 
-                // Stateful, explicitly: SDK 2.x defaults to Stateless. Every session-scoped feature
-                // here depends on a session — RunSessionHandler (McpServerService lifetime, ambient
-                // token / session id), replace-by-identity, unsolicited list_changed notifications.
-                // A 2026-07-28 client is refused with -32022 and falls back to the initialize
-                // handshake, so it gets a session too. The stateful-only knobs below are marked
-                // obsolete (MCP9006: "back-compat for initialize clients") but still govern exactly
-                // those sessions, which is every session this server has.
-                options.SessionMode = ModelContextProtocol.AspNetCore.HttpServerSessionMode.Stateful;
+                // Stateful, explicitly (SDK 2.x defaults to Stateless): RunSessionHandler, the ambient
+                // token / session id, replace-by-identity and unsolicited list_changed notifications all
+                // need a session. A 2026-07-28 client is refused (-32022) and falls back to initialize.
+                options.SessionMode = HttpServerSessionMode.Stateful;
+                // MCP9006 flags these as back-compat for initialize clients — i.e. every session here.
 #pragma warning disable MCP9006
                 options.PerSessionExecutionContext = true;
                 options.IdleTimeout = TimeSpan.FromSeconds(dataArguments.IdleTimeoutSeconds);

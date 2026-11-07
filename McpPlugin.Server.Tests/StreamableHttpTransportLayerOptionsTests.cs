@@ -23,9 +23,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
     // MUST configure the SDK's session-eviction knobs (IdleTimeout + MaxIdleSessionCount) from
     // DataArguments. Without MaxIdleSessionCount the SDK default (10,000) let zombie sessions —
     // each pinning a grown SseEventWriter buffer — accumulate to multi-GB.
-    //
-    // MCP9006: these stateful-only options are obsolete-flagged in SDK 2.x (back-compat for initialize
-    // clients) but still govern every session of this stateful server, so asserting them is the point.
+    // MCP9006: see StreamableHttpTransportLayer.ConfigureTransport.
 #pragma warning disable MCP9006
     [Collection("McpPlugin.Server")]
     public class StreamableHttpTransportLayerOptionsTests
