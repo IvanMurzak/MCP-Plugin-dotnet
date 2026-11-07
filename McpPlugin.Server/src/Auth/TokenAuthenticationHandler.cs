@@ -40,6 +40,18 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
         /// </summary>
         public const string ProjectPinClaimType = "agd_project_pin";
 
+        /// <summary>
+        /// Session-owner values for a principal that carries no <c>sub</c>. Since
+        /// <c>ModelContextProtocol.AspNetCore</c> 1.4.2 a stateful MCP session refuses (403) an authenticated
+        /// principal without a <see cref="ClaimTypes.NameIdentifier"/>, <c>sub</c> or <see cref="ClaimTypes.Upn"/>
+        /// claim. Every holder of the offline shared secret is the same operator, so one constant owner keeps
+        /// the pre-1.4.2 behaviour (all such sessions shared the <c>null</c> owner). The claim goes in
+        /// <see cref="ClaimTypes.Upn"/>, the SDK's last fallback, because <see cref="ConnectionIdentity.FromPrincipal"/>
+        /// reads only <c>sub</c> / <see cref="ClaimTypes.NameIdentifier"/>: no account identity is invented.
+        /// </summary>
+        public const string LocalTokenSessionOwner = "mcp-local-token";
+        public const string OAuthNoSubjectSessionOwner = "mcp-oauth-no-subject";
+
         readonly IAuthorizationWebhookService _authorizationWebhookService;
         readonly IOAuthTokenValidator? _oauthValidator;
         bool _authorizationUnavailable;
@@ -160,6 +172,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             }
 
             var claims = new List<Claim> { new Claim(TokenClaimType, token) };
+            AddSessionOwnerClaimIfMissing(claims, LocalTokenSessionOwner);
             var identity = new ClaimsIdentity(claims, SchemeName);
             var principal = new ClaimsPrincipal(identity);
             return AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName));
@@ -227,10 +240,18 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
                 claims.Add(new Claim(ClientIdClaimType, validation.ClientId!));
             if (!string.IsNullOrEmpty(validation.ProjectPin))
                 claims.Add(new Claim(ProjectPinClaimType, validation.ProjectPin!));
+            AddSessionOwnerClaimIfMissing(claims, OAuthNoSubjectSessionOwner);
 
             var identity = new ClaimsIdentity(claims, SchemeName);
             var principal = new ClaimsPrincipal(identity);
             return AuthenticateResult.Success(new AuthenticationTicket(principal, SchemeName));
+        }
+
+        static void AddSessionOwnerClaimIfMissing(List<Claim> claims, string owner)
+        {
+            if (claims.Any(c => c.Type == SubjectClaimType || c.Type == ClaimTypes.NameIdentifier || c.Type == ClaimTypes.Upn))
+                return;
+            claims.Add(new Claim(ClaimTypes.Upn, owner));
         }
 
         bool TryGetBearerToken(out string token)

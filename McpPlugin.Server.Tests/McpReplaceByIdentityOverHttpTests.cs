@@ -42,7 +42,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
     /// <c>initialize</c> handshake carrying an actual <c>AI-Game-Dev-Instance-Id</c> header.</para>
     ///
     /// <para><b>Why a real host is not optional here.</b> The thing under test is what happens to a session
-    /// the MCP SDK owns. Verified against <c>ModelContextProtocol.AspNetCore</c> 1.4.0: NOTHING in the SDK
+    /// the MCP SDK owns. Verified against <c>ModelContextProtocol.AspNetCore</c> 1.4.2: NOTHING in the SDK
     /// removes a session from its store when that session's <c>RunSessionHandler</c> returns, so a replace
     /// rule built on cancelling our own token would drop our tracker row, look fixed, and leave the SDK's
     /// session — and the memory it pins — in place until the 6 h idle timeout. A test that asserted only

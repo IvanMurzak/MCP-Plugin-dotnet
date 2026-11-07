@@ -24,8 +24,8 @@ namespace com.IvanMurzak.McpPlugin.Server
     /// <c>session.DisposeAsync()</c> — reaching the manager by reflection because the type is
     /// <c>internal</c>.
     ///
-    /// <para><b>Verified against <c>ModelContextProtocol.AspNetCore</c> 1.4.0</b>
-    /// (<c>1.4.0+06e3604dd12fbfc08c8f9d316325380ec2a2989b</c>), by reading the tagged source AND by
+    /// <para><b>Verified against <c>ModelContextProtocol.AspNetCore</c> 1.4.2</b>
+    /// (<c>1.4.2+bb2d6938cfc405b9067455065b6f8ce78af9614e</c>; <c>StatefulSessionManager</c> is unchanged from 1.4.0), by reading the tagged source AND by
     /// reflecting over the shipped IL:</para>
     /// <list type="bullet">
     /// <item><description><c>internal sealed class StatefulSessionManager</c> holds

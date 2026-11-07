@@ -80,7 +80,7 @@ namespace com.IvanMurzak.McpPlugin.Server
     /// Terminates an MCP session that the <c>ModelContextProtocol.AspNetCore</c> SDK owns.
     ///
     /// <para><b>Why this seam exists at all.</b> MCP session lifetime is SDK-owned, and — verified
-    /// against <c>ModelContextProtocol.AspNetCore</c> <b>1.4.0</b> — <i>nothing in the SDK removes a
+    /// against <c>ModelContextProtocol.AspNetCore</c> <b>1.4.2</b> — <i>nothing in the SDK removes a
     /// session from its dictionary when that session's <c>RunSessionHandler</c> returns.</i> Returning
     /// early from the handler, or cancelling the token it was handed, therefore ends OUR bookkeeping and
     /// leaves the SDK's <c>StatefulSessionManager</c> entry in place until <c>IdleTimeout</c> or
