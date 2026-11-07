@@ -1,0 +1,56 @@
+McpPlugin.Server/src/Strategy/PluginCatalogCache.cs
+  s_48def0c32da233::t_3c22b91f730e73 64
+  s_48def0c32da233::t_54411eac5478eb 226-227,231-233,240
+  s_48def0c32da233::t_24cf54cc90f2a6 263-266,268,276
+  s_48def0c32da233::t_342f0e9b53931c 58
+  s_48def0c32da233::t_08d1a7622f27eb 403
+  s_48def0c32da233::t_3373104cda14ad 440,442-444
+  s_48def0c32da233::t_af78482af5dc5b 501,503
+McpPlugin.Server/src/Client/CatalogAwareInvoke.cs
+  s_48def0c32da233::t_0fa5566210cee1 25-26,32,34,44,61-62,64,70,83-94,96-99,101-105
+McpPlugin.Server.Tests/PluginReconnectOverHttpTests.cs
+  s_48def0c32da233::t_e9792bf021bb42 41,47,69,137,139,146,149
+McpPlugin.Server/src/Hub/McpServerHub.cs
+  s_48def0c32da233::t_c545c26543dd9a 82,188,205,218,235
+  s_48def0c32da233::t_effb9587a3d1f9 206-207
+  s_48def0c32da233::t_bcf5569eeaa5fe 156-163
+McpPlugin.Server.Tests/PluginCatalogCacheTests.cs
+  s_48def0c32da233::t_bfc78452a797bc 20,36,56,64,77,82,92,97,117,124,135,138,140,142,150-151,159,161,163,171,174,179,190,197,207-208,214,216,225,230,242,255,260-261,269,272,275,278-279,288,291,304-306,308,310,317,319,334,336,349,360,384,400,403
+  s_48def0c32da233::t_e9792bf021bb42 295
+McpPlugin.Server/src/Client/ClientUtils.cs
+  s_48def0c32da233::t_fc8e1978b42835 214
+  s_48def0c32da233::t_033d8073c8738a 52-54
+  s_48def0c32da233::t_3cc47f22afe0f7 197-200
+  s_48def0c32da233::t_6c058a9caeaa01 250-253
+McpPlugin.Server/src/Client/RemoteResourceRunner.cs
+  s_48def0c32da233::t_0a5d66ec0891fa 61-63
+McpPlugin.Server/src/Client/RemotePromptRunner.cs
+  s_48def0c32da233::t_dbf9f9b1dd8d4f 61-63
+McpPlugin.Server.Tests/PluginReconnectRunnerTests.cs
+  s_48def0c32da233::t_e9792bf021bb42 22,42-43,77,80,92,108,133,155,179,193,198,201
+McpPlugin.Server.Tests/Infrastructure/PluginReconnectFakes.cs
+  s_48def0c32da233::t_7e1e7f0290aabd 1-103
+McpPlugin.Server/src/Extension/ExtensionsMcpServerBuilder.cs
+  s_48def0c32da233::t_9fbbce93bf76ff 284,287
+  s_48def0c32da233::t_4a26a4bd2367ef 253-264
+McpPlugin.Server/src/Client/RemoteToolRunner.cs
+  s_48def0c32da233::t_04e154018e6edf 73-75
+McpPlugin.Server.Tests/Infrastructure/OAuthMcpHost.cs
+  s_48def0c32da233::t_9943de9dfa24e2 135-136,149,152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "26288ca4bbbdbd5c4fc4859b9804a7a92445a510",
+  "prompts": {},
+  "sessions": {
+    "s_48def0c32da233": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b12596e-6fac-4b72-8f4f-08fe9abbc79c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

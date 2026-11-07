@@ -1,0 +1,48 @@
+McpPlugin.Tests/McpPlugin.Tests.csproj
+  s_48def0c32da233::t_8ebe53a127b43c 54-56
+McpPlugin.Tests/Network/Connection/Credentials/RefreshClientIdFallbackTests.cs
+  s_48def0c32da233::t_14909318e7fc66 1-107
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/PluginCredentialProvider.cs
+  s_48def0c32da233::t_c61c871bb5f9e1 531-534
+  s_48def0c32da233::t_6ea1bdf63f60e0 13-14,44-49,115-143,198-213,379-380,481-484,486-491,493-507,509-530,535-543,546-555,559-567,597-635,720-721,725,813
+McpPlugin.Tests/Network/Connection/Credentials/PluginCredentialProviderClientIdFallbackTests.cs
+  s_48def0c32da233::t_9e7da1d0fd08b0 232-234,241-242
+  s_48def0c32da233::t_34a7723800f82a 1-231,235-240,243-389
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/HttpTokenRefresher.cs
+  s_48def0c32da233::t_009245123adbdf 41-43,63-67,107-108,193-194,199,204-209,212,260,292-294,334-336
+  s_48def0c32da233::t_68fbb40bc91469 210-211
+McpPlugin/src/AgentConfig/MachineCredentialLock.cs
+  s_48def0c32da233::t_b471d04d948563 628
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/ITokenRefresher.cs
+  s_48def0c32da233::t_615037b241ab4a 22
+  s_48def0c32da233::t_1773ea802ef6c4 49-60
+McpPlugin/src/AgentConfig/DeadFamilyMemo.GoldenVectors.json
+  s_48def0c32da233::t_a7e001b0750f37 1-114
+McpPlugin.Tests/Network/Connection/Credentials/DeadFamilyMemoGoldenVectorTests.cs
+  s_48def0c32da233::t_251c3aff24deaf 1-114
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/RefreshClientIdFallback.cs
+  s_48def0c32da233::t_dfee9bbe8a43c6 1-73,85-126
+  s_48def0c32da233::t_9d6ad4b7440a69 74-84
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/PersistedDeadFamilyMemo.cs
+  s_48def0c32da233::t_209da743b1147a 13,29-38,48-49,61-62,71,80-108,113-114,118,140-165,167-190
+McpPlugin/src/AgentConfig/HexEncoding.cs
+  s_48def0c32da233::t_629cf79ae28ea9 1-47
+McpPlugin/src/AgentConfig/ProjectIdentity.cs
+  s_48def0c32da233::t_78126d2f8a2a49 105,125,139,201,214,254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a33f09d586ffefd560c10dc6dae7065177bc51c5",
+  "prompts": {},
+  "sessions": {
+    "s_48def0c32da233": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b12596e-6fac-4b72-8f4f-08fe9abbc79c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

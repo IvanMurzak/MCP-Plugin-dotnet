@@ -1,0 +1,72 @@
+McpPlugin.Tests/Network/Connection/Credentials/HttpTokenRefresherTests.cs
+  s_48def0c32da233::t_a66c400d9fe71c 311-316,318-330,332-357
+  s_48def0c32da233::t_dc1a9af2e23958 317,331
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionManager.Connect.cs
+  s_48def0c32da233::t_2a0b4a11df3257 445,448,450-459,461-484,488-496
+  s_48def0c32da233::t_aca179ca172893 530
+  s_48def0c32da233::t_58c7335e27a1d7 460,497-498,557-580,582-584,650
+  s_48def0c32da233::t_7df7dfb9d348e5 499-501
+  s_48def0c32da233::t_e6b9ee4d69ab84 514-518
+  s_48def0c32da233::t_fce1b2c7c8ac89 651-681
+  s_48def0c32da233::t_3a80d1d9a9f2e4 299
+  s_48def0c32da233::t_40ace81e4b110a 16
+  s_48def0c32da233::t_1f94aef5c33e6e 608
+McpPlugin.Tests/Network/Connection/ConnectionManagerServerCloseReconnectTests.cs
+  s_48def0c32da233::t_73330b3e0cc7d8 1-140
+McpPlugin.Tests/Network/Connection/Credentials/HttpTokenRefresherLostResponseTests.cs
+  s_48def0c32da233::t_656dd33341e9f9 1-158
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/PluginCredentialProvider.cs
+  s_48def0c32da233::t_2aa06cba85c710 272
+  s_48def0c32da233::t_ca115291a08d58 558,564-568
+  s_48def0c32da233::t_5b5f5d952a20d7 372
+  s_48def0c32da233::t_5c097b860df965 52-53
+  s_48def0c32da233::t_c3121e63dfe267 144
+  s_48def0c32da233::t_8f334cac3ee539 408-421
+  s_48def0c32da233::t_f9c9ce6171247b 528-531,533
+  s_48def0c32da233::t_d79bc233237d9f 302
+  s_48def0c32da233::t_6ae80563f77d20 96-101,105-107,569-570
+McpPlugin.Tests/Network/Connection/Credentials/CoordinatorStopResumeHarnessTests.cs
+  s_48def0c32da233::t_620cfd33b6ccf8 358-361
+  s_48def0c32da233::t_6715ac196b6f60 339
+McpPlugin.Tests/Network/Connection/ConnectionManagerRejectionTests.cs
+  s_48def0c32da233::t_a528b41655e3b3 76-123
+  s_48def0c32da233::t_1eb54aa9b34cb5 373,429-432
+  s_48def0c32da233::t_1e30c629fe1d1f 52-54,58-59,375
+  s_48def0c32da233::t_96076cad440371 130-131
+  s_48def0c32da233::t_8323ba9f33bff0 351-353,357,362-364,366,372
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/PersistedDeadFamilyMemo.cs
+  s_48def0c32da233::t_78f63f7f2a0743 117
+  s_48def0c32da233::t_c823f49c163ad1 1-116,118-142
+McpPlugin.Tests/Network/Connection/Credentials/PluginCredentialProviderDeadFamilyMemoTests.cs
+  s_48def0c32da233::t_467ab078500c29 381-457,460-465
+  s_48def0c32da233::t_e872aee05867ea 458-459
+McpPlugin/src/McpPlugin/Network/Connection/Provider/HubConnectionProvider.cs
+  s_48def0c32da233::t_9f09b78e057fd6 88-90
+McpPlugin/src/McpPlugin/Network/Connection/Retry/FastFirstRetryPolicy.cs
+  s_48def0c32da233::t_0cbfc91aab3c98 19
+  s_48def0c32da233::t_91fd7977edc94d 1-18,20-66
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/HttpTokenRefresher.cs
+  s_48def0c32da233::t_ba779d41624a32 176-179,184,188,194-211,219
+  s_48def0c32da233::t_2b24e4eafbf74e 108-110
+  s_48def0c32da233::t_7716afdfe9cf28 88
+  s_48def0c32da233::t_caa2d929987d13 81-87,89
+  s_48def0c32da233::t_9c2b319999e59c 42-50
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionManager.cs
+  s_48def0c32da233::t_9177b9d1478025 68-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "61cd251dc5fde947534684c65c742ad7aa0980b7",
+  "prompts": {},
+  "sessions": {
+    "s_48def0c32da233": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b12596e-6fac-4b72-8f4f-08fe9abbc79c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

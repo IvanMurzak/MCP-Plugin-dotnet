@@ -1,0 +1,43 @@
+McpPlugin.Server.Tests/RuntimeToolRoutingTests.cs
+  s_7bc72ecaebd05d::t_1efed671c74a4c 35,67,71,87,102,117,132,168-177
+McpPlugin.Server/src/Client/RemoteToolRunner.cs
+  s_7bc72ecaebd05d::t_f5e2c8198c34eb 114-117,132-133,137-139,141-142,144,148-151,154,157,159-166
+McpPlugin.Server/src/Hub/McpServerHub.cs
+  s_7bc72ecaebd05d::t_0590aaed43d4b3 225-230
+McpPlugin.Server/src/Strategy/SingleProjectMcpStrategy.cs
+  s_7bc72ecaebd05d::t_efa22d42852fd0 133-134,141
+McpPlugin.Server/src/Tools/ToolCallGuard.cs
+  s_7bc72ecaebd05d::t_cea63ccd9884d1 220-222,230-231,235-239,242
+McpPlugin.Tests/Mcp/McpBuilderTests_ToolTarget.cs
+  s_7be60963fe3603::t_8ca99dc869250a 51-59,161-179
+McpPlugin/src/Mcp/McpToolManager.cs
+  s_7bc72ecaebd05d::t_e6f2e537e053c2 242
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionConfig.cs
+  s_7be60963fe3603::t_3d8fd29537d02f 84-87
+docs/agents/patterns.md
+  s_7be60963fe3603::t_9b154a65f289c5 38-39,53-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "683eaf7b0ce1b60ea4c1693a399ea2722279181d",
+  "prompts": {},
+  "sessions": {
+    "s_7bc72ecaebd05d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40274cb2-edf8-49ba-9a73-33b83cb5be53",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_7be60963fe3603": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c306a43-6f1a-4fe9-9b57-09acf4bc1a65",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

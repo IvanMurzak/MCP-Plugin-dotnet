@@ -1,0 +1,81 @@
+McpPlugin.Server.Tests/PluginReconnectRunnerTests.cs
+  s_48def0c32da233::t_77c719961b4dc3 1-229
+McpPlugin.Server.Tests/Infrastructure/OAuthMcpHost.cs
+  s_48def0c32da233::t_cd18c9e107b46a 91-92,106
+McpPlugin.Server/src/Client/RemoteResourceRunner.cs
+  s_48def0c32da233::t_a6e68370809400 82-84
+  s_48def0c32da233::t_e0798a69dd7a70 93-95
+  s_48def0c32da233::t_3e1984b40987ce 35,38,40-45
+  s_48def0c32da233::t_db83f68eb6138a 61-62,67-68,70-73
+McpPlugin.Server/src/Client/ClientUtils.cs
+  s_48def0c32da233::t_3364f1ebaa2b38 250-258
+  s_48def0c32da233::t_50a8cb6ed118f2 33-35
+  s_48def0c32da233::t_6449efe978e958 196-204,213-216
+  s_48def0c32da233::t_c3ff609230c2a9 284-288
+McpPlugin.Server.Tests/PluginCatalogCacheTests.cs
+  s_48def0c32da233::t_8949af017553c4 1-437
+McpPlugin.Server.Tests/PluginReconnectOverHttpTests.cs
+  s_48def0c32da233::t_c585aac63a11c1 109-113
+  s_48def0c32da233::t_3146bde542f0e8 1-108,114-198
+McpPlugin.Server/src/Client/CatalogAwareInvoke.cs
+  s_48def0c32da233::t_0a52558b6a8a44 1-114
+McpPlugin.Server/src/Strategy/AccountInstances.cs
+  s_48def0c32da233::t_12650da57a1f95 229-237
+McpPlugin.Server/src/Extension/ExtensionsMcpServerBuilder.cs
+  s_48def0c32da233::t_c4153fc8299f84 251-252
+  s_48def0c32da233::t_c4d45b45467684 277-288
+  s_48def0c32da233::t_0f6c4ebe9a99b8 17-18,21
+  s_48def0c32da233::t_7322ad206edc15 30,32
+  s_48def0c32da233::t_593e9822dff997 249-250,253-260
+McpPlugin.Server/src/Strategy/AccountMcpStrategy.cs
+  s_48def0c32da233::t_5b071368efe2e9 160
+McpPlugin.Server/src/Client/RemoteToolRunner.cs
+  s_48def0c32da233::t_0f5475d3553a19 36,39,41-50
+  s_48def0c32da233::t_47966672c50662 71-74,80,82-85
+  s_48def0c32da233::t_c5dc46d4848fa3 110-112
+McpPlugin.Server/src/Hub/BaseHub.cs
+  s_48def0c32da233::t_3dccd1f1a067aa 138-141,143-144
+  s_48def0c32da233::t_1f0b0ebcfc5d6c 142
+McpPlugin.Server.Tests/DataArgumentsPluginReconnectTests.cs
+  s_48def0c32da233::t_122f0b4e6bf174 1-93
+McpPlugin.Server/src/Client/RemotePromptRunner.cs
+  s_48def0c32da233::t_9b1dc7a3f998a3 87-89
+  s_48def0c32da233::t_d99dc5498c4106 35,38,40-45
+  s_48def0c32da233::t_1e0699cdc1c344 61-62,67-68,70-73
+McpPlugin.Common/src/Utils/DataArguments.cs
+  s_48def0c32da233::t_6fed5a30bad9bd 62-76,88-108,110,124-137,228-235
+  s_48def0c32da233::t_291d002ef1d52a 345-352
+McpPlugin.Server/src/Strategy/PluginCatalogCache.cs
+  s_48def0c32da233::t_571539a175ced9 1-546
+McpPlugin.Server/src/Extension/ExtensionsWebApplication.cs
+  s_48def0c32da233::t_86cb81569b26a1 62-66
+  s_48def0c32da233::t_b9a20fc6d16b21 26-28
+McpPlugin.Common/src/Utils/Consts.MCP.cs
+  s_48def0c32da233::t_ad26713f5091f9 176-194
+  s_48def0c32da233::t_951853b3b4c29c 121-122
+  s_48def0c32da233::t_0e8af71f3a0ba9 63-67
+McpPlugin.Server/src/Tools/ToolDispatcher.cs
+  s_48def0c32da233::t_415a24090bbd68 52-55
+McpPlugin.Server/src/Hub/McpServerHub.cs
+  s_48def0c32da233::t_ce3df77ce213d9 178-180
+  s_48def0c32da233::t_e7df752aa82ad6 81-83
+  s_48def0c32da233::t_b542b74bf272c6 190,194-202
+  s_48def0c32da233::t_8d4e77040bfeca 212-213
+  s_48def0c32da233::t_500a6b620a9fb4 228-231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5071f3be324a76dd00c4be2c00c217f1e92c8da4",
+  "prompts": {},
+  "sessions": {
+    "s_48def0c32da233": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b12596e-6fac-4b72-8f4f-08fe9abbc79c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

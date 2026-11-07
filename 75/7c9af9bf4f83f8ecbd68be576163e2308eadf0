@@ -1,0 +1,41 @@
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/PluginCredentialProvider.cs
+  s_d9a0bbe5ecc617::t_03d065d32b176b 408-412,414
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionManager.Connect.cs
+  s_d9a0bbe5ecc617::t_eb724578d3eebe 553-555
+  s_d9a0bbe5ecc617::t_5d159981635b2d 627
+  s_d9a0bbe5ecc617::t_9eb486fd01d37d 661
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/HttpTokenRefresher.cs
+  s_d9a0bbe5ecc617::t_a2b6b019c9edba 111
+  s_d9a0bbe5ecc617::t_841c5dcdcb8c0d 83-88
+  s_d9a0bbe5ecc617::t_4f3545fa347b9b 231-234
+  s_d9a0bbe5ecc617::t_2870863d208457 252-257,263,267
+  s_d9a0bbe5ecc617::t_d91892611ffa4c 44-46
+  s_d9a0bbe5ecc617::t_4c946cde62bb6c 198-199
+McpPlugin.Tests/Network/Connection/Credentials/HttpTokenRefresherTests.cs
+  s_d9a0bbe5ecc617::t_ee1421edf779ea 340-357
+  s_48def0c32da233::t_da9694c42cd160 339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "757c9af9bf4f83f8ecbd68be576163e2308eadf0",
+  "prompts": {},
+  "sessions": {
+    "s_48def0c32da233": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1b12596e-6fac-4b72-8f4f-08fe9abbc79c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_d9a0bbe5ecc617": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "99fd13a1-6994-42b3-a4af-b5ac03ed1d21",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

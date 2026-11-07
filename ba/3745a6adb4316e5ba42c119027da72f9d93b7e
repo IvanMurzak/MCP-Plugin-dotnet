@@ -1,0 +1,21 @@
+McpPlugin/src/Mcp/Tool/RunTool.cs
+  s_7bc72ecaebd05d::t_f8e74bd2f81028 340
+  s_7bc72ecaebd05d::t_a150e9c39fd593 342,346
+  s_7bc72ecaebd05d::t_532668fcc93ade 364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba3745a6adb4316e5ba42c119027da72f9d93b7e",
+  "prompts": {},
+  "sessions": {
+    "s_7bc72ecaebd05d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40274cb2-edf8-49ba-9a73-33b83cb5be53",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
