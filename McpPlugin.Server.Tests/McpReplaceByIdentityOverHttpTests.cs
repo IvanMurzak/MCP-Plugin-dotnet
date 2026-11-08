@@ -42,7 +42,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
     /// <c>initialize</c> handshake carrying an actual <c>AI-Game-Dev-Instance-Id</c> header.</para>
     ///
     /// <para><b>Why a real host is not optional here.</b> The thing under test is what happens to a session
-    /// the MCP SDK owns. Verified against <c>ModelContextProtocol.AspNetCore</c> 1.4.2: NOTHING in the SDK
+    /// the MCP SDK owns. Verified against <c>ModelContextProtocol.AspNetCore</c> 2.4.0: NOTHING in the SDK
     /// removes a session from its store when that session's <c>RunSessionHandler</c> returns, so a replace
     /// rule built on cancelling our own token would drop our tracker row, look fixed, and leave the SDK's
     /// session — and the memory it pins — in place until the 6 h idle timeout. A test that asserted only
@@ -64,7 +64,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
         /// <summary>
         /// The tripwire for an SDK bump. The eviction seam reaches an <c>internal</c> SDK type by
-        /// reflection because 1.4.0–1.4.2 expose no public or DI-typed way to evict a session by id. If a future
+        /// reflection because 1.4.0–2.4.0 expose no public or DI-typed way to evict a session by id. If a future
         /// bump moves or renames that seam, replace-by-identity silently stops terminating SDK sessions and
         /// the six-hour pile-up returns <b>with no functional symptom</b>. This test is what turns that
         /// silent regression into a red build.

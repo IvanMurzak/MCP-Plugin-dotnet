@@ -47,6 +47,9 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                     try
                     {
+                        // Every client stays on the initialize handshake (see InitializeHandshakeOnlyFilter).
+                        options.Filters.Message.IncomingFilters.Add(InitializeHandshakeOnlyFilter.Apply);
+
                         // Setup MCP tools
                         options.Capabilities ??= new();
                         options.Capabilities.Tools ??= new();

@@ -10,10 +10,12 @@
 
 #nullable enable
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Utils;
@@ -22,6 +24,7 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Client;
 using Shouldly;
 using Xunit;
 
@@ -69,6 +72,31 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             using var resp = await client.SendAsync(InitializeRequest("/mcp", bearer: Secret), HttpCompletionOption.ResponseHeadersRead);
             resp.StatusCode.ShouldBe(HttpStatusCode.OK, "the correct token must reach the MCP handler");
             resp.Headers.Contains("Mcp-Session-Id").ShouldBeTrue("a valid session must be established");
+        }
+
+        /// <summary>
+        /// MCP SDK 2.x clients probe the <c>2026-07-28</c> revision first (no <c>initialize</c>, no
+        /// <c>Mcp-Session-Id</c>). This server is deliberately stateful, so it refuses that probe and the
+        /// real SDK client must fall back to <c>initialize</c> and get a session.
+        /// </summary>
+        [Fact]
+        public async Task TokenMode_Sdk2Client_FallsBackToInitialize_AndGetsAStatefulSession()
+        {
+            await using var host = await StartHostAsync();
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+
+            var transport = new HttpClientTransport(new HttpClientTransportOptions
+            {
+                Endpoint = new Uri(new Uri(host.BaseUrl), "/mcp"),
+                TransportMode = HttpTransportMode.StreamableHttp,
+                AdditionalHeaders = new Dictionary<string, string> { ["Authorization"] = $"Bearer {Secret}" },
+            });
+            await using var client = await McpClient.CreateAsync(transport, cancellationToken: cts.Token);
+
+            client.NegotiatedProtocolVersion.ShouldNotBeNull();
+            client.NegotiatedProtocolVersion.ShouldNotBe("2026-07-28", "a stateful server must push a 2.x client down to initialize");
+            client.SessionId.ShouldNotBeNullOrEmpty("the fallback must yield a stateful session");
+            await client.ListToolsAsync(cancellationToken: cts.Token); // a follow-up request rides the session
         }
 
         [Fact]

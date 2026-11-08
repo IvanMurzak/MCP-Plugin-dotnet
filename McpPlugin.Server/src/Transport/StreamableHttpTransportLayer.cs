@@ -20,6 +20,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
+using ModelContextProtocol.AspNetCore;
 using NLog;
 
 namespace com.IvanMurzak.McpPlugin.Server.Transport
@@ -49,7 +50,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                 logger?.Debug("Http transport configuration. IdleTimeout={idleTimeoutSeconds}s, MaxIdleSessionCount={maxIdleSessionCount}",
                     dataArguments.IdleTimeoutSeconds, dataArguments.MaxIdleSessionCount);
 
-                options.Stateless = false;
+                // Stateful, explicitly (SDK 2.x defaults to Stateless): RunSessionHandler, the ambient
+                // token / session id, replace-by-identity and unsolicited list_changed notifications all
+                // need a session. A 2026-07-28 client is refused (-32022) and falls back to initialize.
+                options.SessionMode = HttpServerSessionMode.Stateful;
+                // MCP9006 flags these as back-compat for initialize clients — i.e. every session here.
+#pragma warning disable MCP9006
                 options.PerSessionExecutionContext = true;
                 options.IdleTimeout = TimeSpan.FromSeconds(dataArguments.IdleTimeoutSeconds);
                 // Hard ceiling on retained idle sessions. Without this the SDK default (10,000)
@@ -57,6 +63,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                 // SseEventWriter buffer (up to tens of MiB), which leaked multi-GB in production.
                 // Active sessions (in-flight request / open SSE stream) are never pruned by this.
                 options.MaxIdleSessionCount = dataArguments.MaxIdleSessionCount;
+#pragma warning restore MCP9006
                 // ConfigureSessionOptions cannot replace RunSessionHandler here because we need
                 // full session lifecycle management (StartAsync/StopAsync for McpServerService).
                 // Suppressing MCPEXP002 as RunSessionHandler is the only mechanism that provides
