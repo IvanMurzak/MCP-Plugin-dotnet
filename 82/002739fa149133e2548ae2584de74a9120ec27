@@ -1,0 +1,24 @@
+McpPlugin.Server/src/Client/RemotePromptRunner.cs
+  s_12873f1c81b288::t_4c85a2a2339c9f 68-70
+McpPlugin.Server.Tests/PluginReconnectRunnerTests.cs
+  s_12873f1c81b288::t_4df112f1ed26f1 146-156,158-159,161-165,167-168,170-171,173-176,178-207
+  s_12873f1c81b288::t_4c85a2a2339c9f 157,160,166,169,172,177,231,235
+McpPlugin.Server/src/Client/ClientUtils.cs
+  s_12873f1c81b288::t_8295952ac2973f 342-345,368-372
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "82002739fa149133e2548ae2584de74a9120ec27",
+  "prompts": {},
+  "sessions": {
+    "s_12873f1c81b288": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97ad83ec-df5c-4841-9f29-3dbe51669939",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
