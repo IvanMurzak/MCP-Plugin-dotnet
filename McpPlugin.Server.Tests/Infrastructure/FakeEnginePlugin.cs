@@ -121,6 +121,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
                 throw new InvalidOperationException("Handshake refused: " + handshake.Message);
         }
 
+        /// <summary>The tool update a real plugin sends on every connect.</summary>
+        public Task NotifyToolsUpdatedAsync() => _connection!.InvokeAsync("NotifyAboutUpdatedTools", new RequestToolsUpdated());
+
         /// <summary>Drops the connection the way a plugin does before a reload.</summary>
         public Task StopAsync() => _connection?.StopAsync() ?? Task.CompletedTask;
 

@@ -56,4 +56,8 @@
     <EmbeddedResource Remove="publish/**" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="McpPlugin.Server.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -44,6 +44,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         readonly Common.Version _version;
         readonly IDataArguments _dataArguments;
         readonly IWebhookEventCollector _webhookCollector;
+        readonly PluginCatalogCache? _catalog;
         readonly CompositeDisposable _disposables = new();
         volatile bool _aiAgentConnectedEmitted;
         CancellationTokenSource? _notifyCts;
@@ -72,7 +73,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             IMcpConnectionStrategy strategy,
             IWebhookEventCollector webhookCollector,
             McpServer? mcpServer = null,
-            McpSession? mcpSession = null)
+            McpSession? mcpSession = null,
+            PluginCatalogCache? catalog = null)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _logger.LogTrace("{type} Ctor.", GetType().GetTypeShortName());
@@ -91,6 +93,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             _sessionTracker = sessionTracker ?? throw new ArgumentNullException(nameof(sessionTracker));
             _strategy = strategy ?? throw new ArgumentNullException(nameof(strategy));
             _webhookCollector = webhookCollector ?? throw new ArgumentNullException(nameof(webhookCollector));
+            _catalog = catalog;
         }
 
         public McpClientData GetClientData()
@@ -237,6 +240,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                     _logger.LogTrace("{type} EventAppResourcesChange. ConnectionId: {connectionId}", GetType().GetTypeShortName(), data.ConnectionId);
                     OnListResourcesUpdated(data, cancellationToken);
                 })
+                .AddTo(_disposables);
+
+            _catalog?.ExpiredFor(_routingToken)
+                .Subscribe(expiry => OnPluginListsExpired(expiry, cancellationToken))
                 .AddTo(_disposables);
 
             _notifyCts?.Dispose();
@@ -401,6 +408,38 @@ namespace com.IvanMurzak.McpPlugin.Server
                 _logger.LogError("{type} Error updating resource list: {Message}", GetType().GetTypeShortName(), ex.Message);
             }
         }
+
+        async void OnPluginListsExpired(PluginCatalogExpiry expiry, CancellationToken cancellationToken)
+        {
+            _logger.LogTrace("{type} {method}", GetType().GetTypeShortName(), nameof(OnPluginListsExpired));
+            try
+            {
+                if (McpSessionOrServer == null)
+                {
+                    _logger.LogDebug("{type} {property} is null, cannot send list update notifications.",
+                        GetType().GetTypeShortName(), nameof(McpSessionOrServer));
+                    return;
+                }
+                // MCP has one notification for resources and resource templates.
+                foreach (var method in expiry.Kinds.Select(ListChangedMethod).Distinct())
+                {
+#pragma warning disable CS0618 // Type or member is obsolete
+                    await McpSessionOrServer.SendNotificationAsync(method, cancellationToken);
+#pragma warning restore CS0618 // Type or member is obsolete
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("{type} Error sending list updates for an expired plugin: {Message}", GetType().GetTypeShortName(), ex.Message);
+            }
+        }
+
+        static string ListChangedMethod(PluginCatalogKind kind) => kind switch
+        {
+            PluginCatalogKind.Tools => NotificationMethods.ToolListChangedNotification,
+            PluginCatalogKind.Prompts => NotificationMethods.PromptListChangedNotification,
+            _ => NotificationMethods.ResourceListChangedNotification,
+        };
 
         static Dictionary<string, string>? BuildAiAgentMetadata(ModelContextProtocol.Protocol.Implementation? clientInfo)
         {
