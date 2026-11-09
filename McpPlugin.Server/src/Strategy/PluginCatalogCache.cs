@@ -70,8 +70,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
     /// <para><b>Expiry.</b> When the grace ends, a timer removes the entry with no client traffic and
     /// <see cref="ExpiredFor"/> tells the sessions routing to it that their lists changed; reads only
     /// skip an expired entry, so each expiry is published once. An entry dropped for any other reason
-    /// publishes nothing. A plugin that returns later starts a new entry with no announced tools, so
-    /// its tools are forwarded (see <see cref="TryNotifyIfToolsChanged"/>).</para>
+    /// publishes nothing. After the expiry a returning plugin starts a new entry with no announced
+    /// tools, so its tools are forwarded (see <see cref="TryNotifyIfToolsChanged"/>). A plugin announces
+    /// only tools when it connects, so the hub re-announces the other lists agents were told it took
+    /// away (see <see cref="TakeAnnouncedGone"/>).</para>
     /// </summary>
     public sealed class PluginCatalogCache
     {
@@ -94,6 +96,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         readonly CancellationToken _stopping;
         readonly Func<string, CancellationToken, Task<ResponseListTool[]?>>? _fetchTools;
         readonly Subject<PluginCatalogExpiry> _expired = new Subject<PluginCatalogExpiry>();
+        /// <summary>The lists agents were told left, per target (a project keeps its target under a new instance id), until it returns.</summary>
+        readonly Dictionary<(string Account, string Target), PluginCatalogKind[]> _announcedGone = new Dictionary<(string Account, string Target), PluginCatalogKind[]>();
         Timer? _expiryTimer;
         bool _expiryTimerArmed;
 
@@ -251,6 +255,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 return 0;
             lock (_gate)
             {
+                foreach (var target in _announcedGone.Keys.Where(k => string.Equals(k.Account, accountId, StringComparison.Ordinal)).ToList())
+                    _announcedGone.Remove(target);
                 if (!_byAccount.TryGetValue(accountId, out var bucket))
                     return 0;
                 var entries = bucket.Values.ToList();
@@ -452,7 +458,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 var now = _clock();
                 foreach (var entry in _byAccount.Values.SelectMany(bucket => bucket.Values).Where(e => e.ConnectionId == null && IsExpired(e, now)).ToList())
                 {
-                    expired.Add(new PluginCatalogExpiry(entry.Account, entry.RememberedKinds()));
+                    var kinds = entry.RememberedKinds();
+                    _announcedGone[TargetOf(entry)] = kinds;
+                    expired.Add(new PluginCatalogExpiry(entry.Account, kinds));
                     RemoveEntry(entry);
                 }
                 ArmExpiryTimerLocked(now);
@@ -460,6 +468,22 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             foreach (var expiry in expired)
                 _expired.OnNext(expiry);
         }
+
+        /// <summary>
+        /// The plugin on <paramref name="connectionId"/> is ready: the lists agents were told its target
+        /// took away when its grace ended, once, so the caller can announce them again. Empty otherwise.
+        /// </summary>
+        internal PluginCatalogKind[] TakeAnnouncedGone(string connectionId)
+        {
+            lock (_gate)
+            {
+                return _byConnection.TryGetValue(connectionId, out var entry) && _announcedGone.Remove(TargetOf(entry), out var kinds)
+                    ? kinds
+                    : Array.Empty<PluginCatalogKind>();
+            }
+        }
+
+        static (string Account, string Target) TargetOf(Entry entry) => (entry.Account, entry.Instance?.DedupKey ?? entry.Key);
 
         void ArmExpiryTimerLocked(DateTimeOffset now)
         {
@@ -556,7 +580,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         {
             if (_strategy is AccountMcpStrategy)
                 return string.IsNullOrEmpty(sessionAccount) ? null : sessionAccount;
-            return _strategy.AllowMultipleConnections ? null : SingleAccount;
+            // A custom oauth strategy has accounts this cache cannot see, so one shared slot would cross them.
+            return _strategy.AllowMultipleConnections || _strategy.AuthOption == Common.Consts.MCP.Server.AuthOption.oauth
+                ? null
+                : SingleAccount;
         }
 
         Entry? FindOfflineForCurrentSessionLocked()

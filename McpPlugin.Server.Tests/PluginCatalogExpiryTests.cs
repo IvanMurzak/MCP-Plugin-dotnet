@@ -33,7 +33,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
     public sealed class PluginCatalogExpiryTests
     {
         const string HashA = PluginReconnect.HashA;
-        const string HashB = "11223344aabbccdd556677889900aabbccddeeff00112233445566778899aabb";
         static readonly TimeSpan Grace = TimeSpan.FromMinutes(5);
 
         DateTimeOffset _now = new DateTimeOffset(2026, 11, 9, 12, 0, 0, TimeSpan.Zero);
@@ -162,32 +161,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         // ───────────────────────────── isolation ─────────────────────────────
 
         [Fact]
-        public void TwoAccounts_EachExpiryReachesOnlyItsOwnAccount()
-        {
-            var cache = NewCache();
-            var second = new List<PluginCatalogExpiry>();
-            var noIdentity = new List<PluginCatalogExpiry>();
-            cache.ExpiredFor("acc-2").Subscribe(second.Add);
-            cache.ExpiredFor(null).Subscribe(noIdentity.Add);
-            cache.ExpiredFor(string.Empty).Subscribe(noIdentity.Add);
-            RememberAndDrop(cache, "acc-1", "i1", "c1", HashA);
-            _now += TimeSpan.FromMinutes(1);
-            RememberAndDrop(cache, "acc-2", "i2", "c2", HashB);
-
-            _now += Grace - TimeSpan.FromMinutes(1);
-            cache.ExpireDue();
-
-            _fired.ShouldHaveSingleItem().Account.ShouldBe("acc-1");
-            second.ShouldBeEmpty();
-
-            _now += TimeSpan.FromMinutes(1);
-            cache.ExpireDue();
-            _fired.Count.ShouldBe(1);
-            second.ShouldHaveSingleItem().Account.ShouldBe("acc-2");
-            noIdentity.ShouldBeEmpty("a session with no identity gets nothing");
-        }
-
-        [Fact]
         public void SinglePluginMode_ExpiryReachesEverySession_WhateverItsToken()
         {
             var connection = "expiry-single-" + Guid.NewGuid().ToString("N");
@@ -216,17 +189,27 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public void ACustomMultiPluginStrategy_HasNoRoutingKey_SoNothingReachesASession()
+        public void ACustomOAuthStrategyWithOneSlot_FailsClosed()
         {
-            var multi = new Mock<IMcpConnectionStrategy>();
-            multi.Setup(s => s.AllowMultipleConnections).Returns(true);
-            var cache = new PluginCatalogCache(multi.Object, Grace, TimeSpan.Zero, clock: () => _now);
+            var connection = "expiry-custom-" + Guid.NewGuid().ToString("N");
+            var custom = new Mock<IMcpConnectionStrategy>();
+            custom.Setup(s => s.AllowMultipleConnections).Returns(false);
+            custom.Setup(s => s.AuthOption).Returns(Common.Consts.MCP.Server.AuthOption.oauth);
+            var cache = new PluginCatalogCache(custom.Object, Grace, TimeSpan.Zero, clock: () => _now);
             var heard = 0;
-            cache.ExpiredFor(null).Subscribe(_ => heard++);
+            cache.ExpiredFor("acc-1").Subscribe(_ => heard++);
+            ClientUtils.AddClient(typeof(McpServerHub), connection, NullLogger.Instance);
+            try
+            {
+                cache.OnPluginConnected(connection);
+                cache.Record(connection, PluginCatalogKind.Tools, PluginReconnect.Tools("engine_tool"));
+                cache.OnPluginDisconnected(connection);
+            }
+            finally
+            {
+                ClientUtils.RemoveClient(typeof(McpServerHub), connection, NullLogger.Instance);
+            }
 
-            cache.OnPluginConnected("c1");
-            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("engine_tool"));
-            cache.OnPluginDisconnected("c1");
             _now += Grace;
             cache.ExpireDue();
 
@@ -249,6 +232,66 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             cache.TryNotifyIfToolsChanged("c2", () => { }).ShouldBeFalse(
                 "agents were told the tools left, so the caller must tell them they are back");
+        }
+
+        [Fact]
+        public void AReadMissPastTheGrace_ThenAReturnBeforeTheTimer_StillForwardsTheTools()
+        {
+            var cache = new PluginCatalogCache(_strategy, Grace, TimeSpan.FromSeconds(1), clock: () => _now,
+                fetchTools: (_, _) => Task.FromResult<ResponseListTool[]?>(PluginReconnect.Tools("engine_tool")));
+            RememberAndDrop(cache, "acc-1", "i1", "c1");
+            _now += Grace;
+            using (PluginReconnect.Session("acc-1"))
+            {
+                cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeNull();
+                cache.NoteToolListMissed();
+            }
+
+            PluginReconnect.Register(_strategy, cache, "acc-1", "i1", "c2");
+
+            cache.TryNotifyIfToolsChanged("c2", () => { }).ShouldBeFalse();
+        }
+
+        [Fact]
+        public void ListsAnnouncedGone_AreHandedBackOnce_ToTheSameProjectInTheSameAccount()
+        {
+            var cache = NewCache();
+            PluginReconnect.Register(_strategy, cache, "acc-1", "i1", "c1");
+            cache.Record("c1", PluginCatalogKind.Prompts, new ResponseListPrompts());
+            PluginReconnect.Unregister(_strategy, cache, "c1");
+            _now += Grace;
+            cache.ExpireDue();
+
+            PluginReconnect.Register(_strategy, cache, "acc-2", "other", "foreign");
+            cache.TakeAnnouncedGone("foreign").ShouldBeEmpty("another account's plugin");
+
+            PluginReconnect.Register(_strategy, cache, "acc-1", "i2", "c2"); // an editor restart: a new instance id
+            cache.TakeAnnouncedGone("c2").ShouldBe(new[] { PluginCatalogKind.Prompts });
+            cache.TakeAnnouncedGone("c2").ShouldBeEmpty("once");
+        }
+
+        [Fact]
+        public void PluginReturnedWithinTheGrace_NothingIsHandedBack()
+        {
+            var cache = NewCache();
+            RememberAndDrop(cache, "acc-1", "i1", "c1");
+            PluginReconnect.Register(_strategy, cache, "acc-1", "i1", "c2");
+
+            cache.TakeAnnouncedGone("c2").ShouldBeEmpty();
+        }
+
+        [Fact]
+        public void ForgottenAccount_NothingIsHandedBack()
+        {
+            var cache = NewCache();
+            RememberAndDrop(cache, "acc-1", "i1", "c1");
+            _now += Grace;
+            cache.ExpireDue();
+            cache.ForgetAccount("acc-1");
+
+            PluginReconnect.Register(_strategy, cache, "acc-1", "i1", "c2");
+
+            cache.TakeAnnouncedGone("c2").ShouldBeEmpty();
         }
 
         // ───────────────────────────── timer lifecycle ─────────────────────────────

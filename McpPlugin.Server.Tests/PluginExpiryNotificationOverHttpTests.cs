@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -43,7 +44,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         static readonly TimeSpan Arrival = TimeSpan.FromSeconds(15);
 
         [Fact]
-        public async Task OAuth_PluginExpires_ItsAccountsSessionsAreNotified_NoOtherAccountIs_AndItsReturnNotifiesAgain()
+        public async Task OAuth_PluginExpires_ItsAccountsSessionsAreNotified_NoOtherAccountIs()
         {
             await using var host = await OAuthMcpHost.StartAsync(null, AccountA, "plugin-reconnect-grace-seconds=1");
             var strategy = (AccountMcpStrategy)host.Services.GetRequiredService<IMcpConnectionStrategy>();
@@ -80,17 +81,52 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             b.Methods.ShouldBe(new[] { ToolsChanged });
             a1.Methods.Count.ShouldBe(3);
 
-            // A's plugin returns and sends its usual tool update: A's sessions hear it, B's do not.
-            PluginReconnect.Register(strategy, catalog, AccountA, "instance-a", "conn-a2");
-            var events = host.Services.GetRequiredService<HubEventToolsChange>();
-            var update = new HubEventToolsChange.EventData { ConnectionId = "conn-a2", Request = new RequestToolsUpdated() };
-            catalog.TryNotifyIfToolsChanged("conn-a2", () => { }).ShouldBeFalse();
-            events.OnNext(update);
-            await a1.WaitForCountAsync(4);
-            await a2.WaitForCountAsync(4);
-            await Task.Delay(Settle);
-            b.Methods.Count.ShouldBe(1);
+            // These streams now carry notifications, so another account's token must not open one.
+            using var foreign = new HttpRequestMessage(HttpMethod.Get, host.BaseUrl + "/mcp");
+            foreign.Headers.Accept.ParseAdd("text/event-stream");
+            foreign.Headers.TryAddWithoutValidation("Mcp-Session-Id", a1.SessionId);
+            foreign.Headers.Authorization = new AuthenticationHeaderValue("Bearer", tokenB);
+            using var refused = await http.SendAsync(foreign, HttpCompletionOption.ResponseHeadersRead);
+            refused.IsSuccessStatusCode.ShouldBeFalse();
         }
+
+        /// <summary>
+        /// Through the real hub, over a real plugin connection: a returning plugin announces only its
+        /// tools, yet agents were told its prompts and resources left too.
+        /// </summary>
+        [Fact]
+        public async Task NoneAuth_PluginReturnsAfterTheExpiry_EveryListGoneIsAnnouncedAgain_Once()
+        {
+            await using var host = await NoneAuthMcpHost.StartAsync(null, "plugin-reconnect-grace-seconds=1");
+            var catalog = host.Services.GetRequiredService<PluginCatalogCache>();
+            using var http = new HttpClient();
+            await using var session = await NotificationStream.OpenAsync(http, host.BaseUrl, await host.HandshakeAsync(http), bearerToken: null);
+
+            await using var plugin = new FakeEnginePlugin(host.BaseUrl, "editor", Environment);
+            await plugin.StartAsync();
+            var connection = plugin.ConnectionId!;
+            catalog.Record(connection, PluginCatalogKind.Tools, PluginReconnect.Tools("engine_tool"));
+            catalog.Record(connection, PluginCatalogKind.Prompts, new ResponseListPrompts());
+            catalog.Record(connection, PluginCatalogKind.Resources, Array.Empty<ResponseListResource>());
+            await plugin.StopAsync();
+            await session.WaitForCountAsync(3);
+            await Task.Delay(Settle);
+            session.Methods.ShouldBe(new[] { ToolsChanged, PromptsChanged, ResourcesChanged }, ignoreOrder: true);
+
+            await using var back = new FakeEnginePlugin(host.BaseUrl, "editor", Environment);
+            await back.StartAsync();
+            await back.NotifyToolsUpdatedAsync();
+            await session.WaitForCountAsync(6);
+            await Task.Delay(Settle);
+            session.Methods.Skip(3).ShouldBe(new[] { ToolsChanged, PromptsChanged, ResourcesChanged }, ignoreOrder: true);
+
+            await back.NotifyToolsUpdatedAsync();
+            await session.WaitForCountAsync(7);
+            await Task.Delay(Settle);
+            session.Methods.Count.ShouldBe(7, "the other lists are announced again once, not on every tool update");
+        }
+
+        const string Environment = "Godot 4.5.1.stable";
 
         [Fact]
         public async Task OAuth_PluginReturnsWithinTheGrace_NoSessionIsNotified()
@@ -110,6 +146,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             await Task.Delay(TimeSpan.FromSeconds(2));
 
             a.Methods.ShouldBeEmpty();
+
+            // Control: this stream does deliver an expiry.
+            PluginReconnect.Unregister(strategy, catalog, "conn-a2");
+            await a.WaitForCountAsync(1);
         }
 
         [Fact]
@@ -149,11 +189,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             HttpResponseMessage? _response;
             Task? _reader;
 
+            public string SessionId { get; private set; } = string.Empty;
+
             public IReadOnlyList<string> Methods { get { lock (_methods) return _methods.ToArray(); } }
 
             public static async Task<NotificationStream> OpenAsync(HttpClient http, string baseUrl, string sessionId, string? bearerToken)
             {
-                var stream = new NotificationStream();
+                var stream = new NotificationStream { SessionId = sessionId };
                 using var request = new HttpRequestMessage(HttpMethod.Get, baseUrl + "/mcp");
                 request.Headers.Accept.ParseAdd("text/event-stream");
                 request.Headers.TryAddWithoutValidation("Mcp-Session-Id", sessionId);

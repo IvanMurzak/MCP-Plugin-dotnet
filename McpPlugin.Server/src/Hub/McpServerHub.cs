@@ -248,8 +248,24 @@ namespace com.IvanMurzak.McpPlugin.Server
             var catalog = Catalog;
             if (catalog == null || !catalog.TryNotifyIfToolsChanged(Context.ConnectionId, () => _eventAppToolsChange.OnNext(eventData)))
                 _eventAppToolsChange.OnNext(eventData);
+            ReannounceListsTakenAwayByExpiry(catalog);
 
             return ResponseData.Success(request.RequestId, "Received tools update notification").TaskFromResult();
+        }
+
+        /// <summary>
+        /// Agents were told this target's lists left when its grace ended, and may have listed them
+        /// empty since. A plugin announces only its tools when it connects, so the rest is said here.
+        /// </summary>
+        void ReannounceListsTakenAwayByExpiry(PluginCatalogCache? catalog)
+        {
+            var gone = catalog?.TakeAnnouncedGone(Context.ConnectionId);
+            if (gone == null)
+                return;
+            if (Array.IndexOf(gone, PluginCatalogKind.Prompts) >= 0)
+                _eventAppPromptsChange.OnNext(new HubEventPromptsChange.EventData { ConnectionId = Context.ConnectionId, Request = new RequestPromptsUpdated() });
+            if (Array.IndexOf(gone, PluginCatalogKind.Resources) >= 0 || Array.IndexOf(gone, PluginCatalogKind.ResourceTemplates) >= 0)
+                _eventAppResourcesChange.OnNext(new HubEventResourcesChange.EventData { ConnectionId = Context.ConnectionId, Request = new RequestResourcesUpdated() });
         }
 
         public Task<ResponseData> NotifyAboutUpdatedPrompts(RequestPromptsUpdated request) => NotifyAboutUpdatedPrompts(request, default);
