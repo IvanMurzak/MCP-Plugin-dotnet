@@ -1,0 +1,27 @@
+McpPlugin.Common/McpPlugin.Common.csproj
+  s_2753599dafbbf2::t_3f8bdd118d44f8 14
+McpPlugin.Common/src/Utils/Consts.cs
+  s_2753599dafbbf2::t_d61ff7363a1b93 15
+McpPlugin.Server/McpPlugin.Server.csproj
+  s_2753599dafbbf2::t_22cc21cfe4f2a7 14
+McpPlugin.Server/server.json
+  s_2753599dafbbf2::t_e207f1fad73490 11,17
+McpPlugin/McpPlugin.csproj
+  s_2753599dafbbf2::t_0051da7039b3fd 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae8c402399d40e2a36c534bce5b58ec80629a592",
+  "prompts": {},
+  "sessions": {
+    "s_2753599dafbbf2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_2753599dafbbf2",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
