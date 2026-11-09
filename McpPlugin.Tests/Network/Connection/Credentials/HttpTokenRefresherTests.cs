@@ -165,6 +165,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
 
             result.Succeeded.ShouldBeFalse();
             result.FailureKind.ShouldBe(TokenRefreshFailureKind.InvalidGrant);
+            result.FailureReason.ShouldNotBeNull();
             result.FailureReason.ShouldContain("invalid_grant");
         }
 
@@ -186,6 +187,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
             result.FailureKind.ShouldBe(TokenRefreshFailureKind.InvalidTarget);
             // Distinct reason strings preserved end-to-end (C2): the raw error code AND the
             // server's description both survive into FailureReason for telemetry.
+            result.FailureReason.ShouldNotBeNull();
             result.FailureReason.ShouldContain("invalid_target");
             result.FailureReason.ShouldContain("The requested resource is invalid");
         }
@@ -228,6 +230,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
 
             result.Succeeded.ShouldBeFalse();
             result.FailureKind.ShouldBe(TokenRefreshFailureKind.Transient);
+            result.FailureReason.ShouldNotBeNull();
             result.FailureReason.ShouldContain("timed out");
         }
 
