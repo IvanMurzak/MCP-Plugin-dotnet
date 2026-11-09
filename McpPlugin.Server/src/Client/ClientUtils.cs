@@ -233,7 +233,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 }
 
                 var retryCount = 0;
-                var sawClient = false;
+                var reachedClient = false; // a connection that was already gone does not count
                 var sawTimeout = false;
                 while (retryCount < maxRetries)
                 {
@@ -259,7 +259,6 @@ namespace com.IvanMurzak.McpPlugin.Server
                         await Task.Delay(retryDelayMs, cancellationToken); // Wait before retrying
                         continue;
                     }
-                    sawClient = true;
 
                     if (logger.IsEnabled(LogLevel.Trace))
                     {
@@ -312,6 +311,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                         }
                         catch (Exception ex)
                         {
+                            reachedClient |= !IsNotDelivered(ex);
                             logger.LogError(ex, $"Invoke '{methodName}': Error invoking '{request}' on client '{connectionId}': {ex.Message}");
                             await Task.Delay(50, cancellationToken); // Wait before retrying
                             continue;
@@ -336,7 +336,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                     await Task.Delay(retryDelayMs, cancellationToken); // Wait before retrying
                     // Restart the loop to try again with a new client
                 }
-                if (!sawClient)
+                if (!reachedClient && !sawTimeout)
                     return ResponseData<TResponse>.Error(request.RequestID, NoPluginConnectedMessage, ResponseErrorKind.Unavailable)
                         .Log(logger);
                 return ResponseData<TResponse>.Error(request.RequestID,
@@ -364,7 +364,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         static bool IsNotDelivered(Exception ex)
             => ex is IOException && ex.Message.Contains("does not exist", StringComparison.Ordinal);
 
-        /// <summary>The error when the retry ladder ended with no plugin connection on any attempt.</summary>
+        /// <summary>The error when the retry ladder ended without reaching a plugin on any attempt.</summary>
         const string NoPluginConnectedMessage =
             "No engine plugin is connected to this session, so the request was not sent. " +
             "Open the project in its engine editor, check that the plugin's MCP connection is active, then retry.";
