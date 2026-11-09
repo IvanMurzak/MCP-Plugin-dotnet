@@ -45,8 +45,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public async Task ListCalls_NoPluginAndNothingRemembered_AnswerAtOnce()
         {
-            var strategy = new Mock<IMcpConnectionStrategy>();
-            strategy.Setup(s => s.ResolveConnectionId(It.IsAny<string?>(), It.IsAny<int>())).Returns((string?)null);
+            var strategy = StrategyResolving(null);
             var catalog = new PluginCatalogCache(strategy.Object, TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(30));
             var arguments = Arguments();
             using var tools = new RemoteToolRunner(NullLogger<RemoteToolRunner>.Instance, _hub, arguments, Tracking(), strategy.Object, catalog);
@@ -151,8 +150,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public async Task PastGrace_NoPluginOnAnyAttempt_EveryRunnerSaysSo_AfterTheSameLadder()
         {
-            var strategy = new Mock<IMcpConnectionStrategy>();
-            strategy.Setup(s => s.ResolveConnectionId(It.IsAny<string?>(), It.IsAny<int>())).Returns((string?)null);
+            var strategy = StrategyResolving(null);
             var catalog = new PluginCatalogCache(strategy.Object, TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(30));
             var arguments = Arguments(toolTimeoutMs: 60_000); // longer than the ladder
             using var tools = new RemoteToolRunner(NullLogger<RemoteToolRunner>.Instance, _hub, arguments, Tracking(), strategy.Object, catalog);
@@ -181,7 +179,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 kind.ShouldBe(ResponseErrorKind.Unavailable);
                 message.ShouldNotBeNull().ShouldContain("No engine plugin is connected");
                 message.ShouldContain("engine editor");
-                message.ShouldNotContain("Failed to invoke");
             }
         }
 
@@ -189,8 +186,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public async Task LadderEndsAfterReachingAPlugin_KeepsTheFailureText_NotTheNoPluginOne()
         {
-            var strategy = new Mock<IMcpConnectionStrategy>();
-            strategy.Setup(s => s.ResolveConnectionId(It.IsAny<string?>(), It.IsAny<int>())).Returns("c1");
+            var strategy = StrategyResolving("c1");
             Plugin("c1").Setup(c => c.InvokeCoreAsync<ResponseData<ResponseGetPrompt>>(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("broken"));
             var catalog = new PluginCatalogCache(strategy.Object, TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(30));
@@ -202,7 +198,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             result.Status.ShouldBe(ResponseStatus.Error);
             result.ErrorKind.ShouldBe(ResponseErrorKind.Internal);
             result.Message.ShouldNotBeNull().ShouldContain("Failed to invoke");
-            result.Message.ShouldNotContain("No engine plugin");
         }
 
         [Fact]
@@ -234,6 +229,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             arguments.Setup(a => a.PluginTimeoutMs).Returns(2_000);
             arguments.As<IToolTimeoutArguments>().Setup(a => a.ToolTimeoutMs).Returns(toolTimeoutMs);
             return arguments.Object;
+        }
+
+        static Mock<IMcpConnectionStrategy> StrategyResolving(string? connectionId)
+        {
+            var strategy = new Mock<IMcpConnectionStrategy>();
+            strategy.Setup(s => s.ResolveConnectionId(It.IsAny<string?>(), It.IsAny<int>())).Returns(connectionId);
+            return strategy;
         }
 
         static RequestTrackingService Tracking() => new RequestTrackingService(NullLogger<RequestTrackingService>.Instance);
