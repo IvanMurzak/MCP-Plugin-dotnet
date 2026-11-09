@@ -339,7 +339,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                 var errorKind = sawTimeout
                     ? ResponseErrorKind.Timeout
                     : sawClient ? ResponseErrorKind.Internal : ResponseErrorKind.Unavailable;
-                return ResponseData<TResponse>.Error(request.RequestID, $"Invoke '{methodName}': Failed to invoke '{request}' after {retryCount} retries.", errorKind)
+                var message = errorKind == ResponseErrorKind.Unavailable
+                    ? NoPluginConnectedMessage
+                    : $"Invoke '{methodName}': Failed to invoke '{request}' after {retryCount} retries.";
+                return ResponseData<TResponse>.Error(request.RequestID, message, errorKind)
                     .Log(logger);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -361,6 +364,11 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// </summary>
         static bool IsNotDelivered(Exception ex)
             => ex is IOException && ex.Message.Contains("does not exist", StringComparison.Ordinal);
+
+        /// <summary>The error when the retry ladder ended with no plugin connection on any attempt.</summary>
+        internal const string NoPluginConnectedMessage =
+            "No engine plugin is connected to this session, so the request was not sent. " +
+            "Open the project in its engine editor, check that the plugin's MCP connection is active, then retry.";
 
         /// <summary>HTTP status for a tool call that failed after it may have reached the plugin.</summary>
         internal const int MaybeDeliveredStatusCode = 502;
