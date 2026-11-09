@@ -35,20 +35,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
     /// <summary>
     /// A disconnected plugin's remembered lists expired: sessions routing to it now list without them.
     /// </summary>
-    public sealed class PluginCatalogExpiry
-    {
-        public PluginCatalogExpiry(string account, IReadOnlyList<PluginCatalogKind> kinds)
-        {
-            Account = account;
-            Kinds = kinds;
-        }
-
-        /// <summary>The account of the routing target; empty in the single-plugin modes.</summary>
-        public string Account { get; }
-
-        /// <summary>The lists that were remembered, and so the lists that just changed.</summary>
-        public IReadOnlyList<PluginCatalogKind> Kinds { get; }
-    }
+    /// <param name="Account">The account of the routing target; empty in the single-plugin modes.</param>
+    /// <param name="Kinds">The lists that were remembered, and so the lists that just changed.</param>
+    public sealed record PluginCatalogExpiry(string Account, IReadOnlyList<PluginCatalogKind> Kinds);
 
     /// <summary>
     /// Remembers the last lists (tools, prompts, resources) each engine plugin answered, so a plugin
@@ -79,10 +68,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
     /// creates an entry.</para>
     ///
     /// <para><b>Expiry.</b> When the grace ends, a timer removes the entry with no client traffic and
-    /// <see cref="Expired"/> tells the sessions that their lists changed. A read that finds an expired
-    /// entry first removes it the same way, so each expiry is published once. An entry dropped for any
-    /// other reason publishes nothing. A plugin that returns later starts a new entry with no announced
-    /// tools, so its tools are forwarded (see <see cref="TryNotifyIfToolsChanged"/>).</para>
+    /// <see cref="ExpiredFor"/> tells the sessions routing to it that their lists changed; reads only
+    /// skip an expired entry, so each expiry is published once. An entry dropped for any other reason
+    /// publishes nothing. A plugin that returns later starts a new entry with no announced tools, so
+    /// its tools are forwarded (see <see cref="TryNotifyIfToolsChanged"/>).</para>
     /// </summary>
     public sealed class PluginCatalogCache
     {
@@ -105,9 +94,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         readonly CancellationToken _stopping;
         readonly Func<string, CancellationToken, Task<ResponseListTool[]?>>? _fetchTools;
         readonly Subject<PluginCatalogExpiry> _expired = new Subject<PluginCatalogExpiry>();
-        /// <summary>Expired entries not yet published; published outside <see cref="_gate"/>.</summary>
-        readonly List<PluginCatalogExpiry> _pendingExpired = new List<PluginCatalogExpiry>();
         Timer? _expiryTimer;
+        bool _expiryTimerArmed;
 
         /// <param name="strategy">The server's connection strategy; decides the routing target.</param>
         /// <param name="grace">How long a disconnected plugin's lists are kept. Zero disables it.</param>
@@ -135,8 +123,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             _logger = logger;
             _stopping = stopping;
             _fetchTools = fetchTools;
-            if (Enabled)
-                _stopping.Register(StopExpiryTimer);
+            // Not Register: the cache may first resolve inside a request, and this lives as long as the host.
+            _stopping.UnsafeRegister(static cache => ((PluginCatalogCache)cache!).StopExpiryTimer(), this);
         }
 
         /// <summary>How long a disconnected plugin's lists are kept.</summary>
@@ -149,10 +137,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         public bool Enabled => Grace > TimeSpan.Zero;
 
         /// <summary>
-        /// Fires once for each entry whose grace ended. The plugin's connection is gone by then, so
-        /// subscribers choose recipients with <see cref="SessionRoutesTo"/>.
+        /// Fires once for each entry a session of <paramref name="sessionAccount"/> routes to, when its
+        /// grace ends: the same account in <c>oauth</c> (a session without an account gets nothing), the
+        /// one slot otherwise. The plugin's connection is gone by then, so a filter on it cannot be used.
         /// </summary>
-        public Observable<PluginCatalogExpiry> Expired => _expired;
+        public Observable<PluginCatalogExpiry> ExpiredFor(string? sessionAccount)
+        {
+            var key = AccountKeyFor(sessionAccount);
+            return _expired.Where(expiry => string.Equals(expiry.Account, key, StringComparison.Ordinal));
+        }
 
         /// <summary>Number of remembered entries for plugins that are currently disconnected.</summary>
         public int OfflineCount
@@ -234,12 +227,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 {
                     entry.DisconnectedAt = _clock();
                     kept = true;
+                    // The grace is constant: this entry cannot be due before one the timer already waits for.
+                    if (!_expiryTimerArmed)
+                        ArmExpiryTimerLocked(entry.DisconnectedAt);
                 }
                 else
                 {
                     RemoveEntry(entry);
                 }
-                ArmExpiryTimerLocked(_clock());
             }
 
             if (kept)
@@ -295,21 +290,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         /// </summary>
         public T? GetOfflineList<T>(PluginCatalogKind kind) where T : class
         {
-            T? list;
             lock (_gate)
-                list = FindOfflineForCurrentSessionLocked()?.Lists[(int)kind] as T;
-            PublishExpired();
-            return list;
+                return FindOfflineForCurrentSessionLocked()?.Lists[(int)kind] as T;
         }
 
         /// <summary>True when the current session routes to a remembered, disconnected plugin.</summary>
         public bool HasOfflineTargetForCurrentSession()
         {
-            bool found;
             lock (_gate)
-                found = FindOfflineForCurrentSessionLocked() != null;
-            PublishExpired();
-            return found;
+                return FindOfflineForCurrentSessionLocked() != null;
         }
 
         /// <summary>
@@ -325,7 +314,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             Entry? entry;
             lock (_gate)
                 entry = FindOfflineForCurrentSessionLocked();
-            PublishExpired();
             if (entry == null)
                 return null;
 
@@ -455,74 +443,49 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 
         // ───────────────────────────── expiry ─────────────────────────────
 
-        /// <summary>
-        /// Removes every entry whose grace ended and publishes it on <see cref="Expired"/>. The timer
-        /// calls this; it is public so a host or a test on a controlled clock can run it directly.
-        /// </summary>
-        public void ExpireDue()
+        /// <summary>The timer's work: removes every entry whose grace ended and publishes it. Nothing else removes one on expiry.</summary>
+        internal void ExpireDue()
         {
+            var expired = new List<PluginCatalogExpiry>();
             lock (_gate)
             {
                 var now = _clock();
-                foreach (var bucket in _byAccount.Values.ToList())
-                    PruneExpired(bucket, now);
+                foreach (var entry in _byAccount.Values.SelectMany(bucket => bucket.Values).Where(e => e.ConnectionId == null && IsExpired(e, now)).ToList())
+                {
+                    expired.Add(new PluginCatalogExpiry(entry.Account, entry.RememberedKinds()));
+                    RemoveEntry(entry);
+                }
                 ArmExpiryTimerLocked(now);
             }
-            PublishExpired();
-        }
-
-        /// <summary>
-        /// True when a session of <paramref name="sessionAccount"/> routes to the expired target: the
-        /// same account in <c>oauth</c> (a session without an account gets nothing), the one slot otherwise.
-        /// </summary>
-        public bool SessionRoutesTo(PluginCatalogExpiry expiry, string? sessionAccount)
-        {
-            if (expiry == null) throw new ArgumentNullException(nameof(expiry));
-            return _strategy is AccountMcpStrategy
-                ? !string.IsNullOrEmpty(sessionAccount) && string.Equals(expiry.Account, sessionAccount, StringComparison.Ordinal)
-                : !_strategy.AllowMultipleConnections;
-        }
-
-        void PublishExpired()
-        {
-            PluginCatalogExpiry[] due;
-            lock (_gate)
-            {
-                if (_pendingExpired.Count == 0)
-                    return;
-                due = _pendingExpired.ToArray();
-                _pendingExpired.Clear();
-            }
-            foreach (var expiry in due)
+            foreach (var expiry in expired)
                 _expired.OnNext(expiry);
         }
 
         void ArmExpiryTimerLocked(DateTimeOffset now)
         {
+            _expiryTimerArmed = false;
             if (!Enabled || _stopping.IsCancellationRequested)
                 return;
 
-            var offline = _byAccount.Values.SelectMany(bucket => bucket.Values).Where(e => e.ConnectionId == null).ToList();
-            if (offline.Count == 0)
-            {
-                _expiryTimer?.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            var due = _byAccount.Values.SelectMany(bucket => bucket.Values)
+                .Where(e => e.ConnectionId == null)
+                .Select(e => (TimeSpan?)(Grace - (now - e.DisconnectedAt)))
+                .Min();
+            if (due == null)
                 return;
-            }
 
-            var due = offline.Min(e => Grace - (now - e.DisconnectedAt));
             if (due < TimeSpan.Zero)
                 due = TimeSpan.Zero;
             else if (due > MaxExpiryTimerDelay)
                 due = MaxExpiryTimerDelay;
-            (_expiryTimer ??= NewExpiryTimer()).Change(due, Timeout.InfiniteTimeSpan);
+            (_expiryTimer ??= NewExpiryTimer()).Change(due.Value, Timeout.InfiniteTimeSpan);
+            _expiryTimerArmed = true;
         }
 
         Timer NewExpiryTimer()
         {
             // The callback serves every session, so it must not run in the ambient context of the one that armed it.
-            if (ExecutionContext.IsFlowSuppressed())
-                return new Timer(_ => OnExpiryTimer(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
-            using (ExecutionContext.SuppressFlow())
+            using (ExecutionContext.IsFlowSuppressed() ? null : (IDisposable)ExecutionContext.SuppressFlow())
                 return new Timer(_ => OnExpiryTimer(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         }
 
@@ -544,6 +507,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             {
                 _expiryTimer?.Dispose();
                 _expiryTimer = null;
+                _expiryTimerArmed = false;
             }
         }
 
@@ -584,8 +548,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         string? CurrentAccountKeyLocked(out AccountMcpStrategy? accountStrategy)
         {
             accountStrategy = _strategy as AccountMcpStrategy;
-            if (accountStrategy != null)
-                return McpSessionTokenContext.CurrentIdentity?.AccountId;
+            return AccountKeyFor(McpSessionTokenContext.CurrentIdentity?.AccountId);
+        }
+
+        /// <summary>The account bucket a session of this account routes within; null when it has none.</summary>
+        string? AccountKeyFor(string? sessionAccount)
+        {
+            if (_strategy is AccountMcpStrategy)
+                return string.IsNullOrEmpty(sessionAccount) ? null : sessionAccount;
             return _strategy.AllowMultipleConnections ? null : SingleAccount;
         }
 
@@ -602,11 +572,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             if (!_byAccount.TryGetValue(account, out var bucket))
                 return null;
 
-            PruneExpired(bucket, now);
+            var offline = bucket.Values.Where(e => e.ConnectionId == null && !IsExpired(e, now));
             if (accountStrategy == null)
-                return bucket.Values.FirstOrDefault(e => e.ConnectionId == null); // at most one slot
+                return offline.FirstOrDefault(); // at most one slot
 
-            var candidates = bucket.Values.Where(e => e.ConnectionId == null && e.Instance != null).ToList();
+            var candidates = offline.Where(e => e.Instance != null).ToList();
             if (candidates.Count == 0)
                 return null;
             var resolution = AccountInstances.ResolveAmong(candidates.Select(e => e.Instance!).ToList(),
@@ -646,15 +616,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 && ReferenceEquals(current, entry);
 
         bool IsExpired(Entry entry, DateTimeOffset now) => now - entry.DisconnectedAt >= Grace;
-
-        void PruneExpired(Dictionary<string, Entry> bucket, DateTimeOffset now)
-        {
-            foreach (var entry in bucket.Values.Where(e => e.ConnectionId == null && IsExpired(e, now)).ToList())
-            {
-                _pendingExpired.Add(new PluginCatalogExpiry(entry.Account, entry.RememberedKinds()));
-                RemoveEntry(entry);
-            }
-        }
 
         void RemoveEntry(Entry entry)
         {

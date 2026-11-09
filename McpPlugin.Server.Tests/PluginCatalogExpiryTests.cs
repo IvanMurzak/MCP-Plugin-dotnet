@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 using com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure;
+using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using R3;
 using Shouldly;
@@ -25,7 +26,7 @@ using Xunit;
 namespace com.IvanMurzak.McpPlugin.Server.Tests
 {
     /// <summary>
-    /// <see cref="PluginCatalogCache.Expired"/>: fires once when a plugin stays gone past the grace,
+    /// <see cref="PluginCatalogCache.ExpiredFor"/>: fires once when a plugin stays gone past the grace,
     /// with no client traffic, and never for an entry that was dropped for another reason.
     /// </summary>
     [Collection("McpPlugin.Server")]
@@ -43,7 +44,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             var cache = new PluginCatalogCache(_strategy, grace ?? Grace, TimeSpan.FromSeconds(1),
                 clock: realClock ? null : () => _now, stopping: stopping);
-            cache.Expired.Subscribe(expiry => { lock (_fired) _fired.Add(expiry); });
+            cache.ExpiredFor("acc-1").Subscribe(expiry => { lock (_fired) _fired.Add(expiry); });
             return cache;
         }
 
@@ -55,6 +56,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         int FiredCount { get { lock (_fired) return _fired.Count; } }
+
+        void NothingFiresLongAfterTheGrace(PluginCatalogCache cache)
+        {
+            _now += Grace + Grace;
+            cache.ExpireDue();
+            _fired.ShouldBeEmpty();
+        }
 
         static object? ExpiryTimer(PluginCatalogCache cache)
             => typeof(PluginCatalogCache).GetField("_expiryTimer", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(cache);
@@ -96,7 +104,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
-        public void AReadThatFindsAnExpiredEntry_PublishesIt_AndTheTimerDoesNotRepeatIt()
+        public void AReadOfAnExpiredEntry_GetsNothing_AndItStillFiresOnce()
         {
             var cache = NewCache();
             RememberAndDrop(cache, "acc-1", "i1", "c1");
@@ -104,7 +112,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             using (PluginReconnect.Session("acc-1"))
                 cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeNull();
-            _fired.Count.ShouldBe(1);
 
             cache.ExpireDue();
             _fired.Count.ShouldBe(1);
@@ -119,10 +126,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             RememberAndDrop(cache, "acc-1", "i1", "c1");
             PluginReconnect.Register(_strategy, cache, "acc-1", "i1", "c2");
 
-            _now += Grace + Grace;
-            cache.ExpireDue();
-
-            _fired.ShouldBeEmpty();
+            NothingFiresLongAfterTheGrace(cache);
         }
 
         [Fact]
@@ -132,10 +136,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             RememberAndDrop(cache, "acc-1", "i1", "c1");
             PluginReconnect.Register(_strategy, cache, "acc-1", "i2", "c2"); // same project/engine/machine
 
-            _now += Grace + Grace;
-            cache.ExpireDue();
-
-            _fired.ShouldBeEmpty();
+            NothingFiresLongAfterTheGrace(cache);
         }
 
         [Fact]
@@ -145,10 +146,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             RememberAndDrop(cache, "acc-1", "i1", "c1");
             cache.ForgetAccount("acc-1");
 
-            _now += Grace + Grace;
-            cache.ExpireDue();
-
-            _fired.ShouldBeEmpty();
+            NothingFiresLongAfterTheGrace(cache);
         }
 
         [Fact]
@@ -158,18 +156,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             PluginReconnect.Register(_strategy, cache, "acc-1", "i1", "c1");
             PluginReconnect.Unregister(_strategy, cache, "c1");
 
-            _now += Grace + Grace;
-            cache.ExpireDue();
-
-            _fired.ShouldBeEmpty();
+            NothingFiresLongAfterTheGrace(cache);
         }
 
         // ───────────────────────────── isolation ─────────────────────────────
 
         [Fact]
-        public void TwoAccounts_EachExpiryNamesItsOwnAccount_AndRoutesOnlyToIt()
+        public void TwoAccounts_EachExpiryReachesOnlyItsOwnAccount()
         {
             var cache = NewCache();
+            var second = new List<PluginCatalogExpiry>();
+            var noIdentity = new List<PluginCatalogExpiry>();
+            cache.ExpiredFor("acc-2").Subscribe(second.Add);
+            cache.ExpiredFor(null).Subscribe(noIdentity.Add);
+            cache.ExpiredFor(string.Empty).Subscribe(noIdentity.Add);
             RememberAndDrop(cache, "acc-1", "i1", "c1", HashA);
             _now += TimeSpan.FromMinutes(1);
             RememberAndDrop(cache, "acc-2", "i2", "c2", HashB);
@@ -177,30 +177,60 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             _now += Grace - TimeSpan.FromMinutes(1);
             cache.ExpireDue();
 
-            var expiry = _fired.ShouldHaveSingleItem();
-            expiry.Account.ShouldBe("acc-1");
-            cache.SessionRoutesTo(expiry, "acc-1").ShouldBeTrue();
-            cache.SessionRoutesTo(expiry, "acc-2").ShouldBeFalse();
-            cache.SessionRoutesTo(expiry, null).ShouldBeFalse("a session with no identity gets nothing");
-            cache.SessionRoutesTo(expiry, string.Empty).ShouldBeFalse("a session with no identity gets nothing");
+            _fired.ShouldHaveSingleItem().Account.ShouldBe("acc-1");
+            second.ShouldBeEmpty();
 
             _now += TimeSpan.FromMinutes(1);
             cache.ExpireDue();
-            _fired.Count.ShouldBe(2);
-            _fired[1].Account.ShouldBe("acc-2");
+            _fired.Count.ShouldBe(1);
+            second.ShouldHaveSingleItem().Account.ShouldBe("acc-2");
+            noIdentity.ShouldBeEmpty("a session with no identity gets nothing");
         }
 
         [Fact]
-        public void SinglePluginMode_ExpiryRoutesToEverySession_AndAMultiPluginStrategyToNone()
+        public void SinglePluginMode_ExpiryReachesEverySession_WhateverItsToken()
         {
-            var expiry = new PluginCatalogExpiry(string.Empty, new[] { PluginCatalogKind.Tools });
+            var connection = "expiry-single-" + Guid.NewGuid().ToString("N");
             var single = new Mock<IMcpConnectionStrategy>();
             single.Setup(s => s.AllowMultipleConnections).Returns(false);
+            var cache = new PluginCatalogCache(single.Object, Grace, TimeSpan.Zero, clock: () => _now);
+            var heard = new List<string?>();
+            foreach (var session in new[] { null, "token-1", "token-2" })
+                cache.ExpiredFor(session).Subscribe(_ => heard.Add(session));
+            ClientUtils.AddClient(typeof(McpServerHub), connection, NullLogger.Instance);
+            try
+            {
+                cache.OnPluginConnected(connection);
+                cache.Record(connection, PluginCatalogKind.Tools, PluginReconnect.Tools("engine_tool"));
+                cache.OnPluginDisconnected(connection);
+            }
+            finally
+            {
+                ClientUtils.RemoveClient(typeof(McpServerHub), connection, NullLogger.Instance);
+            }
+
+            _now += Grace;
+            cache.ExpireDue();
+
+            heard.ShouldBe(new[] { null, "token-1", "token-2" });
+        }
+
+        [Fact]
+        public void ACustomMultiPluginStrategy_HasNoRoutingKey_SoNothingReachesASession()
+        {
             var multi = new Mock<IMcpConnectionStrategy>();
             multi.Setup(s => s.AllowMultipleConnections).Returns(true);
+            var cache = new PluginCatalogCache(multi.Object, Grace, TimeSpan.Zero, clock: () => _now);
+            var heard = 0;
+            cache.ExpiredFor(null).Subscribe(_ => heard++);
 
-            new PluginCatalogCache(single.Object, Grace, TimeSpan.Zero).SessionRoutesTo(expiry, null).ShouldBeTrue();
-            new PluginCatalogCache(multi.Object, Grace, TimeSpan.Zero).SessionRoutesTo(expiry, null).ShouldBeFalse();
+            cache.OnPluginConnected("c1");
+            cache.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("engine_tool"));
+            cache.OnPluginDisconnected("c1");
+            _now += Grace;
+            cache.ExpireDue();
+
+            heard.ShouldBe(0);
         }
 
         // ───────────────────────────── a later return ─────────────────────────────
@@ -233,6 +263,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             _now += Grace;
             cache.ExpireDue();
             _fired.ShouldBeEmpty();
+        }
+
+        [Fact]
+        public void ZeroGrace_DoesNotAddATimerAtHostStop()
+        {
+            using var stopping = new CancellationTokenSource();
+            var cache = NewCache(grace: TimeSpan.Zero, stopping: stopping.Token);
+
+            stopping.Cancel();
+
+            ExpiryTimer(cache).ShouldBeNull();
         }
 
         [Fact]

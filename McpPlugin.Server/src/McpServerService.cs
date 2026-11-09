@@ -242,13 +242,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                 })
                 .AddTo(_disposables);
 
-            // The expired plugin's connection is gone, so ShouldNotifySession has nothing to look up.
-            _catalog?.Expired
-                .Subscribe(expiry =>
-                {
-                    if (_catalog.SessionRoutesTo(expiry, _routingToken))
-                        OnPluginListsExpired(expiry, cancellationToken);
-                })
+            _catalog?.ExpiredFor(_routingToken)
+                .Subscribe(expiry => OnPluginListsExpired(expiry, cancellationToken))
                 .AddTo(_disposables);
 
             _notifyCts?.Dispose();

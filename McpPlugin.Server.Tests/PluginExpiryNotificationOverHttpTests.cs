@@ -64,8 +64,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             PluginReconnect.Unregister(strategy, catalog, "conn-a1");
 
             // No request is sent from here on: only the timer can cause these.
-            await a1.WaitForCountAsync(3, Arrival);
-            await a2.WaitForCountAsync(3, Arrival);
+            await a1.WaitForCountAsync(3);
+            await a2.WaitForCountAsync(3);
             await Task.Delay(Settle);
             a1.Methods.ShouldBe(new[] { ToolsChanged, PromptsChanged, ResourcesChanged }, ignoreOrder: true);
             a2.Methods.ShouldBe(new[] { ToolsChanged, PromptsChanged, ResourcesChanged }, ignoreOrder: true);
@@ -75,7 +75,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             PluginReconnect.Register(strategy, catalog, AccountB, "instance-b", "conn-b1");
             catalog.Record("conn-b1", PluginCatalogKind.Tools, PluginReconnect.Tools("engine_tool"));
             PluginReconnect.Unregister(strategy, catalog, "conn-b1");
-            await b.WaitForCountAsync(1, Arrival);
+            await b.WaitForCountAsync(1);
             await Task.Delay(Settle);
             b.Methods.ShouldBe(new[] { ToolsChanged });
             a1.Methods.Count.ShouldBe(3);
@@ -84,10 +84,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             PluginReconnect.Register(strategy, catalog, AccountA, "instance-a", "conn-a2");
             var events = host.Services.GetRequiredService<HubEventToolsChange>();
             var update = new HubEventToolsChange.EventData { ConnectionId = "conn-a2", Request = new RequestToolsUpdated() };
-            catalog.TryNotifyIfToolsChanged("conn-a2", () => events.OnNext(update)).ShouldBeFalse();
+            catalog.TryNotifyIfToolsChanged("conn-a2", () => { }).ShouldBeFalse();
             events.OnNext(update);
-            await a1.WaitForCountAsync(4, Arrival);
-            await a2.WaitForCountAsync(4, Arrival);
+            await a1.WaitForCountAsync(4);
+            await a2.WaitForCountAsync(4);
             await Task.Delay(Settle);
             b.Methods.Count.ShouldBe(1);
         }
@@ -134,8 +134,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 ClientUtils.RemoveClient(typeof(McpServerHub), connection, NullLogger.Instance);
             }
 
-            await first.WaitForCountAsync(1, Arrival);
-            await second.WaitForCountAsync(1, Arrival);
+            await first.WaitForCountAsync(1);
+            await second.WaitForCountAsync(1);
             await Task.Delay(Settle);
             first.Methods.ShouldBe(new[] { ToolsChanged });
             second.Methods.ShouldBe(new[] { ToolsChanged });
@@ -185,9 +185,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 }
             }
 
-            public async Task WaitForCountAsync(int count, TimeSpan timeout)
+            public async Task WaitForCountAsync(int count)
             {
-                var deadline = DateTime.UtcNow + timeout;
+                var deadline = DateTime.UtcNow + Arrival;
                 while (Methods.Count < count && DateTime.UtcNow < deadline)
                     await Task.Delay(25);
                 Methods.Count.ShouldBeGreaterThanOrEqualTo(count, "got: " + string.Join(", ", Methods));

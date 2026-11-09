@@ -81,6 +81,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             using (PluginReconnect.Session("acc-1"))
                 cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeNull();
+            cache.ExpireDue();
             cache.OfflineCount.ShouldBe(0, "an expired entry must be pruned, not kept forever");
         }
 
