@@ -65,6 +65,9 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (responseData.Value != null)
                 return responseData.Value.Pack(request.RequestID);
 
+            if (responseData.Status == ResponseStatus.Error)
+                return responseData; // keeps the reason and its error kind
+
             return ResponseGetPrompt.Error("Response data is null").Pack(request.RequestID);
         }
 

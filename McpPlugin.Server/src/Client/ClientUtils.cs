@@ -233,7 +233,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 }
 
                 var retryCount = 0;
-                var sawClient = false;
+                var reachedClient = false; // a connection that was already gone does not count
                 var sawTimeout = false;
                 while (retryCount < maxRetries)
                 {
@@ -252,14 +252,13 @@ namespace com.IvanMurzak.McpPlugin.Server
                             continue;
                         if (waited == false)
                             return ResponseData<TResponse>.Error(request.RequestID,
-                                    noClientMessage ?? $"Invoke '{methodName}': no engine plugin is connected.",
+                                    noClientMessage ?? NoPluginConnectedMessage,
                                     ResponseErrorKind.Unavailable)
                                 .Log(logger);
                         logger.LogWarning("Invoke '{0}': No connected clients. Retrying [{1}/{2}]...", methodName, retryCount, maxRetries);
                         await Task.Delay(retryDelayMs, cancellationToken); // Wait before retrying
                         continue;
                     }
-                    sawClient = true;
 
                     if (logger.IsEnabled(LogLevel.Trace))
                     {
@@ -312,6 +311,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                         }
                         catch (Exception ex)
                         {
+                            reachedClient |= !IsNotDelivered(ex);
                             logger.LogError(ex, $"Invoke '{methodName}': Error invoking '{request}' on client '{connectionId}': {ex.Message}");
                             await Task.Delay(50, cancellationToken); // Wait before retrying
                             continue;
@@ -336,10 +336,12 @@ namespace com.IvanMurzak.McpPlugin.Server
                     await Task.Delay(retryDelayMs, cancellationToken); // Wait before retrying
                     // Restart the loop to try again with a new client
                 }
-                var errorKind = sawTimeout
-                    ? ResponseErrorKind.Timeout
-                    : sawClient ? ResponseErrorKind.Internal : ResponseErrorKind.Unavailable;
-                return ResponseData<TResponse>.Error(request.RequestID, $"Invoke '{methodName}': Failed to invoke '{request}' after {retryCount} retries.", errorKind)
+                if (!reachedClient && !sawTimeout)
+                    return ResponseData<TResponse>.Error(request.RequestID, NoPluginConnectedMessage, ResponseErrorKind.Unavailable)
+                        .Log(logger);
+                return ResponseData<TResponse>.Error(request.RequestID,
+                        $"Invoke '{methodName}': Failed to invoke '{request}' after {retryCount} retries.",
+                        sawTimeout ? ResponseErrorKind.Timeout : ResponseErrorKind.Internal)
                     .Log(logger);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -361,6 +363,11 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// </summary>
         static bool IsNotDelivered(Exception ex)
             => ex is IOException && ex.Message.Contains("does not exist", StringComparison.Ordinal);
+
+        /// <summary>The error when the retry ladder ended without reaching a plugin on any attempt.</summary>
+        const string NoPluginConnectedMessage =
+            "No engine plugin is connected to this session, so the request was not sent. " +
+            "Open the project in its engine editor, check that the plugin's MCP connection is active, then retry.";
 
         /// <summary>HTTP status for a tool call that failed after it may have reached the plugin.</summary>
         internal const int MaybeDeliveredStatusCode = 502;

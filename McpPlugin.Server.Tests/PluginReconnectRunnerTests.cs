@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -45,8 +46,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public async Task ListCalls_NoPluginAndNothingRemembered_AnswerAtOnce()
         {
-            var strategy = new Mock<IMcpConnectionStrategy>();
-            strategy.Setup(s => s.ResolveConnectionId(It.IsAny<string?>(), It.IsAny<int>())).Returns((string?)null);
+            var strategy = StrategyResolving(null);
             var catalog = new PluginCatalogCache(strategy.Object, TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(30));
             var arguments = Arguments();
             using var tools = new RemoteToolRunner(NullLogger<RemoteToolRunner>.Instance, _hub, arguments, Tracking(), strategy.Object, catalog);
@@ -143,6 +143,115 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             VerifyCalls(oldPlugin, Times.Never());
         }
 
+        /// <summary>
+        /// Past the grace nothing is remembered, so the fixed retry ladder runs. When it ends with no
+        /// plugin on any attempt, every runner reports that with a text the agent can act on, under the
+        /// same error kind.
+        /// </summary>
+        [Fact]
+        public async Task PastGrace_NoPluginOnAnyAttempt_EveryRunnerSaysSo_AfterTheSameLadder()
+        {
+            var strategy = StrategyResolving(null);
+            var catalog = new PluginCatalogCache(strategy.Object, TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(30));
+            var arguments = Arguments(toolTimeoutMs: 60_000); // longer than the ladder
+            using var tools = new RemoteToolRunner(NullLogger<RemoteToolRunner>.Instance, _hub, arguments, Tracking(), strategy.Object, catalog);
+            using var prompts = new RemotePromptRunner(NullLogger<RemotePromptRunner>.Instance, _hub, arguments, Tracking(), strategy.Object, catalog);
+            using var resources = new RemoteResourceRunner(NullLogger<RemoteResourceRunner>.Instance, _hub, arguments, Tracking(), strategy.Object, catalog);
+            using var request = new RequestCallTool("engine_tool", new Dictionary<string, JsonElement>());
+            var watch = Stopwatch.StartNew();
+
+            var call = tools.RunCallTool(request);
+            var prompt = prompts.RunGetPrompt(new RequestGetPrompt("engine_prompt", new Dictionary<string, JsonElement>()));
+            var resource = resources.RunResourceContent(new RequestResourceContent("engine://resource"));
+            var callResult = await call.WaitAsync(TimeSpan.FromSeconds(30));
+            var promptResult = await prompt.WaitAsync(TimeSpan.FromSeconds(30));
+            var resourceResult = await resource.WaitAsync(TimeSpan.FromSeconds(30));
+
+            watch.Elapsed.ShouldBeGreaterThan(TimeSpan.FromSeconds(8), "the retry ladder itself must not change");
+            watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(18), "the retry ladder itself must not change");
+            strategy.Verify(s => s.ResolveConnectionId(It.IsAny<string?>(), 9), Times.Exactly(3));
+            strategy.Verify(s => s.ResolveConnectionId(It.IsAny<string?>(), 10), Times.Never());
+            foreach (var (status, kind, message) in new[]
+            {
+                (callResult.Status, callResult.Value!.ErrorKind, callResult.Message),
+                (promptResult.Status, promptResult.ErrorKind, promptResult.Message),
+                (resourceResult.Status, resourceResult.ErrorKind, resourceResult.Message),
+            })
+            {
+                status.ShouldBe(ResponseStatus.Error);
+                kind.ShouldBe(ResponseErrorKind.Unavailable);
+                message.ShouldNotBeNull().ShouldContain("No engine plugin is connected");
+                message.ShouldContain("engine editor");
+            }
+        }
+
+        /// <summary>A plugin that was reached but kept failing is not reported as "not connected".</summary>
+        [Fact]
+        public async Task LadderEndsAfterReachingAPlugin_KeepsTheFailureText_NotTheNoPluginOne()
+        {
+            var strategy = StrategyResolving("c1");
+            Plugin("c1").Setup(c => c.InvokeCoreAsync<ResponseData<ResponseGetPrompt>>(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("broken"));
+            var catalog = new PluginCatalogCache(strategy.Object, TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(30));
+            using var prompts = new RemotePromptRunner(NullLogger<RemotePromptRunner>.Instance, _hub, Arguments(), Tracking(), strategy.Object, catalog);
+
+            var result = await prompts.RunGetPrompt(new RequestGetPrompt("engine_prompt", new Dictionary<string, JsonElement>()))
+                .WaitAsync(TimeSpan.FromSeconds(30));
+
+            result.Status.ShouldBe(ResponseStatus.Error);
+            result.ErrorKind.ShouldBe(ResponseErrorKind.Internal);
+            result.Message.ShouldNotBeNull().ShouldContain("Failed to invoke");
+        }
+
+        /// <summary>A connection that was already gone on every attempt never reached a plugin.</summary>
+        [Fact]
+        public async Task LadderEndsWithOnlyGoneConnections_SaysNoPluginIsConnected()
+        {
+            var strategy = StrategyResolving("c1");
+            Plugin("c1").Setup(c => c.InvokeCoreAsync<ResponseData<ResponseGetPrompt>>(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new IOException("Connection 'c1' does not exist."));
+            var catalog = new PluginCatalogCache(strategy.Object, TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(30));
+            using var prompts = new RemotePromptRunner(NullLogger<RemotePromptRunner>.Instance, _hub, Arguments(), Tracking(), strategy.Object, catalog);
+
+            var result = await prompts.RunGetPrompt(new RequestGetPrompt("engine_prompt", new Dictionary<string, JsonElement>()))
+                .WaitAsync(TimeSpan.FromSeconds(30));
+
+            result.ErrorKind.ShouldBe(ResponseErrorKind.Unavailable);
+            result.Message.ShouldNotBeNull().ShouldContain("No engine plugin is connected");
+        }
+
+        [Fact]
+        public async Task LadderEndsOnPluginTimeouts_KeepsTheTimeoutKindAndText()
+        {
+            var strategy = StrategyResolving("c1");
+            Plugin("c1").Setup(c => c.InvokeCoreAsync<ResponseData<ResponseGetPrompt>>(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+                .Returns(new TaskCompletionSource<ResponseData<ResponseGetPrompt>>().Task); // never answers
+            var catalog = new PluginCatalogCache(strategy.Object, TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(30));
+            using var prompts = new RemotePromptRunner(NullLogger<RemotePromptRunner>.Instance, _hub, Arguments(pluginTimeoutMs: 20), Tracking(), strategy.Object, catalog);
+
+            var result = await prompts.RunGetPrompt(new RequestGetPrompt("engine_prompt", new Dictionary<string, JsonElement>()))
+                .WaitAsync(TimeSpan.FromSeconds(30));
+
+            result.ErrorKind.ShouldBe(ResponseErrorKind.Timeout);
+            result.Message.ShouldNotBeNull().ShouldContain("Failed to invoke");
+        }
+
+        [Fact]
+        public async Task PromptGet_PluginDoesNotReturnInTime_KeepsTheReconnectingError()
+        {
+            var catalog = Catalog(TimeSpan.FromMilliseconds(200));
+            RememberToolsOf("i1", "c1", catalog);
+            using var prompts = new RemotePromptRunner(NullLogger<RemotePromptRunner>.Instance, _hub, Arguments(), Tracking(), _strategy, catalog);
+
+            ResponseData<ResponseGetPrompt> result;
+            using (PluginReconnect.Session(Account))
+                result = await prompts.RunGetPrompt(new RequestGetPrompt("engine_prompt", new Dictionary<string, JsonElement>()))
+                    .WaitAsync(TimeSpan.FromSeconds(10));
+
+            result.ErrorKind.ShouldBe(ResponseErrorKind.Unavailable);
+            result.Message.ShouldNotBeNull().ShouldContain("reconnecting");
+        }
+
         [Fact]
         public async Task ToolCall_CallerCancelsWhileWaitingForTheReconnect_StopsTheWait()
         {
@@ -166,12 +275,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         RemoteToolRunner Runner(PluginCatalogCache catalog)
             => new RemoteToolRunner(NullLogger<RemoteToolRunner>.Instance, _hub, Arguments(), Tracking(), _strategy, catalog);
 
-        static IDataArguments Arguments()
+        static IDataArguments Arguments(int toolTimeoutMs = 10_000, int pluginTimeoutMs = 2_000)
         {
             var arguments = new Mock<IDataArguments>();
-            arguments.Setup(a => a.PluginTimeoutMs).Returns(2_000);
-            arguments.As<IToolTimeoutArguments>().Setup(a => a.ToolTimeoutMs).Returns(10_000);
+            arguments.Setup(a => a.PluginTimeoutMs).Returns(pluginTimeoutMs);
+            arguments.As<IToolTimeoutArguments>().Setup(a => a.ToolTimeoutMs).Returns(toolTimeoutMs);
             return arguments.Object;
+        }
+
+        static Mock<IMcpConnectionStrategy> StrategyResolving(string? connectionId)
+        {
+            var strategy = new Mock<IMcpConnectionStrategy>();
+            strategy.Setup(s => s.ResolveConnectionId(It.IsAny<string?>(), It.IsAny<int>())).Returns(connectionId);
+            return strategy;
         }
 
         static RequestTrackingService Tracking() => new RequestTrackingService(NullLogger<RequestTrackingService>.Instance);
