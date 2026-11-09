@@ -1,0 +1,33 @@
+McpPlugin.NullEngine/src/Program.cs
+  s_7242552c0a7a0f::t_0b23d56522dd32 64-68,101,103,132,134,136-143,174,220
+McpPlugin.Server.Tests/NullEngineRealTransportTests.cs
+  s_7242552c0a7a0f::t_5ed26cc49c220a 14,38-44,51-55,64-68,94-96,113-119,144-147,162-177,181-196,316-323,333,342-345,453-462,468,477-480,516-522,525-552,572,575-580,635-642,645-651,656-662,667,669,678
+McpPlugin.NullEngine/README.md
+  s_ad235a7caf3bc1::t_0fe5a03f7debb3 41,45
+McpPlugin.NullEngine/src/NullEngineHost.cs
+  s_7242552c0a7a0f::t_6860b9f1ac5853 36,39,65-83,85,88-90,96-98,100-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a847b9aaed64cb37f851d19e4829d60c357d4cee",
+  "prompts": {},
+  "sessions": {
+    "s_7242552c0a7a0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1221dcb0-3673-4818-b84a-8d285ed13fb6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_ad235a7caf3bc1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a1d74b9b90d3bc5b9",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

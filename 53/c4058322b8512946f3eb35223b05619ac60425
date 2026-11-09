@@ -1,0 +1,33 @@
+McpPlugin/src/Mcp/Tool/ToolUnavailableException.cs
+  s_7bc72ecaebd05d::t_4a7cb5dc5de4f3 18-21,34-38,41-44
+McpPlugin/src/Mcp/Tool/RunTool.cs
+  s_7bc72ecaebd05d::t_62ed35e02390c9 347-350,354-356
+McpPlugin.Server.Tests/ToolBodyFailureHttpStatusTests.cs
+  s_7bc72ecaebd05d::t_cfaef68edfc2db 129-131
+McpPlugin/src/Mcp/McpToolManager.cs
+  s_7bc72ecaebd05d::t_b10296febd258b 201-202,209-210
+McpPlugin.Tests/Mcp/ToolErrorClassificationTests.cs
+  s_7bc72ecaebd05d::t_d3e5a65b4f97da 215
+  s_7bc72ecaebd05d::t_cef1a4289aa688 338
+  s_7bc72ecaebd05d::t_60a18e4db82a9d 216-236
+McpPlugin/src/Mcp/McpSystemToolManager.cs
+  s_7bc72ecaebd05d::t_f53a437aad2b11 93-94,100-101
+README.md
+  s_7bc72ecaebd05d::t_538484029f39c5 243-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "53c4058322b8512946f3eb35223b05619ac60425",
+  "prompts": {},
+  "sessions": {
+    "s_7bc72ecaebd05d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40274cb2-edf8-49ba-9a73-33b83cb5be53",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

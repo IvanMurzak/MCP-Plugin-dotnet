@@ -1,0 +1,25 @@
+specs/001-analytics-webhooks/contracts/webhook-api.md
+  7190a4c726b31396 78
+README.md
+  7190a4c726b31396 260
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "29ce55263b476bb8b76259b4070bb615c791f7a0",
+  "prompts": {
+    "7190a4c726b31396": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b4609638-6f6d-40d4-ad8f-f7e2daeff8a4",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 575,
+      "total_deletions": 577,
+      "accepted_lines": 265,
+      "overriden_lines": 0
+    }
+  }
+}

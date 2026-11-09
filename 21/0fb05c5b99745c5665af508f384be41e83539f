@@ -1,0 +1,27 @@
+McpPlugin.Tests/Network/Connection/ConnectionManagerTests.cs
+  s_887efbfc81dc0f::t_86662e853ad734 442-444
+McpPlugin.Common/src/Data/Response/Tool/Call/ResponseCallValueTool.Static.cs
+  s_887efbfc81dc0f::t_6f79a9466af26e 24
+  s_887efbfc81dc0f::t_05a4419916a666 61
+  s_887efbfc81dc0f::t_d73cace49293dd 19
+.github/workflows/release.yml
+  s_887efbfc81dc0f::t_43fbd0c671b369 67-71
+.github/workflows/test-pull-request.yml
+  s_887efbfc81dc0f::t_23f4d19ffa48b5 43-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "210fb05c5b99745c5665af508f384be41e83539f",
+  "prompts": {},
+  "sessions": {
+    "s_887efbfc81dc0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "556ed732-8c84-4c19-bfb0-6231e40ac140",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

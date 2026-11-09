@@ -1,0 +1,25 @@
+McpPlugin.Tests/Mcp/McpBuilderTests_CallTool_CaseInsensitive.cs
+  cee4949d39483f45 540,563
+McpPlugin.Tests/Mcp/McpBuilderTests_ListTool.cs
+  cee4949d39483f45 44,147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.6",
+  "base_commit_sha": "a0f2ddd8c6fb26b6d6794a61740221add87636e0",
+  "prompts": {
+    "cee4949d39483f45": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3b93608-923d-4f68-bfa1-b4799c815250",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 1113,
+      "total_deletions": 1117,
+      "accepted_lines": 227,
+      "overriden_lines": 0
+    }
+  }
+}

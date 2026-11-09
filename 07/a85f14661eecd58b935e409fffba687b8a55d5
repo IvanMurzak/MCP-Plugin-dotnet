@@ -1,0 +1,35 @@
+McpPlugin/src/Mcp/Tool/ProxyTool.cs
+  s_908974782fafa1::t_0ac7e77773c5e0 1-125
+McpPlugin/src/Mcp/Tool/ToolTokenCount.cs
+  s_908974782fafa1::t_be17d88490f582 1-75
+McpPlugin.Tests/Mcp/ProxyToolTests.cs
+  s_908974782fafa1::t_e46485b18ef976 179,183-184
+  s_908974782fafa1::t_6582c44cb61c36 216
+  s_908974782fafa1::t_356a7930048da7 111-112
+  s_908974782fafa1::t_6048fc3f0ac551 45-46
+  s_908974782fafa1::t_420c96e30a9e0c 1-44,47-110,113-178,180-182,185-215,217-277
+McpPlugin/src/Mcp/Tool/RunTool.TokenCount.cs
+  s_908974782fafa1::t_b11ba4562f55b0 49-50,56
+McpPlugin/src/McpPlugin/Builder/IMcpPluginBuilder.cs
+  s_908974782fafa1::t_e5c135d4efd5e2 73-75
+McpPlugin/src/Mcp/Tool/IDynamicToolFactory.cs
+  s_908974782fafa1::t_7541dfbd52bc4a 1-79
+McpPlugin/src/McpPlugin/Builder/McpPluginBuilder.DynamicToolFactory.cs
+  s_908974782fafa1::t_99d491c63e7d65 1-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "07a85f14661eecd58b935e409fffba687b8a55d5",
+  "prompts": {},
+  "sessions": {
+    "s_908974782fafa1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f1748397-e586-40bb-91a9-b89c0caebdf5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

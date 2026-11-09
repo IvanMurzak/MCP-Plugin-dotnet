@@ -1,0 +1,26 @@
+McpPlugin.Tests/Network/Connection/ConnectionManagerTests.cs
+  s_887efbfc81dc0f::t_a6ce6974b6a27c 19
+  s_887efbfc81dc0f::t_5df4d132f478d0 390-468
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionManager.Connect.cs
+  s_887efbfc81dc0f::t_c257faaf11871e 81-102
+  s_887efbfc81dc0f::t_c76e30b0431c90 42-54,56-68,73-80,103-112,161
+McpPlugin.Tests/Network/Connection/ConnectionManagerRejectionTests.cs
+  s_887efbfc81dc0f::t_7d176b86fecd1d 90-97,102-103
+  s_887efbfc81dc0f::t_bea3057d84b7a6 58-64,68-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2a62a6966a75ca75d8e2868fcdd0c4b74b4e6adb",
+  "prompts": {},
+  "sessions": {
+    "s_887efbfc81dc0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "556ed732-8c84-4c19-bfb0-6231e40ac140",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

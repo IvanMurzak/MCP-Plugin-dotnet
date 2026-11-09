@@ -1,0 +1,46 @@
+McpPlugin/src/Mcp/Tool/ToolTokenCount.cs
+  s_5437feeabf7b1d::t_7cecf9726bcffa 33-48,88-89,127
+  s_5437feeabf7b1d::t_a3f26df6201b3f 58-65,80-86
+  s_5437feeabf7b1d::t_c0a562ec8376b4 104-126
+  s_d210ef1e0b085d::t_16cd2ff17d32f4 87
+McpPlugin/src/Mcp/Tool/ProxyTool.cs
+  s_5437feeabf7b1d::t_7d19fe69d97767 47,122-124
+  s_5437feeabf7b1d::t_4c536b8effb3c3 85,98-121
+docs/plant-logs/tool-token-count-skill-metadata.md
+  s_5437feeabf7b1d::t_9fda268893d835 1-80
+McpPlugin/src/Mcp/McpToolManager.cs
+  s_5437feeabf7b1d::t_dad85037fee1f5 73-81
+McpPlugin/src/Mcp/Tool/RunTool.TokenCount.cs
+  s_5437feeabf7b1d::t_307e78d789f842 19,46,100-102
+  s_5437feeabf7b1d::t_5627d387dc15c3 47-64,67-68,77,85-99
+McpPlugin/src/McpPlugin/Interfaces/IToolManager.cs
+  s_5437feeabf7b1d::t_16a11e208a64c1 36-50
+McpPlugin.Tests/Mcp/ToolTokenCountSkillMetadataTests.cs
+  s_5437feeabf7b1d::t_3ee3dd239aecb4 1-294
+McpPlugin/src/Mcp/Tool/IRunTool.cs
+  s_5437feeabf7b1d::t_38fcaf7c5f7b42 85-86,90-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5e6c3c20a81ffc31c3a42c7782928ac3981e49ca",
+  "prompts": {},
+  "sessions": {
+    "s_5437feeabf7b1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ad5d687-87a4-4533-b7b0-fc172521a8bc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_d210ef1e0b085d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dedfe2fe-8832-478f-a3ec-544de041c9cc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

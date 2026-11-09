@@ -1,0 +1,44 @@
+McpPlugin.Tests/Network/Connection/ConnectionManagerRejectionTests.cs
+  s_8d859c66569e2d::t_127b4d6da771dc 119-122,136-137,139,143-211
+  s_8d859c66569e2d::t_53fca18956f89c 300,314,317,319,324-341,350,357-359,364,370,377-379,393,396
+  s_8d859c66569e2d::t_62077b29736e8c 78-91,212-213,320-323
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionManager.Connect.cs
+  s_8d859c66569e2d::t_50f0f0b809c042 412-414,426-427,459,461,463-475
+  s_8d859c66569e2d::t_5ed1aa37a0a409 12-13,460,515,625
+  s_8d859c66569e2d::t_de2fbb46139d5c 516-537,541,543-557,562,566,569,587,595,601-602,619-620,623-624,626-638,640-659
+  s_8d859c66569e2d::t_2a9ae08407b512 462
+  s_8d859c66569e2d::t_363a115c822ded 538-540,542
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/ConnectionCredentialCoordinator.cs
+  s_8d859c66569e2d::t_f714dcab2cd2b3 214-215
+  s_8d859c66569e2d::t_57808141e71bf4 174-175
+  s_8d859c66569e2d::t_d2e3edba5a77c6 93-95
+  s_8d859c66569e2d::t_11b1439e933899 100-102
+  s_8d859c66569e2d::t_d7065553a77c24 218-219
+  s_8d859c66569e2d::t_3056e10d80156a 28-39,54-77,90-92,96-99,243-245
+  s_8d859c66569e2d::t_cb37e1b3d8b484 125,150,155-173,176-213,216-217,220-242
+McpPlugin.Tests/Network/Connection/Credentials/CoordinatorStopResumeHarnessTests.cs
+  s_8d859c66569e2d::t_a3fef67c98195d 1-63,66-68,80-277
+  s_8d859c66569e2d::t_85cc39e3fc836b 64-65,69-79
+McpPlugin.Tests/Network/Connection/Credentials/ConnectionCredentialCoordinatorTests.cs
+  s_8d859c66569e2d::t_e97688deb783f8 130-270
+  s_8d859c66569e2d::t_169f1d67f57629 273-277,281,290-291,293,295,301,309-329,336-341,347,354-367
+  s_8d859c66569e2d::t_ab1d229945d677 50
+McpPlugin.Tests/Network/Connection/ConnectionManagerStatusCodeClassificationTests.cs
+  s_8d859c66569e2d::t_df15e500b3217a 1-263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "5fe14092e6307a50cf285dee8f8a49bf0683fead",
+  "prompts": {},
+  "sessions": {
+    "s_8d859c66569e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0d33093a-57c1-4b45-b2ac-0ca6495e78eb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

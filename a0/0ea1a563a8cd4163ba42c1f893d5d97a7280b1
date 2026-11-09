@@ -1,0 +1,24 @@
+McpPlugin/src/AgentConfig/Impl/ClaudeCodeConfigurator.cs
+  s_94cae3b80679a2::t_a57492dae14312 86
+  s_94cae3b80679a2::t_240f3a1e84cca9 65
+McpPlugin/src/AgentConfig/Impl/CodexConfigurator.cs
+  s_94cae3b80679a2::t_f6d1cc28e37316 93
+  s_94cae3b80679a2::t_21ca374ac9cc88 95,119
+  s_94cae3b80679a2::t_62cd9db4fa8f01 117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "a00ea1a563a8cd4163ba42c1f893d5d97a7280b1",
+  "prompts": {},
+  "sessions": {
+    "s_94cae3b80679a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d15dc434-a705-4009-9c19-05eae0bfc388",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

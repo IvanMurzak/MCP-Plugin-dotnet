@@ -1,0 +1,45 @@
+McpPlugin.Tests/AgentConfig/ProjectIdentityGoldenVectorTests.cs
+  s_50edd0e0346255::t_e5084e6bdf3916 1-194
+McpPlugin/src/AgentConfig/ProjectIdentity.GoldenVectors.json
+  s_50edd0e0346255::t_727d254ebe0376 1-87
+McpPlugin/src/AgentConfig/ProjectMarker.cs
+  s_50edd0e0346255::t_5c533263cdb177 1-97
+McpPlugin/src/AgentConfig/MachineCredentialStore.cs
+  s_50edd0e0346255::t_1429ff541e071d 1-177,182-183,186-269
+  s_50edd0e0346255::t_b05353cd7d1692 178-181,184-185
+McpPlugin.Tests/AgentConfig/ProjectMarkerTests.cs
+  s_50edd0e0346255::t_240cfea4eec0a8 1-118
+McpPlugin.Tests/AgentConfig/MachineCredentialStoreTests.cs
+  s_50edd0e0346255::t_92a5a22a68b31c 147-148
+  s_50edd0e0346255::t_b7d094f1ff4a30 1-146,149-203
+McpPlugin/src/AgentConfig/MachineCredentials.cs
+  s_50edd0e0346255::t_99a2c4b42cb610 1-56
+McpPlugin/src/AgentConfig/ProjectIdentity.cs
+  s_50edd0e0346255::t_d27c2fd33389c9 1-182
+McpPlugin.Tests/McpPlugin.Tests.csproj
+  s_27641156ed7e0f::t_77273466fd7d88 25-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "89cdc725b2843756d2f6b60187dda12c87ff6661",
+  "prompts": {},
+  "sessions": {
+    "s_27641156ed7e0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab2daa99d0a92363c",
+        "model": "unknown"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_50edd0e0346255": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f2164075-e554-49e6-8a57-fdc35f7f7e9d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

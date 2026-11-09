@@ -1,0 +1,29 @@
+docs/e2e-testing-plan.md
+  s_c7987960245c7b::t_de2921099ffed3 1-77
+McpPlugin.E2E.Tests/AntigravityAdapter.cs
+  s_c7987960245c7b::t_03ade1aa4d1d06 1-58,60-99
+  s_c7987960245c7b::t_812a53409c16e6 59
+McpPlugin.DummyServer/McpPlugin.DummyServer.csproj
+  s_c7987960245c7b::t_49503ae0eacf61 9
+McpPlugin.DummyServer/Program.cs
+  s_c7987960245c7b::t_8b9c37f0fce92c 26,28-35,53-96,161
+McpPlugin.E2E.Tests/AntigravityE2ETests.cs
+  s_c7987960245c7b::t_53017ecf204259 31,53,55,72
+  s_c7987960245c7b::t_8a04beb18d47aa 1-30,32-52,54,56-71,73-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "09610e5cf87ac978df3103926d2e26af4daf9dc4",
+  "prompts": {},
+  "sessions": {
+    "s_c7987960245c7b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "370aad94-9c8a-4b3c-a63d-4982a83a2756",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

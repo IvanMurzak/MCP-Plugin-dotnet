@@ -1,0 +1,29 @@
+McpPlugin.Server.Tests/LegacyPluginRoutingTests.cs
+  s_7bc72ecaebd05d::t_f72664ce7f6cd9 1-122
+McpPlugin.Server/src/Hub/McpServerHub.cs
+  s_7bc72ecaebd05d::t_f437643ea6c9ea 183,190,339-340,342-343
+McpPlugin.Server/src/Strategy/IPluginRoleStrategy.cs
+  s_7bc72ecaebd05d::t_e8515b5b43d66d 42-50
+McpPlugin.Server/src/Strategy/PluginConnectionRegistry.cs
+  s_7bc72ecaebd05d::t_93e55e2a18ee72 44-46,71-78,87,89,94,97-99,101,156-157
+McpPlugin.Server/src/Strategy/SingleProjectMcpStrategy.cs
+  s_7bc72ecaebd05d::t_2b133c20445526 40-43,97-100,102-104,107,110-112
+README.md
+  s_7bc72ecaebd05d::t_74707be66bb1ab 435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0881e99611749eb4bb512b203787a9088926c6c5",
+  "prompts": {},
+  "sessions": {
+    "s_7bc72ecaebd05d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40274cb2-edf8-49ba-9a73-33b83cb5be53",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

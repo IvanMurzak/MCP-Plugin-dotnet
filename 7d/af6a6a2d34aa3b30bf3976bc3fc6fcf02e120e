@@ -1,0 +1,36 @@
+McpPlugin/src/McpPlugin/Network/Client/BaseHubConnector.cs
+  s_88692866f8a457::t_0bad70b13c9205 86,91-92
+McpPlugin.Tests/Network/Connection/ConnectionManagerRejectionTests.cs
+  s_88692866f8a457::t_3d6592bad5d6fe 271-272
+  s_88692866f8a457::t_dc39f7cd6436b2 122,124-128,130,143-155,160-164
+  s_88692866f8a457::t_dcddb691d60285 157-159,169-170
+  s_88692866f8a457::t_84196da3d4b3df 156,165-168
+  s_88692866f8a457::t_6e7ed0dde7e14c 194-196
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionConfig.cs
+  s_88692866f8a457::t_86b92d95258f7c 28-46
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionManager.Connect.cs
+  s_88692866f8a457::t_7a679f06fc1045 439-448
+McpPlugin/src/McpPlugin/Network/Client/McpManagerClientHub.cs
+  s_88692866f8a457::t_3c909bef025fbe 21
+  s_88692866f8a457::t_244289dd35ded4 42-43,48-51
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionManager.cs
+  s_88692866f8a457::t_d4211872c05851 80-86,91
+McpPlugin/src/McpPlugin/Network/Connection/Provider/HubConnectionProvider.cs
+  s_88692866f8a457::t_94accc32bc40f4 58-67,69-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "7daf6a6a2d34aa3b30bf3976bc3fc6fcf02e120e",
+  "prompts": {},
+  "sessions": {
+    "s_88692866f8a457": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2977a50-af66-49ec-9bc3-af770d89759d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

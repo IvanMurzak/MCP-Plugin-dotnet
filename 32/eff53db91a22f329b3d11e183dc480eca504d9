@@ -1,0 +1,52 @@
+McpPlugin.Common/src/Hub/Client/IClientResourceHub.cs
+  s_c6122f758624cd::t_af90d348c8d650 21-24
+McpPlugin.Server.Tests/AmbientSessionIdOverHttpTests.cs
+  s_c6122f758624cd::t_6b6083e054644a 186,189
+  s_c6122f758624cd::t_058e359de898ed 215-217
+  s_c6122f758624cd::t_7e52c242299afd 264-269
+docs/architecture-transport-auth.md
+  s_c6122f758624cd::t_792c7c92158d69 134-163
+README.md
+  s_c6122f758624cd::t_b71249af532848 233
+McpPlugin.Server/src/Mcp/Resource/ResourceRouter.ListResources.cs
+  s_c6122f758624cd::t_1e25413cfea9ba 79-82,87
+  s_c6122f758624cd::t_c76b383bbf88bc 60-63
+  s_c6122f758624cd::t_bdc26ede78fc44 36-37,39,43-44,46
+  s_c6122f758624cd::t_53615076ba4df8 76-78,83-86
+McpPlugin.Server.Tests/ListSetErrorDegradationTests.cs
+  s_c6122f758624cd::t_6132a51e732ed3 33-39
+  s_c6122f758624cd::t_bb13c184560f77 74
+  s_c6122f758624cd::t_870dc910d2ba41 90
+  s_c6122f758624cd::t_8e8c0a81c1947c 13,21-28
+McpPlugin.Server/src/Auth/McpSessionTokenContext.cs
+  s_c6122f758624cd::t_cdb4f771eb838d 61-66
+  s_c6122f758624cd::t_991d9a13690e30 75-83
+McpPlugin.Server/src/Mcp/Prompt/PromptRouter.List.cs
+  s_c6122f758624cd::t_939a5200af35d4 42-44
+  s_c6122f758624cd::t_f8b64bb5df1c3c 75-80
+  s_c6122f758624cd::t_be40c0df9d8ded 37-38,40
+  s_c6122f758624cd::t_9a42ca2ff14feb 61-62
+McpPlugin.Server/src/Tools/SessionSelectionStore.cs
+  s_c6122f758624cd::t_924ab1a3c17f9e 20-25
+McpPlugin.Server/src/Mcp/Resource/ResourceRouter.ListResourceTemplates.cs
+  s_c6122f758624cd::t_0dae2104534717 57-58
+  s_c6122f758624cd::t_aae5c5dbb91b58 71,76-79
+  s_c6122f758624cd::t_e7d080f23158c9 33-34,36,40-41,43
+  s_c6122f758624cd::t_b4f6fc788acfc4 72-75,80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "32eff53db91a22f329b3d11e183dc480eca504d9",
+  "prompts": {},
+  "sessions": {
+    "s_c6122f758624cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1523409-c655-4f37-b9b5-b6a24ef06a4e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

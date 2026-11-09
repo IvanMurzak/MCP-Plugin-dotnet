@@ -1,0 +1,23 @@
+McpPlugin.Server/src/Extension/ExtensionsMcpServer.cs
+  57cc6cdab745e943 56,59,67,70-71,76,97-98,100-101,104,122-123,125-126,129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "386be1e38a4060b2689b63e6e68a2f9a74dd7ffc",
+  "prompts": {
+    "57cc6cdab745e943": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5295cd7-28ce-4448-b67c-217d6d50aa57",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 226,
+      "total_deletions": 230,
+      "accepted_lines": 41,
+      "overriden_lines": 0
+    }
+  }
+}

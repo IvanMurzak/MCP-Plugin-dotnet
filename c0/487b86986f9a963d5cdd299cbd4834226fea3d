@@ -1,0 +1,51 @@
+McpPlugin.Server/src/Webhooks/Services/AuthorizationWebhookService.cs
+  f85c518dc36655fe 23-24,117
+McpPlugin.Server.Tests/Webhooks/WebhookOptionsTests.cs
+  35a09d3700a7eedc 13-14,203-405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.8",
+  "base_commit_sha": "c0487b86986f9a963d5cdd299cbd4834226fea3d",
+  "prompts": {
+    "041b1243a82600dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8558537-2e08-4df9-be25-3d8e981714ae",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 386,
+      "total_deletions": 386,
+      "accepted_lines": 243,
+      "overriden_lines": 0
+    },
+    "35a09d3700a7eedc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2cf3beb1-f154-497e-8b7f-75c04a28db33",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 408,
+      "total_deletions": 202,
+      "accepted_lines": 240,
+      "overriden_lines": 0
+    },
+    "f85c518dc36655fe": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39c2b393-5aa1-4c01-8b43-452a4d9c5643",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 158,
+      "total_deletions": 156,
+      "accepted_lines": 20,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,38 @@
+McpPlugin.Tests.LockHarness/McpPlugin.Tests.LockHarness.csproj
+  s_887efbfc81dc0f::t_499259d359fda1 1-22
+McpPlugin.Tests.LockHarness/Program.cs
+  s_887efbfc81dc0f::t_251aff29fbc24a 63,65,72,79,83-100
+  s_887efbfc81dc0f::t_1b472734af560a 127,129-131
+  s_887efbfc81dc0f::t_4907d387c3b294 32-39
+  s_887efbfc81dc0f::t_794f8ac3236401 1-31,40-62,64,66-71,73-78,80-82,101-126,128,132-169
+McpPlugin.Tests/AgentConfig/MachineCredentialLockTests.cs
+  s_887efbfc81dc0f::t_bb2f28b3642118 1-314
+McpPlugin/src/AgentConfig/MachineCredentialLock.cs
+  s_887efbfc81dc0f::t_cacfb7962feeef 1-194,198-296,298-300,317-330,340-543
+  s_887efbfc81dc0f::t_e9e551801cfae5 331-339
+  s_887efbfc81dc0f::t_70e30f7fdf036a 297
+  s_887efbfc81dc0f::t_cfc7d862eb1913 301-316
+  s_887efbfc81dc0f::t_d4137f9592fa61 195-197
+McpPlugin.Tests/McpPlugin.Tests.csproj
+  s_887efbfc81dc0f::t_81eb1328c3e31a 23-26
+McpPlugin.Tests/AgentConfig/MachineCredentialLockTakeoverPlantTests.cs
+  s_887efbfc81dc0f::t_ce6d0778c75fa2 1-351
+McpPlugin.sln
+  s_887efbfc81dc0f::t_7ec9afa80d4431 20-21,116-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "f7e441d082b01da19e7af51ed6f3e1376bbbfea2",
+  "prompts": {},
+  "sessions": {
+    "s_887efbfc81dc0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "556ed732-8c84-4c19-bfb0-6231e40ac140",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

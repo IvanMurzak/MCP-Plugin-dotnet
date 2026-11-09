@@ -1,0 +1,51 @@
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/MachineCredentialLoginCommit.cs
+  s_887efbfc81dc0f::t_e0110a3eef0f63 1-236
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/TokenRevocationClient.cs
+  s_887efbfc81dc0f::t_e675f970d7a99f 1-107
+McpPlugin.Tests/Infrastructure/RecordingHttpMessageHandler.cs
+  s_887efbfc81dc0f::t_a2f883b1f25421 1-160
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/PluginCredentialProvider.cs
+  s_887efbfc81dc0f::t_5f6336396bb074 22-25,28-51,54-55,63,74,81-83,90-91,94,100-112,122-123,153-154,157,160,170-172,193-197,209-210,218-223,229-233,236,245-259,263-264,270-273,276,282,284,288,290-370,372-373,375-380,382-402,404-412,415-423,427,431,433,445,449,454
+McpPlugin.Tests/Network/Connection/Credentials/PluginCredentialProviderTests.cs
+  s_887efbfc81dc0f::t_a348cb6c7e7037 14,24-25,65,67,78-80,105-106,108,113-116,129,131,134,143-144,146,157-158,160,172,174,188,190,238-264
+  s_887efbfc81dc0f::t_b2c63ae5e258fd 265
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/TokenExchangeClient.cs
+  s_887efbfc81dc0f::t_6a42b0807364e2 1-265
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/MachineWideSignOut.cs
+  s_887efbfc81dc0f::t_46f7f3d24deea3 1-172
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/ITokenRefresher.cs
+  s_887efbfc81dc0f::t_fdde93edf2e69b 18-39,43-45,64-72,79,87,90-94,96-140
+  s_887efbfc81dc0f::t_6bf18236a37f8b 158-162,165-184
+McpPlugin.Tests/Network/Connection/Credentials/HttpTokenRefresherTests.cs
+  s_887efbfc81dc0f::t_1af365ab5a4c53 1-285
+McpPlugin.Tests/Network/Connection/Credentials/TokenExchangeClientTests.cs
+  s_887efbfc81dc0f::t_eeaf344f1815e6 1-124
+McpPlugin.Tests/Network/Connection/Credentials/MachineWideSignOutTests.cs
+  s_887efbfc81dc0f::t_4a2f9558c6e017 1-224
+McpPlugin.Tests/Network/Connection/Credentials/MachineCredentialLoginCommitTests.cs
+  s_887efbfc81dc0f::t_5f297f0d4a86f7 1-234
+McpPlugin.Tests/Network/Connection/Credentials/ConnectionCredentialCoordinatorTests.cs
+  s_887efbfc81dc0f::t_ccd9131c2b0625 68-72
+McpPlugin.Tests/Network/Connection/Credentials/PluginCredentialProviderFamilyRefreshTests.cs
+  s_887efbfc81dc0f::t_258ac71a353e60 15
+  s_887efbfc81dc0f::t_aaefd12b85b586 1-14,16-335
+McpPlugin/src/McpPlugin/Network/Connection/Credentials/HttpTokenRefresher.cs
+  s_887efbfc81dc0f::t_848539a409be20 1-198,200-291
+  s_887efbfc81dc0f::t_9700a16ecbcd04 199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ea68b78f089d481fdaf5f072461d37a3e13aab00",
+  "prompts": {},
+  "sessions": {
+    "s_887efbfc81dc0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "556ed732-8c84-4c19-bfb0-6231e40ac140",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+McpPlugin/src/AgentConfig/MachineCredentialLock.cs
+  s_887efbfc81dc0f::t_70859667d099b4 443-448
+  s_887efbfc81dc0f::t_fdabf976f22d8a 16,26-29,31-32,35-78,83-88,92-93,101-103,106-116,123-131,133-137,148-149,161-164,168-172,189,194-203,209-211,213-214,220,228-229,235,240,249-251,266,274-275,281,283,285,325-351,354-357,359-360,362,364,368,370,373,375-383,386,388-391,394-396,400,403-405,407-414,421-435,437-442,450-465,467,469,471,473-484,486,488-543,545-555,557,560,567,570,577,591,593-617,619-622,627-637,645,648-652,655-661,669-671,680-706,710,759-770,822-826,844
+  s_887efbfc81dc0f::t_c5b82d18ef1e24 415-417
+  s_887efbfc81dc0f::t_16b8f306fb9692 618
+  s_887efbfc81dc0f::t_17f8c7684c8da0 366-367
+  s_887efbfc81dc0f::t_59a292009e7587 642-644,646
+McpPlugin/src/AgentConfig/LockProtocol.GoldenVectors.json
+  s_887efbfc81dc0f::t_8adc21aba5bccc 1-9
+McpPlugin.Tests/AgentConfig/MachineCredentialLockTests.cs
+  s_887efbfc81dc0f::t_0432c498ff1f88 11,14,17,25-32,54,56,58,62-63,65-71,74-75,78-81,93-111,126,132,134-135,141,151-154,158-159,165-191,206-219,243,246,249,253,257-268,275,286,295,297-306,308-343,347-433,527
+McpPlugin.Tests/McpPlugin.Tests.csproj
+  s_887efbfc81dc0f::t_db926661c84859 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "af2e3a9575fb266c0f374a3b500f87f64eeb2059",
+  "prompts": {},
+  "sessions": {
+    "s_887efbfc81dc0f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "556ed732-8c84-4c19-bfb0-6231e40ac140",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

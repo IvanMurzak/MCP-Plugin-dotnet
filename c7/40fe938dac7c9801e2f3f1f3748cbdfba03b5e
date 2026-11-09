@@ -1,0 +1,101 @@
+McpPlugin.Common/src/Data/Response/Tool/List/ResponseListTool.cs
+  s_7bc72ecaebd05d::t_d2561baad16450 11,13,20-34
+McpPlugin.NullEngine/src/Replay/ReplayTool.cs
+  s_7bc72ecaebd05d::t_92e595d97701d9 72,79,107
+McpPlugin.Server.Tests/Infrastructure/AmbientCaptureToolHub.cs
+  s_7bc72ecaebd05d::t_053485c33016c3 126,134,166-167
+McpPlugin.Server.Tests/PinnedDirectToolRoutingTests.cs
+  s_7bc72ecaebd05d::t_51eb7726bd99a7 286
+McpPlugin.Server.Tests/PinnedSystemToolRoutingTests.cs
+  s_7bc72ecaebd05d::t_50a4ab519cc1af 334
+McpPlugin.Server.Tests/Security/MalformedProjectPinFailClosedTests.cs
+  s_7bc72ecaebd05d::t_ff866dcbf9adfa 412
+McpPlugin.Server.Tests/SkillMetaClientGateTests.cs
+  s_7bc72ecaebd05d::t_aa094d2882662a 61,282,309,391-392
+McpPlugin.Server.Tests/ToolListSkillMetaTests.cs
+  s_7bc72ecaebd05d::t_8749b3979c7a1c 47
+McpPlugin.Server.Tests/TrustedInternalClientTests.cs
+  s_7bc72ecaebd05d::t_3f325ee4815b59 156,165
+McpPlugin.Server/src/Api/DirectToolCallEndpoints.cs
+  s_7be60963fe3603::t_a4a663c184869e 176
+McpPlugin.Server/src/Api/SystemToolEndpoints.cs
+  s_7be60963fe3603::t_436035ff53b71d 173
+McpPlugin.Server/src/Extension/ExtensionsListMeta.cs
+  s_7be60963fe3603::t_4543b96a4155a5 103
+McpPlugin.Server/src/Mcp/Tool/ToolRouter.ListAll.cs
+  s_7bc72ecaebd05d::t_27dd909a2c4238 88
+McpPlugin.Tests/Data/Annotations/AnnotatedToolClass.cs
+  s_7bc72ecaebd05d::t_e88e0775361d27 41,44
+McpPlugin.Tests/Mcp/McpBuilderTests.cs
+  s_7bc72ecaebd05d::t_1c782532ba4719 165
+McpPlugin.Tests/Mcp/McpBuilderTests_EnabledAttribute.cs
+  s_7bc72ecaebd05d::t_87e222500d758a 63,66,75,79,88,92,101,105,112,114,118,127-129,177,180,184,186-187,191,193-194
+McpPlugin.Tests/Mcp/McpPluginSkillPathTests.cs
+  s_7bc72ecaebd05d::t_417ba06e6228e7 247
+McpPlugin.Tests/Mcp/ProxyToolTests.cs
+  s_7be60963fe3603::t_aaecc4811bad10 60,84,86-87,155,179,204-205,207-208,210,212-213,215,219,221-224
+McpPlugin.Tests/Mcp/ToolErrorClassificationTests.cs
+  s_7bc72ecaebd05d::t_25d164b9dd9eea 178
+McpPlugin.Tests/Mcp/ToolTokenCountSkillMetadataTests.cs
+  s_7bc72ecaebd05d::t_eca009804e6a03 271,278,283,288,294,298-299
+McpPlugin.Tests/Mcp/ToolTokenCountTests.cs
+  s_7bc72ecaebd05d::t_fa79abc6649108 117,134,141,147,162,165,179,192,195,202,217,220-221,224-225
+McpPlugin.Tests/Mcp/ToolVisibilityRenameTests.cs
+  s_7bc72ecaebd05d::t_e884a0a0fb31af 1-150
+McpPlugin.Tests/Serialization/ResponseListToolSkillWireTests.cs
+  s_7bc72ecaebd05d::t_1e837b8c22fcef 51-74,166,172,180
+McpPlugin.Tests/Skills/SkillFileGeneratorProvenanceTests.cs
+  s_7bc72ecaebd05d::t_a793a38d072247 357
+McpPlugin.Tests/Skills/SkillFileGeneratorTests.cs
+  s_7bc72ecaebd05d::t_f7a5d50c11ab54 1059
+McpPlugin/src/Mcp/McpSystemToolManager.cs
+  s_7bc72ecaebd05d::t_5d32ce57a3c0ad 127
+McpPlugin/src/Mcp/McpToolManager.cs
+  s_7bc72ecaebd05d::t_b0f63424f940d4 61,65-66,69-70,74,78-79,82-88,137,145,147-151,159,232
+McpPlugin/src/Mcp/Tool/IRunTool.cs
+  s_7bc72ecaebd05d::t_1f898eec62d91c 11,21,23-26
+McpPlugin/src/Mcp/Tool/ProxyTool.cs
+  s_7bc72ecaebd05d::t_6ace2ff81675e5 32-33,62-64,66,71-75,97-98,125
+McpPlugin/src/Mcp/Tool/RunTool.Static.cs
+  s_7bc72ecaebd05d::t_209821fb5e15ff 41,51,70,80,102,112
+McpPlugin/src/Mcp/Tool/RunTool.TokenCount.cs
+  s_7bc72ecaebd05d::t_0e6d0c5042ae51 91
+McpPlugin/src/Mcp/Tool/RunTool.cs
+  s_7bc72ecaebd05d::t_09b680c0a9c722 33-37
+McpPlugin/src/Mcp/Tool/ToolTokenCount.cs
+  s_7bc72ecaebd05d::t_0e4a139ec5ea02 61
+McpPlugin/src/McpPlugin/Attribute/Tool/AiToolAttribute.cs
+  s_7bc72ecaebd05d::t_f501763648bebf 40-41,44-45,47-57,60-61,64-66
+McpPlugin/src/McpPlugin/Builder/Data/RunToolFactory.cs
+  s_7bc72ecaebd05d::t_cc1384c0a11b4d 38,51
+McpPlugin/src/McpPlugin/Interfaces/IToolManager.cs
+  s_7bc72ecaebd05d::t_384ce1d660e25c 21-22,33-34,37,42,45,48,53,62,68-88
+McpPlugin/src/McpPlugin/Interfaces/IVisible.cs
+  s_7bc72ecaebd05d::t_e54bc3de577cdb 1-21
+docs/chain-fixtures.md
+  s_7bc72ecaebd05d::t_ca42b10371cf8b 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c740fe938dac7c9801e2f3f1f3748cbdfba03b5e",
+  "prompts": {},
+  "sessions": {
+    "s_7bc72ecaebd05d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40274cb2-edf8-49ba-9a73-33b83cb5be53",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_7be60963fe3603": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c306a43-6f1a-4fe9-9b57-09acf4bc1a65",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

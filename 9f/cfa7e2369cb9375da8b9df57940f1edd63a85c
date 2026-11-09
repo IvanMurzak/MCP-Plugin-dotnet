@@ -1,0 +1,27 @@
+McpPlugin.Common/McpPlugin.Common.csproj
+  s_8b677f7e5eeedc::t_1f1a83ae97a777 14
+McpPlugin.Common/src/Utils/Consts.cs
+  s_8b677f7e5eeedc::t_b3b4623fc66105 15
+McpPlugin.Server/McpPlugin.Server.csproj
+  s_8b677f7e5eeedc::t_6f2a3d9415f7f3 14
+McpPlugin.Server/server.json
+  s_8b677f7e5eeedc::t_42696113a4d427 11,17
+McpPlugin/McpPlugin.csproj
+  s_8b677f7e5eeedc::t_ade23c3f596732 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9fcfa7e2369cb9375da8b9df57940f1edd63a85c",
+  "prompts": {},
+  "sessions": {
+    "s_8b677f7e5eeedc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a1413c-d77b-7de0-8dd6-eb573f517fb8",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

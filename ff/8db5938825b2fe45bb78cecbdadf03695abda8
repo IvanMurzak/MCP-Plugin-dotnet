@@ -1,0 +1,27 @@
+McpPlugin.Server/src/Extension/ExtensionsListMeta.cs
+  s_539e40ad483055::t_3a25be8d6138d5 11-13,15,20-32,54-77
+McpPlugin.Server/src/Mcp/Prompt/PromptRouter.List.cs
+  s_539e40ad483055::t_5a293b048f089b 52,55
+McpPlugin.Server/src/Mcp/Resource/ResourceRouter.ListResourceTemplates.cs
+  s_539e40ad483055::t_db7a78fc21c1c5 44,47
+McpPlugin.Server/src/Mcp/Tool/ToolRouter.ListAll.cs
+  s_539e40ad483055::t_6601a6ce9f7af1 79,82
+McpPlugin.Server/src/Mcp/Resource/ResourceRouter.ListResources.cs
+  s_539e40ad483055::t_bec86019b41ab0 44,47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "ff8db5938825b2fe45bb78cecbdadf03695abda8",
+  "prompts": {},
+  "sessions": {
+    "s_539e40ad483055": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "91eb3681-d233-455a-b2ce-ca54309bac51",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

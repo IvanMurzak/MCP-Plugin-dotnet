@@ -1,0 +1,27 @@
+McpPlugin.Server/src/Webhooks/Services/WebhookDispatcher.cs
+  8f63d567443f15d6 39
+McpPlugin.Server/src/Extension/ExtensionsMcpServer.cs
+  8f63d567443f15d6 13,50-53,60,63,71,74-75,80,101-102,104-105,108,126-127,129-130,133,172-174,183-199,201
+McpPlugin.Server/src/Hub/McpServerHub.cs
+  8f63d567443f15d6 166-167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.7",
+  "base_commit_sha": "5b4d4a39b1c279d40d8a72b241346279073535e4",
+  "prompts": {
+    "8f63d567443f15d6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fe339e58-e828-4e30-85b2-5e61a03a70e2",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>",
+      "messages": [],
+      "total_additions": 589,
+      "total_deletions": 563,
+      "accepted_lines": 115,
+      "overriden_lines": 0
+    }
+  }
+}

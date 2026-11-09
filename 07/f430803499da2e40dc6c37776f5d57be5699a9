@@ -1,0 +1,60 @@
+McpPlugin/src/Mcp/DuplicateRequestGuard.cs
+  s_5f9a753ce320b5::t_a859f1e38f59f7 1-98
+McpPlugin.Server/src/Client/ClientUtils.cs
+  s_5f9a753ce320b5::t_b222d8a6a732bd 247-250
+  s_5f9a753ce320b5::t_f63ed114a9c887 14
+  s_5f9a753ce320b5::t_7b652506db60ef 237
+  s_5f9a753ce320b5::t_a3342b5bcfb2e2 267-274,284,286-293,295
+  s_5f9a753ce320b5::t_01cc9b602dd573 149-156,167-204
+  s_5f9a753ce320b5::t_6f697fcc151ab6 316-323
+McpPlugin.Server.Tests/ClientUtilsToolCallDeliveryTests.cs
+  s_5f9a753ce320b5::t_da6ce3851e29d7 1-206
+McpPlugin.Server.Tests/DataArgumentsToolTimeoutTests.cs
+  s_5f9a753ce320b5::t_3a9ae852a0b66d 1-85
+McpPlugin.Tests/Mcp/DuplicateToolCallTests.cs
+  s_5f9a753ce320b5::t_abad191257c915 1-93
+McpPlugin.Common/src/Utils/Consts.MCP.cs
+  s_5f9a753ce320b5::t_0b58a900379be8 56,110
+McpPlugin.Common/src/Utils/Consts.RPC.cs
+  s_5f9a753ce320b5::t_8b7ce2a6b4b840 21-26
+McpPlugin.Common/src/Utils/DataArguments.cs
+  s_5f9a753ce320b5::t_6a5328326c9c56 50-74,78-85,145-147,167-170,276-279
+McpPlugin.Server.Tests/Infrastructure/NoneAuthMcpHost.cs
+  s_5f9a753ce320b5::t_d2ff6afa3abe44 67-68,70,76
+McpPlugin.Server.Tests/NullEngineRealTransportTests.cs
+  s_f9885b8a4d06ac::t_931ef932b66b09 360-411,414-423
+McpPlugin.Server/src/Client/RemoteSystemToolRunner.cs
+  s_5f9a753ce320b5::t_ca39639b9a4efd 58,63-64,69,84
+McpPlugin.Server/src/Client/RemoteToolRunner.cs
+  s_5f9a753ce320b5::t_9b28ce93f87ebb 53,58-59,64,79
+McpPlugin.Server/src/Tools/ToolDispatcher.cs
+  s_5f9a753ce320b5::t_6e5d6bb3c0a817 53-59
+McpPlugin/src/Mcp/McpManager.TrackedHubs.cs
+  s_5f9a753ce320b5::t_6413857097ca31 22-24,29-30,32-37,42,63
+README.md
+  s_5f9a753ce320b5::t_64dd61e7e1ca1c 233-234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07f430803499da2e40dc6c37776f5d57be5699a9",
+  "prompts": {},
+  "sessions": {
+    "s_5f9a753ce320b5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ee65e8c-aca3-452e-9397-46e1aceea5e9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    },
+    "s_f9885b8a4d06ac": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a15163-393a-7211-938a-4b86b5b293ef",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

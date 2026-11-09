@@ -1,0 +1,23 @@
+McpPlugin/src/Extension/ExtensionsJsonElement.cs
+  69baa013e49a37d9 11,20,22,24-26,28-30,32-39,41-43,45-52,54-55,59,61,63-65,67-69,71-79,81-83,85-93,95-96,100,102,104-106,108-110,112-119,121-123,125-133,135-136,140-141,143-144,146,155,166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "25344ee11324a2755bfc13991e7e8fe7e3c62596",
+  "prompts": {
+    "69baa013e49a37d9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c77aa5a-f8c7-4042-ae61-dc5cf011eb99",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Ivan Murzak",
+      "messages": [],
+      "total_additions": 98,
+      "total_deletions": 274,
+      "accepted_lines": 177,
+      "overriden_lines": 0
+    }
+  }
+}

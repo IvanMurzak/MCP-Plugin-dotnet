@@ -1,0 +1,81 @@
+McpPlugin.Common/src/ClientRole.cs
+  s_7bc72ecaebd05d::t_dfadfc079896c0 1-62
+McpPlugin.Server/src/Client/CatalogAwareInvoke.cs
+  s_7bc72ecaebd05d::t_5478614160ec27 55-56
+  s_7bc72ecaebd05d::t_b150e846164904 71,73,75
+McpPlugin.Server.Tests/Infrastructure/FakeEnginePlugin.cs
+  s_7bc72ecaebd05d::t_4eeee31f04024d 1-194
+McpPlugin.Server/src/Strategy/SingleProjectMcpStrategy.cs
+  s_7bc72ecaebd05d::t_fbff714ea721fa 1-154
+McpPlugin.Server.Tests/ToolCallGuardTests.cs
+  s_7bc72ecaebd05d::t_acf1eebdd0dda8 1-274
+McpPlugin.Server.Tests/LocalTokenMcpStrategyTests.cs
+  s_7bc72ecaebd05d::t_a60030d3633651 121,126,129,133-142,145,147,151-152
+McpPlugin.Common/src/Data/Response/Tool/Call/ResponseCallTool.Static.cs
+  s_7bc72ecaebd05d::t_79a4a97dd1712f 42-55
+McpPlugin.Server/src/Client/RemoteToolRunner.cs
+  s_7bc72ecaebd05d::t_29e9680d6cb7f5 114-119
+  s_7bc72ecaebd05d::t_1103da5a9b7796 37
+  s_7bc72ecaebd05d::t_3692d1fb56d7fa 59-61,65-69,73-74,76-77
+McpPlugin/src/McpPlugin/Network/Connection/ConnectionConfig.cs
+  s_7bc72ecaebd05d::t_f871f47a81fa30 75-87
+McpPlugin.Server/src/Tools/ToolCallGuard.cs
+  s_7bc72ecaebd05d::t_bddffc485a1e7b 1-357
+McpPlugin.Server.Tests/PluginRoleRoutingTests.cs
+  s_7bc72ecaebd05d::t_4c809be612f916 1-289
+McpPlugin.Server.Tests/NoAuthMcpStrategyTests.cs
+  s_7bc72ecaebd05d::t_e3d02709ded1d5 134-136
+  s_7bc72ecaebd05d::t_433ac3a88d0cdd 92,99,102-104,108,111,115,120,123,125,128-130,133,139-140
+McpPlugin.Tests/Network/Connection/ClientRoleHubUrlTests.cs
+  s_7bc72ecaebd05d::t_9ae48e0aa3e54c 1-68
+McpPlugin.Server/src/Hub/BaseHub.cs
+  s_7bc72ecaebd05d::t_898c925350a4c2 178-187
+  s_7bc72ecaebd05d::t_f87ff57d90b511 138-141,143-151
+McpPlugin.Server/src/Strategy/PluginConnectionRegistry.cs
+  s_7bc72ecaebd05d::t_4bd598ceda915b 56-62
+  s_7bc72ecaebd05d::t_72e5b5b855e9cf 1-55,63-148
+McpPlugin/src/McpPlugin/Network/Connection/Provider/HubConnectionProvider.cs
+  s_7bc72ecaebd05d::t_f31af971a6a14f 112-125
+  s_7bc72ecaebd05d::t_e4cfc4db2b901b 46,111
+McpPlugin.Server/src/Strategy/IPluginRoleStrategy.cs
+  s_7bc72ecaebd05d::t_4464f729dd67e0 1-45
+McpPlugin.Server/src/Hub/McpServerHub.cs
+  s_7bc72ecaebd05d::t_838a2ab16da789 169-199
+  s_7bc72ecaebd05d::t_17105fa2af6135 82-87
+  s_7bc72ecaebd05d::t_c6a913cb65fa00 332-336
+McpPlugin.Server/src/Extension/ExtensionsMcpServerBuilder.cs
+  s_7bc72ecaebd05d::t_da96b66a70b3f0 270-279
+  s_7bc72ecaebd05d::t_523df31464b2da 34-35,296
+McpPlugin.Common/src/Utils/Consts.MCP.cs
+  s_7bc72ecaebd05d::t_2ba4812e4b0b68 109-115,118-120
+McpPlugin.Server.Tests/ToolArgumentValidatorTests.cs
+  s_7bc72ecaebd05d::t_81fdb62712c13b 1-107
+McpPlugin.Server/src/Strategy/LocalTokenMcpStrategy.cs
+  s_7bc72ecaebd05d::t_80572baf0c44dc 24-26,31-32,37,43,46,52,79,89,106
+McpPlugin.Server/src/Strategy/NoAuthMcpStrategy.cs
+  s_7bc72ecaebd05d::t_2c0b5c5ccc19e9 18-22,24,27
+McpPlugin.Server/src/Tools/ToolArgumentValidator.cs
+  s_7bc72ecaebd05d::t_8c61a74a820544 1-229
+McpPlugin.Server/src/Tools/Utf16Validation.cs
+  s_7bc72ecaebd05d::t_320dd7963e9dc3 1-142
+README.md
+  s_7bc72ecaebd05d::t_01c2173d2e8ea8 234,241-244
+docs/architecture-transport-auth.md
+  s_7bc72ecaebd05d::t_ee74e6a7d18d56 322,326,346-347
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc65c236b357a70332032a46cf16a161a1eb945f",
+  "prompts": {},
+  "sessions": {
+    "s_7bc72ecaebd05d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40274cb2-edf8-49ba-9a73-33b83cb5be53",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}

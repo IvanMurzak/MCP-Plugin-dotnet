@@ -1,0 +1,30 @@
+scripts/test_release_dependency_guard.py
+  s_7bc72ecaebd05d::t_9f50c24bbbbb30 52-54,62
+  s_7bc72ecaebd05d::t_ac99a890670fb3 202
+  s_7bc72ecaebd05d::t_8760088768aaf1 174
+  s_7bc72ecaebd05d::t_d55e9d91e59393 271-272
+  s_7bc72ecaebd05d::t_8892d150bdb08d 241-242
+  s_7bc72ecaebd05d::t_8a7fedc32910ab 76
+  s_7bc72ecaebd05d::t_c9ad7114ff8b7b 245
+  s_7bc72ecaebd05d::t_5c3104aceb806b 209-220
+.github/workflows/test-pull-request.yml
+  s_7bc72ecaebd05d::t_9184b0010f2f70 91-96
+scripts/release_dependency_guard.py
+  s_7bc72ecaebd05d::t_340bf7e90b7358 19,21,58-59,276-282,288-290,305-323
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a8ffad86d23a4da93b11427c5b2a3f2c666a2bb",
+  "prompts": {},
+  "sessions": {
+    "s_7bc72ecaebd05d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40274cb2-edf8-49ba-9a73-33b83cb5be53",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
