@@ -165,8 +165,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
 
             result.Succeeded.ShouldBeFalse();
             result.FailureKind.ShouldBe(TokenRefreshFailureKind.InvalidGrant);
-            result.FailureReason.ShouldNotBeNull();
-            result.FailureReason.ShouldContain("invalid_grant");
+            result.FailureReason.ShouldNotBeNull().ShouldContain("invalid_grant");
         }
 
         [Fact]
@@ -230,8 +229,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
 
             result.Succeeded.ShouldBeFalse();
             result.FailureKind.ShouldBe(TokenRefreshFailureKind.Transient);
-            result.FailureReason.ShouldNotBeNull();
-            result.FailureReason.ShouldContain("timed out");
+            result.FailureReason.ShouldNotBeNull().ShouldContain("timed out");
         }
 
         [Fact]
