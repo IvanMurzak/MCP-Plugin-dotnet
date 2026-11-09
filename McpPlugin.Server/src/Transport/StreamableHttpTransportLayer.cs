@@ -216,7 +216,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                             services.GetRequiredService<IMcpConnectionStrategy>(),
                             services.GetRequiredService<Webhooks.IWebhookEventCollector>(),
                             mcpServer: server,
-                            mcpSession: null
+                            mcpSession: null,
+                            catalog: services.GetService<PluginCatalogCache>()
                         );
 
                         try
