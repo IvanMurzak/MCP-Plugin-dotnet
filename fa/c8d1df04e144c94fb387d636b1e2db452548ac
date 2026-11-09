@@ -1,0 +1,30 @@
+McpPlugin.Server.Tests/PluginCatalogExpiryTests.cs
+  s_12873f1c81b288::t_d15e8aaca70731 20,29,47,60-66,107,129,139,149,159,165,168-172,180-181,185-187,191,193,196-220,223-225,227-233,268-277
+  s_12873f1c81b288::t_31c0c5b137894c 278
+McpPlugin.Server/src/Strategy/PluginCatalogCache.cs
+  s_12873f1c81b288::t_d15e8aaca70731 38-40,71-74,98,126-127,140-142,144-148,230-232,294,301,446-447,449,453-457,460,466,470-474,481-482,488,510,551-558,575,577,579
+McpPlugin.Server/McpPlugin.Server.csproj
+  s_12873f1c81b288::t_d15e8aaca70731 59-62
+McpPlugin.Server/src/McpServerService.cs
+  s_12873f1c81b288::t_d15e8aaca70731 245-246
+McpPlugin.Server.Tests/PluginExpiryNotificationOverHttpTests.cs
+  s_12873f1c81b288::t_d15e8aaca70731 67-68,78,87,89-90,137-138,188,190
+McpPlugin.Server.Tests/PluginCatalogCacheTests.cs
+  s_12873f1c81b288::t_d15e8aaca70731 84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fac8d1df04e144c94fb387d636b1e2db452548ac",
+  "prompts": {},
+  "sessions": {
+    "s_12873f1c81b288": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97ad83ec-df5c-4841-9f29-3dbe51669939",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Ivan Murzak <Ivan.D.Murzak@gmail.com>"
+    }
+  }
+}
