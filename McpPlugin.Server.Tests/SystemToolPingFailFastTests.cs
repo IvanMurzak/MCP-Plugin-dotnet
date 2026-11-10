@@ -44,7 +44,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         const string PinA = "aabbccdd"; // prefix of PluginReconnect.HashA
         const string WrongPin = "deadbeef";
 
-        static readonly TimeSpan Fast = TimeSpan.FromMilliseconds(900); // under the ladder's first 1 s retry delay
+        // Well under the ~9 s retry ladder, with room for a cold host on a slow CI runner.
+        static readonly TimeSpan Fast = TimeSpan.FromSeconds(3);
 
         readonly FakePluginHub _plugins = new FakePluginHub();
 
@@ -184,6 +185,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
             using var response = await http.SendAsync(request);
             var body = await response.Content.ReadAsStringAsync();
+            response.Content.Headers.ContentType?.MediaType.ShouldBe("application/json", $"HTTP {(int)response.StatusCode}: {body}");
             using var json = JsonDocument.Parse(body);
             var error = json.RootElement.TryGetProperty("error", out var e) ? e.GetString() ?? string.Empty : string.Empty;
             return (response.StatusCode, error);

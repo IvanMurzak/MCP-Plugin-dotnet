@@ -90,6 +90,11 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                     if (responseData.Status == ResponseStatus.Error)
                     {
+                        // A probe whose plugin dropped mid-send gets the same wording as the check above.
+                        if (isLivenessProbe && responseData.ErrorKind == ResponseErrorKind.Unavailable
+                            && NotConnectedMessage() is { } droppedMessage)
+                            return ResponseCallTool.Error(droppedMessage, ResponseErrorKind.Unavailable, responseData.HttpStatusCode);
+
                         var errorKind = responseData.ErrorKind == ResponseErrorKind.None
                             ? ResponseErrorKind.Internal
                             : responseData.ErrorKind;
