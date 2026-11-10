@@ -136,9 +136,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         // chosen ResponseErrorKinds (see the hub, bottom of this file). It pins the shared handler's
         // DirectHttpErrorMapper wiring — NOT the production status. In production AccountMcpStrategy
         // .ResolveConnectionId returns null for BOTH NoMatchPinned and AccountEmpty (the kind is discarded),
-        // so ClientUtils.InvokeAsync exhausts its retries and yields Unavailable → 503 for either case.
-        // Failing FAST on a known-unresolvable pin is a cross-cutting ClientUtils/strategy change affecting
-        // all four REST groups, so it is deliberately out of scope for this PR.
+        // so either case is Unavailable → 503: at once for the `ping` liveness probe (RemoteSystemToolRunner,
+        // see SystemToolPingFailFastTests), after the retry ladder for every other system tool.
 
         [Fact]
         public async Task PinnedCall_MatchingPin_Resolves_200()

@@ -10,6 +10,7 @@
 
 #nullable enable
 using System.Linq;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 
 namespace com.IvanMurzak.McpPlugin.Server.Tools
@@ -59,6 +60,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             return resolution.Kind == InstanceResolutionKind.NoMatchPinned || !string.IsNullOrEmpty(boundProjectPin)
                 ? PinnedNoMatch(instances, accountId, boundProjectPin)
                 : AccountEmpty;
+        }
+
+        /// <summary><see cref="ForResolution"/> for the in-flight session's identity (<see cref="McpSessionTokenContext"/>).</summary>
+        internal static string ForCurrentSession(InstanceResolution resolution, AccountInstances instances)
+        {
+            var identity = McpSessionTokenContext.CurrentIdentity;
+            return ForResolution(resolution, instances, identity?.AccountId, identity?.BoundProjectPin);
         }
     }
 }

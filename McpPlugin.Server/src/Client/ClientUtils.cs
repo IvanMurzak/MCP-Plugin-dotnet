@@ -365,7 +365,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             => ex is IOException && ex.Message.Contains("does not exist", StringComparison.Ordinal);
 
         /// <summary>The error when the retry ladder ended without reaching a plugin on any attempt.</summary>
-        const string NoPluginConnectedMessage =
+        internal const string NoPluginConnectedMessage =
             "No engine plugin is connected to this session, so the request was not sent. " +
             "Open the project in its engine editor, check that the plugin's MCP connection is active, then retry.";
 

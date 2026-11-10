@@ -13,7 +13,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using com.IvanMurzak.McpPlugin.Common.Model;
+using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 using Microsoft.AspNetCore.SignalR;
@@ -50,12 +52,42 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
             _plugins[connectionId] = plugin;
             return plugin;
         }
+
+        /// <summary>Adds a plugin connection that answers every tool call with <paramref name="answer"/>.</summary>
+        public Mock<ISingleClientProxy> AddAnsweringCalls(string connectionId, string answer = "done")
+        {
+            var plugin = Add(connectionId);
+            plugin.Setup(c => c.InvokeCoreAsync<ResponseData<ResponseCallTool>>(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => ResponseCallTool.Success(answer).Pack("r"));
+            return plugin;
+        }
+
+        public static void VerifyCalls(Mock<ISingleClientProxy> plugin, Times times)
+            => plugin.Verify(c => c.InvokeCoreAsync<ResponseData<ResponseCallTool>>(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()), times);
     }
 
     /// <summary>Helpers for plugin reconnect tests: tool lists, agent sessions, instance (un)registration.</summary>
     public static class PluginReconnect
     {
         public const string HashA = "aabbccdd11223344556677889900aabbccddeeff00112233445566778899aabb";
+
+        public static IDataArguments Arguments(int toolTimeoutMs = 10_000, int pluginTimeoutMs = 2_000)
+        {
+            var arguments = new Mock<IDataArguments>();
+            arguments.Setup(a => a.PluginTimeoutMs).Returns(pluginTimeoutMs);
+            arguments.As<IToolTimeoutArguments>().Setup(a => a.ToolTimeoutMs).Returns(toolTimeoutMs);
+            return arguments.Object;
+        }
+
+        /// <summary>A strategy that resolves every attempt to <paramref name="connectionId"/> (null: no plugin).</summary>
+        public static Mock<IMcpConnectionStrategy> StrategyResolving(string? connectionId)
+        {
+            var strategy = new Mock<IMcpConnectionStrategy>();
+            strategy.Setup(s => s.ResolveConnectionId(It.IsAny<string?>(), It.IsAny<int>())).Returns(connectionId);
+            return strategy;
+        }
+
+        public static RequestTrackingService Tracking() => new RequestTrackingService(NullLogger<RequestTrackingService>.Instance);
 
         public static ResponseListTool[] Tools(params string[] names)
             => names.Select(n => new ResponseListTool
