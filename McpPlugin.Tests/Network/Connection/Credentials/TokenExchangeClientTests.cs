@@ -90,7 +90,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection.Credentials
 
             result.Succeeded.ShouldBeFalse();
             result.AccessToken.ShouldBeNull();
-            result.FailureReason.ShouldContain("invalid_scope");
+            result.FailureReason.ShouldNotBeNull().ShouldContain("invalid_scope");
         }
 
         [Fact]
