@@ -18,6 +18,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
+using com.IvanMurzak.McpPlugin.Server.Tools;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using R3;
@@ -50,8 +51,23 @@ namespace com.IvanMurzak.McpPlugin.Server
             _cancellationTokenSource = _disposables.ToCancellationTokenSource();
         }
 
+        /// <summary>
+        /// The system tool clients poll as an engine liveness probe (the App every ~30 s, with a 2 s budget).
+        /// </summary>
+        internal const string LivenessProbeToolName = "ping";
+
         public async Task<ResponseData<ResponseCallTool>> RunSystemTool(RequestCallTool request, CancellationToken cancellationToken = default)
         {
+            // A liveness probe asks "is the plugin connected right now?": with none connected it answers that at
+            // once (Unavailable, HTTP 503) instead of waiting through the reconnect retry ladder, which outlived
+            // the probe's own timeout. Other system tools keep waiting for a reconnecting plugin.
+            if (request.Name == LivenessProbeToolName
+                && _strategy.ResolveConnectionId(McpSessionTokenContext.CurrentToken, 0) == null)
+            {
+                _logger.LogDebug("System tool '{name}': no engine plugin is connected; answering at once.", request.Name);
+                return ResponseCallTool.Error(NotConnectedMessage(), ResponseErrorKind.Unavailable).Pack(request.RequestID);
+            }
+
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
             cancellationToken = linkedCts.Token;
 
@@ -85,6 +101,20 @@ namespace com.IvanMurzak.McpPlugin.Server
                 cancellationToken);
 
             return response.Pack(request.RequestID);
+        }
+
+        /// <summary>
+        /// Why no plugin resolved, in the words the App's probe recognizes: with account routing the
+        /// account-empty or pinned-no-match text (<see cref="AgentActionableErrors"/>), else the generic one.
+        /// </summary>
+        string NotConnectedMessage()
+        {
+            if (_strategy is not AccountMcpStrategy account)
+                return ClientUtils.NoPluginConnectedMessage;
+
+            var identity = McpSessionTokenContext.CurrentIdentity;
+            return AgentActionableErrors.ForResolution(
+                account.ResolveCurrentSession(), account.Instances, identity?.AccountId, identity?.BoundProjectPin);
         }
 
         public async Task<ResponseData<ResponseListTool[]>> RunListSystemTool(RequestListTool request, CancellationToken cancellationToken = default)
