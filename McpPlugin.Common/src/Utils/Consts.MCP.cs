@@ -396,6 +396,16 @@ namespace com.IvanMurzak.McpPlugin.Common
                     /// state: a client that never sends it keeps the pre-existing behaviour exactly.</para>
                     /// </summary>
                     public const string InstanceId = "AI-Game-Dev-Instance-Id";
+
+                    /// <summary>
+                    /// Response header the server sets to <see cref="SessionReplacedValue"/> on a request whose
+                    /// <c>Mcp-Session-Id</c> a newer <c>initialize</c> with the same <see cref="InstanceId"/>
+                    /// replaced; see <c>IMcpSessionReaper.WasReplaced</c> in McpPlugin.Server.
+                    /// </summary>
+                    public const string SessionReplaced = "AI-Game-Dev-Session-Replaced";
+
+                    /// <summary>The value of <see cref="SessionReplaced"/>.</summary>
+                    public const string SessionReplacedValue = "1";
                 }
             }
         }

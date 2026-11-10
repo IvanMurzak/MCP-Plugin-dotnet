@@ -21,6 +21,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Auth.OAuth;
@@ -464,6 +465,60 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             reaper.CurrentSessionIdFor(AccountA, InstanceX, null).ShouldBe(b, "and it does not take the slot back");
         }
 
+        // ───────────────────────────── the replaced-session signal ─────────────────────────────
+
+        /// <summary>
+        /// The client whose session was replaced is told so, and nobody else is. Without the signal a replaced
+        /// client sees only a stream that ended cleanly — the same as a server restart — so it can never tell
+        /// that another live client presents its identity, and two such clients replace each other forever.
+        /// </summary>
+        [Fact]
+        public async Task ReplacedSessionId_IsAnsweredWithTheReplacedHeader_ForItsOwnAccountOnly()
+        {
+            await using var host = await StartOAuthHostAsync();
+            using var client = NewClient();
+
+            var first = await host.InitializeAsync(client, AccountA, InstanceX);
+            (await host.SendAsync(client, AccountA, first, InstanceX, Ping(id: 2))).Replaced
+                .ShouldBeFalse("a session holding its slot was not replaced");
+
+            var second = await host.InitializeAsync(client, AccountA, InstanceX);
+
+            var replaced = await host.SendAsync(client, AccountA, first, InstanceX, Ping(id: 3));
+            replaced.Status.ShouldBe(HttpStatusCode.NotFound, replaced.Body);
+            replaced.Replaced.ShouldBeTrue("the replaced client must learn that a newer session took its identity");
+
+            (await host.SendAsync(client, AccountA, second, InstanceX, Ping(id: 4))).Replaced
+                .ShouldBeFalse("the replacement itself was not replaced");
+            (await host.SendAsync(client, AccountB, first, InstanceX, Ping(id: 5))).Replaced
+                .ShouldBeFalse("another account presenting the id learns nothing about it");
+
+            // An id that was never replaced (unknown, or ended on its own) is a plain 404 with no header.
+            var unknown = await host.SendAsync(client, AccountA, "0123456789abcdef0123456789abcdef", InstanceX, Ping(id: 6));
+            unknown.Status.ShouldBe(HttpStatusCode.NotFound);
+            unknown.Replaced.ShouldBeFalse();
+        }
+
+        /// <summary>
+        /// With a migration store the replaced id is still served (released clients rely on that), and the
+        /// header rides on the served response too: the signal changes nothing but what a client can know.
+        /// </summary>
+        [Fact]
+        public async Task ReplacedSessionId_RehydratedByTheMigrationStore_IsServed_AndStillCarriesTheHeader()
+        {
+            var migration = new InMemorySessionMigrationHandler();
+            await using var host = await StartOAuthHostAsync(migration: migration);
+            using var client = NewClient();
+
+            var x = await host.InitializeAsync(client, AccountA, InstanceX);
+            var y = await host.InitializeAsync(client, AccountA, InstanceX);
+
+            var xAgain = await host.SendAsync(client, AccountA, x, InstanceX, Ping(id: 2));
+            xAgain.Status.ShouldBe(HttpStatusCode.OK, xAgain.Body);
+            xAgain.Replaced.ShouldBeTrue();
+            (await host.SendAsync(client, AccountA, y, InstanceX, Ping(id: 3))).Replaced.ShouldBeFalse();
+        }
+
         /// <summary>Keeps every initialized session's params in memory and rehydrates any id it saw.</summary>
         sealed class InMemorySessionMigrationHandler : ISessionMigrationHandler
         {
@@ -650,7 +705,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 using var response = await client.SendAsync(request);
                 var body = await response.Content.ReadAsStringAsync();
                 var issued = response.Headers.TryGetValues("Mcp-Session-Id", out var values) ? values.FirstOrDefault() : null;
-                return new Response(response.StatusCode, Unwrap(body), issued);
+                var replaced = response.Headers.TryGetValues(Consts.MCP.Server.Headers.SessionReplaced, out var flags)
+                    && flags.Contains(Consts.MCP.Server.Headers.SessionReplacedValue);
+                return new Response(response.StatusCode, Unwrap(body), issued) { Replaced = replaced };
             }
 
             public async ValueTask DisposeAsync()
@@ -673,6 +730,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             public HttpStatusCode Status { get; }
             public string Body { get; }
             public string? SessionId { get; }
+
+            /// <summary>Whether the response carried the replaced-session header.</summary>
+            public bool Replaced { get; init; }
         }
 
         /// <summary>

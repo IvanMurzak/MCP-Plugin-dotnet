@@ -151,6 +151,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             if (selectionStore != null)
                 McpSessionTokenContext.CurrentSelectedInstanceId = selectionStore.Get(sessionId);
 
+            // Tell a client whose session another live client of its identity replaced; header only, the
+            // request is served as before (see IMcpSessionReaper.WasReplaced).
+            if (!string.IsNullOrEmpty(sessionId)
+                && context.RequestServices?.GetService<IMcpSessionReaper>() is { } reaper
+                && reaper.WasReplaced(sessionId, McpSessionTokenContext.CurrentIdentity?.AccountId))
+            {
+                context.Response.Headers[Consts.MCP.Server.Headers.SessionReplaced] =
+                    Consts.MCP.Server.Headers.SessionReplacedValue;
+            }
+
             var remoteIp = context.Connection.RemoteIpAddress?.ToString();
             if (!string.IsNullOrEmpty(remoteIp))
                 McpSessionTokenContext.CurrentClientIp = remoteIp;

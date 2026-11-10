@@ -30,6 +30,30 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// </summary>
         sealed record IdentityKey(string AccountSub, string InstanceId, string? ProjectPin);
 
+        /// <summary>
+        /// How long a replaced session id is remembered for <see cref="WasReplaced"/>. A live client that was
+        /// replaced asks within its reconnect backoff (at most 30 s), so minutes are plenty; the bound keeps
+        /// the memory a function of the replace RATE, not of the uptime.
+        /// </summary>
+        public static readonly TimeSpan ReplacedSessionRetention = TimeSpan.FromMinutes(10);
+
+        /// <summary>Hard ceiling on remembered replaced ids, whatever the rate (oldest dropped first).</summary>
+        public const int MaxReplacedSessions = 10_000;
+
+        // A class, not a record: the queue's compare-and-remove must match by reference, so an older queue
+        // item can never remove a newer entry for the same id that happens to carry equal values.
+        sealed class ReplacedSession
+        {
+            public ReplacedSession(string accountSub, DateTimeOffset expiresAt)
+            {
+                AccountSub = accountSub;
+                ExpiresAt = expiresAt;
+            }
+
+            public string AccountSub { get; }
+            public DateTimeOffset ExpiresAt { get; }
+        }
+
         readonly ILogger<McpSessionReaper>? _logger;
         readonly IMcpSdkSessionEvictor _evictor;
 
@@ -43,10 +67,45 @@ namespace com.IvanMurzak.McpPlugin.Server
         // replace can ever reach, which is the exact failure this class exists to prevent.
         readonly object _claimLock = new object();
 
-        public McpSessionReaper(IMcpSdkSessionEvictor evictor, ILogger<McpSessionReaper>? logger = null)
+        // Session id -> the account it belonged to and when the memory of its replacement expires.
+        readonly ConcurrentDictionary<string, ReplacedSession> _replaced =
+            new ConcurrentDictionary<string, ReplacedSession>(StringComparer.Ordinal);
+        // The same entries in insertion order; also the lock that serialises writers of both.
+        readonly Queue<KeyValuePair<string, ReplacedSession>> _replacedOrder =
+            new Queue<KeyValuePair<string, ReplacedSession>>();
+        readonly Func<DateTimeOffset> _clock;
+
+        public McpSessionReaper(IMcpSdkSessionEvictor evictor, ILogger<McpSessionReaper>? logger = null,
+            Func<DateTimeOffset>? clock = null)
         {
             _evictor = evictor ?? throw new ArgumentNullException(nameof(evictor));
             _logger = logger;
+            _clock = clock ?? (() => DateTimeOffset.UtcNow);
+        }
+
+        public bool WasReplaced(string? mcpSessionId, string? accountSub)
+            => !string.IsNullOrEmpty(mcpSessionId)
+               && _replaced.TryGetValue(mcpSessionId!, out var replaced)
+               && replaced.ExpiresAt > _clock()
+               && string.Equals(replaced.AccountSub, accountSub, StringComparison.Ordinal);
+
+        void RememberReplaced(string mcpSessionId, string accountSub)
+        {
+            var now = _clock();
+            var entry = new ReplacedSession(accountSub, now + ReplacedSessionRetention);
+            lock (_replacedOrder)
+            {
+                _replaced[mcpSessionId] = entry;
+                _replacedOrder.Enqueue(new KeyValuePair<string, ReplacedSession>(mcpSessionId, entry));
+                // Every entry lives equally long, so insertion order is expiry order: the front of the queue
+                // is always the next to expire, and the oldest to drop past the ceiling.
+                while (_replacedOrder.Count > 0
+                       && (_replacedOrder.Peek().Value.ExpiresAt <= now || _replacedOrder.Count > MaxReplacedSessions))
+                {
+                    // Compare-and-remove: a later replace of the same id keeps its own, newer entry.
+                    _replaced.TryRemove(_replacedOrder.Dequeue());
+                }
+            }
         }
 
         public int TrackedIdentityCount => _slots.Count;
@@ -120,6 +179,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                 }
 
                 _slots[key] = lease;
+                // A session that holds the slot again (a rehydrated one that found it vacant) is no longer
+                // replaced: telling its client otherwise would report a duplicate that is not there.
+                _replaced.TryRemove(mcpSessionId, out _);
             }
 
             if (sameSessionReclaim)
@@ -138,6 +200,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                 return lease;
             }
 
+            // Remembered BEFORE the eviction ends the predecessor's notification stream: the replaced client
+            // asks about its old id as soon as that stream ends, and must already get the answer.
+            RememberReplaced(predecessor.McpSessionId, accountSub!);
             var eviction = _evictor.Evict(predecessor.McpSessionId);
             lease.SetDisplacedPredecessor(eviction);
 
