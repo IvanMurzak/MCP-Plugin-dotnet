@@ -12,7 +12,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using Microsoft.Extensions.Logging;
 
@@ -59,6 +58,9 @@ namespace com.IvanMurzak.McpPlugin.Server
         // Session id -> the account it belonged to and when the memory of its replacement expires.
         readonly ConcurrentDictionary<string, ReplacedSession> _replaced =
             new ConcurrentDictionary<string, ReplacedSession>(StringComparer.Ordinal);
+        // The same entries in insertion order; also the lock that serialises writers of both.
+        readonly Queue<KeyValuePair<string, ReplacedSession>> _replacedOrder =
+            new Queue<KeyValuePair<string, ReplacedSession>>();
         readonly Func<DateTimeOffset> _clock;
 
         public McpSessionReaper(IMcpSdkSessionEvictor evictor, ILogger<McpSessionReaper>? logger = null,
@@ -70,41 +72,29 @@ namespace com.IvanMurzak.McpPlugin.Server
         }
 
         public bool WasReplaced(string? mcpSessionId, string? accountSub)
-        {
-            if (string.IsNullOrEmpty(mcpSessionId) || string.IsNullOrEmpty(accountSub))
-                return false;
-            if (!_replaced.TryGetValue(mcpSessionId!, out var replaced))
-                return false;
-            if (replaced.ExpiresAt <= _clock())
-            {
-                RemoveReplaced(new KeyValuePair<string, ReplacedSession>(mcpSessionId!, replaced));
-                return false;
-            }
-            return string.Equals(replaced.AccountSub, accountSub, StringComparison.Ordinal);
-        }
+            => !string.IsNullOrEmpty(mcpSessionId)
+               && _replaced.TryGetValue(mcpSessionId!, out var replaced)
+               && replaced.ExpiresAt > _clock()
+               && string.Equals(replaced.AccountSub, accountSub, StringComparison.Ordinal);
 
         void RememberReplaced(string mcpSessionId, string accountSub)
         {
             var now = _clock();
-            _replaced[mcpSessionId] = new ReplacedSession(accountSub, now + ReplacedSessionRetention);
-            if (_replaced.Count <= MaxReplacedSessions)
-                return;
-            foreach (var entry in _replaced)
+            var entry = new ReplacedSession(accountSub, now + ReplacedSessionRetention);
+            lock (_replacedOrder)
             {
-                if (entry.Value.ExpiresAt <= now)
-                    RemoveReplaced(entry);
-            }
-            var excess = _replaced.Count - MaxReplacedSessions;
-            if (excess > 0)
-            {
-                foreach (var entry in _replaced.OrderBy(e => e.Value.ExpiresAt).Take(excess).ToList())
-                    RemoveReplaced(entry);
+                _replaced[mcpSessionId] = entry;
+                _replacedOrder.Enqueue(new KeyValuePair<string, ReplacedSession>(mcpSessionId, entry));
+                // Every entry lives equally long, so insertion order is expiry order: the front of the queue
+                // is always the next to expire, and the oldest to drop past the ceiling.
+                while (_replacedOrder.Count > 0
+                       && (_replacedOrder.Peek().Value.ExpiresAt <= now || _replacedOrder.Count > MaxReplacedSessions))
+                {
+                    // Compare-and-remove: a later replace of the same id keeps its own, newer entry.
+                    _replaced.TryRemove(_replacedOrder.Dequeue());
+                }
             }
         }
-
-        // Compare-and-remove, so a concurrent re-insert of the same id is never dropped.
-        void RemoveReplaced(KeyValuePair<string, ReplacedSession> entry)
-            => ((ICollection<KeyValuePair<string, ReplacedSession>>)_replaced).Remove(entry);
 
         public int TrackedIdentityCount => _slots.Count;
 

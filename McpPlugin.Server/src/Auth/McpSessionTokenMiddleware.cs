@@ -151,11 +151,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             if (selectionStore != null)
                 McpSessionTokenContext.CurrentSelectedInstanceId = selectionStore.Get(sessionId);
 
-            // A request still carrying a session id that a newer `initialize` of the same identity replaced
-            // comes from a client that is ALIVE beside another client with its identity (a crashed client
-            // sends nothing). Say so in a header and change nothing else: a migration handler may still
-            // serve the id, and released clients rely on that (see IMcpSessionReaper.ClaimIfVacant).
-            // Scoped to the account the credential proved, so no other caller learns anything.
+            // Tell a client whose session another live client of its identity replaced; header only, the
+            // request is served as before (see IMcpSessionReaper.WasReplaced).
             if (!string.IsNullOrEmpty(sessionId)
                 && context.RequestServices?.GetService<IMcpSessionReaper>() is { } reaper
                 && reaper.WasReplaced(sessionId, McpSessionTokenContext.CurrentIdentity?.AccountId))

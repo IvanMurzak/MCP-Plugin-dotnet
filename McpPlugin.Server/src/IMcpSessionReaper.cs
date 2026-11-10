@@ -141,7 +141,9 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// <see cref="Claim"/> recently (a few minutes). A request that still carries such an id comes from a
         /// client that is alive while another live client presents the same identity — a duplicated identity,
         /// not a crash, since a crashed client sends nothing. The server tells that client so with the
-        /// <c>AI-Game-Dev-Session-Replaced</c> response header (see <c>McpSessionTokenMiddleware</c>).
+        /// <c>AI-Game-Dev-Session-Replaced</c> response header (see <c>McpSessionTokenMiddleware</c>). Only a
+        /// header, not a status: a session-migration store may still serve the replaced id, and released clients
+        /// rely on that (see <see cref="ClaimIfVacant"/>).
         ///
         /// <para>Only the session id and the account are remembered, never the instance id, and only for
         /// the retention window. Another account presenting the id learns nothing.</para>
