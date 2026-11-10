@@ -26,8 +26,11 @@ using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Auth.OAuth;
 using com.IvanMurzak.McpPlugin.Server.Tests.OAuth;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.AspNetCore;
+using ModelContextProtocol.Protocol;
 using Shouldly;
 using Xunit;
 
@@ -393,6 +396,100 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 "the log must carry the non-reversible fingerprint so two installations can be told apart");
         }
 
+        // ───────────────────────────── rehydrated sessions (2026-11-10 ping-pong) ─────────────────────────────
+
+        /// <summary>
+        /// The production race, replayed: two clients of one installation and project (two chats of one App)
+        /// run initialize then a request on the minted id, interleaved. Y's initialize displaces X; X's next
+        /// request carries its displaced id, which the session-migration store rehydrates. Before the fix that
+        /// rehydration displaced Y, Y's next request rehydrated Y and displaced X, and so on forever, each
+        /// displacement cancelling the other's in-flight request. Now a rehydrated session never displaces.
+        /// </summary>
+        [Fact]
+        public async Task RehydratedSession_NeverDisplacesTheLiveHolder()
+        {
+            var migration = new InMemorySessionMigrationHandler();
+            await using var host = await StartOAuthHostAsync(migration: migration);
+            var reaper = host.Services.GetRequiredService<IMcpSessionReaper>();
+            using var client = NewClient();
+
+            for (var round = 0; round < 5; round++)
+            {
+                var x = await host.InitializeAsync(client, AccountA, InstanceX);
+                var y = await host.InitializeAsync(client, AccountA, InstanceX);
+                reaper.CurrentSessionIdFor(AccountA, InstanceX, null).ShouldBe(y, "a real initialize displaces");
+
+                var xAgain = await host.SendAsync(client, AccountA, x, InstanceX, Ping(id: 10 + round));
+                xAgain.Status.ShouldBe(HttpStatusCode.OK, $"the displaced id is rehydrated and served: {xAgain.Body}");
+
+                reaper.CurrentSessionIdFor(AccountA, InstanceX, null).ShouldBe(y,
+                    "the rehydrated session must not take the slot from the live holder");
+                var yAgain = await host.SendAsync(client, AccountA, y, InstanceX, Ping(id: 20 + round));
+                yAgain.Status.ShouldBe(HttpStatusCode.OK,
+                    $"the live holder must still be served without a rehydration of its own: {yAgain.Body}");
+            }
+
+            migration.Rehydrations.ShouldBe(5, "one rehydration per round (X's displaced id), never one for Y");
+        }
+
+        /// <summary>
+        /// After a restart every slot is empty, so a rehydrated session still claims its slot, and the next real
+        /// initialize of the same identity still reaps it — the crashed-client guarantee is unchanged.
+        /// </summary>
+        [Fact]
+        public async Task RehydratedSession_ClaimsAVacantSlot_AndANewInitializeStillReapsIt()
+        {
+            var migration = new InMemorySessionMigrationHandler();
+            await using var host = await StartOAuthHostAsync(migration: migration);
+            var reaper = host.Services.GetRequiredService<IMcpSessionReaper>();
+            var evictor = host.Services.GetRequiredService<IMcpSdkSessionEvictor>();
+            using var client = NewClient();
+
+            var a = await host.InitializeAsync(client, AccountA, InstanceX);
+            // A restart, as the SDK sees it: the session is gone from memory and its slot is released.
+            var eviction = evictor.Evict(a);
+            eviction.Outcome.ShouldBe(SdkEvictionOutcome.Evicted);
+            await eviction.DisposeCompletion;
+            reaper.CurrentSessionIdFor(AccountA, InstanceX, null).ShouldBeNull();
+
+            var revived = await host.SendAsync(client, AccountA, a, InstanceX, Ping(id: 2));
+            revived.Status.ShouldBe(HttpStatusCode.OK, revived.Body);
+            migration.Rehydrations.ShouldBe(1);
+            reaper.CurrentSessionIdFor(AccountA, InstanceX, null).ShouldBe(a, "a vacant slot is claimed on rehydration");
+
+            var b = await host.InitializeAsync(client, AccountA, InstanceX);
+            reaper.CurrentSessionIdFor(AccountA, InstanceX, null).ShouldBe(b);
+            var reaped = await host.SendAsync(client, AccountA, a, InstanceX, Ping(id: 3));
+            reaped.Status.ShouldBe(HttpStatusCode.OK, "the reaped id is rehydrated once more, now without a slot");
+            reaper.CurrentSessionIdFor(AccountA, InstanceX, null).ShouldBe(b, "and it does not take the slot back");
+        }
+
+        /// <summary>Keeps every initialized session's params in memory and rehydrates any id it saw.</summary>
+        sealed class InMemorySessionMigrationHandler : ISessionMigrationHandler
+        {
+            readonly ConcurrentDictionary<string, InitializeRequestParams> _records =
+                new ConcurrentDictionary<string, InitializeRequestParams>(StringComparer.Ordinal);
+            int _rehydrations;
+
+            public int Rehydrations => _rehydrations;
+
+            public ValueTask OnSessionInitializedAsync(HttpContext context, string sessionId,
+                InitializeRequestParams initializeParams, System.Threading.CancellationToken cancellationToken)
+            {
+                _records[sessionId] = initializeParams;
+                return default;
+            }
+
+            public ValueTask<InitializeRequestParams?> AllowSessionMigrationAsync(HttpContext context, string sessionId,
+                System.Threading.CancellationToken cancellationToken)
+            {
+                if (!_records.TryGetValue(sessionId, out var initializeParams))
+                    return new ValueTask<InitializeRequestParams?>((InitializeRequestParams?)null);
+                System.Threading.Interlocked.Increment(ref _rehydrations);
+                return new ValueTask<InitializeRequestParams?>(initializeParams);
+            }
+        }
+
         // ───────────────────────────── harness ─────────────────────────────
 
         static HttpClient NewClient() => new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
@@ -421,7 +518,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         /// </summary>
         static object Ping(int id) => new { jsonrpc = "2.0", id, method = "ping" };
 
-        static async Task<OAuthHost> StartOAuthHostAsync(bool captureLogs = false, bool captureAllLevels = false)
+        static async Task<OAuthHost> StartOAuthHostAsync(bool captureLogs = false, bool captureAllLevels = false,
+            ISessionMigrationHandler? migration = null)
         {
             var port = FreeLoopbackPort();
             const string issuer = "https://as.example";              // never fetched: the JWKS provider is replaced below
@@ -454,6 +552,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             // Hermetic: serve the signing key from memory instead of fetching the AS over HTTP.
             builder.Services.AddSingleton<IJwksKeyProvider>(new FakeJwksKeyProvider().Add(Kid, key));
+            if (migration != null)
+                builder.Services.AddSingleton(migration);
 
             var app = builder.Build();
             app.Urls.Add($"http://127.0.0.1:{port}");

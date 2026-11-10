@@ -128,7 +128,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                     // HttpContext and the freshly minted session id it is about to be keyed under.
                     //
                     // Ordering is deliberate: the claim happens BEFORE `server.RunAsync` below, so a
-                    // predecessor is already unreachable by the time this session starts answering. The
+                    // predecessor is already gone from the SDK's session store by the time this session starts
+                    // answering (a migration handler may still rehydrate it later, without a slot). The
                     // claim itself is synchronous; only the predecessor's resource dispose is awaited, and
                     // that wait is bounded because the leak-stopping half already completed inside Claim().
                     //
@@ -154,7 +155,18 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                             McpSessionTokenMiddleware.ResolveEffectiveProjectPin(pinParse, projectPin, context.User, out projectPin);
 
                             var reaper = server.Services?.GetService<IMcpSessionReaper>();
-                            identityLease = reaper?.Claim(identity?.AccountId, instanceId, projectPin, mcpClientSessionId);
+                            // A rehydrated session must never displace a live holder: the displaced client's next
+                            // request would revive its own session and displace back, forever (see
+                            // IMcpSessionReaper.ClaimIfVacant). Two signals, either suffices: a new session is only
+                            // ever minted by an `initialize` WITHOUT an Mcp-Session-Id header, so a handler run for a
+                            // request that carries one is a migration by construction; and the SDK sets
+                            // KnownClientInfo / KnownClientCapabilities only on a session it migrated.
+                            var rehydrated = !string.IsNullOrEmpty(context.Request.Headers["Mcp-Session-Id"].ToString())
+                                          || server.ServerOptions.KnownClientInfo != null
+                                          || server.ServerOptions.KnownClientCapabilities != null;
+                            identityLease = rehydrated
+                                ? reaper?.ClaimIfVacant(identity?.AccountId, instanceId, projectPin, mcpClientSessionId)
+                                : reaper?.Claim(identity?.AccountId, instanceId, projectPin, mcpClientSessionId);
 
                             var predecessor = identityLease?.DisplacedPredecessor;
                             if (predecessor != null && !predecessor.DisposeCompletion.IsCompleted)

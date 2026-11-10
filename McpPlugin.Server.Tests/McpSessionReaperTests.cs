@@ -101,6 +101,52 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             second.DisplacedPredecessor!.Outcome.ShouldBe(SdkEvictionOutcome.Evicted);
         }
 
+        // ───────────────────────────── rehydrated sessions: ClaimIfVacant ─────────────────────────────
+
+        [Fact]
+        public void ClaimIfVacant_ClaimsAFreeSlot()
+        {
+            var (reaper, evictor) = Build();
+
+            var lease = reaper.ClaimIfVacant(AccountA, InstanceX, projectPin: null, mcpSessionId: "revived");
+
+            lease.ShouldNotBeNull("after a restart every slot is empty, so a rehydrated session claims it");
+            reaper.CurrentSessionIdFor(AccountA, InstanceX, null).ShouldBe("revived");
+            evictor.Evicted.ShouldBeEmpty();
+        }
+
+        [Fact]
+        public void ClaimIfVacant_NeverDisplacesALiveHolder()
+        {
+            var (reaper, evictor) = Build();
+            var holder = reaper.Claim(AccountA, InstanceX, projectPin: null, mcpSessionId: "live");
+
+            var revived = reaper.ClaimIfVacant(AccountA, InstanceX, projectPin: null, mcpSessionId: "revived");
+
+            revived.ShouldBeNull("a rehydrated session runs without a slot when another session holds it");
+            evictor.Evicted.ShouldBeEmpty("the live holder must not be evicted");
+            holder!.Displaced.ShouldBeFalse("nor flagged as displaced");
+            reaper.CurrentSessionIdFor(AccountA, InstanceX, null).ShouldBe("live");
+
+            // A real initialize still displaces, so the crashed-client reap is unchanged.
+            reaper.Claim(AccountA, InstanceX, projectPin: null, mcpSessionId: "next").ShouldNotBeNull();
+            evictor.Evicted.ShouldBe(new[] { "live" });
+        }
+
+        [Fact]
+        public void ClaimIfVacant_TheHolderItselfReclaimsItsSlot()
+        {
+            // Reachable: the holder was pruned from the SDK's store and its next request arrives before its own
+            // handler released the slot. It is the same session, so it keeps its slot and evicts nothing.
+            var (reaper, evictor) = Build();
+            reaper.Claim(AccountA, InstanceX, projectPin: null, mcpSessionId: "same").ShouldNotBeNull();
+
+            reaper.ClaimIfVacant(AccountA, InstanceX, projectPin: null, mcpSessionId: "same").ShouldNotBeNull();
+
+            evictor.Evicted.ShouldBeEmpty();
+            reaper.CurrentSessionIdFor(AccountA, InstanceX, null).ShouldBe("same");
+        }
+
         // ───────────────────────────── cross-account isolation (DoD 2) ─────────────────────────────
 
         [Fact]
