@@ -51,21 +51,19 @@ namespace com.IvanMurzak.McpPlugin.Server
             _cancellationTokenSource = _disposables.ToCancellationTokenSource();
         }
 
-        /// <summary>
-        /// The system tool clients poll as an engine liveness probe (the App every ~30 s, with a 2 s budget).
-        /// </summary>
+        /// <summary>The system tool clients poll as an engine liveness probe.</summary>
         internal const string LivenessProbeToolName = "ping";
 
         public async Task<ResponseData<ResponseCallTool>> RunSystemTool(RequestCallTool request, CancellationToken cancellationToken = default)
         {
             // A liveness probe asks "is the plugin connected right now?": with none connected it answers that at
-            // once (Unavailable, HTTP 503) instead of waiting through the reconnect retry ladder, which outlived
-            // the probe's own timeout. Other system tools keep waiting for a reconnecting plugin.
-            if (request.Name == LivenessProbeToolName
-                && _strategy.ResolveConnectionId(McpSessionTokenContext.CurrentToken, 0) == null)
+            // once (Unavailable, HTTP 503) instead of waiting through the retry ladder, which outlived the probe's
+            // own timeout (the App gives it 2 s). Other system tools keep waiting for a reconnecting plugin.
+            var isLivenessProbe = request.Name == LivenessProbeToolName;
+            if (isLivenessProbe && NotConnectedMessage() is { } notConnected)
             {
                 _logger.LogDebug("System tool '{name}': no engine plugin is connected; answering at once.", request.Name);
-                return ResponseCallTool.Error(NotConnectedMessage(), ResponseErrorKind.Unavailable).Pack(request.RequestID);
+                return ResponseCallTool.Error(notConnected, ResponseErrorKind.Unavailable).Pack(request.RequestID);
             }
 
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
@@ -77,15 +75,18 @@ namespace com.IvanMurzak.McpPlugin.Server
                 async () =>
                 {
                     // Sent once, never retried: a retry would run the tool a second time.
-                    var responseData = await ClientUtils.InvokeOnceAsync<RequestCallTool, ResponseCallTool, McpServerHub>(
+                    // A probe whose plugin dropped since the check above still never waits for it.
+                    var responseData = await ClientUtils.InvokeCoreAsync<RequestCallTool, ResponseCallTool, McpServerHub>(
                         logger: _logger,
                         hubContext: _remoteAppContext,
                         methodName: nameof(IClientSystemToolHub.RunSystemTool),
                         request: request,
                         timeoutMs: toolTimeoutMs,
+                        retryAfterDelivery: false,
                         strategy: _strategy,
                         token: McpSessionTokenContext.CurrentToken,
-                        cancellationToken: cancellationToken);
+                        cancellationToken: cancellationToken,
+                        waitForClient: isLivenessProbe ? CatalogAwareInvoke.NeverWait : null);
 
                     if (responseData.Status == ResponseStatus.Error)
                     {
@@ -104,17 +105,22 @@ namespace com.IvanMurzak.McpPlugin.Server
         }
 
         /// <summary>
-        /// Why no plugin resolved, in the words the App's probe recognizes: with account routing the
-        /// account-empty or pinned-no-match text (<see cref="AgentActionableErrors"/>), else the generic one.
+        /// Null while a plugin resolves for the current session. Otherwise why not, in the words the App's probe
+        /// recognizes: with account routing the account-empty or pinned-no-match text, else the generic one.
         /// </summary>
-        string NotConnectedMessage()
+        string? NotConnectedMessage()
         {
-            if (_strategy is not AccountMcpStrategy account)
-                return ClientUtils.NoPluginConnectedMessage;
+            if (_strategy is AccountMcpStrategy account)
+            {
+                var resolution = account.ResolveCurrentSession();
+                return resolution.Kind == InstanceResolutionKind.Resolved && resolution.Instance != null
+                    ? null
+                    : AgentActionableErrors.ForCurrentSession(resolution, account.Instances);
+            }
 
-            var identity = McpSessionTokenContext.CurrentIdentity;
-            return AgentActionableErrors.ForResolution(
-                account.ResolveCurrentSession(), account.Instances, identity?.AccountId, identity?.BoundProjectPin);
+            return _strategy.ResolveConnectionId(McpSessionTokenContext.CurrentToken, 0) == null
+                ? ClientUtils.NoPluginConnectedMessage
+                : null;
         }
 
         public async Task<ResponseData<ResponseListTool[]>> RunListSystemTool(RequestListTool request, CancellationToken cancellationToken = default)

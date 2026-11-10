@@ -276,31 +276,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             => new RemoteToolRunner(NullLogger<RemoteToolRunner>.Instance, _hub, Arguments(), Tracking(), _strategy, catalog);
 
         static IDataArguments Arguments(int toolTimeoutMs = 10_000, int pluginTimeoutMs = 2_000)
-        {
-            var arguments = new Mock<IDataArguments>();
-            arguments.Setup(a => a.PluginTimeoutMs).Returns(pluginTimeoutMs);
-            arguments.As<IToolTimeoutArguments>().Setup(a => a.ToolTimeoutMs).Returns(toolTimeoutMs);
-            return arguments.Object;
-        }
+            => PluginReconnect.Arguments(toolTimeoutMs, pluginTimeoutMs);
 
-        static Mock<IMcpConnectionStrategy> StrategyResolving(string? connectionId)
-        {
-            var strategy = new Mock<IMcpConnectionStrategy>();
-            strategy.Setup(s => s.ResolveConnectionId(It.IsAny<string?>(), It.IsAny<int>())).Returns(connectionId);
-            return strategy;
-        }
+        static Mock<IMcpConnectionStrategy> StrategyResolving(string? connectionId) => PluginReconnect.StrategyResolving(connectionId);
 
-        static RequestTrackingService Tracking() => new RequestTrackingService(NullLogger<RequestTrackingService>.Instance);
+        static RequestTrackingService Tracking() => PluginReconnect.Tracking();
 
         Mock<ISingleClientProxy> Plugin(string connectionId) => _plugins.Add(connectionId);
 
-        Mock<ISingleClientProxy> PluginAnsweringCalls(string connectionId)
-        {
-            var plugin = Plugin(connectionId);
-            plugin.Setup(c => c.InvokeCoreAsync<ResponseData<ResponseCallTool>>(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(ResponseCallTool.Success("done").Pack("r"));
-            return plugin;
-        }
+        Mock<ISingleClientProxy> PluginAnsweringCalls(string connectionId) => _plugins.AddAnsweringCalls(connectionId);
 
         /// <summary>Connects an instance, remembers its tools, then drops its connection.</summary>
         void RememberToolsOf(string instanceId, string connectionId, PluginCatalogCache catalog)
@@ -316,7 +300,6 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         void Unregister(string connectionId, PluginCatalogCache catalog)
             => PluginReconnect.Unregister(_strategy, catalog, connectionId);
 
-        static void VerifyCalls(Mock<ISingleClientProxy> plugin, Times times)
-            => plugin.Verify(c => c.InvokeCoreAsync<ResponseData<ResponseCallTool>>(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()), times);
+        static void VerifyCalls(Mock<ISingleClientProxy> plugin, Times times) => FakePluginHub.VerifyCalls(plugin, times);
     }
 }

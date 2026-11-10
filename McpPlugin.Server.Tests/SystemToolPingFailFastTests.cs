@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -33,9 +34,8 @@ using Xunit;
 namespace com.IvanMurzak.McpPlugin.Server.Tests
 {
     /// <summary>
-    /// The system-tools <c>ping</c> is a liveness probe (the App polls it every ~30 s with a 2 s budget). With no
-    /// engine plugin connected it answers 503 at once, instead of waiting through the ~10 s retry ladder that
-    /// outlived the probe (HTTP 499 in production). Every other request keeps waiting for a reconnecting plugin.
+    /// The system-tools <c>ping</c> liveness probe answers 503 at once when no engine plugin is connected, instead of
+    /// waiting through the ~10 s retry ladder (HTTP 499 in production). Every other request keeps waiting.
     /// </summary>
     [Collection("McpPlugin.Server")]
     public sealed class SystemToolPingFailFastTests
@@ -71,7 +71,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             await using var host = await OAuthMcpHost.StartAsync(services => services.AddSingleton(_plugins.Context), Account);
             var strategy = (AccountMcpStrategy)host.Services.GetRequiredService<IMcpConnectionStrategy>();
             var catalog = host.Services.GetRequiredService<PluginCatalogCache>();
-            PluginAnswering("conn-a");
+            _plugins.AddAnsweringCalls("conn-a");
             PluginReconnect.Register(strategy, catalog, Account, "instance-a", "conn-a");
             using var http = new HttpClient();
 
@@ -91,9 +91,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public async Task Ping_NoPluginWithoutAccountRouting_AnswersAtOnce_WithoutRetrying()
         {
-            var strategy = StrategyResolving(null);
+            var strategy = PluginReconnect.StrategyResolving(null);
             using var runner = SystemRunner(strategy.Object);
-            using var request = new RequestCallTool(RemoteSystemToolRunner.LivenessProbeToolName, new Dictionary<string, JsonElement>());
+            using var request = PingRequest();
 
             var watch = Stopwatch.StartNew();
             var result = await runner.RunSystemTool(request).WaitAsync(TimeSpan.FromSeconds(30));
@@ -108,14 +108,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public async Task Ping_PluginConnected_IsSentToThePluginOnce()
         {
-            var plugin = PluginAnswering("c1");
-            using var runner = SystemRunner(StrategyResolving("c1").Object);
-            using var request = new RequestCallTool(RemoteSystemToolRunner.LivenessProbeToolName, new Dictionary<string, JsonElement>());
+            var plugin = _plugins.AddAnsweringCalls("c1");
+            using var runner = SystemRunner(PluginReconnect.StrategyResolving("c1").Object);
+            using var request = PingRequest();
 
             var result = await runner.RunSystemTool(request).WaitAsync(TimeSpan.FromSeconds(10));
 
             result.Status.ShouldBe(ResponseStatus.Success);
-            VerifyCalls(plugin, Times.Once());
+            FakePluginHub.VerifyCalls(plugin, Times.Once());
         }
 
         // ─────────────── everything else still waits ───────────────
@@ -125,10 +125,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             var strategy = new AccountMcpStrategy();
             var catalog = new PluginCatalogCache(strategy, TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(30));
-            var arguments = Arguments();
-            using var tools = new RemoteToolRunner(NullLogger<RemoteToolRunner>.Instance, _plugins.Context, arguments, Tracking(), strategy, catalog);
-            using var system = new RemoteSystemToolRunner(NullLogger<RemoteSystemToolRunner>.Instance, _plugins.Context, arguments, Tracking(), strategy);
-            var oldPlugin = PluginAnswering("c1");
+            var arguments = PluginReconnect.Arguments(toolTimeoutMs: 60_000);
+            using var tools = new RemoteToolRunner(NullLogger<RemoteToolRunner>.Instance, _plugins.Context, arguments, PluginReconnect.Tracking(), strategy, catalog);
+            using var system = new RemoteSystemToolRunner(NullLogger<RemoteSystemToolRunner>.Instance, _plugins.Context, arguments, PluginReconnect.Tracking(), strategy);
+            var oldPlugin = _plugins.AddAnsweringCalls("c1");
             PluginReconnect.Register(strategy, catalog, Account, "i1", "c1");
             catalog.Record("c1", PluginCatalogKind.Tools, PluginReconnect.Tools("engine_tool"));
             PluginReconnect.Unregister(strategy, catalog, "c1"); // the plugin drops (a recompile)
@@ -138,7 +138,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 using var callRequest = new RequestCallTool("engine_tool", new Dictionary<string, JsonElement>());
                 var call = tools.RunCallTool(callRequest);
 
-                using var pingRequest = new RequestCallTool(RemoteSystemToolRunner.LivenessProbeToolName, new Dictionary<string, JsonElement>());
+                using var pingRequest = PingRequest();
                 var watch = Stopwatch.StartNew();
                 var ping = await system.RunSystemTool(pingRequest).WaitAsync(TimeSpan.FromSeconds(30));
                 watch.Elapsed.ShouldBeLessThan(Fast);
@@ -146,29 +146,31 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
                 await Task.Delay(500);
                 call.IsCompleted.ShouldBeFalse("a tool call must keep waiting for the reconnecting plugin");
-                var newPlugin = PluginAnswering("c2");
+                var newPlugin = _plugins.AddAnsweringCalls("c2");
                 PluginReconnect.Register(strategy, catalog, Account, "i1", "c2");
                 var result = await call.WaitAsync(TimeSpan.FromSeconds(10));
 
                 result.Status.ShouldBe(ResponseStatus.Success);
-                VerifyCalls(newPlugin, Times.Once());
+                FakePluginHub.VerifyCalls(newPlugin, Times.Once());
             }
-            VerifyCalls(oldPlugin, Times.Never());
+            FakePluginHub.VerifyCalls(oldPlugin, Times.Never());
         }
 
         [Fact]
         public async Task OtherSystemTool_NoPlugin_StillWaitsThroughTheRetryLadder()
         {
-            var strategy = StrategyResolving(null);
+            var strategy = PluginReconnect.StrategyResolving(null);
             using var runner = SystemRunner(strategy.Object);
             using var request = new RequestCallTool("other_system_tool", new Dictionary<string, JsonElement>());
             using var cts = new CancellationTokenSource();
 
             var call = runner.RunSystemTool(request, cts.Token);
-            await Task.Delay(1500);
+            var retried = Stopwatch.StartNew();
+            while (!Retried(strategy) && retried.Elapsed < TimeSpan.FromSeconds(5))
+                await Task.Delay(50);
 
+            Retried(strategy).ShouldBeTrue("the retry ladder runs for other system tools");
             call.IsCompleted.ShouldBeFalse("only the liveness probe skips the wait for a plugin");
-            strategy.Verify(s => s.ResolveConnectionId(It.IsAny<string?>(), 1), Times.Once(), "the ladder retried");
             cts.Cancel();
             await Should.ThrowAsync<OperationCanceledException>(() => call.WaitAsync(TimeSpan.FromSeconds(10)));
         }
@@ -187,35 +189,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             return (response.StatusCode, error);
         }
 
+        static RequestCallTool PingRequest() => new RequestCallTool(RemoteSystemToolRunner.LivenessProbeToolName, new Dictionary<string, JsonElement>());
+
+        static bool Retried(Mock<IMcpConnectionStrategy> strategy)
+            => strategy.Invocations.Any(i => i.Method.Name == nameof(IMcpConnectionStrategy.ResolveConnectionId) && (int)i.Arguments[1] > 0);
+
         RemoteSystemToolRunner SystemRunner(IMcpConnectionStrategy strategy)
-            => new RemoteSystemToolRunner(NullLogger<RemoteSystemToolRunner>.Instance, _plugins.Context, Arguments(), Tracking(), strategy);
-
-        static IDataArguments Arguments()
-        {
-            var arguments = new Mock<IDataArguments>();
-            arguments.Setup(a => a.PluginTimeoutMs).Returns(2_000);
-            arguments.As<IToolTimeoutArguments>().Setup(a => a.ToolTimeoutMs).Returns(60_000);
-            return arguments.Object;
-        }
-
-        static Mock<IMcpConnectionStrategy> StrategyResolving(string? connectionId)
-        {
-            var strategy = new Mock<IMcpConnectionStrategy>();
-            strategy.Setup(s => s.ResolveConnectionId(It.IsAny<string?>(), It.IsAny<int>())).Returns(connectionId);
-            return strategy;
-        }
-
-        static RequestTrackingService Tracking() => new RequestTrackingService(NullLogger<RequestTrackingService>.Instance);
-
-        Mock<ISingleClientProxy> PluginAnswering(string connectionId)
-        {
-            var plugin = _plugins.Add(connectionId);
-            plugin.Setup(c => c.InvokeCoreAsync<ResponseData<ResponseCallTool>>(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => ResponseCallTool.Success("pong").Pack("r"));
-            return plugin;
-        }
-
-        static void VerifyCalls(Mock<ISingleClientProxy> plugin, Times times)
-            => plugin.Verify(c => c.InvokeCoreAsync<ResponseData<ResponseCallTool>>(It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()), times);
+            => new RemoteSystemToolRunner(NullLogger<RemoteSystemToolRunner>.Instance, _plugins.Context,
+                PluginReconnect.Arguments(toolTimeoutMs: 60_000), PluginReconnect.Tracking(), strategy);
     }
 }

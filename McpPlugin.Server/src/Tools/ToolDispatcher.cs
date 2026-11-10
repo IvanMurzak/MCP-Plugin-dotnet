@@ -14,7 +14,6 @@ using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
-using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -54,9 +53,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                 if (resolution.Kind != InstanceResolutionKind.Resolved
                     && services.GetService<PluginCatalogCache>()?.HasOfflineTargetForCurrentSession() != true)
                 {
-                    var identity = McpSessionTokenContext.CurrentIdentity;
-                    var message = AgentActionableErrors.ForResolution(
-                        resolution, strategy.Instances, identity?.AccountId, identity?.BoundProjectPin);
+                    var message = AgentActionableErrors.ForCurrentSession(resolution, strategy.Instances);
                     var kind = resolution.Kind == InstanceResolutionKind.NoMatchPinned
                         ? ResponseErrorKind.NotFound : ResponseErrorKind.Unavailable;
                     return ResponseCallTool.Error(message, kind).Pack(request.RequestID);
