@@ -95,7 +95,9 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// rejection, no warning.</para>
         ///
         /// <para>The SDK-side removal of the predecessor happens <b>before this method returns</b>, so on
-        /// return the old session id is already unreachable. Only the predecessor's resource dispose may
+        /// return the old session id is gone from this process's session store. With a session-migration
+        /// handler registered, a later request carrying that id is rehydrated, without a slot (see
+        /// <see cref="ClaimIfVacant"/>). Only the predecessor's resource dispose may
         /// still be in flight; await <see cref="IMcpSessionIdentityLease.DisplacedPredecessor"/>'s
         /// <see cref="SdkEvictionHandle.DisposeCompletion"/> if you need it finished.</para>
         /// </summary>
