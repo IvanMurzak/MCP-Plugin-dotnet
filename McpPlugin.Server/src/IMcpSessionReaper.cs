@@ -143,7 +143,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// not a crash, since a crashed client sends nothing. The server tells that client so with the
         /// <c>AI-Game-Dev-Session-Replaced</c> response header (see <c>McpSessionTokenMiddleware</c>). Only a
         /// header, not a status: a session-migration store may still serve the replaced id, and released clients
-        /// rely on that (see <see cref="ClaimIfVacant"/>).
+        /// rely on that (see <see cref="ClaimIfVacant"/>). The memory is this process's: after a restart, or on
+        /// another replica, a replaced client gets no header and sees only the stream end, as before.
         ///
         /// <para>Only the session id and the account are remembered, never the instance id, and only for
         /// the retention window. Another account presenting the id learns nothing.</para>

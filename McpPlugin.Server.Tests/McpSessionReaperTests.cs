@@ -429,6 +429,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
+        public void ReplacedSession_ThatReclaimsAVacantSlot_IsNoLongerReported()
+        {
+            var (reaper, _) = Build();
+            reaper.Claim(AccountA, InstanceX, projectPin: null, mcpSessionId: "x");
+            var y = reaper.Claim(AccountA, InstanceX, projectPin: null, mcpSessionId: "y")!;
+            reaper.WasReplaced("x", AccountA).ShouldBeTrue();
+
+            // The replacement ends on its own; the replaced session is rehydrated and finds the slot vacant.
+            y.Dispose();
+            reaper.ClaimIfVacant(AccountA, InstanceX, projectPin: null, mcpSessionId: "x").ShouldNotBeNull();
+            reaper.WasReplaced("x", AccountA).ShouldBeFalse("it holds its identity again; no other client does");
+        }
+
+        [Fact]
         public void ReplacedSessionMemory_IsBounded()
         {
             var now = DateTimeOffset.Parse("2026-11-10T12:00:00Z");

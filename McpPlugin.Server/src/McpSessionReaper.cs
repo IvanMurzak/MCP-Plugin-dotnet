@@ -40,7 +40,19 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// <summary>Hard ceiling on remembered replaced ids, whatever the rate (oldest dropped first).</summary>
         public const int MaxReplacedSessions = 10_000;
 
-        sealed record ReplacedSession(string AccountSub, DateTimeOffset ExpiresAt);
+        // A class, not a record: the queue's compare-and-remove must match by reference, so an older queue
+        // item can never remove a newer entry for the same id that happens to carry equal values.
+        sealed class ReplacedSession
+        {
+            public ReplacedSession(string accountSub, DateTimeOffset expiresAt)
+            {
+                AccountSub = accountSub;
+                ExpiresAt = expiresAt;
+            }
+
+            public string AccountSub { get; }
+            public DateTimeOffset ExpiresAt { get; }
+        }
 
         readonly ILogger<McpSessionReaper>? _logger;
         readonly IMcpSdkSessionEvictor _evictor;
@@ -167,6 +179,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                 }
 
                 _slots[key] = lease;
+                // A session that holds the slot again (a rehydrated one that found it vacant) is no longer
+                // replaced: telling its client otherwise would report a duplicate that is not there.
+                _replaced.TryRemove(mcpSessionId, out _);
             }
 
             if (sameSessionReclaim)
