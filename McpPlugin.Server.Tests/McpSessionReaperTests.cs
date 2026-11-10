@@ -391,5 +391,53 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 "session was stranded live with nothing referencing it");
             evictor.Evicted.ShouldNotContain(survivor!, "the surviving session must not have been evicted");
         }
+
+        // ───────────────────────────── the replaced-session signal ─────────────────────────────
+
+        [Fact]
+        public void ReplacedSession_IsRememberedForItsAccountOnly_AndForgottenAfterTheRetention()
+        {
+            var now = DateTimeOffset.Parse("2026-11-10T12:00:00Z");
+            var reaper = new McpSessionReaper(new RecordingEvictor(), clock: () => now);
+
+            reaper.Claim(AccountA, InstanceX, projectPin: null, mcpSessionId: "first");
+            reaper.WasReplaced("first", AccountA).ShouldBeFalse("a session that holds its slot was not replaced");
+
+            reaper.Claim(AccountA, InstanceX, projectPin: null, mcpSessionId: "second");
+            reaper.WasReplaced("first", AccountA).ShouldBeTrue("a newer initialize of the same identity replaced it");
+            reaper.WasReplaced("second", AccountA).ShouldBeFalse("the replacement holds the slot");
+            reaper.WasReplaced("first", AccountB).ShouldBeFalse("another account learns nothing about the id");
+            reaper.WasReplaced("first", null).ShouldBeFalse("an anonymous caller learns nothing either");
+
+            now += McpSessionReaper.ReplacedSessionRetention;
+            reaper.WasReplaced("first", AccountA).ShouldBeFalse("the memory of a replacement is bounded in time");
+        }
+
+        [Fact]
+        public void ReleasedAndRehydratedSessions_AreNotReported_AsReplaced()
+        {
+            var (reaper, _) = Build();
+
+            // A session that ends on its own (DELETE, idle timeout) releases its slot: nothing replaced it.
+            reaper.Claim(AccountA, InstanceX, projectPin: null, mcpSessionId: "released")!.Dispose();
+            reaper.Claim(AccountA, InstanceX, projectPin: null, mcpSessionId: "next");
+            reaper.WasReplaced("released", AccountA).ShouldBeFalse();
+
+            // A rehydrated session that found the slot taken displaces nobody.
+            reaper.ClaimIfVacant(AccountA, InstanceX, projectPin: null, mcpSessionId: "rehydrated").ShouldBeNull();
+            reaper.WasReplaced("next", AccountA).ShouldBeFalse("ClaimIfVacant must never mark the holder replaced");
+        }
+
+        [Fact]
+        public void ReplacedSessionMemory_IsBounded()
+        {
+            var now = DateTimeOffset.Parse("2026-11-10T12:00:00Z");
+            var reaper = new McpSessionReaper(new RecordingEvictor(), clock: () => now = now.AddTicks(1));
+            for (var i = 0; i <= McpSessionReaper.MaxReplacedSessions + 1; i++)
+                reaper.Claim(AccountA, InstanceX, projectPin: null, mcpSessionId: $"session-{i}");
+
+            reaper.WasReplaced("session-0", AccountA).ShouldBeFalse("the oldest entry is dropped past the ceiling");
+            reaper.WasReplaced($"session-{McpSessionReaper.MaxReplacedSessions}", AccountA).ShouldBeTrue();
+        }
     }
 }

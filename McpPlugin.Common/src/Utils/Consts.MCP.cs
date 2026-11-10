@@ -396,6 +396,22 @@ namespace com.IvanMurzak.McpPlugin.Common
                     /// state: a client that never sends it keeps the pre-existing behaviour exactly.</para>
                     /// </summary>
                     public const string InstanceId = "AI-Game-Dev-Instance-Id";
+
+                    /// <summary>
+                    /// Response header the server sets to <see cref="SessionReplacedValue"/> on any request
+                    /// that carries an <c>Mcp-Session-Id</c> which a newer <c>initialize</c> with the same
+                    /// <see cref="InstanceId"/> replaced (within the last few minutes, same account only).
+                    ///
+                    /// <para><b>Why a header and not a status.</b> The replaced id may still be served — a
+                    /// session-migration store rehydrates it without an identity slot — and released clients
+                    /// rely on that to stop two clients of one identity from evicting each other. A header
+                    /// changes nothing for them, and tells a client that reads it that ANOTHER live client
+                    /// presents its identity, which is the signal its eviction-flap guard needs.</para>
+                    /// </summary>
+                    public const string SessionReplaced = "AI-Game-Dev-Session-Replaced";
+
+                    /// <summary>The value of <see cref="SessionReplaced"/>.</summary>
+                    public const string SessionReplacedValue = "1";
                 }
             }
         }

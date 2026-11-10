@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using Microsoft.Extensions.Logging;
 
@@ -30,6 +31,18 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// </summary>
         sealed record IdentityKey(string AccountSub, string InstanceId, string? ProjectPin);
 
+        /// <summary>
+        /// How long a replaced session id is remembered for <see cref="WasReplaced"/>. A live client that was
+        /// replaced asks within its reconnect backoff (at most 30 s), so minutes are plenty; the bound keeps
+        /// the memory a function of the replace RATE, not of the uptime.
+        /// </summary>
+        public static readonly TimeSpan ReplacedSessionRetention = TimeSpan.FromMinutes(10);
+
+        /// <summary>Hard ceiling on remembered replaced ids, whatever the rate (oldest dropped first).</summary>
+        public const int MaxReplacedSessions = 10_000;
+
+        sealed record ReplacedSession(string AccountSub, DateTimeOffset ExpiresAt);
+
         readonly ILogger<McpSessionReaper>? _logger;
         readonly IMcpSdkSessionEvictor _evictor;
 
@@ -43,11 +56,55 @@ namespace com.IvanMurzak.McpPlugin.Server
         // replace can ever reach, which is the exact failure this class exists to prevent.
         readonly object _claimLock = new object();
 
-        public McpSessionReaper(IMcpSdkSessionEvictor evictor, ILogger<McpSessionReaper>? logger = null)
+        // Session id -> the account it belonged to and when the memory of its replacement expires.
+        readonly ConcurrentDictionary<string, ReplacedSession> _replaced =
+            new ConcurrentDictionary<string, ReplacedSession>(StringComparer.Ordinal);
+        readonly Func<DateTimeOffset> _clock;
+
+        public McpSessionReaper(IMcpSdkSessionEvictor evictor, ILogger<McpSessionReaper>? logger = null,
+            Func<DateTimeOffset>? clock = null)
         {
             _evictor = evictor ?? throw new ArgumentNullException(nameof(evictor));
             _logger = logger;
+            _clock = clock ?? (() => DateTimeOffset.UtcNow);
         }
+
+        public bool WasReplaced(string? mcpSessionId, string? accountSub)
+        {
+            if (string.IsNullOrEmpty(mcpSessionId) || string.IsNullOrEmpty(accountSub))
+                return false;
+            if (!_replaced.TryGetValue(mcpSessionId!, out var replaced))
+                return false;
+            if (replaced.ExpiresAt <= _clock())
+            {
+                RemoveReplaced(new KeyValuePair<string, ReplacedSession>(mcpSessionId!, replaced));
+                return false;
+            }
+            return string.Equals(replaced.AccountSub, accountSub, StringComparison.Ordinal);
+        }
+
+        void RememberReplaced(string mcpSessionId, string accountSub)
+        {
+            var now = _clock();
+            _replaced[mcpSessionId] = new ReplacedSession(accountSub, now + ReplacedSessionRetention);
+            if (_replaced.Count <= MaxReplacedSessions)
+                return;
+            foreach (var entry in _replaced)
+            {
+                if (entry.Value.ExpiresAt <= now)
+                    RemoveReplaced(entry);
+            }
+            var excess = _replaced.Count - MaxReplacedSessions;
+            if (excess > 0)
+            {
+                foreach (var entry in _replaced.OrderBy(e => e.Value.ExpiresAt).Take(excess).ToList())
+                    RemoveReplaced(entry);
+            }
+        }
+
+        // Compare-and-remove, so a concurrent re-insert of the same id is never dropped.
+        void RemoveReplaced(KeyValuePair<string, ReplacedSession> entry)
+            => ((ICollection<KeyValuePair<string, ReplacedSession>>)_replaced).Remove(entry);
 
         public int TrackedIdentityCount => _slots.Count;
 
@@ -138,6 +195,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                 return lease;
             }
 
+            // Remembered BEFORE the eviction ends the predecessor's notification stream: the replaced client
+            // asks about its old id as soon as that stream ends, and must already get the answer.
+            RememberReplaced(predecessor.McpSessionId, accountSub!);
             var eviction = _evictor.Evict(predecessor.McpSessionId);
             lease.SetDisplacedPredecessor(eviction);
 

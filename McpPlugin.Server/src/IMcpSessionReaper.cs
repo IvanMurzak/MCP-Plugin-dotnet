@@ -80,7 +80,9 @@ namespace com.IvanMurzak.McpPlugin.Server
     /// <c>InstanceIdentityHeader.Fingerprint</c>). The entry is removed when the session that claimed it
     /// ends, in the same <c>finally</c> that removes the session's tracker row, or when a newer session
     /// with the same identity replaces it, or when the process exits. <b>It therefore never outlives the
-    /// session it keys, and there is no retention period to state because nothing is retained.</b></para>
+    /// session it keys, and there is no retention period to state because nothing is retained.</b> The one
+    /// exception holds no instance id: the session id and account of a REPLACED session are kept in memory
+    /// for <c>McpSessionReaper.ReplacedSessionRetention</c> (see <see cref="WasReplaced"/>).</para>
     /// </summary>
     public interface IMcpSessionReaper
     {
@@ -133,5 +135,17 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// assert that two accounts presenting the SAME instance id hold two independent slots.
         /// </summary>
         string? CurrentSessionIdFor(string? accountSub, string? instanceId, string? projectPin);
+
+        /// <summary>
+        /// Whether <paramref name="mcpSessionId"/> of <paramref name="accountSub"/> was displaced by a newer
+        /// <see cref="Claim"/> recently (a few minutes). A request that still carries such an id comes from a
+        /// client that is alive while another live client presents the same identity — a duplicated identity,
+        /// not a crash, since a crashed client sends nothing. The server tells that client so with the
+        /// <c>AI-Game-Dev-Session-Replaced</c> response header (see <c>McpSessionTokenMiddleware</c>).
+        ///
+        /// <para>Only the session id and the account are remembered, never the instance id, and only for
+        /// the retention window. Another account presenting the id learns nothing.</para>
+        /// </summary>
+        bool WasReplaced(string? mcpSessionId, string? accountSub) => false;
     }
 }
