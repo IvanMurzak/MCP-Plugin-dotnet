@@ -27,10 +27,10 @@ using com.IvanMurzak.McpPlugin.Server.Auth.OAuth;
 using com.IvanMurzak.McpPlugin.Server.Tests.OAuth;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
-using ModelContextProtocol.AspNetCore;
-using ModelContextProtocol.Protocol;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.AspNetCore;
+using ModelContextProtocol.Protocol;
 using Shouldly;
 using Xunit;
 
@@ -471,7 +471,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 new ConcurrentDictionary<string, InitializeRequestParams>(StringComparer.Ordinal);
             int _rehydrations;
 
-            public int Rehydrations => System.Threading.Volatile.Read(ref _rehydrations);
+            public int Rehydrations => _rehydrations;
 
             public ValueTask OnSessionInitializedAsync(HttpContext context, string sessionId,
                 InitializeRequestParams initializeParams, System.Threading.CancellationToken cancellationToken)
