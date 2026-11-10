@@ -41,7 +41,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         internal const string NotConnectedMessage = "No engine plugin is connected.";
 
-        static readonly Func<CancellationToken, Task<bool?>> NeverWait = _ => Task.FromResult<bool?>(false);
+        internal static readonly Func<CancellationToken, Task<bool?>> NeverWait = _ => Task.FromResult<bool?>(false);
 
         internal static async Task<ResponseData<T>> ListAsync<TRequest, T>(
             ILogger logger,
