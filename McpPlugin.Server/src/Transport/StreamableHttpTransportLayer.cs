@@ -154,7 +154,16 @@ namespace com.IvanMurzak.McpPlugin.Server.Transport
                             McpSessionTokenMiddleware.ResolveEffectiveProjectPin(pinParse, projectPin, context.User, out projectPin);
 
                             var reaper = server.Services?.GetService<IMcpSessionReaper>();
-                            identityLease = reaper?.Claim(identity?.AccountId, instanceId, projectPin, mcpClientSessionId);
+                            // The SDK sets KnownClientInfo / KnownClientCapabilities only on a session it rehydrated
+                            // through the session-migration handler; a real `initialize` learns them from the
+                            // handshake instead. A rehydrated session must never displace a live holder: the
+                            // displaced client's next request would revive its own session and displace back,
+                            // forever (see IMcpSessionReaper.ClaimIfVacant).
+                            var rehydrated = server.ServerOptions.KnownClientInfo != null
+                                          || server.ServerOptions.KnownClientCapabilities != null;
+                            identityLease = rehydrated
+                                ? reaper?.ClaimIfVacant(identity?.AccountId, instanceId, projectPin, mcpClientSessionId)
+                                : reaper?.Claim(identity?.AccountId, instanceId, projectPin, mcpClientSessionId);
 
                             var predecessor = identityLease?.DisplacedPredecessor;
                             if (predecessor != null && !predecessor.DisposeCompletion.IsCompleted)

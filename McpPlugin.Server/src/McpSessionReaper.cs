@@ -61,6 +61,12 @@ namespace com.IvanMurzak.McpPlugin.Server
         }
 
         public IMcpSessionIdentityLease? Claim(string? accountSub, string? instanceId, string? projectPin, string mcpSessionId)
+            => Claim(accountSub, instanceId, projectPin, mcpSessionId, displace: true);
+
+        public IMcpSessionIdentityLease? ClaimIfVacant(string? accountSub, string? instanceId, string? projectPin, string mcpSessionId)
+            => Claim(accountSub, instanceId, projectPin, mcpSessionId, displace: false);
+
+        IMcpSessionIdentityLease? Claim(string? accountSub, string? instanceId, string? projectPin, string mcpSessionId, bool displace)
         {
             // ── The compatibility path. Every released client lands here. ──────────────────────────────
             // No identity ⇒ no slot, no replace, no rejection, no log noise. Behaviour is byte-for-byte
@@ -93,6 +99,15 @@ namespace com.IvanMurzak.McpPlugin.Server
                         // Same session re-claiming its own slot. Nothing to terminate — terminating here
                         // would kill the live session that just asked to be kept — and nothing to flag.
                         sameSessionReclaim = true;
+                    }
+                    else if (!displace)
+                    {
+                        // A rehydrated session never takes a live holder's slot (see ClaimIfVacant).
+                        _logger?.LogDebug(
+                            "MCP identity slot held by a live session; the rehydrated session runs without it. " +
+                            "Instance: {instanceFingerprint}, Pin: {pin}, HolderSessionId: {holderSessionId}, SessionId: {sessionId}.",
+                            InstanceIdentityHeader.Fingerprint(instanceId), projectPin ?? "none", existing.McpSessionId, mcpSessionId);
+                        return null;
                     }
                     else
                     {

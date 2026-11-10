@@ -101,6 +101,28 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// </summary>
         IMcpSessionIdentityLease? Claim(string? accountSub, string? instanceId, string? projectPin, string mcpSessionId);
 
+        /// <summary>
+        /// Claims the identity slot for a session the SDK <b>rehydrated</b> from the session-migration store
+        /// (a request carried an <c>Mcp-Session-Id</c> this process does not hold), but only when the slot is
+        /// free. It never displaces a live holder; in that case it returns <c>null</c> and the session runs
+        /// without a slot.
+        ///
+        /// <para><b>Why rehydration must not displace.</b> The migration record of a session displaced by
+        /// <see cref="Claim"/> outlives the displacement, so the displaced client's next request revives it.
+        /// If that revival displaced in turn, two live clients of one installation and project (two chats of
+        /// one App) would evict each other on every request, each eviction cancelling the other's in-flight
+        /// request: the production ping-pong of 2026-11-10. Only a real <c>initialize</c> displaces, which
+        /// keeps the case this rule exists for — a crashed client's session is reaped by that client's next
+        /// <c>initialize</c>, and a crashed client never sends a request carrying its old id.</para>
+        ///
+        /// <para><b>The trade-off.</b> A rehydrated session that found the slot taken holds no slot, so a later
+        /// <c>initialize</c> of the same identity does not reap it. It lives until the client sends
+        /// <c>DELETE</c> or the SDK's idle timeout prunes it, exactly like a session of a client that sends no
+        /// identity at all. After a restart the slots are empty, so the first rehydrated session of each
+        /// identity claims its slot as before.</para>
+        /// </summary>
+        IMcpSessionIdentityLease? ClaimIfVacant(string? accountSub, string? instanceId, string? projectPin, string mcpSessionId);
+
         /// <summary>Number of identity slots currently held. Zero when no client sends an instance id.</summary>
         int TrackedIdentityCount { get; }
 
