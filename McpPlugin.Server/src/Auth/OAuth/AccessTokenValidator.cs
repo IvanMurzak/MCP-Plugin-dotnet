@@ -10,6 +10,7 @@
 
 #nullable enable
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -311,32 +312,53 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
         /// <summary>Upper bound for one rendered claim value in <see cref="DescribeClaims"/>.</summary>
         private const int MaxClaimValueLength = 200;
 
+        /// <summary>Upper bound for the rendered entries of an <c>aud</c> array in <see cref="DescribeClaims"/>.</summary>
+        private const int MaxAudienceEntries = 10;
+
         /// <summary>
         /// The non-secret claims of a signature-verified token as one log line:
         /// <c>iss=… aud=[…] exp=… nbf=… scope=… client_id=…</c>. Times are ISO-8601 UTC. Values are
-        /// stripped of control characters and truncated, so a claim cannot forge or flood a log line.
+        /// stripped of control, format and surrogate characters and truncated, and the <c>aud</c> entries
+        /// are capped, so a claim cannot forge or flood a log line. Never throws: it runs on the
+        /// rejection path, which must keep answering 401.
         /// </summary>
         internal static string DescribeClaims(JsonElement claims)
         {
-            var aud = claims.TryGetProperty("aud", out var audClaim) && audClaim.ValueKind == JsonValueKind.Array
-                ? "[" + string.Join(",", audClaim.EnumerateArray().Select(e =>
-                    Render(e.ValueKind == JsonValueKind.String ? e.GetString() : e.GetRawText()))) + "]"
-                : Render(GetString(claims, "aud"));
-            var sb = new StringBuilder();
-            sb.Append("iss=").Append(Render(GetString(claims, "iss")));
-            sb.Append(" aud=").Append(aud);
-            sb.Append(" exp=").Append(TryGetUnixSeconds(claims, "exp", out var exp) ? exp.UtcDateTime.ToString("o") : "-");
-            sb.Append(" nbf=").Append(TryGetUnixSeconds(claims, "nbf", out var nbf) ? nbf.UtcDateTime.ToString("o") : "-");
-            sb.Append(" scope=").Append(Render(GetString(claims, "scope")));
-            sb.Append(" client_id=").Append(Render(GetString(claims, "client_id")));
-            return sb.ToString();
+            string aud;
+            if (!claims.TryGetProperty("aud", out var audClaim))
+                aud = "-";
+            else if (audClaim.ValueKind == JsonValueKind.Array)
+            {
+                var count = audClaim.GetArrayLength();
+                var shown = audClaim.EnumerateArray().Take(MaxAudienceEntries).Select(RenderElement);
+                aud = "[" + string.Join(",", shown) + (count > MaxAudienceEntries ? $",…+{count - MaxAudienceEntries}" : "") + "]";
+            }
+            else
+                aud = RenderElement(audClaim);
+
+            return $"iss={Render(GetString(claims, "iss"))} aud={aud} exp={RenderTime(claims, "exp")} nbf={RenderTime(claims, "nbf")} "
+                + $"scope={Render(GetString(claims, "scope"))} client_id={Render(GetString(claims, "client_id"))}";
+        }
+
+        private static string RenderElement(JsonElement e)
+            => Render(e.ValueKind == JsonValueKind.String ? e.GetString() : e.GetRawText());
+
+        /// <summary>A NumericDate claim as ISO-8601 UTC; a value outside the DateTimeOffset range as its raw number.</summary>
+        private static string RenderTime(JsonElement claims, string name)
+        {
+            if (!claims.TryGetProperty(name, out var prop))
+                return "-";
+            if (prop.ValueKind == JsonValueKind.Number && prop.TryGetInt64(out var seconds)
+                && seconds >= MinUnixSeconds && seconds <= MaxUnixSeconds)
+                return DateTimeOffset.FromUnixTimeSeconds(seconds).UtcDateTime.ToString("o");
+            return RenderElement(prop);
         }
 
         private static string Render(string? value)
         {
             if (string.IsNullOrEmpty(value))
                 return "-";
-            var sb = new StringBuilder(Math.Min(value!.Length, MaxClaimValueLength));
+            var sb = new StringBuilder(Math.Min(value!.Length, MaxClaimValueLength + 1));
             foreach (var c in value)
             {
                 if (sb.Length >= MaxClaimValueLength)
@@ -344,7 +366,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
                     sb.Append('…');
                     break;
                 }
-                sb.Append(char.IsControl(c) || char.IsWhiteSpace(c) ? '_' : c);
+                var category = CharUnicodeInfo.GetUnicodeCategory(c);
+                var unsafeChar = char.IsControl(c) || char.IsWhiteSpace(c)
+                    || category == UnicodeCategory.Format || category == UnicodeCategory.Surrogate;
+                sb.Append(unsafeChar ? '_' : c);
             }
             return sb.ToString();
         }
@@ -354,10 +379,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
                 ? prop.GetString()
                 : null;
 
+        // DateTimeOffset.FromUnixTimeSeconds throws outside this range.
+        private const long MinUnixSeconds = -62135596800;
+        private const long MaxUnixSeconds = 253402300799;
+
         private static bool TryGetUnixSeconds(JsonElement obj, string name, out DateTimeOffset value)
         {
             value = default;
-            if (obj.TryGetProperty(name, out var prop) && prop.ValueKind == JsonValueKind.Number && prop.TryGetInt64(out var seconds))
+            if (obj.TryGetProperty(name, out var prop) && prop.ValueKind == JsonValueKind.Number && prop.TryGetInt64(out var seconds)
+                && seconds >= MinUnixSeconds && seconds <= MaxUnixSeconds)
             {
                 value = DateTimeOffset.FromUnixTimeSeconds(seconds);
                 return true;

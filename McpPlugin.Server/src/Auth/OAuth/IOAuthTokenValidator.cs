@@ -99,7 +99,11 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
         public static OAuthValidationResult SuccessForProjectKey(string tokenType, string? subject, string? scope, string projectPin, string? clientId = null)
             => new OAuthValidationResult(true, null, subject, scope, clientId, tokenType, projectPin);
 
-        public static OAuthValidationResult Fail(string tokenType, string reason, string? claimsSummary = null)
+        public static OAuthValidationResult Fail(string tokenType, string reason)
+            => Fail(tokenType, reason, null);
+
+        /// <summary>A failure carrying the rejected token's <see cref="ClaimsSummary"/>.</summary>
+        public static OAuthValidationResult Fail(string tokenType, string reason, string? claimsSummary)
             => new OAuthValidationResult(false, reason, null, null, null, tokenType, claimsSummary: claimsSummary);
     }
 }

@@ -11,6 +11,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -143,6 +144,59 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.OAuth
 
             result.Succeeded.ShouldBeFalse();
             result.ClaimsSummary.ShouldBeNull();
+        }
+
+        [Fact]
+        public async Task BadIssuer_WithOutOfRangeExp_StillRejectsWithSummary()
+        {
+            using var key = TestJwt.CreateKey();
+            var claims = TestJwt.Claims("https://other-as.example", Resource, Now.AddHours(1));
+            claims["exp"] = 1_000_000_000_000_000L; // beyond DateTimeOffset.MaxValue
+            var token = TestJwt.SignEs256(key, Kid, claims);
+
+            var result = await Validate(Validator(key), token);
+
+            result.FailureReason.ShouldBe("issuer mismatch");
+            result.ClaimsSummary!.ShouldContain("iss=https://other-as.example");
+            result.ClaimsSummary.ShouldContain("exp=1000000000000000");
+        }
+
+        [Fact]
+        public async Task OutOfRangeExp_IsRejectedNotThrown()
+        {
+            using var key = TestJwt.CreateKey();
+            var claims = TestJwt.Claims(Issuer, Resource, Now.AddHours(1));
+            claims["exp"] = 1_000_000_000_000_000L;
+            var token = TestJwt.SignEs256(key, Kid, claims);
+
+            var result = await Validate(Validator(key), token);
+
+            result.Succeeded.ShouldBeFalse();
+            result.FailureReason.ShouldBe("missing exp");
+        }
+
+        [Fact]
+        public void DescribeClaims_CapsAudienceEntries_AndStripsFormatCharacters()
+        {
+            var entries = string.Join(",", System.Linq.Enumerable.Range(0, 25).Select(i => $"\"a{i}\""));
+            var json = "{\"iss\":\"https://as\\u202Eexample\",\"aud\":[" + entries + "],\"client_id\":7}";
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+
+            var summary = AccessTokenValidator.DescribeClaims(doc.RootElement);
+
+            summary.ShouldContain("iss=https://as_example ");
+            summary.ShouldContain("aud=[a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,…+15]");
+            summary.ShouldNotContain("a10");
+            summary.ShouldContain("client_id=-");
+            summary.ShouldNotContain('‮');
+        }
+
+        [Fact]
+        public void DescribeClaims_NonStringScalarAudience_IsRenderedRaw()
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse("{\"aud\":123}");
+
+            AccessTokenValidator.DescribeClaims(doc.RootElement).ShouldContain("aud=123 ");
         }
 
         [Fact]
