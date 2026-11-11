@@ -73,9 +73,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
         /// <summary><c>"jwt"</c> or <c>"opaque"</c>.</summary>
         public string TokenType { get; }
 
-        private OAuthValidationResult(bool succeeded, string? failureReason, string? subject, string? scope, string? clientId, string tokenType, string? projectPin = null)
+        /// <summary>
+        /// For a rejected JWT whose signature verified: its non-secret claims (<c>iss</c>, <c>aud</c>,
+        /// <c>exp</c>, <c>nbf</c>, <c>scope</c>, <c>client_id</c>) as one log-safe line, so a rejection can be
+        /// diagnosed from the log. Null otherwise. Never contains the token itself.
+        /// </summary>
+        public string? ClaimsSummary { get; }
+
+        private OAuthValidationResult(bool succeeded, string? failureReason, string? subject, string? scope, string? clientId, string tokenType, string? projectPin = null, string? claimsSummary = null)
         {
             ProjectPin = projectPin;
+            ClaimsSummary = claimsSummary;
             Succeeded = succeeded;
             FailureReason = failureReason;
             Subject = subject;
@@ -92,6 +100,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
             => new OAuthValidationResult(true, null, subject, scope, clientId, tokenType, projectPin);
 
         public static OAuthValidationResult Fail(string tokenType, string reason)
-            => new OAuthValidationResult(false, reason, null, null, null, tokenType);
+            => Fail(tokenType, reason, null);
+
+        /// <summary>A failure carrying the rejected token's <see cref="ClaimsSummary"/>.</summary>
+        public static OAuthValidationResult Fail(string tokenType, string reason, string? claimsSummary)
+            => new OAuthValidationResult(false, reason, null, null, null, tokenType, claimsSummary: claimsSummary);
     }
 }

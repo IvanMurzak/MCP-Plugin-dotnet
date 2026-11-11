@@ -11,6 +11,7 @@
 #nullable enable
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
@@ -95,6 +96,123 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.OAuth
 
             result.Succeeded.ShouldBeFalse();
             result.FailureReason!.ShouldContain("audience");
+        }
+
+        [Fact]
+        public async Task BadAudience_RejectionCarriesClaimsSummary_NeverTheToken()
+        {
+            using var key = TestJwt.CreateKey();
+            var claims = TestJwt.Claims(Issuer, AccessTokenValidator.PluginAudience, Now.AddHours(1));
+            claims["client_id"] = "unity-mcp-cli";
+            var token = TestJwt.SignEs256(key, Kid, claims);
+
+            var result = await Validate(Validator(key), token);
+
+            result.FailureReason.ShouldBe("audience mismatch");
+            result.ClaimsSummary.ShouldNotBeNull();
+            result.ClaimsSummary.ShouldContain($"iss={Issuer}");
+            result.ClaimsSummary.ShouldContain($"aud={AccessTokenValidator.PluginAudience}");
+            result.ClaimsSummary.ShouldContain("exp=2026-01-01T13:00:00");
+            result.ClaimsSummary.ShouldContain("scope=mcp:agent");
+            result.ClaimsSummary.ShouldContain("client_id=unity-mcp-cli");
+            result.ClaimsSummary.ShouldNotContain(token);
+            result.ClaimsSummary.ShouldNotContain(token.Split('.')[2]);
+        }
+
+        [Fact]
+        public async Task ExpiredToken_RejectionCarriesExpiry()
+        {
+            using var key = TestJwt.CreateKey();
+            var token = TestJwt.SignEs256(key, Kid, TestJwt.Claims(Issuer, Resource, Now.AddMinutes(-10)));
+
+            var result = await Validate(Validator(key), token);
+
+            result.FailureReason.ShouldBe("token expired");
+            result.ClaimsSummary!.ShouldContain("exp=2026-01-01T11:50:00");
+            result.ClaimsSummary.ShouldContain($"aud={Resource}");
+        }
+
+        [Fact]
+        public async Task WrongSignature_HasNoClaimsSummary()
+        {
+            using var key = TestJwt.CreateKey();
+            using var other = TestJwt.CreateKey();
+            // Claims of a token whose signature does not verify are attacker-chosen: never logged.
+            var token = TestJwt.SignEs256(other, Kid, TestJwt.Claims(Issuer, Resource, Now.AddHours(1)));
+
+            var result = await Validate(Validator(key), token);
+
+            result.Succeeded.ShouldBeFalse();
+            result.ClaimsSummary.ShouldBeNull();
+        }
+
+        [Fact]
+        public async Task BadIssuer_WithOutOfRangeExp_StillRejectsWithSummary()
+        {
+            using var key = TestJwt.CreateKey();
+            var claims = TestJwt.Claims("https://other-as.example", Resource, Now.AddHours(1));
+            claims["exp"] = 1_000_000_000_000_000L; // beyond DateTimeOffset.MaxValue
+            var token = TestJwt.SignEs256(key, Kid, claims);
+
+            var result = await Validate(Validator(key), token);
+
+            result.FailureReason.ShouldBe("issuer mismatch");
+            result.ClaimsSummary!.ShouldContain("iss=https://other-as.example");
+            result.ClaimsSummary.ShouldContain("exp=1000000000000000");
+        }
+
+        [Fact]
+        public async Task OutOfRangeExp_IsRejectedNotThrown()
+        {
+            using var key = TestJwt.CreateKey();
+            var claims = TestJwt.Claims(Issuer, Resource, Now.AddHours(1));
+            claims["exp"] = 1_000_000_000_000_000L;
+            var token = TestJwt.SignEs256(key, Kid, claims);
+
+            var result = await Validate(Validator(key), token);
+
+            result.Succeeded.ShouldBeFalse();
+            result.FailureReason.ShouldBe("missing exp");
+        }
+
+        [Fact]
+        public void DescribeClaims_CapsAudienceEntries_AndStripsFormatCharacters()
+        {
+            var entries = string.Join(",", System.Linq.Enumerable.Range(0, 25).Select(i => $"\"a{i}\""));
+            var json = "{\"iss\":\"https://as\\u202Eexample\",\"aud\":[" + entries + "],\"client_id\":7}";
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+
+            var summary = AccessTokenValidator.DescribeClaims(doc.RootElement);
+
+            summary.ShouldContain("iss=https://as_example ");
+            summary.ShouldContain("aud=[a0,a1,a2,a3,a4,a5,a6,a7,a8,a9,…+15]");
+            summary.ShouldNotContain("a10");
+            summary.ShouldContain("client_id=-");
+            summary.ShouldNotContain('‮');
+        }
+
+        [Fact]
+        public void DescribeClaims_NonStringScalarAudience_IsRenderedRaw()
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse("{\"aud\":123}");
+
+            AccessTokenValidator.DescribeClaims(doc.RootElement).ShouldContain("aud=123 ");
+        }
+
+        [Fact]
+        public void DescribeClaims_ArrayAudience_ControlCharsAndLongValuesAreSanitized()
+        {
+            var json = "{\"iss\":\"a\\nb\",\"aud\":[\"x\",\"y z\"],\"scope\":\"" + new string('s', 500) + "\"}";
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+
+            var summary = AccessTokenValidator.DescribeClaims(doc.RootElement);
+
+            summary.ShouldContain("iss=a_b ");
+            summary.ShouldContain("aud=[x,y_z]");
+            summary.ShouldContain("exp=- nbf=-");
+            summary.ShouldContain("client_id=-");
+            summary.ShouldNotContain('\n');
+            summary.Length.ShouldBeLessThan(400);
         }
 
         [Fact]

@@ -214,10 +214,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth
             {
                 if (!IsHubPath())
                 {
+                    // Claims are logged only for a signature-verified JWT (never the token). Beside the
+                    // expected issuer/resource they show WHY: e.g. a plugin `urn:agd:hub` token or a
+                    // loopback-audienced token presented to the hosted agent plane.
                     Logger.LogWarning(
-                        "MCP OAuth auth rejected: {Reason}. RemoteIp: {RemoteIpAddress}, UserAgent: {UserAgent}, RequestPath: {RequestPath}, TokenFingerprint: {TokenFingerprint}",
+                        "MCP OAuth auth rejected: {Reason}. RemoteIp: {RemoteIpAddress}, UserAgent: {UserAgent}, RequestPath: {RequestPath}, TokenFingerprint: {TokenFingerprint}, TokenClaims: {TokenClaims}, Expected: iss={ExpectedIssuer} aud={ExpectedResource}",
                         validation.FailureReason, GetClientIpAddress(), Request.Headers.UserAgent.ToString(),
-                        Request.Path.Value, FingerprintToken(token));
+                        Request.Path.Value, FingerprintToken(token), validation.ClaimsSummary ?? "-",
+                        _oauthConfig?.Issuer ?? "-", _oauthConfig?.ResourceUrl ?? "-");
                 }
                 return IsHubPath()
                     ? AuthenticateResult.NoResult()
