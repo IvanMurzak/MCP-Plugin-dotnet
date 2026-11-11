@@ -166,22 +166,24 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
                 using var payloadDoc = JsonDocument.Parse(payloadBytes);
                 var claims = payloadDoc.RootElement;
 
+                OAuthValidationResult Reject(string reason) => OAuthValidationResult.Fail("jwt", reason, DescribeClaims(claims));
+
                 var iss = GetString(claims, "iss");
                 if (!string.Equals(iss, _config.Issuer, StringComparison.Ordinal))
-                    return OAuthValidationResult.Fail("jwt", "issuer mismatch");
+                    return Reject("issuer mismatch");
 
                 if (!AudienceAcceptedForPlane(claims, plane))
-                    return OAuthValidationResult.Fail("jwt", "audience mismatch");
+                    return Reject("audience mismatch");
 
                 var now = _now();
 
                 if (!TryGetUnixSeconds(claims, "exp", out var exp))
-                    return OAuthValidationResult.Fail("jwt", "missing exp");
+                    return Reject("missing exp");
                 if (now > exp + _config.ClockSkew)
-                    return OAuthValidationResult.Fail("jwt", "token expired");
+                    return Reject("token expired");
 
                 if (TryGetUnixSeconds(claims, "nbf", out var nbf) && now < nbf - _config.ClockSkew)
-                    return OAuthValidationResult.Fail("jwt", "token not yet valid");
+                    return Reject("token not yet valid");
 
                 var sub = GetString(claims, "sub");
                 var scope = GetString(claims, "scope");
@@ -303,6 +305,59 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
                     return true;
             }
             return false;
+        }
+
+        /// <summary>Upper bound for one rendered claim value in <see cref="DescribeClaims"/>.</summary>
+        private const int MaxClaimValueLength = 200;
+
+        /// <summary>
+        /// The non-secret claims of a signature-verified token as one log line:
+        /// <c>iss=… aud=[…] exp=… nbf=… scope=… client_id=…</c>. Times are ISO-8601 UTC. Values are
+        /// stripped of control characters and truncated, so a claim cannot forge or flood a log line.
+        /// </summary>
+        internal static string DescribeClaims(JsonElement claims)
+        {
+            var sb = new StringBuilder();
+            sb.Append("iss=").Append(Render(GetString(claims, "iss")));
+            sb.Append(" aud=");
+            if (claims.TryGetProperty("aud", out var aud) && aud.ValueKind == JsonValueKind.Array)
+            {
+                sb.Append('[');
+                var first = true;
+                foreach (var entry in aud.EnumerateArray())
+                {
+                    if (!first) sb.Append(',');
+                    first = false;
+                    sb.Append(Render(entry.ValueKind == JsonValueKind.String ? entry.GetString() : entry.GetRawText()));
+                }
+                sb.Append(']');
+            }
+            else
+            {
+                sb.Append(Render(GetString(claims, "aud")));
+            }
+            sb.Append(" exp=").Append(TryGetUnixSeconds(claims, "exp", out var exp) ? exp.UtcDateTime.ToString("o") : "-");
+            sb.Append(" nbf=").Append(TryGetUnixSeconds(claims, "nbf", out var nbf) ? nbf.UtcDateTime.ToString("o") : "-");
+            sb.Append(" scope=").Append(Render(GetString(claims, "scope")));
+            sb.Append(" client_id=").Append(Render(GetString(claims, "client_id")));
+            return sb.ToString();
+        }
+
+        private static string Render(string? value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return "-";
+            var sb = new StringBuilder(Math.Min(value!.Length, MaxClaimValueLength));
+            foreach (var c in value)
+            {
+                if (sb.Length >= MaxClaimValueLength)
+                {
+                    sb.Append('…');
+                    break;
+                }
+                sb.Append(char.IsControl(c) || char.IsWhiteSpace(c) ? '_' : c);
+            }
+            return sb.ToString();
         }
 
         private static string? GetString(JsonElement obj, string name)
