@@ -34,7 +34,7 @@
 
   <ItemGroup>
     <ProjectReference Include="./../McpPlugin.Common/McpPlugin.Common.csproj" />
-    <PackageReference Include="com.IvanMurzak.ReflectorNet" Version="5.5.1" />
+    <PackageReference Include="com.IvanMurzak.ReflectorNet" Version="5.5.2" />
     <!-- >= 10.0.13: GHSA-334f-vvp4-7g6p / CVE-2026-70159 (SignalR.Common DoS). -->
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.14" />
     <PackageReference Include="ModelContextProtocol" Version="2.4.0" />
