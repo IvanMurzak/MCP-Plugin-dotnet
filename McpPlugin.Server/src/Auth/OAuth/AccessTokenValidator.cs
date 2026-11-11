@@ -10,6 +10,7 @@
 
 #nullable enable
 using System;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -317,25 +318,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
         /// </summary>
         internal static string DescribeClaims(JsonElement claims)
         {
+            var aud = claims.TryGetProperty("aud", out var audClaim) && audClaim.ValueKind == JsonValueKind.Array
+                ? "[" + string.Join(",", audClaim.EnumerateArray().Select(e =>
+                    Render(e.ValueKind == JsonValueKind.String ? e.GetString() : e.GetRawText()))) + "]"
+                : Render(GetString(claims, "aud"));
             var sb = new StringBuilder();
             sb.Append("iss=").Append(Render(GetString(claims, "iss")));
-            sb.Append(" aud=");
-            if (claims.TryGetProperty("aud", out var aud) && aud.ValueKind == JsonValueKind.Array)
-            {
-                sb.Append('[');
-                var first = true;
-                foreach (var entry in aud.EnumerateArray())
-                {
-                    if (!first) sb.Append(',');
-                    first = false;
-                    sb.Append(Render(entry.ValueKind == JsonValueKind.String ? entry.GetString() : entry.GetRawText()));
-                }
-                sb.Append(']');
-            }
-            else
-            {
-                sb.Append(Render(GetString(claims, "aud")));
-            }
+            sb.Append(" aud=").Append(aud);
             sb.Append(" exp=").Append(TryGetUnixSeconds(claims, "exp", out var exp) ? exp.UtcDateTime.ToString("o") : "-");
             sb.Append(" nbf=").Append(TryGetUnixSeconds(claims, "nbf", out var nbf) ? nbf.UtcDateTime.ToString("o") : "-");
             sb.Append(" scope=").Append(Render(GetString(claims, "scope")));
