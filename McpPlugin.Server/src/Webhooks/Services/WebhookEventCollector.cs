@@ -57,7 +57,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
                 Status = status,
                 DurationMs = durationMs,
                 ErrorDetails = errorDetails,
-                BearerToken = bearerToken ?? McpSessionTokenContext.CurrentToken,
+                BearerToken = RequestOrSessionToken(bearerToken),
                 ClientIp = McpSessionTokenContext.CurrentClientIp,
                 UserAgent = McpSessionTokenContext.CurrentUserAgent,
                 Channel = channel
@@ -78,7 +78,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             {
                 PromptName = promptName,
                 ResponseSizeBytes = responseSizeBytes,
-                BearerToken = bearerToken ?? McpSessionTokenContext.CurrentToken,
+                BearerToken = RequestOrSessionToken(bearerToken),
                 ClientIp = McpSessionTokenContext.CurrentClientIp,
                 UserAgent = McpSessionTokenContext.CurrentUserAgent
             };
@@ -98,13 +98,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             {
                 ResourceUri = resourceUri,
                 ResponseSizeBytes = responseSizeBytes,
-                BearerToken = bearerToken ?? McpSessionTokenContext.CurrentToken,
+                BearerToken = RequestOrSessionToken(bearerToken),
                 ClientIp = McpSessionTokenContext.CurrentClientIp,
                 UserAgent = McpSessionTokenContext.CurrentUserAgent
             };
 
             Enqueue(_options.ResourceWebhookUrl!, "resource.accessed", evt);
         }
+
+        /// <summary>The request's own token when given; otherwise the session's ambient token.</summary>
+        static string? RequestOrSessionToken(string? bearerToken)
+            => string.IsNullOrEmpty(bearerToken) ? McpSessionTokenContext.CurrentToken : bearerToken;
 
         public void OnAiAgentConnected(string sessionId, string? clientName, string? clientVersion, Dictionary<string, string>? metadata)
         {

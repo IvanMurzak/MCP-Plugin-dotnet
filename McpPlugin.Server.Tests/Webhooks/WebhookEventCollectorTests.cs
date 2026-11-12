@@ -568,13 +568,15 @@ namespace McpPlugin.Server.Tests.Webhooks
         }
 
         [Fact]
-        public void NullRequestBearerToken_FallsBackToTheSessionToken()
+        public void NullOrEmptyRequestBearerToken_FallsBackToTheSessionToken()
         {
             CapturedBearerToken(c => c.OnToolCall("add", 1, 2, "success", 3, null, "mcp", null), "session")
                 .ShouldBe("session");
             CapturedBearerToken(c => c.OnPromptRetrieved("p", 1, null), "session")
                 .ShouldBe("session");
             CapturedBearerToken(c => c.OnResourceAccessed("r", 1, null), "session")
+                .ShouldBe("session");
+            CapturedBearerToken(c => c.OnToolCall("add", 1, 2, "success", 3, null, "mcp", ""), "session")
                 .ShouldBe("session");
         }
 
