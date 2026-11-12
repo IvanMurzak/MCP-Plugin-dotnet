@@ -42,6 +42,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
         }
 
         public void OnToolCall(string toolName, long requestSizeBytes, long responseSizeBytes, string status, long durationMs, string? errorDetails, string channel = "mcp")
+            => OnToolCall(toolName, requestSizeBytes, responseSizeBytes, status, durationMs, errorDetails, channel, bearerToken: null);
+
+        public void OnToolCall(string toolName, long requestSizeBytes, long responseSizeBytes, string status, long durationMs, string? errorDetails, string channel, string? bearerToken)
         {
             if (!_options.IsToolEnabled)
                 return;
@@ -54,7 +57,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
                 Status = status,
                 DurationMs = durationMs,
                 ErrorDetails = errorDetails,
-                BearerToken = McpSessionTokenContext.CurrentToken,
+                BearerToken = bearerToken ?? McpSessionTokenContext.CurrentToken,
                 ClientIp = McpSessionTokenContext.CurrentClientIp,
                 UserAgent = McpSessionTokenContext.CurrentUserAgent,
                 Channel = channel
@@ -64,6 +67,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
         }
 
         public void OnPromptRetrieved(string promptName, long responseSizeBytes)
+            => OnPromptRetrieved(promptName, responseSizeBytes, bearerToken: null);
+
+        public void OnPromptRetrieved(string promptName, long responseSizeBytes, string? bearerToken)
         {
             if (!_options.IsPromptEnabled)
                 return;
@@ -72,7 +78,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             {
                 PromptName = promptName,
                 ResponseSizeBytes = responseSizeBytes,
-                BearerToken = McpSessionTokenContext.CurrentToken,
+                BearerToken = bearerToken ?? McpSessionTokenContext.CurrentToken,
                 ClientIp = McpSessionTokenContext.CurrentClientIp,
                 UserAgent = McpSessionTokenContext.CurrentUserAgent
             };
@@ -81,6 +87,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
         }
 
         public void OnResourceAccessed(string resourceUri, long responseSizeBytes)
+            => OnResourceAccessed(resourceUri, responseSizeBytes, bearerToken: null);
+
+        public void OnResourceAccessed(string resourceUri, long responseSizeBytes, string? bearerToken)
         {
             if (!_options.IsResourceEnabled)
                 return;
@@ -89,7 +98,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Webhooks
             {
                 ResourceUri = resourceUri,
                 ResponseSizeBytes = responseSizeBytes,
-                BearerToken = McpSessionTokenContext.CurrentToken,
+                BearerToken = bearerToken ?? McpSessionTokenContext.CurrentToken,
                 ClientIp = McpSessionTokenContext.CurrentClientIp,
                 UserAgent = McpSessionTokenContext.CurrentUserAgent
             };

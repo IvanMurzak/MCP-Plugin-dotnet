@@ -530,5 +530,78 @@ namespace McpPlugin.Server.Tests.Webhooks
             var data = JsonDocument.Parse(captured!.JsonPayload).RootElement.GetProperty("data");
             data.GetProperty("bearerToken").GetString().ShouldBe("ai-session-token");
         }
+
+        static string? CapturedBearerToken(System.Action<WebhookEventCollector> act, string? ambientToken)
+        {
+            var dispatcher = new Mock<IWebhookDispatcher>();
+            WebhookMessage? captured = null;
+            dispatcher.Setup(d => d.TryEnqueue(It.IsAny<WebhookMessage>()))
+                .Callback<WebhookMessage>(m => captured = m)
+                .Returns(true);
+            var collector = new WebhookEventCollector(
+                Mock.Of<ILogger<WebhookEventCollector>>(), dispatcher.Object, CreateOptions());
+
+            McpSessionTokenContext.CurrentToken = ambientToken;
+            try
+            {
+                act(collector);
+            }
+            finally
+            {
+                McpSessionTokenContext.CurrentToken = null;
+            }
+
+            captured.ShouldNotBeNull();
+            var data = JsonDocument.Parse(captured!.JsonPayload).RootElement.GetProperty("data");
+            return data.TryGetProperty("bearerToken", out var token) ? token.GetString() : null;
+        }
+
+        [Fact]
+        public void RequestBearerToken_IsPreferredOverTheSessionToken()
+        {
+            CapturedBearerToken(c => c.OnToolCall("add", 1, 2, "success", 3, null, "mcp", "refreshed"), "stale")
+                .ShouldBe("refreshed");
+            CapturedBearerToken(c => c.OnPromptRetrieved("p", 1, "refreshed"), "stale")
+                .ShouldBe("refreshed");
+            CapturedBearerToken(c => c.OnResourceAccessed("r", 1, "refreshed"), "stale")
+                .ShouldBe("refreshed");
+        }
+
+        [Fact]
+        public void NullRequestBearerToken_FallsBackToTheSessionToken()
+        {
+            CapturedBearerToken(c => c.OnToolCall("add", 1, 2, "success", 3, null, "mcp", null), "session")
+                .ShouldBe("session");
+            CapturedBearerToken(c => c.OnPromptRetrieved("p", 1, null), "session")
+                .ShouldBe("session");
+            CapturedBearerToken(c => c.OnResourceAccessed("r", 1, null), "session")
+                .ShouldBe("session");
+        }
+
+        /// <summary>An implementer written against the interface before the token overloads existed.</summary>
+        sealed class LegacyCollector : IWebhookEventCollector
+        {
+            public readonly List<string> Calls = new List<string>();
+            public void OnToolCall(string toolName, long requestSizeBytes, long responseSizeBytes, string status, long durationMs, string? errorDetails, string channel = "mcp") => Calls.Add("tool:" + channel);
+            public void OnPromptRetrieved(string promptName, long responseSizeBytes) => Calls.Add("prompt");
+            public void OnResourceAccessed(string resourceUri, long responseSizeBytes) => Calls.Add("resource");
+            public void OnAiAgentConnected(string sessionId, string? clientName, string? clientVersion, Dictionary<string, string>? metadata) { }
+            public void OnAiAgentDisconnected(string sessionId) { }
+            public void OnPluginConnected(string connectionId, string? token, string? clientName = null, string? clientVersion = null) { }
+            public void OnPluginDisconnected(string connectionId) { }
+        }
+
+        [Fact]
+        public void TokenOverloads_ForwardToALegacyImplementer()
+        {
+            var legacy = new LegacyCollector();
+            IWebhookEventCollector collector = legacy;
+
+            collector.OnToolCall("add", 1, 2, "success", 3, null, "mcp", "token");
+            collector.OnPromptRetrieved("p", 1, "token");
+            collector.OnResourceAccessed("r", 1, "token");
+
+            legacy.Calls.ShouldBe(new[] { "tool:mcp", "prompt", "resource" });
+        }
     }
 }

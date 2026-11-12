@@ -12,8 +12,10 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.Claims;
 using System.Text.Json;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 using com.IvanMurzak.McpPlugin.Server.Transport;
 using com.IvanMurzak.McpPlugin.Server.Webhooks;
@@ -82,7 +84,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                                         responseSize,
                                         isError ? "failure" : "success",
                                         stopwatch.ElapsedMilliseconds,
-                                        errorDetails);
+                                        errorDetails,
+                                        channel: "mcp",
+                                        bearerToken: RequestBearerToken(request.User));
                                 }
                             }
 
@@ -106,7 +110,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                                     var responseSize = MeasureSize(result);
                                     collector.OnResourceAccessed(
                                         request!.Params?.Uri ?? "unknown",
-                                        responseSize);
+                                        responseSize,
+                                        RequestBearerToken(request.User));
                                 }
                             }
 
@@ -131,7 +136,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                                     var responseSize = MeasureSize(result);
                                     collector.OnPromptRetrieved(
                                         request!.Params?.Name ?? "unknown",
-                                        responseSize);
+                                        responseSize,
+                                        RequestBearerToken(request.User));
                                 }
                             }
 
@@ -160,6 +166,16 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             return mcpServerBuilder;
         }
+
+        /// <summary>
+        /// The bearer token of the request being handled, from the claim the token auth handler issues
+        /// for each HTTP request. The SDK sets <c>request.User</c> from the HTTP request that carried the
+        /// message, while ambient <see cref="McpSessionTokenContext.CurrentToken"/> is frozen at session
+        /// start (PerSessionExecutionContext), so after an OAuth refresh only this one is current.
+        /// Null (stdio, auth=none) lets the collector fall back to the ambient token.
+        /// </summary>
+        static string? RequestBearerToken(ClaimsPrincipal? user)
+            => user?.FindFirst(TokenAuthenticationHandler.TokenClaimType)?.Value;
 
         static long MeasureSize(object? obj)
         {
