@@ -39,7 +39,7 @@
     <PackageReference Include="com.IvanMurzak.ReflectorNet" Version="5.5.2" />
     <!-- >= 8.0.32: GHSA-334f-vvp4-7g6p / CVE-2026-70159 (SignalR.Common DoS). 8.0.x keeps netstandard2.1 (Unity) support. -->
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.33" />
-    <PackageReference Include="R3" Version="1.3.0" />
+    <PackageReference Include="R3" Version="1.3.1" />
   </ItemGroup>
 
 </Project>
