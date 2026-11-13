@@ -54,6 +54,15 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// <summary>The system tool clients poll as an engine liveness probe.</summary>
         internal const string LivenessProbeToolName = "ping";
 
+        /// <summary>
+        /// True for the liveness probe answered "no engine plugin is connected" (Unavailable, HTTP 503) by
+        /// <see cref="RunSystemTool"/>.
+        /// </summary>
+        internal static bool IsProbeWithoutPlugin(string name, ResponseData<ResponseCallTool>? response)
+            => name == LivenessProbeToolName
+               && response?.Status == ResponseStatus.Error
+               && response.ErrorKind == ResponseErrorKind.Unavailable;
+
         public async Task<ResponseData<ResponseCallTool>> RunSystemTool(RequestCallTool request, CancellationToken cancellationToken = default)
         {
             // A liveness probe asks "is the plugin connected right now?": with none connected it answers that at

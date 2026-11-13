@@ -71,10 +71,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         public async Task PinnedPing_OtherProjectConnected_Answers503AtOnce_WithThePinnedNoMatchText()
         {
             await using var host = await OAuthMcpHost.StartAsync(services => services.AddSingleton(_plugins.Context), Account);
-            var strategy = (AccountMcpStrategy)host.Services.GetRequiredService<IMcpConnectionStrategy>();
-            var catalog = host.Services.GetRequiredService<PluginCatalogCache>();
-            _plugins.AddAnsweringCalls("conn-a");
-            PluginReconnect.Register(strategy, catalog, Account, "instance-a", "conn-a");
+            ConnectProjectA(host);
             using var http = new HttpClient();
 
             // Control: the pinned project's own plugin answers the probe.
@@ -132,7 +129,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var (status, _) = await PingAsync(http, host, $"/p/{PinA}/api/system-tools/ping");
 
             status.ShouldBe(HttpStatusCode.ServiceUnavailable);
-            VerifyToolCallsReported(collector, Times.Never());
+            collector.Verify(c => c.OnToolCall(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>(),
+                It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<string>()), Times.Never());
         }
 
         [Fact]
@@ -140,10 +138,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         {
             var collector = new Mock<IWebhookEventCollector>();
             await using var host = await OAuthMcpHost.StartAsync(services => WithToolWebhook(services, collector), Account);
-            var strategy = (AccountMcpStrategy)host.Services.GetRequiredService<IMcpConnectionStrategy>();
-            var catalog = host.Services.GetRequiredService<PluginCatalogCache>();
-            _plugins.AddAnsweringCalls("conn-a");
-            PluginReconnect.Register(strategy, catalog, Account, "instance-a", "conn-a");
+            ConnectProjectA(host);
             using var http = new HttpClient();
 
             var (status, _) = await PingAsync(http, host, $"/p/{PinA}/api/system-tools/ping");
@@ -232,9 +227,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             services.AddSingleton(collector.Object);
         }
 
-        static void VerifyToolCallsReported(Mock<IWebhookEventCollector> collector, Times times)
-            => collector.Verify(c => c.OnToolCall(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>(),
-                It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<string>()), times);
+        /// <summary>Connects an answering plugin for <see cref="PinA"/> to the host's account.</summary>
+        void ConnectProjectA(OAuthMcpHost host)
+        {
+            var strategy = (AccountMcpStrategy)host.Services.GetRequiredService<IMcpConnectionStrategy>();
+            var catalog = host.Services.GetRequiredService<PluginCatalogCache>();
+            _plugins.AddAnsweringCalls("conn-a");
+            PluginReconnect.Register(strategy, catalog, Account, "instance-a", "conn-a");
+        }
 
         static RequestCallTool PingRequest() => new RequestCallTool(RemoteSystemToolRunner.LivenessProbeToolName, new Dictionary<string, JsonElement>());
 

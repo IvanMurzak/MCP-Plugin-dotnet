@@ -269,7 +269,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
             // ── Fire webhook ────────────────────────────────────────────
             // A liveness probe that found no plugin is not a failed tool call: clients poll it every few seconds
             // while the editor is closed, and reporting each answer flooded usage analytics with errors.
-            if (webhookOptions?.IsToolEnabled == true && !IsProbeWithoutPlugin(name, response))
+            if (webhookOptions?.IsToolEnabled == true && !RemoteSystemToolRunner.IsProbeWithoutPlugin(name, response))
             {
                 stopwatch!.Stop();
                 var collector = context.RequestServices.GetService<IWebhookEventCollector>();
@@ -340,13 +340,5 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
                 content = response.Value.Content
             });
         }
-
-        /// <summary>
-        /// True for the <c>ping</c> liveness probe answered "no engine plugin is connected" (Unavailable, HTTP 503).
-        /// </summary>
-        static bool IsProbeWithoutPlugin(string name, ResponseData<ResponseCallTool>? response)
-            => name == RemoteSystemToolRunner.LivenessProbeToolName
-               && response?.Status == ResponseStatus.Error
-               && response.ErrorKind == ResponseErrorKind.Unavailable;
     }
 }
