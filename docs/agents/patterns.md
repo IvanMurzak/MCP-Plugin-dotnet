@@ -49,7 +49,7 @@ An `[AiTool]` method that throws is reported as the caller's fault (kind `BadReq
 and never let a fault type escape for bad input. When the host cannot serve the call right now (compiling, reloading,
 not initialized), throw `ToolUnavailableException` instead: `Unavailable` / 503; add `notExecuted: true` only if the
 tool changed nothing yet (an 8.14+ server then re-sends the call). The rule lives in `RunTool.IsFrameworkFault` and
-`RunTool.ExecutionFailed`; the full table is in the README ("Tool errors and HTTP status").
+`RunTool.ExecutionFailed`; the full table is in `docs/tool-errors.md`.
 
 ### Game-only (runtime) and editor-only tools
 
