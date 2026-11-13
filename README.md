@@ -4,12 +4,12 @@
 
 <br/>
 
-[![NuGet McpPlugin](https://img.shields.io/nuget/v/com.IvanMurzak.McpPlugin?label=McpPlugin&color=8b5cf6&style=flat-square)](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin/)
-[![NuGet McpPlugin.Server](https://img.shields.io/nuget/v/com.IvanMurzak.McpPlugin.Server?label=McpPlugin.Server&color=8b5cf6&style=flat-square)](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin.Server/)
-[![release](https://img.shields.io/github/actions/workflow/status/IvanMurzak/MCP-Plugin-dotnet/release.yml?branch=main&label=release&style=flat-square)](https://github.com/IvanMurzak/MCP-Plugin-dotnet/actions/workflows/release.yml)
-![.NET](https://img.shields.io/badge/.NET-netstandard2.1%20%7C%20net8.0%20%7C%20net9.0-22d3ee?style=flat-square)
-[![Discord](https://img.shields.io/badge/Discord-join-7289da?logo=discord&logoColor=white&style=flat-square)](https://discord.gg/Cgs6nM8BPU)
-[![License](https://img.shields.io/github/license/IvanMurzak/MCP-Plugin-dotnet?label=license&color=a5b4fc&style=flat-square)](LICENSE)
+[![NuGet](https://img.shields.io/nuget/v/com.IvanMurzak.McpPlugin?label=NuGet&color=1D4ED8&logo=nuget&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin/)
+[![Server](https://img.shields.io/nuget/v/com.IvanMurzak.McpPlugin.Server?label=Server&color=1D4ED8&logo=nuget&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin.Server/)
+[![release](https://img.shields.io/github/actions/workflow/status/IvanMurzak/MCP-Plugin-dotnet/release.yml?branch=main&label=release&style=for-the-badge&labelColor=0F172A&logoColor=white&logo=githubactions)](https://github.com/IvanMurzak/MCP-Plugin-dotnet/actions/workflows/release.yml)
+[![.NET](https://img.shields.io/badge/.NET-netstandard2.1%20%7C%208%20%7C%209-0E7490?logo=dotnet&style=for-the-badge&labelColor=0F172A&logoColor=white)](#packages)
+[![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://discord.gg/Cgs6nM8BPU)
+[![License](https://img.shields.io/github/license/IvanMurzak/MCP-Plugin-dotnet?label=license&color=047857&style=for-the-badge&labelColor=0F172A&logoColor=white)](LICENSE)
 [![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
 
 </div>
@@ -36,17 +36,15 @@ All three share one version and are released together.
 
 ## Features
 
-| | |
-| --- | --- |
-| **Attributes** | `[AiTool]`, `[AiPrompt]`, `[AiResource]` on plain C# methods; assembly scanning registers them |
-| **Any .NET type** | [ReflectorNet](https://github.com/IvanMurzak/ReflectorNet) builds JSON schemas and binds nested objects, lists and enums |
-| **Lives with your app** | SignalR link with automatic reconnect; the server remembers the catalog while the app reloads |
-| **Two MCP transports** | `stdio` (the AI client launches the server) and streamable HTTP (`/mcp`) |
-| **REST** | `GET /api/tools` and `POST /api/tools/{name}` for scripts and tests |
-| **Editor and game** | One editor and one runtime connection side by side; game-only tools go to the game |
-| **Tool annotations** | `Title`, `ReadOnlyHint`, `DestructiveHint`, `IdempotentHint`, `OpenWorldHint` |
-| **Skill files** | A `SKILL.md` per tool, written to a `SKILLS/` folder |
-| **Auth and hooks** | `none`, `token` or `oauth` modes; analytics and authorization webhooks |
+- ✅ **Attributes** — `[AiTool]`, `[AiPrompt]`, `[AiResource]` on plain C# methods
+- ✅ **Any .NET type** — ReflectorNet builds schemas and binds nested objects, lists, enums
+- ✅ **Lives with your app** — SignalR link with auto-reconnect; catalog kept during reloads
+- ✅ **Two MCP transports** — `stdio` or streamable HTTP on `/mcp`
+- ✅ **REST** — `GET /api/tools` and `POST /api/tools/{name}` for scripts and tests
+- ✅ **Editor and game** — editor and runtime connections side by side
+- ✅ **Tool annotations** — title plus read-only, destructive, idempotent, open-world hints
+- ✅ **Skill files** — a `SKILL.md` per tool in a `SKILLS/` folder
+- ✅ **Auth and hooks** — `none` / `token` / `oauth` modes, analytics and auth webhooks
 
 ## Install
 
