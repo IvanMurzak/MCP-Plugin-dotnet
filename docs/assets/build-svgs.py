@@ -6,6 +6,7 @@ import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.dont_write_bytecode = True  # keep docs/assets free of __pycache__
 sys.path.insert(0, HERE)
 import svgkit as K  # noqa: E402
 
