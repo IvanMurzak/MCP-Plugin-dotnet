@@ -126,9 +126,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             await using var host = await OAuthMcpHost.StartAsync(services => WithToolWebhook(services, collector), Account);
             using var http = new HttpClient();
 
-            var (status, _) = await PingAsync(http, host, $"/p/{PinA}/api/system-tools/ping");
+            var (status, error) = await PingAsync(http, host, $"/p/{PinA}/api/system-tools/ping");
 
             status.ShouldBe(HttpStatusCode.ServiceUnavailable);
+            error.ShouldStartWith("No game engine is connected for your account");
             collector.Verify(c => c.OnToolCall(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>(),
                 It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<string>()), Times.Never());
         }
@@ -146,6 +147,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             status.ShouldBe(HttpStatusCode.OK);
             collector.Verify(c => c.OnToolCall(RemoteSystemToolRunner.LivenessProbeToolName, It.IsAny<long>(), It.IsAny<long>(),
                 "success", It.IsAny<long>(), It.IsAny<string?>(), "http"), Times.Once());
+        }
+
+        [Theory]
+        [InlineData("ping", ResponseErrorKind.Unavailable, 503, true)]   // no plugin connected (or one refused it unrun)
+        [InlineData("ping", ResponseErrorKind.Unavailable, 502, false)]  // the connection failed after the send
+        [InlineData("ping", ResponseErrorKind.Unavailable, null, false)] // the plugin's own Unavailable error
+        [InlineData("ping", ResponseErrorKind.Timeout, null, false)]
+        [InlineData("other_system_tool", ResponseErrorKind.Unavailable, 503, false)]
+        public void IsProbeWithoutPlugin_MatchesOnlyTheProbesNotConnectedAnswer(string name, ResponseErrorKind kind, int? status, bool expected)
+        {
+            var response = ResponseCallTool.Error("x", kind, status).Pack("request-id");
+
+            RemoteSystemToolRunner.IsProbeWithoutPlugin(name, response).ShouldBe(expected);
         }
 
         // ─────────────── everything else still waits ───────────────
