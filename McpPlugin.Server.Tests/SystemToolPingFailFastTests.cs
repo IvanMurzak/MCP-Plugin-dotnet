@@ -24,6 +24,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 using com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure;
+using com.IvanMurzak.McpPlugin.Server.Webhooks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -70,10 +71,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         public async Task PinnedPing_OtherProjectConnected_Answers503AtOnce_WithThePinnedNoMatchText()
         {
             await using var host = await OAuthMcpHost.StartAsync(services => services.AddSingleton(_plugins.Context), Account);
-            var strategy = (AccountMcpStrategy)host.Services.GetRequiredService<IMcpConnectionStrategy>();
-            var catalog = host.Services.GetRequiredService<PluginCatalogCache>();
-            _plugins.AddAnsweringCalls("conn-a");
-            PluginReconnect.Register(strategy, catalog, Account, "instance-a", "conn-a");
+            ConnectProjectA(host);
             using var http = new HttpClient();
 
             // Control: the pinned project's own plugin answers the probe.
@@ -117,6 +115,51 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
             result.Status.ShouldBe(ResponseStatus.Success);
             FakePluginHub.VerifyCalls(plugin, Times.Once());
+        }
+
+        // ─────────────── usage webhooks ───────────────
+
+        [Fact]
+        public async Task PinnedPing_NoPlugin_IsNotReportedToTheToolWebhook()
+        {
+            var collector = new Mock<IWebhookEventCollector>();
+            await using var host = await OAuthMcpHost.StartAsync(services => WithToolWebhook(services, collector), Account);
+            using var http = new HttpClient();
+
+            var (status, error) = await PingAsync(http, host, $"/p/{PinA}/api/system-tools/ping");
+
+            status.ShouldBe(HttpStatusCode.ServiceUnavailable);
+            error.ShouldStartWith("No game engine is connected for your account");
+            collector.Verify(c => c.OnToolCall(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>(),
+                It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<string>()), Times.Never());
+        }
+
+        [Fact]
+        public async Task PinnedPing_PluginConnected_IsReportedToTheToolWebhookAsSuccess()
+        {
+            var collector = new Mock<IWebhookEventCollector>();
+            await using var host = await OAuthMcpHost.StartAsync(services => WithToolWebhook(services, collector), Account);
+            ConnectProjectA(host);
+            using var http = new HttpClient();
+
+            var (status, _) = await PingAsync(http, host, $"/p/{PinA}/api/system-tools/ping");
+
+            status.ShouldBe(HttpStatusCode.OK);
+            collector.Verify(c => c.OnToolCall(RemoteSystemToolRunner.LivenessProbeToolName, It.IsAny<long>(), It.IsAny<long>(),
+                "success", It.IsAny<long>(), It.IsAny<string?>(), "http"), Times.Once());
+        }
+
+        [Theory]
+        [InlineData("ping", ResponseErrorKind.Unavailable, 503, true)]   // no plugin connected (or one refused it unrun)
+        [InlineData("ping", ResponseErrorKind.Unavailable, 502, false)]  // the connection failed after the send
+        [InlineData("ping", ResponseErrorKind.Unavailable, null, false)] // the plugin's own Unavailable error
+        [InlineData("ping", ResponseErrorKind.Timeout, null, false)]
+        [InlineData("other_system_tool", ResponseErrorKind.Unavailable, 503, false)]
+        public void IsProbeWithoutPlugin_MatchesOnlyTheProbesNotConnectedAnswer(string name, ResponseErrorKind kind, int? status, bool expected)
+        {
+            var response = ResponseCallTool.Error("x", kind, status).Pack("request-id");
+
+            RemoteSystemToolRunner.IsProbeWithoutPlugin(name, response).ShouldBe(expected);
         }
 
         // ─────────────── everything else still waits ───────────────
@@ -189,6 +232,22 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             using var json = JsonDocument.Parse(body);
             var error = json.RootElement.TryGetProperty("error", out var e) ? e.GetString() ?? string.Empty : string.Empty;
             return (response.StatusCode, error);
+        }
+
+        void WithToolWebhook(IServiceCollection services, Mock<IWebhookEventCollector> collector)
+        {
+            services.AddSingleton(_plugins.Context);
+            services.AddSingleton(new WebhookOptions(toolWebhookUrl: "http://127.0.0.1:9/tools"));
+            services.AddSingleton(collector.Object);
+        }
+
+        /// <summary>Connects an answering plugin for <see cref="PinA"/> to the host's account.</summary>
+        void ConnectProjectA(OAuthMcpHost host)
+        {
+            var strategy = (AccountMcpStrategy)host.Services.GetRequiredService<IMcpConnectionStrategy>();
+            var catalog = host.Services.GetRequiredService<PluginCatalogCache>();
+            _plugins.AddAnsweringCalls("conn-a");
+            PluginReconnect.Register(strategy, catalog, Account, "instance-a", "conn-a");
         }
 
         static RequestCallTool PingRequest() => new RequestCallTool(RemoteSystemToolRunner.LivenessProbeToolName, new Dictionary<string, JsonElement>());

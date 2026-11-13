@@ -54,6 +54,24 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// <summary>The system tool clients poll as an engine liveness probe.</summary>
         internal const string LivenessProbeToolName = "ping";
 
+        /// <summary>
+        /// The explicit HTTP status of the probe's "no engine plugin is connected" answer. Unavailable maps to 503
+        /// anyway; stating it sets the answer apart from Unavailable errors that are real failures: a plugin
+        /// connection that failed after the send (502) and a plugin's own Unavailable error (no status).
+        /// </summary>
+        const int NotConnectedStatusCode = 503;
+
+        /// <summary>
+        /// True when the liveness probe found no plugin to run it: none connected (<see cref="RunSystemTool"/>'s
+        /// own answer), or the plugin refused it unrun while reloading (<see cref="ResponseCallTool.NotExecuted"/>,
+        /// also Unavailable + 503).
+        /// </summary>
+        internal static bool IsProbeWithoutPlugin(string name, ResponseData<ResponseCallTool>? response)
+            => name == LivenessProbeToolName
+               && response?.Status == ResponseStatus.Error
+               && response.ErrorKind == ResponseErrorKind.Unavailable
+               && response.HttpStatusCode == NotConnectedStatusCode;
+
         public async Task<ResponseData<ResponseCallTool>> RunSystemTool(RequestCallTool request, CancellationToken cancellationToken = default)
         {
             // A liveness probe asks "is the plugin connected right now?": with none connected it answers that at
@@ -63,7 +81,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (isLivenessProbe && NotConnectedMessage() is { } notConnected)
             {
                 _logger.LogDebug("System tool '{name}': no engine plugin is connected; answering at once.", request.Name);
-                return ResponseCallTool.Error(notConnected, ResponseErrorKind.Unavailable).Pack(request.RequestID);
+                return ResponseCallTool.Error(notConnected, ResponseErrorKind.Unavailable, NotConnectedStatusCode).Pack(request.RequestID);
             }
 
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
@@ -90,10 +108,12 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                     if (responseData.Status == ResponseStatus.Error)
                     {
-                        // A probe whose plugin dropped mid-send gets the same wording as the check above.
+                        // A probe whose plugin dropped mid-send gets the same wording as the check above, and the
+                        // same status when it was never delivered (one that may have run keeps its 502).
                         if (isLivenessProbe && responseData.ErrorKind == ResponseErrorKind.Unavailable
                             && NotConnectedMessage() is { } droppedMessage)
-                            return ResponseCallTool.Error(droppedMessage, ResponseErrorKind.Unavailable, responseData.HttpStatusCode);
+                            return ResponseCallTool.Error(droppedMessage, ResponseErrorKind.Unavailable,
+                                responseData.HttpStatusCode ?? NotConnectedStatusCode);
 
                         var errorKind = responseData.ErrorKind == ResponseErrorKind.None
                             ? ResponseErrorKind.Internal

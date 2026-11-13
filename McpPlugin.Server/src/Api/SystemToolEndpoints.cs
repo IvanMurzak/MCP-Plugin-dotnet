@@ -267,7 +267,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Api
             var response = await systemToolHub.RunSystemTool(requestData, context.RequestAborted);
 
             // ── Fire webhook ────────────────────────────────────────────
-            if (webhookOptions?.IsToolEnabled == true)
+            // A liveness probe that found no plugin is not a failed tool call: clients poll it every few seconds
+            // while the editor is closed, and reporting each answer flooded usage analytics with errors.
+            if (webhookOptions?.IsToolEnabled == true && !RemoteSystemToolRunner.IsProbeWithoutPlugin(name, response))
             {
                 stopwatch!.Stop();
                 var collector = context.RequestServices.GetService<IWebhookEventCollector>();
