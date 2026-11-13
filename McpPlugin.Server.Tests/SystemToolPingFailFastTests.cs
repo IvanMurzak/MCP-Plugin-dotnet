@@ -24,6 +24,7 @@ using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 using com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure;
+using com.IvanMurzak.McpPlugin.Server.Webhooks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -119,6 +120,39 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             FakePluginHub.VerifyCalls(plugin, Times.Once());
         }
 
+        // ─────────────── usage webhooks ───────────────
+
+        [Fact]
+        public async Task PinnedPing_NoPlugin_IsNotReportedToTheToolWebhook()
+        {
+            var collector = new Mock<IWebhookEventCollector>();
+            await using var host = await OAuthMcpHost.StartAsync(services => WithToolWebhook(services, collector), Account);
+            using var http = new HttpClient();
+
+            var (status, _) = await PingAsync(http, host, $"/p/{PinA}/api/system-tools/ping");
+
+            status.ShouldBe(HttpStatusCode.ServiceUnavailable);
+            VerifyToolCallsReported(collector, Times.Never());
+        }
+
+        [Fact]
+        public async Task PinnedPing_PluginConnected_IsReportedToTheToolWebhookAsSuccess()
+        {
+            var collector = new Mock<IWebhookEventCollector>();
+            await using var host = await OAuthMcpHost.StartAsync(services => WithToolWebhook(services, collector), Account);
+            var strategy = (AccountMcpStrategy)host.Services.GetRequiredService<IMcpConnectionStrategy>();
+            var catalog = host.Services.GetRequiredService<PluginCatalogCache>();
+            _plugins.AddAnsweringCalls("conn-a");
+            PluginReconnect.Register(strategy, catalog, Account, "instance-a", "conn-a");
+            using var http = new HttpClient();
+
+            var (status, _) = await PingAsync(http, host, $"/p/{PinA}/api/system-tools/ping");
+
+            status.ShouldBe(HttpStatusCode.OK);
+            collector.Verify(c => c.OnToolCall(RemoteSystemToolRunner.LivenessProbeToolName, It.IsAny<long>(), It.IsAny<long>(),
+                "success", It.IsAny<long>(), It.IsAny<string?>(), "http"), Times.Once());
+        }
+
         // ─────────────── everything else still waits ───────────────
 
         [Fact]
@@ -190,6 +224,17 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var error = json.RootElement.TryGetProperty("error", out var e) ? e.GetString() ?? string.Empty : string.Empty;
             return (response.StatusCode, error);
         }
+
+        void WithToolWebhook(IServiceCollection services, Mock<IWebhookEventCollector> collector)
+        {
+            services.AddSingleton(_plugins.Context);
+            services.AddSingleton(new WebhookOptions(toolWebhookUrl: "http://127.0.0.1:9/tools"));
+            services.AddSingleton(collector.Object);
+        }
+
+        static void VerifyToolCallsReported(Mock<IWebhookEventCollector> collector, Times times)
+            => collector.Verify(c => c.OnToolCall(It.IsAny<string>(), It.IsAny<long>(), It.IsAny<long>(),
+                It.IsAny<string>(), It.IsAny<long>(), It.IsAny<string?>(), It.IsAny<string>()), times);
 
         static RequestCallTool PingRequest() => new RequestCallTool(RemoteSystemToolRunner.LivenessProbeToolName, new Dictionary<string, JsonElement>());
 
