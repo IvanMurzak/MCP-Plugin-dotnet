@@ -4,13 +4,9 @@
 
 <br/>
 
-[![NuGet](https://img.shields.io/nuget/v/com.IvanMurzak.McpPlugin?label=NuGet&color=1D4ED8&logo=nuget&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin/)
-[![Server](https://img.shields.io/nuget/v/com.IvanMurzak.McpPlugin.Server?label=Server&color=1D4ED8&logo=nuget&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin.Server/)
-[![release](https://img.shields.io/github/actions/workflow/status/IvanMurzak/MCP-Plugin-dotnet/release.yml?branch=main&label=release&style=for-the-badge&labelColor=0F172A&logoColor=white&logo=githubactions)](https://github.com/IvanMurzak/MCP-Plugin-dotnet/actions/workflows/release.yml)
-[![.NET](https://img.shields.io/badge/.NET-netstandard2.1%20%7C%208%20%7C%209-0E7490?logo=dotnet&style=for-the-badge&labelColor=0F172A&logoColor=white)](#packages)
-[![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://discord.gg/Cgs6nM8BPU)
-[![License](https://img.shields.io/github/license/IvanMurzak/MCP-Plugin-dotnet?label=license&color=047857&style=for-the-badge&labelColor=0F172A&logoColor=white)](LICENSE)
-[![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
+[![NuGet](https://img.shields.io/nuget/v/com.IvanMurzak.McpPlugin?label=NuGet&color=1D4ED8&logo=nuget&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin/)[![Server](https://img.shields.io/nuget/v/com.IvanMurzak.McpPlugin.Server?label=Server&color=1D4ED8&logo=nuget&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin.Server/)[![release](https://img.shields.io/github/actions/workflow/status/IvanMurzak/MCP-Plugin-dotnet/release.yml?branch=main&label=release&style=for-the-badge&labelColor=0F172A&logoColor=white&logo=githubactions)](https://github.com/IvanMurzak/MCP-Plugin-dotnet/actions/workflows/release.yml)
+
+[![.NET](https://img.shields.io/badge/targets-netstandard2.1%20%7C%208%20%7C%209-0E7490?logo=dotnet&style=for-the-badge&labelColor=0F172A&logoColor=white)](#packages)[![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://discord.gg/Cgs6nM8BPU)[![License](https://img.shields.io/github/license/IvanMurzak/MCP-Plugin-dotnet?label=license&color=047857&style=for-the-badge&labelColor=0F172A&logoColor=white)](LICENSE)[![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
 
 </div>
 
@@ -36,15 +32,15 @@ All three share one version and are released together.
 
 ## Features
 
-- ✅ **Attributes** — `[AiTool]`, `[AiPrompt]`, `[AiResource]` on plain C# methods
-- ✅ **Any .NET type** — ReflectorNet builds schemas and binds nested objects, lists, enums
-- ✅ **Lives with your app** — SignalR link with auto-reconnect; catalog kept during reloads
-- ✅ **Two MCP transports** — `stdio` or streamable HTTP on `/mcp`
-- ✅ **REST** — `GET /api/tools` and `POST /api/tools/{name}` for scripts and tests
-- ✅ **Editor and game** — editor and runtime connections side by side
-- ✅ **Tool annotations** — title plus read-only, destructive, idempotent, open-world hints
-- ✅ **Skill files** — a `SKILL.md` per tool in a `SKILLS/` folder
-- ✅ **Auth and hooks** — `none` / `token` / `oauth` modes, analytics and auth webhooks
+✅ **Attributes** — `[AiTool]`, `[AiPrompt]`, `[AiResource]` on plain C# methods<br>
+✅ **Any .NET type** — ReflectorNet builds schemas and binds nested objects, lists, enums<br>
+✅ **Lives with your app** — SignalR link with auto-reconnect; catalog kept during reloads<br>
+✅ **Two MCP transports** — `stdio` or streamable HTTP on `/mcp`<br>
+✅ **REST** — `GET /api/tools` and `POST /api/tools/{name}` for scripts and tests<br>
+✅ **Editor and game** — editor and runtime connections side by side<br>
+✅ **Tool annotations** — title plus read-only, destructive, idempotent, open-world hints<br>
+✅ **Skill files** — a `SKILL.md` per tool in a `SKILLS/` folder<br>
+✅ **Auth and hooks** — `none` / `token` / `oauth` modes, analytics and auth webhooks
 
 ## Install
 
@@ -85,7 +81,8 @@ public static class GamePrompts
 [AiResourceType]
 public static class GameResources
 {
-    [AiResource(Route = "app://status", Name = "app-status", MimeType = "text/plain", ListResources = nameof(ListStatus))]
+    [AiResource(Route = "app://status", Name = "app-status", MimeType = "text/plain",
+        ListResources = nameof(ListStatus))]
     [Description("Current application status.")]
     public static ResponseResourceContent[] GetStatus(string uri)
         => new[] { ResponseResourceContent.CreateText(uri, "Running", "text/plain") };
@@ -137,7 +134,7 @@ using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server;
 using Microsoft.AspNetCore.Builder;
 
-var dataArguments = new DataArguments(args); // port=, client-transport=, auth=, ... or environment variables
+var dataArguments = new DataArguments(args); // port=, client-transport=, auth=, ...
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services

@@ -12,11 +12,11 @@
       <circle cx="1" cy="1" r="1" fill="#ffffff" fill-opacity=".06"/>
     </pattern>
     <clipPath id="frame"><rect width="1200" height="500" rx="20"/></clipPath>
-    <!-- plugin side: server (400,250) to each app -->
-    <path id="l1" d="M400 250 C350 250 350 128 300 128"/>
-    <path id="l2" d="M400 250 L300 250"/>
-    <path id="l3" d="M400 250 C350 250 350 372 300 372"/>
-    <!-- client side: each client to server (800,250) -->
+    <!-- plugin side: server (380,250) to each app -->
+    <path id="l1" d="M380 250 C330 250 330 128 280 128"/>
+    <path id="l2" d="M380 250 L280 250"/>
+    <path id="l3" d="M380 250 C330 250 330 372 280 372"/>
+    <!-- caller side: each caller to server (800,250) -->
     <path id="r1" d="M900 128 C850 128 850 250 800 250"/>
     <path id="r2" d="M900 208 C850 208 850 250 800 250"/>
     <path id="r3" d="M900 288 C850 288 850 250 800 250"/>
@@ -25,13 +25,13 @@
   <style>
     .sans { font-family: "Segoe UI", Inter, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; }
     .mono { font-family: "JetBrains Mono", "Cascadia Code", Consolas, Menlo, monospace; }
-    .head { font-size: 12px; letter-spacing: 2px; fill: #64748b; font-weight: 700; }
-    .card { fill: #0f172a; stroke: #1e293b; }
-    .t1 { font-size: 15px; font-weight: 600; fill: #e2e8f0; }
-    .t2 { font-size: 12px; fill: #94a3b8; }
-    .wire { fill: none; stroke-width: 1.6; stroke-dasharray: 4 6; }
-    .chip .box { fill: #111c35; stroke: #273454; }
-    .chip text { font-size: 13px; fill: #cbd5e1; }
+    .head { font-size: 16px; letter-spacing: 2px; fill: #94a3b8; font-weight: 700; }
+    .card { fill: #0f172a; stroke: #334155; }
+    .t1 { font-size: 19px; font-weight: 600; fill: #f1f5f9; }
+    .t2 { font-size: 16px; fill: #a5b4cb; }
+    .wire { fill: none; stroke-width: 2; stroke-dasharray: 5 6; }
+    .chip .box { fill: #111c35; stroke: #2e3d60; }
+    .chip text { font-size: 16px; fill: #e2e8f0; }
     .chip .hl { fill: #22d3ee; fill-opacity: .08; stroke: #67e8f9; stroke-width: 1.5; opacity: 0; animation: hl 8s ease-in-out infinite; }
     @keyframes hl { 0%, 14%, 100% { opacity: 0; } 4%, 9% { opacity: 1; } }
     .c2 .hl { animation-delay: 1s; } .c3 .hl { animation-delay: 2s; } .c4 .hl { animation-delay: 3s; }
@@ -43,9 +43,9 @@
     <rect width="1200" height="500" fill="url(#bg)"/>
     <rect width="1200" height="500" fill="url(#dots)"/>
 
-    <text x="40" y="58" class="head">YOUR .NET APPS</text>
-    <text x="400" y="58" class="head">MCPPLUGIN.SERVER</text>
-    <text x="900" y="58" class="head">CALLERS</text>
+    <text x="20" y="62" class="head">YOUR .NET APPS</text>
+    <text x="380" y="62" class="head">MCPPLUGIN.SERVER</text>
+    <text x="900" y="62" class="head">CALLERS</text>
 
     <!-- wires -->
     <g>
@@ -53,67 +53,67 @@
       <use href="#r1" class="wire" stroke="#e879f9"/><use href="#r2" class="wire" stroke="#e879f9"/>
       <use href="#r3" class="wire" stroke="#a5b4fc"/><use href="#r4" class="wire" stroke="#34d399"/>
     </g>
-    <!-- a call travels from a caller to the server, then to an app, and the result comes back -->
+    <!-- a call travels from a caller to the server, then to an app; a result comes back -->
     <g>
-      <circle r="3.5" fill="#e879f9"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#r1"/></animateMotion></circle>
-      <circle r="3.5" fill="#e879f9"><animateMotion dur="2.4s" begin=".6s" repeatCount="indefinite"><mpath href="#r2"/></animateMotion></circle>
-      <circle r="3.5" fill="#a5b4fc"><animateMotion dur="2.4s" begin="1.2s" repeatCount="indefinite"><mpath href="#r3"/></animateMotion></circle>
-      <circle r="3.5" fill="#34d399"><animateMotion dur="2.4s" begin="1.8s" repeatCount="indefinite"><mpath href="#r4"/></animateMotion></circle>
-      <circle r="3.5" fill="#67e8f9"><animateMotion dur="2s" begin=".3s" repeatCount="indefinite"><mpath href="#l1"/></animateMotion></circle>
-      <circle r="3.5" fill="#67e8f9"><animateMotion dur="2s" begin=".9s" repeatCount="indefinite"><mpath href="#l2"/></animateMotion></circle>
-      <circle r="3.5" fill="#67e8f9"><animateMotion dur="2s" begin="1.5s" repeatCount="indefinite"><mpath href="#l3"/></animateMotion></circle>
-      <circle r="3" fill="#fde68a"><animateMotion dur="2s" begin="1.1s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear"><mpath href="#l2"/></animateMotion></circle>
+      <circle r="4" fill="#e879f9"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#r1"/></animateMotion></circle>
+      <circle r="4" fill="#e879f9"><animateMotion dur="2.4s" begin=".6s" repeatCount="indefinite"><mpath href="#r2"/></animateMotion></circle>
+      <circle r="4" fill="#a5b4fc"><animateMotion dur="2.4s" begin="1.2s" repeatCount="indefinite"><mpath href="#r3"/></animateMotion></circle>
+      <circle r="4" fill="#34d399"><animateMotion dur="2.4s" begin="1.8s" repeatCount="indefinite"><mpath href="#r4"/></animateMotion></circle>
+      <circle r="4" fill="#67e8f9"><animateMotion dur="2s" begin=".3s" repeatCount="indefinite"><mpath href="#l1"/></animateMotion></circle>
+      <circle r="4" fill="#67e8f9"><animateMotion dur="2s" begin=".9s" repeatCount="indefinite"><mpath href="#l2"/></animateMotion></circle>
+      <circle r="4" fill="#67e8f9"><animateMotion dur="2s" begin="1.5s" repeatCount="indefinite"><mpath href="#l3"/></animateMotion></circle>
+      <circle r="3.5" fill="#fde68a"><animateMotion dur="2s" begin="1.1s" repeatCount="indefinite" keyPoints="1;0" keyTimes="0;1" calcMode="linear"><mpath href="#l2"/></animateMotion></circle>
     </g>
 
     <!-- wire labels -->
     <g>
-      <rect x="318" y="268" width="64" height="22" rx="11" fill="#0b1020" stroke="#22d3ee" stroke-opacity=".6"/>
-      <text x="350" y="283" text-anchor="middle" font-size="12" fill="#a5f3fc">SignalR</text>
-      <rect x="810" y="268" width="80" height="22" rx="11" fill="#0b1020" stroke="#e879f9" stroke-opacity=".6"/>
-      <text x="850" y="283" text-anchor="middle" font-size="12" fill="#f5d0fe">MCP · REST</text>
+      <rect x="290" y="270" width="80" height="28" rx="14" fill="#0b1020" stroke="#22d3ee" stroke-opacity=".7"/>
+      <text x="330" y="290" text-anchor="middle" font-size="16" fill="#a5f3fc">SignalR</text>
+      <rect x="800" y="270" width="100" height="28" rx="14" fill="#0b1020" stroke="#e879f9" stroke-opacity=".7"/>
+      <text x="850" y="290" text-anchor="middle" font-size="16" fill="#f5d0fe">MCP · REST</text>
     </g>
 
     <!-- apps -->
     <g>
-      <rect x="40" y="98" width="260" height="60" rx="12" class="card"/><rect x="40" y="98" width="4" height="60" rx="2" fill="#22d3ee"/>
-      <text x="60" y="124" class="t1">Game editor plugin</text><text x="60" y="144" class="t2">McpPlugin · role: editor</text>
-      <rect x="40" y="220" width="260" height="60" rx="12" class="card"/><rect x="40" y="220" width="4" height="60" rx="2" fill="#22d3ee"/>
-      <text x="60" y="246" class="t1">Game build</text><text x="60" y="266" class="t2">McpPlugin · role: runtime</text>
-      <rect x="40" y="342" width="260" height="60" rx="12" class="card"/><rect x="40" y="342" width="4" height="60" rx="2" fill="#22d3ee"/>
-      <text x="60" y="368" class="t1">Desktop or console app</text><text x="60" y="388" class="t2">McpPlugin · any .NET host</text>
+      <rect x="20" y="94" width="260" height="68" rx="12" class="card"/><rect x="20" y="94" width="4" height="68" rx="2" fill="#22d3ee"/>
+      <text x="38" y="123" class="t1">Game editor plugin</text><text x="38" y="148" class="t2">McpPlugin · role: editor</text>
+      <rect x="20" y="216" width="260" height="68" rx="12" class="card"/><rect x="20" y="216" width="4" height="68" rx="2" fill="#22d3ee"/>
+      <text x="38" y="245" class="t1">Game build</text><text x="38" y="270" class="t2">McpPlugin · role: runtime</text>
+      <rect x="20" y="338" width="260" height="68" rx="12" class="card"/><rect x="20" y="338" width="4" height="68" rx="2" fill="#22d3ee"/>
+      <text x="38" y="367" class="t1">Desktop or console app</text><text x="38" y="392" class="t2">McpPlugin · any .NET host</text>
     </g>
 
     <!-- server -->
-    <rect x="400" y="82" width="400" height="336" rx="18" fill="#0d1428" stroke="url(#edge)" stroke-width="2" stroke-opacity=".8"/>
-    <g transform="translate(412 102)">
-      <g class="chip c1"><rect class="box" width="182" height="44" rx="10"/><rect class="hl" width="182" height="44" rx="10"/><circle cx="20" cy="22" r="4" fill="#22d3ee"/><text x="34" y="27">SignalR hub</text></g>
-      <g class="chip c2" transform="translate(194 0)"><rect class="box" width="182" height="44" rx="10"/><rect class="hl" width="182" height="44" rx="10"/><circle cx="20" cy="22" r="4" fill="#22d3ee"/><text x="34" y="27">Version handshake</text></g>
-      <g class="chip c3" transform="translate(0 56)"><rect class="box" width="182" height="44" rx="10"/><rect class="hl" width="182" height="44" rx="10"/><circle cx="20" cy="22" r="4" fill="#818cf8"/><text x="34" y="27">Tool router</text></g>
-      <g class="chip c4" transform="translate(194 56)"><rect class="box" width="182" height="44" rx="10"/><rect class="hl" width="182" height="44" rx="10"/><circle cx="20" cy="22" r="4" fill="#818cf8"/><text x="34" y="27">Prompts, resources</text></g>
-      <g class="chip c5" transform="translate(0 112)"><rect class="box" width="182" height="44" rx="10"/><rect class="hl" width="182" height="44" rx="10"/><circle cx="20" cy="22" r="4" fill="#e879f9"/><text x="34" y="27">Auth modes</text></g>
-      <g class="chip c6" transform="translate(194 112)"><rect class="box" width="182" height="44" rx="10"/><rect class="hl" width="182" height="44" rx="10"/><circle cx="20" cy="22" r="4" fill="#e879f9"/><text x="34" y="27">Webhooks</text></g>
-      <g class="chip c7" transform="translate(0 168)"><rect class="box" width="182" height="44" rx="10"/><rect class="hl" width="182" height="44" rx="10"/><circle cx="20" cy="22" r="4" fill="#34d399"/><text x="34" y="27">Role routing</text></g>
-      <g class="chip c8" transform="translate(194 168)"><rect class="box" width="182" height="44" rx="10"/><rect class="hl" width="182" height="44" rx="10"/><circle cx="20" cy="22" r="4" fill="#34d399"/><text x="34" y="27">Reconnect grace</text></g>
+    <rect x="380" y="82" width="420" height="336" rx="18" fill="#0d1428" stroke="url(#edge)" stroke-width="2" stroke-opacity=".9"/>
+    <g transform="translate(392 98)">
+      <g class="chip c1"><rect class="box" width="192" height="46" rx="10"/><rect class="hl" width="192" height="46" rx="10"/><circle cx="18" cy="23" r="5" fill="#22d3ee"/><text x="32" y="29">SignalR hub</text></g>
+      <g class="chip c2" transform="translate(204 0)"><rect class="box" width="192" height="46" rx="10"/><rect class="hl" width="192" height="46" rx="10"/><circle cx="18" cy="23" r="5" fill="#22d3ee"/><text x="32" y="29">Version check</text></g>
+      <g class="chip c3" transform="translate(0 56)"><rect class="box" width="192" height="46" rx="10"/><rect class="hl" width="192" height="46" rx="10"/><circle cx="18" cy="23" r="5" fill="#818cf8"/><text x="32" y="29">Tool router</text></g>
+      <g class="chip c4" transform="translate(204 56)"><rect class="box" width="192" height="46" rx="10"/><rect class="hl" width="192" height="46" rx="10"/><circle cx="18" cy="23" r="5" fill="#818cf8"/><text x="32" y="29">Prompts, resources</text></g>
+      <g class="chip c5" transform="translate(0 112)"><rect class="box" width="192" height="46" rx="10"/><rect class="hl" width="192" height="46" rx="10"/><circle cx="18" cy="23" r="5" fill="#e879f9"/><text x="32" y="29">Auth modes</text></g>
+      <g class="chip c6" transform="translate(204 112)"><rect class="box" width="192" height="46" rx="10"/><rect class="hl" width="192" height="46" rx="10"/><circle cx="18" cy="23" r="5" fill="#e879f9"/><text x="32" y="29">Webhooks</text></g>
+      <g class="chip c7" transform="translate(0 168)"><rect class="box" width="192" height="46" rx="10"/><rect class="hl" width="192" height="46" rx="10"/><circle cx="18" cy="23" r="5" fill="#34d399"/><text x="32" y="29">Role routing</text></g>
+      <g class="chip c8" transform="translate(204 168)"><rect class="box" width="192" height="46" rx="10"/><rect class="hl" width="192" height="46" rx="10"/><circle cx="18" cy="23" r="5" fill="#34d399"/><text x="32" y="29">Reconnect grace</text></g>
     </g>
-    <g transform="translate(412 330)">
-      <rect width="376" height="68" rx="12" fill="#1e1b4b" fill-opacity=".55" stroke="#6366f1" stroke-opacity=".6"/>
-      <text x="18" y="29" class="mono" font-size="13" font-weight="700" fill="#c7d2fe">/hub/mcp-server · /mcp · /api/tools</text>
-      <text x="18" y="50" font-size="12" fill="#a5b4fc">SignalR for apps, MCP for agents, REST for scripts</text>
+    <g transform="translate(392 328)">
+      <rect width="396" height="76" rx="12" fill="#1e1b4b" fill-opacity=".6" stroke="#6366f1" stroke-opacity=".7"/>
+      <text x="18" y="31" class="mono" font-size="16" font-weight="700" fill="#c7d2fe">/hub/mcp-server · /mcp · /api/tools</text>
+      <text x="18" y="57" font-size="16" fill="#c4b5fd">SignalR: apps · MCP: agents · REST: scripts</text>
     </g>
 
     <!-- callers -->
     <g>
-      <rect x="900" y="98" width="260" height="60" rx="12" class="card"/>
-      <text x="920" y="124" class="t1">Local AI agent</text><text x="920" y="144" class="t2">launches the server over stdio</text>
-      <rect x="900" y="178" width="260" height="60" rx="12" class="card"/>
-      <text x="920" y="204" class="t1">Remote AI agent</text><text x="920" y="224" class="t2">streamable HTTP on /mcp</text>
-      <rect x="900" y="258" width="260" height="60" rx="12" class="card"/>
-      <text x="920" y="284" class="t1">MCP Inspector</text><text x="920" y="304" class="t2">debug tools and resources</text>
-      <rect x="900" y="338" width="260" height="60" rx="12" class="card"/>
-      <text x="920" y="364" class="t1">Scripts and tests</text><text x="920" y="384" class="t2">REST: /api/tools/{name}</text>
+      <rect x="900" y="94" width="280" height="68" rx="12" class="card"/>
+      <text x="918" y="123" class="t1">Local AI agent</text><text x="918" y="148" class="t2">launches the server over stdio</text>
+      <rect x="900" y="174" width="280" height="68" rx="12" class="card"/>
+      <text x="918" y="203" class="t1">Remote AI agent</text><text x="918" y="228" class="t2">streamable HTTP on /mcp</text>
+      <rect x="900" y="254" width="280" height="68" rx="12" class="card"/>
+      <text x="918" y="283" class="t1">MCP Inspector</text><text x="918" y="308" class="t2">debug tools and resources</text>
+      <rect x="900" y="334" width="280" height="68" rx="12" class="card"/>
+      <text x="918" y="363" class="t1">Scripts and tests</text><text x="918" y="388" class="t2">REST: /api/tools/{name}</text>
     </g>
 
-    <text x="600" y="462" text-anchor="middle" font-size="13" fill="#64748b">McpPlugin: netstandard2.1 · net8.0 · net9.0   ·   McpPlugin.Server: net8.0 · net9.0   ·   built on ReflectorNet</text>
+    <text x="600" y="462" text-anchor="middle" font-size="16" fill="#94a3b8">McpPlugin: netstandard2.1 · net8.0 · net9.0   ·   McpPlugin.Server: net8.0 · net9.0   ·   built on ReflectorNet</text>
   </g>
   <rect x=".5" y=".5" width="1199" height="499" rx="20" fill="none" stroke="#ffffff" stroke-opacity=".08"/>
 </svg>

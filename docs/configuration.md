@@ -15,21 +15,39 @@ Transport and auth modes in depth: [architecture-transport-auth.md](architecture
 
 `DataArguments` reads the environment first, then the command line (`key=value`), so a launch argument wins.
 
-| Argument | Env var | Description | Default |
-| :--- | :--- | :--- | :--- |
-| `port` | `MCP_PLUGIN_PORT` | Port for the SignalR hub and the HTTP endpoints. | `8080` |
-| `client-transport` | `MCP_PLUGIN_CLIENT_TRANSPORT` | How MCP clients connect: `stdio` (the client launches the server) or `streamableHttp`. | `streamableHttp` |
-| `bind` | `MCP_BIND` | Listen address: `loopback`, `any` (`0.0.0.0`) or a specific IP. | loopback |
-| `plugin-timeout` | `MCP_PLUGIN_CLIENT_TIMEOUT` | Timeout (ms) for ONE attempt of an idempotent plugin call: listing tools, prompts or resources, getting a prompt, reading a resource. These calls are retried up to 10 times with a 1 s delay. Tool calls do not use it. The four catalog endpoints (`tools/list`, `resources/list`, `resources/templates/list`, `prompts/list`) are capped at a fixed 15 s and answer an empty catalog instead of failing. | `10000` |
-| `tool-timeout` | `MCP_PLUGIN_TOOL_TIMEOUT` | One deadline (ms) for a whole tool call, MCP and REST alike: waiting for a reconnecting plugin, the call itself and a deferred (`Processing`) completion. When it passes the call fails with `[tool_timeout]` (HTTP 504). When unset: the default, or `plugin-timeout` if that is larger. | `300000` |
-| `plugin-reconnect-wait-seconds` | `MCP_PLUGIN_RECONNECT_WAIT_SECONDS` | The longest a request waits for a reconnecting plugin (an editor reload) before it fails. Also the window in which a call refused as not executed is sent again. | `60` |
-| `plugin-reconnect-grace-seconds` | `MCP_PLUGIN_RECONNECT_GRACE_SECONDS` | How long a disconnected plugin's tool, prompt and resource lists are remembered, so an agent listing during a reload still sees them. `0` disables it. | `300` |
-| `idle-timeout-seconds` | `MCP_PLUGIN_IDLE_TIMEOUT_SECONDS` | `streamableHttp` only: idle time before an MCP session is evicted. Sessions with an in-flight request or an open SSE stream are never evicted. | `600` |
-| `max-idle-session-count` | `MCP_PLUGIN_MAX_IDLE_SESSION_COUNT` | `streamableHttp` only: ceiling on retained idle MCP sessions; the least recently active are pruned first. | `1000` |
-| `auth` | `MCP_AUTH` | `none` (anonymous: local dev, CI), `token` (one shared secret, loopback single project) or `oauth` (OAuth 2.1 resource server). The legacy `authorization` / `MCP_AUTHORIZATION` names still parse, and the deprecated value `required` is treated as `token`. | `none` |
-| `token` | `MCP_PLUGIN_TOKEN` | `auth=token` only (required): the shared secret that plugins and MCP clients present as a bearer token. | *(none)* |
-| `auth-issuer` | `MCP_AUTH_ISSUER` | `auth=oauth` only (required): the authorization server URL. | *(none)* |
-| `public-url` | `MCP_PUBLIC_URL` | `auth=oauth` only (required): this server's public URL, used as the token audience. | *(none)* |
+| Argument / env var | Default | What it does |
+| :--- | :--- | :--- |
+| `port`<br>`MCP_PLUGIN_PORT` | `8080` | Port for the SignalR hub and HTTP endpoints |
+| `client-transport`<br>`MCP_PLUGIN_CLIENT_TRANSPORT` | `streamableHttp` | `stdio` or `streamableHttp` |
+| `bind`<br>`MCP_BIND` | loopback | `loopback`, `any` (`0.0.0.0`) or an IP |
+| `plugin-timeout`<br>`MCP_PLUGIN_CLIENT_TIMEOUT` | `10000` | One attempt of a list / get / read call (ms) |
+| `tool-timeout`<br>`MCP_PLUGIN_TOOL_TIMEOUT` | `300000` | Deadline for a whole tool call (ms) |
+| `plugin-reconnect-wait-seconds`<br>`MCP_PLUGIN_RECONNECT_WAIT_SECONDS` | `60` | How long a request waits for a reconnecting plugin |
+| `plugin-reconnect-grace-seconds`<br>`MCP_PLUGIN_RECONNECT_GRACE_SECONDS` | `300` | How long a gone plugin's catalog is remembered |
+| `idle-timeout-seconds`<br>`MCP_PLUGIN_IDLE_TIMEOUT_SECONDS` | `600` | Idle MCP session eviction (HTTP only) |
+| `max-idle-session-count`<br>`MCP_PLUGIN_MAX_IDLE_SESSION_COUNT` | `1000` | Ceiling on idle MCP sessions (HTTP only) |
+| `auth`<br>`MCP_AUTH` | `none` | `none`, `token` or `oauth` |
+| `token`<br>`MCP_PLUGIN_TOKEN` |  | Shared secret for `auth=token` |
+| `auth-issuer`<br>`MCP_AUTH_ISSUER` |  | Authorization server URL for `auth=oauth` |
+| `public-url`<br>`MCP_PUBLIC_URL` |  | Public URL (token audience) for `auth=oauth` |
+
+Details:
+
+- **`plugin-timeout`** covers listing tools, prompts or resources, getting a prompt and reading a resource. These
+  calls are retried up to 10 times with a 1 s delay. Tool calls do not use it. The four catalog endpoints
+  (`tools/list`, `resources/list`, `resources/templates/list`, `prompts/list`) are capped at a fixed 15 s and answer
+  an empty catalog instead of failing.
+- **`tool-timeout`** covers MCP and REST alike: waiting for a reconnecting plugin, the call itself and a deferred
+  (`Processing`) completion. When it passes the call fails with `[tool_timeout]` (HTTP 504). When unset: the
+  default, or `plugin-timeout` if that is larger.
+- **`plugin-reconnect-wait-seconds`** is also the window in which a call refused as not executed is sent again.
+- **`plugin-reconnect-grace-seconds`** lets an agent listing during a reload still see the catalog. `0` disables it.
+- **`idle-timeout-seconds`** never evicts a session with an in-flight request or an open SSE stream;
+  **`max-idle-session-count`** prunes the least recently active idle sessions first.
+- **`auth`**: `none` is anonymous (local dev, CI), `token` is one shared secret for a loopback single-project
+  server, `oauth` is an OAuth 2.1 resource server. `token`, `auth-issuer` and `public-url` are required by their
+  modes. The legacy `authorization` / `MCP_AUTHORIZATION` names still parse, and the deprecated value `required`
+  is treated as `token`.
 
 Tool calls in more detail: a call is sent once, and sent again only when the plugin answered
 `ResponseCallTool.NotExecuted`. If the connection drops after sending, the server waits up to
@@ -65,15 +83,15 @@ routed to the editor; a runtime serves only when no editor is connected and none
 Fire-and-forget HTTP POST notifications. Each event category has its own URL; with no URL configured the
 subsystem is inactive.
 
-| Argument | Env var | Description | Default |
-| :--- | :--- | :--- | :--- |
-| `webhook-tool-url` | `MCP_PLUGIN_WEBHOOK_TOOL_URL` | Receives tool call events. | *(none)* |
-| `webhook-prompt-url` | `MCP_PLUGIN_WEBHOOK_PROMPT_URL` | Receives prompt retrieval events. | *(none)* |
-| `webhook-resource-url` | `MCP_PLUGIN_WEBHOOK_RESOURCE_URL` | Receives resource access events. | *(none)* |
-| `webhook-connection-url` | `MCP_PLUGIN_WEBHOOK_CONNECTION_URL` | Receives connect and disconnect events. | *(none)* |
-| `webhook-token` | `MCP_PLUGIN_WEBHOOK_TOKEN` | Security token sent in each webhook request header. | *(none)* |
-| `webhook-header` | `MCP_PLUGIN_WEBHOOK_HEADER` | Header name for that token. | `X-Webhook-Token` |
-| `webhook-timeout` | `MCP_PLUGIN_WEBHOOK_TIMEOUT` | Delivery timeout (ms). | `10000` |
+| Argument / env var | Default | What it does |
+| :--- | :--- | :--- |
+| `webhook-tool-url`<br>`MCP_PLUGIN_WEBHOOK_TOOL_URL` |  | Receives tool call events |
+| `webhook-prompt-url`<br>`MCP_PLUGIN_WEBHOOK_PROMPT_URL` |  | Receives prompt retrieval events |
+| `webhook-resource-url`<br>`MCP_PLUGIN_WEBHOOK_RESOURCE_URL` |  | Receives resource access events |
+| `webhook-connection-url`<br>`MCP_PLUGIN_WEBHOOK_CONNECTION_URL` |  | Receives connect and disconnect events |
+| `webhook-token`<br>`MCP_PLUGIN_WEBHOOK_TOKEN` |  | Token sent in each webhook request |
+| `webhook-header`<br>`MCP_PLUGIN_WEBHOOK_HEADER` | `X-Webhook-Token` | Header name for that token |
+| `webhook-timeout`<br>`MCP_PLUGIN_WEBHOOK_TIMEOUT` | `10000` | Delivery timeout (ms) |
 
 Event types: `tool.call.completed`, `prompt.retrieved`, `resource.accessed`, `connection.ai-agent.connected`,
 `connection.ai-agent.disconnected`, `connection.plugin.connected`, `connection.plugin.disconnected`.
@@ -85,7 +103,13 @@ Every event uses one envelope:
   "schemaVersion": "1.0",
   "eventType": "tool.call.completed",
   "timestamp": "2026-03-01T12:34:56.789Z",
-  "data": { "toolName": "add", "requestSizeBytes": 42, "responseSizeBytes": 18, "status": "success", "durationMs": 150 }
+  "data": {
+    "toolName": "add",
+    "requestSizeBytes": 42,
+    "responseSizeBytes": 18,
+    "status": "success",
+    "durationMs": 150
+  }
 }
 ```
 
@@ -96,10 +120,10 @@ clear text. Full payload contracts: [specs/001-analytics-webhooks/contracts/webh
 
 A synchronous webhook that allows or denies each connection, from AI agents (HTTP) and from plugins (SignalR).
 
-| Argument | Env var | Description | Default |
-| :--- | :--- | :--- | :--- |
-| `webhook-authorization-url` | `MCP_PLUGIN_WEBHOOK_AUTHORIZATION_URL` | Endpoint that allows or denies connections. Unset: every connection is allowed. | *(none)* |
-| `webhook-authorization-fail-open` | `MCP_PLUGIN_WEBHOOK_AUTHORIZATION_FAIL_OPEN` | `true`: allow when the webhook times out or errors. `false`: deny. | `false` |
+| Argument / env var | Default | What it does |
+| :--- | :--- | :--- |
+| `webhook-authorization-url`<br>`MCP_PLUGIN_WEBHOOK_AUTHORIZATION_URL` |  | Endpoint that allows or denies connections; unset allows all |
+| `webhook-authorization-fail-open`<br>`MCP_PLUGIN_WEBHOOK_AUTHORIZATION_FAIL_OPEN` | `false` | `true` allows a connection when the webhook times out or errors |
 
 The server POSTs an event of type `authorization.ai-agent` or `authorization.plugin` with the connection's
 details (bearer token, remote address and user agent for agents; client name and version for plugins). When
@@ -116,20 +140,26 @@ a parse error denies it (unless fail-open). The server waits up to `webhook-time
 ## Plugin (`McpPlugin`)
 
 Set these with `McpPluginBuilder.WithConfig(config => ...)` before `Build()`.
-`WithConfigFromArgsOrEnv(args)` fills `Host` and `TimeoutMs` from the arguments and variables marked below.
 
-| Property | Argument / env var | Description | Default |
-| :--- | :--- | :--- | :--- |
-| `Host` | `mcp-server-endpoint` / `MCP_SERVER_ENDPOINT` | URL of the server. | `http://localhost:8080` |
-| `TimeoutMs` | `mcp-server-timeout` / `MCP_SERVER_TIMEOUT` | Operation timeout (ms). | `10000` |
-| `KeepConnected` | | Reconnect automatically when the connection is lost. | `true` |
-| `ClientRole` | | `Editor` or `Runtime` (see above). | `Editor` |
-| `CredentialProvider` | | `Func<Task<string?>>` that returns the bearer token for the hub connection, called on every (re)connect. `null` connects anonymously. | `null` |
-| `GenerateSkillFiles` | | Write a `SKILL.md` file for each registered tool. | `true` |
-| `SkillsPath` | `mcp-skills-folder` / `MCP_SKILLS_FOLDER` (via `ConnectionConfig.GetSkillsFolderFromArgsOrEnv`) | Folder for the generated skill files. A relative path is resolved against `ProjectRootPath`. | `SKILLS` |
-| `ProjectRootPath` | | Absolute folder that a relative `SkillsPath` is anchored to. Without it, skill generation for a relative path fails. | `null` |
-| `SkillMetadata` | | Metadata entries written into every generated skill file (they override the default `generated-by`). | empty |
-| `MaxConsecutiveConnectionFailures` | | Give up reconnecting after this many failures in a row. `0` retries forever. | `0` |
+| Property | Default | What it does |
+| :--- | :--- | :--- |
+| `Host` | `http://localhost:8080` | URL of the server |
+| `TimeoutMs` | `10000` | Operation timeout (ms) |
+| `KeepConnected` | `true` | Reconnect when the connection is lost |
+| `ClientRole` | `Editor` | `Editor` or `Runtime` (see above) |
+| `CredentialProvider` | `null` | Returns the bearer token on every (re)connect |
+| `GenerateSkillFiles` | `true` | Write a `SKILL.md` file per registered tool |
+| `SkillsPath` | `SKILLS` | Folder for the generated skill files |
+| `ProjectRootPath` | `null` | Absolute folder a relative `SkillsPath` is resolved against |
+| `SkillMetadata` | empty | Metadata written into every skill file |
+| `MaxConsecutiveConnectionFailures` | `0` | Stop reconnecting after this many failures (`0`: never) |
+
+- `WithConfigFromArgsOrEnv(args)` fills `Host` from `mcp-server-endpoint` / `MCP_SERVER_ENDPOINT` and `TimeoutMs`
+  from `mcp-server-timeout` / `MCP_SERVER_TIMEOUT`.
+- `ConnectionConfig.GetSkillsFolderFromArgsOrEnv(args)` reads `mcp-skills-folder` / `MCP_SKILLS_FOLDER`.
+- `CredentialProvider` is a `Func<Task<string?>>`; `null` connects anonymously.
+- Without `ProjectRootPath`, skill generation for a relative `SkillsPath` fails.
+- `SkillMetadata` entries override the default `generated-by` value.
 
 ## Docker
 
