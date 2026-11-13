@@ -21,6 +21,7 @@ def text(x, y, s, size=16, fill=K.MUTED, anchor="start", mono=False, weight=None
 right = (
     K.card(800, 40, 340, 70, "AI agent", "any MCP client", accent="red")
     + K.card(800, 155, 340, 70, "McpPlugin.Server", "the bridge (ASP.NET Core)", accent="blue", mono_title=True)
+    + K.logo(1102, 190, 46)
     + K.card(800, 270, 340, 70, "Your .NET app", "+ McpPlugin", accent="green")
     + K.wire("M970 155 L970 110", color=K.RED_TEXT, dur=1.6)
     + K.wire("M970 270 L970 225", color=K.BLUE, dur=1.6, begin=0.8)
@@ -62,7 +63,8 @@ body += text(868, 112, "MCP · REST", anchor="middle", fill=K.SECOND)
 
 # server box
 body += (f'<rect x="380" y="96" width="440" height="328" rx="14" fill="url(#card)" stroke="{K.HAIR_STRONG}"/>'
-         + text(402, 134, "McpPlugin.Server", size=19, fill=K.TEXT, mono=True, weight=700)
+         + K.logo(416, 127, 28)
+         + text(438, 134, "McpPlugin.Server", size=19, fill=K.TEXT, mono=True, weight=700)
          + text(798, 134, "ASP.NET Core", anchor="end"))
 parts = ["SignalR hub", "Version check", "Tool router", "Prompts, resources",
          "Auth modes", "Webhooks", "Role routing", "Reconnect grace"]
