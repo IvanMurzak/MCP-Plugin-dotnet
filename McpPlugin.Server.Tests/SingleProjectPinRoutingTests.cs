@@ -18,6 +18,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 using com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure;
@@ -152,6 +153,32 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         [Fact]
+        public async Task AnotherProjectsGame_NeitherListsToolsNorSteersCalls_OfAPinnedSession()
+        {
+            const string GameTool = "game-scene-tree-summary";
+            await using var host = await NoneAuthMcpHost.StartAsync();
+            using var pinnedA = new ToolCallClient(host, PinA);
+            await using var editorA = pinnedA.Plugin("A", "Godot 4.5", projectPathHash: HashA);
+            await editorA.StartAsync();
+            await using var gameB = pinnedA.Plugin("gameB", "Godot 4.5 (runtime)", projectPathHash: HashB);
+            gameB.Tools = new[] { Tool("echo", ToolTarget.Runtime), Tool(GameTool, ToolTarget.Runtime) };
+            await gameB.StartAsync();
+
+            (await ToolNames(pinnedA)).ShouldNotContain(GameTool, "another project's game tools are never listed");
+            var watch = Stopwatch.StartNew();
+            (await pinnedA.CallAsync("echo", new { })).Text.ShouldBe("A:echo", "B's game lists echo as runtime-only, yet A's editor runs it");
+            watch.Elapsed.ShouldBeLessThan(Fast);
+            gameB.Calls.ShouldBeEmpty();
+        }
+
+        static ResponseListTool Tool(string name, ToolTarget target) => new ResponseListTool
+        {
+            Name = name,
+            Target = target,
+            InputSchema = JsonDocument.Parse("{\"type\":\"object\",\"properties\":{}}").RootElement.Clone(),
+        };
+
+        [Fact]
         public void Strategy_PinnedResolution_IgnoresOtherProjects_AndKeepsUnpinnedRouting()
         {
             var strategy = new NoAuthMcpStrategy();
@@ -172,6 +199,36 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 McpSessionTokenContext.CurrentProjectPin = null;
             }
             strategy.PinnedNotConnectedMessage().ShouldBeNull();
+        }
+
+        [Fact]
+        public void PinnedCall_WaitsWhileAnEditorIsReloading_EvenWithAnotherProjectsPluginConnected()
+        {
+            var strategy = new NoAuthMcpStrategy { EditorReconnectWindow = TimeSpan.FromMinutes(1) };
+            strategy.Registry.SetProject("game-b", new PluginProject(HashB));
+            strategy.Registry.Add("game-b", ClientRole.Runtime, null);
+            McpSessionTokenContext.CurrentProjectPin = PinA;
+            try
+            {
+                strategy.IsPinnedToAbsentProject(null).ShouldBeTrue("only another project's game is here: nothing to wait for");
+                strategy.Registry.SetProject("editor-a", new PluginProject(HashA));
+                strategy.Registry.Add("editor-a", ClientRole.Editor, null);
+                strategy.Registry.Remove("editor-a", out _); // A's editor reloads
+                strategy.IsPinnedToAbsentProject(null).ShouldBeFalse("A's editor may be back within the reconnect window");
+            }
+            finally
+            {
+                McpSessionTokenContext.CurrentProjectPin = null;
+            }
+        }
+
+        [Fact]
+        public void PluginProject_SameProject_ComparesTheHashesBothSides_Have()
+        {
+            new PluginProject(HashA).IsSameProject(new PluginProject(HashA.ToUpperInvariant(), "legacy")).ShouldBeTrue();
+            new PluginProject(HashA).IsSameProject(new PluginProject(HashB)).ShouldBeFalse();
+            new PluginProject("", "l1").IsSameProject(new PluginProject("", "l2")).ShouldBeFalse();
+            new PluginProject(HashA).IsSameProject(new PluginProject("", "l1")).ShouldBeTrue();
         }
 
         static PluginConnectionRegistry RoleRegistry(NoneAuthMcpHost host)

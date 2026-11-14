@@ -112,7 +112,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             cancellationToken = linkedCts.Token;
 
             // A connected runtime is listed alongside, so a slow game adds no time unless it is slower than the editor.
-            var runtime = (_strategy as IPluginRoleStrategy)?.Registry.WithRole(ClientRole.Runtime).FirstOrDefault();
+            // A pinned session lists only its own project's game (DEV-42).
+            var runtime = (_strategy as IPluginRoleStrategy)?.Registry.WithRole(ClientRole.Runtime, McpSessionTokenContext.CurrentProjectPin).FirstOrDefault();
             var runtimeList = runtime == null ? null : ListRuntimeAsync(runtime, cancellationToken);
 
             string? answeredBy = null;

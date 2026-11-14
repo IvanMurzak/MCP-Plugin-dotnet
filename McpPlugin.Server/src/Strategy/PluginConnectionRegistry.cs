@@ -193,6 +193,18 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                     .ToList();
         }
 
+        /// <summary>The connections with <paramref name="role"/> that may serve a session pinned to <paramref name="pin"/>, newest first.</summary>
+        public IReadOnlyList<string> WithRole(ClientRole role, string? pin)
+        {
+            lock (_gate)
+                return _connections
+                    .Where(pair => pair.Value.Role == role
+                        && PluginProject.Serves(_projects.TryGetValue(pair.Key, out var project) ? project : null, pin))
+                    .OrderByDescending(pair => pair.Value.Sequence)
+                    .Select(pair => pair.Key)
+                    .ToList();
+        }
+
         /// <summary>True when an editor disconnected less than <paramref name="window"/> ago.</summary>
         public bool EditorLeftWithin(TimeSpan window)
         {

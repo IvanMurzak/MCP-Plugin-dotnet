@@ -186,7 +186,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 {
                     // Another project's plugin took the one slot while the previous one was offline: its remembered
                     // lists are not this plugin's (DEV-42).
-                    if (instance == null && entry.ConnectionId == null && entry.Project != null && project != null && entry.Project != project)
+                    if (instance == null && entry.ConnectionId == null && entry.Project != null && project != null && !entry.Project.IsSameProject(project))
                         entry.ClearLists();
                     revived = entry.ConnectionId == null && entry.HasAnyList;
                     if (entry.ConnectionId != null && !string.Equals(entry.ConnectionId, connectionId, StringComparison.Ordinal))

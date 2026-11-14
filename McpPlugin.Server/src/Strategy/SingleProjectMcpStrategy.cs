@@ -167,13 +167,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         {
             var pin = McpSessionTokenContext.CurrentProjectPin;
             if (PluginRoleRouting.Preferred == ClientRole.Runtime)
-                return Pick(Serving(Registry.WithRole(ClientRole.Runtime), pin), retryOffset);
+                return Pick(Registry.WithRole(ClientRole.Runtime, pin), retryOffset);
 
             var editor = ResolveEditor(token, pin, retryOffset);
             if (editor != null || Registry.EditorLeftWithin(EditorReconnectWindow))
                 return editor;
 
-            var runtime = Pick(Serving(Registry.WithRole(ClientRole.Runtime), pin), retryOffset);
+            var runtime = Pick(Registry.WithRole(ClientRole.Runtime, pin), retryOffset);
             if (runtime != null)
                 Interlocked.Exchange(ref _runtimeServed, 1);
             return runtime;
@@ -186,11 +186,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 return byToken;
             return string.IsNullOrEmpty(pin)
                 ? ClientUtils.GetBestConnectionId(RoutedHubType, retryOffset)
-                : Pick(Serving(ClientUtils.GetAllConnectionIds(RoutedHubType), pin), retryOffset);
+                : Pick(ClientUtils.GetAllConnectionIds(RoutedHubType).Where(id => Registry.Serves(id, pin)).ToList(), retryOffset);
         }
-
-        IReadOnlyList<string> Serving(IEnumerable<string> connectionIds, string? pin)
-            => string.IsNullOrEmpty(pin) ? connectionIds.ToList() : connectionIds.Where(id => Registry.Serves(id, pin)).ToList();
 
         static string? Pick(IReadOnlyList<string> connectionIds, int retryOffset)
             => connectionIds.Count > 0 ? connectionIds[Math.Abs(retryOffset) % connectionIds.Count] : null;
@@ -208,12 +205,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 
         /// <summary>
         /// True when the current session is pinned to a project none of the connections serves while another project's
-        /// plugin is connected: a call then has nothing to wait for.
+        /// plugin is connected and no editor is reloading (<see cref="EditorReconnectWindow"/>): a call then has nothing
+        /// to wait for.
         /// </summary>
         public bool IsPinnedToAbsentProject(string? token)
         {
             var pin = McpSessionTokenContext.CurrentProjectPin;
-            return !string.IsNullOrEmpty(pin) && ResolveConnectionId(token, 0) == null && Registry.HasConnectionNotServing(pin);
+            return !string.IsNullOrEmpty(pin) && ResolveConnectionId(token, 0) == null
+                && !Registry.EditorLeftWithin(EditorReconnectWindow) && Registry.HasConnectionNotServing(pin);
         }
 
         public bool TakeRuntimeServed() => Interlocked.Exchange(ref _runtimeServed, 0) == 1;

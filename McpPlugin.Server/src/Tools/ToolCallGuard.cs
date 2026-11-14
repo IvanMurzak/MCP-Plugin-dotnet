@@ -222,7 +222,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
         {
             if (_strategy is not IPluginRoleStrategy roles || string.IsNullOrEmpty(request.Name))
                 return false;
-            var runtimes = roles.Registry.WithRole(ClientRole.Runtime);
+            // A pinned session is steered only by its own project's game (DEV-42).
+            var runtimes = roles.Registry.WithRole(ClientRole.Runtime, McpSessionTokenContext.CurrentProjectPin);
             if (runtimes.Count == 0)
                 return false;
             var runtime = runtimes[0];

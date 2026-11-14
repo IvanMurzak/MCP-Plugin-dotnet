@@ -110,6 +110,11 @@ namespace com.IvanMurzak.McpPlugin.Server
             where TRequest : IRequestID
         {
             var token = McpSessionTokenContext.CurrentToken;
+            // A session pinned to a project whose plugin is absent while another project's is: nothing to wait for (DEV-42).
+            if (strategy is SingleProjectMcpStrategy single && single.IsPinnedToAbsentProject(token)
+                && catalog?.HasOfflineTargetForCurrentSession() != true)
+                return Task.FromResult(ResponseData<TResponse>.Error(request.RequestID, single.PinnedNotConnectedMessage()!, ResponseErrorKind.NotFound));
+
             Func<CancellationToken, Task<bool?>>? waitForClient = catalog == null
                 ? null
                 : ct => catalog.WaitForReconnectAsync(() => strategy.ResolveConnectionId(token, 0) != null, ct);

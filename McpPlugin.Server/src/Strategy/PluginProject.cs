@@ -9,6 +9,7 @@
 */
 
 #nullable enable
+using System;
 using com.IvanMurzak.McpPlugin.Common;
 using Microsoft.AspNetCore.Http;
 
@@ -24,6 +25,20 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
     {
         /// <summary>True when <paramref name="pin"/> is a prefix of either hash.</summary>
         public bool MatchesPin(string? pin) => PluginInstance.PinMatches(pin, ProjectPathHash, ProjectPathHashLegacy);
+
+        /// <summary>
+        /// True unless the two name different projects: compared by the v2 hash when both have one, else by the legacy
+        /// hash; a project whose hashes cannot be compared is not taken for another (a plugin that added the legacy hash
+        /// on upgrade is still the same project).
+        /// </summary>
+        public bool IsSameProject(PluginProject other)
+        {
+            if (ProjectPathHash.Length > 0 && other.ProjectPathHash.Length > 0)
+                return string.Equals(ProjectPathHash, other.ProjectPathHash, StringComparison.OrdinalIgnoreCase);
+            if (ProjectPathHashLegacy.Length > 0 && other.ProjectPathHashLegacy.Length > 0)
+                return string.Equals(ProjectPathHashLegacy, other.ProjectPathHashLegacy, StringComparison.OrdinalIgnoreCase);
+            return true;
+        }
 
         /// <summary>
         /// True when a connection serving <paramref name="project"/> may serve a session pinned to <paramref name="pin"/>:
