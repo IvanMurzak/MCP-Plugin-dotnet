@@ -78,7 +78,7 @@ line at all, and it is the property `NullEngineRealTransportTests` asserts.
 On a successful version handshake the host prints exactly one line to **stdout**:
 
 ```
-NULL-ENGINE READY tools=12 prompts=2 resources=1 plugin=8.3.0+<commit sha>
+NULL-ENGINE READY tools=12 prompts=2 resources=1 plugin=<McpPlugin version>+<commit sha>
 ```
 
 `plugin=` is the **McpPlugin assembly's** `AssemblyInformationalVersion`, read at runtime from
