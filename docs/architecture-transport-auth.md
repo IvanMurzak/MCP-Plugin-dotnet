@@ -319,7 +319,7 @@ McpStrategyFactory
 
 ### NoAuthMcpStrategy (`auth=none`)
 
-Designed for a **single trusted project** connecting to a single MCP client (e.g. a developer's local machine running one Unity editor). The HTTP endpoint is never token-gated in this mode. One editor and one runtime (game) plugin connection are kept side by side (`SingleProjectMcpStrategy`): a new connection replaces only an older one of the same `ClientRole`, and agents are routed to the editor. This is the offline / local-dev / CI default and the stdio default.
+Designed for a **single trusted project** connecting to a single MCP client (e.g. a developer's local machine running one Unity editor). The HTTP endpoint is never token-gated in this mode. One editor and one runtime (game) plugin connection are kept side by side (`SingleProjectMcpStrategy`): a new connection replaces only an older one of the same `ClientRole`, and agents are routed to the editor. A session pinned to a project (`/p/<pin>`, `/mcp/p/<pin>`) is routed only to a connection whose `project_path_hash` (or its legacy hash) the pin prefixes — never to another project's editor or game; with none it hears `The engine for this project is not connected …` (the ping probe at once, and a tool call at once when another project's plugin is connected). A plugin that sent no project hash, and an unpinned session, are routed as before. This is the offline / local-dev / CI default and the stdio default.
 
 ### LocalTokenMcpStrategy (`auth=token`, mcp-authorize g6)
 
