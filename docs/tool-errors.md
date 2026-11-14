@@ -66,7 +66,3 @@ is not built yet.
   reports no version, has its calls forwarded as server 9.2.x forwarded them: no argument validation, no
   whole-call deadline, no rewriting of its errors. Only a call carrying a lone UTF-16 surrogate, which cannot be
   delivered to any plugin, is refused with a clear error.
-- Connections from older plugins keep the 9.2.x newest-wins replacement: the editor and runtime roles apply
-  only when both connections are 8.14+ plugins. An old plugin's connection replaces the previous one at its
-  version handshake (milliseconds after connecting), not at connect. The `mcpPluginVersion` field is optional on
-  the wire: a server before 8.14.0 ignores it.

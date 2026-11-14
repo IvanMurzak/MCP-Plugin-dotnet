@@ -5,9 +5,9 @@ similar, together with a copy of this file, so the images can be regenerated):
 
     import sys; sys.path.insert(0, r"<dir of svgkit.py>")
     import svgkit as K
-    K.write("docs/assets/hero.svg", K.hero(title="Unity", accent="MCP", eyebrow="AI GAME DEVELOPER",
+    K.write("docs/assets/hero.svg", K.hero(title="Unity", accent="MCP", eyebrow_text="AI GAME DEVELOPER",
             subtitle=["Connect any AI agent", "to the Unity Editor and your game."],
-            chips=["Unity 2022.3+", "MCP", "Skills", "CLI"]))
+            chip_items=["Unity 2022.3+", "MCP", "Skills", "CLI"]))
     K.write("docs/assets/terminal.svg", K.terminal(title="~/MyGame", lines=[...]))
     K.write("docs/assets/architecture.svg", K.panel(1200, 520, body, label="..."))   # body from K.card/K.wire/...
 
@@ -20,7 +20,7 @@ Website tokens (cloud/AI-Game-Dev-Server/frontend/src/index.css):
 Rules every image follows (enforced by the helpers):
   * dark panel with its own background — readable on GitHub light and dark themes;
   * canvas 1200 px wide (shown at ~836 px on GitHub ⇒ ×0.7): no text below 16 px in the SVG;
-  * fully visible without animation; animation is light (dots on wires, a pulse, typing); reduced-motion respected;
+  * fully visible without animation; animation is light (dots on wires, a pulse, typing); CSS animations stop under prefers-reduced-motion (SMIL wire dots and gradient sweeps do not);
   * no scripts, no external fonts or images.
 """
 from xml.sax.saxutils import escape as _esc
@@ -40,7 +40,27 @@ def esc(s):
     return _esc(str(s), {'"': "&quot;"})
 
 
-def _style(extra=""):
+_GLITCH_CSS = """
+    .gl { pointer-events: none; }
+    .gl-r { fill: #FF2448; opacity: 0; animation: glr 2.8s steps(1) infinite; }
+    .gl-c { fill: #2EE6FF; opacity: 0; animation: glc 2.8s steps(1) infinite; }
+    .gl-s { opacity: 0; animation: gls 2.8s steps(1) infinite; }
+    .gl-base { animation: glb 2.8s steps(1) infinite; }
+    @keyframes glr { 0% { opacity:.75; transform:translate(-2px,0) } 6% { transform:translate(-4px,1px) } 9% { transform:translate(-1px,-1px) }
+      12% { opacity:.55; transform:translate(-2px,0) } 40% { opacity:.85; transform:translate(-6px,1px) } 43% { transform:translate(3px,-1px) }
+      46% { opacity:.55; transform:translate(-2px,0) } 72% { opacity:.9; transform:translate(-5px,2px) } 75% { transform:translate(-1px,0) } 78% { opacity:.6; transform:translate(-2px,0) } }
+    @keyframes glc { 0% { opacity:.7; transform:translate(2px,0) } 6% { transform:translate(4px,-1px) } 9% { transform:translate(1px,1px) }
+      12% { opacity:.5; transform:translate(2px,0) } 40% { opacity:.85; transform:translate(6px,-1px) } 43% { transform:translate(-3px,1px) }
+      46% { opacity:.5; transform:translate(2px,0) } 72% { opacity:.9; transform:translate(5px,-2px) } 75% { transform:translate(1px,0) } 78% { opacity:.55; transform:translate(2px,0) } }
+    @keyframes gls { 0%,39%,47%,71%,79%,100% { opacity:0; transform:none } 40% { opacity:1; transform:translate(9px,0) } 43% { opacity:1; transform:translate(-7px,0) }
+      72% { opacity:1; transform:translate(-10px,0) } 75% { opacity:1; transform:translate(6px,0) } }
+    @keyframes glb { 0%,100% { transform:none } 40% { transform:translate(1px,0) } 43% { transform:translate(-1px,0) } 46% { transform:none }
+      72% { transform:translate(-1px,1px) } 75% { transform:none } }
+"""
+
+
+def _style(extra="", glitch=False):
+    """Shared CSS; the glitch keyframes are emitted only for images that draw glitch text."""
     return f"""<style>
     .s {{ font-family: {SANS}; }} .m {{ font-family: {MONO}; white-space: pre; }}
     .pulse {{ animation: pulse 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }}
@@ -49,29 +69,21 @@ def _style(extra=""):
     .spin.r {{ animation-duration: 60s; animation-direction: reverse; }}
     @keyframes spin {{ to {{ transform: rotate(360deg); }} }}
     .blink {{ animation: blink 1.1s steps(1) infinite; }} @keyframes blink {{ 50% {{ opacity: 0; }} }}
-
-    .gl {{ pointer-events: none; }}
-    .gl-r {{ fill: #FF2448; opacity: 0; animation: glr 2.8s steps(1) infinite; }}
-    .gl-c {{ fill: #2EE6FF; opacity: 0; animation: glc 2.8s steps(1) infinite; }}
-    .gl-s {{ opacity: 0; animation: gls 2.8s steps(1) infinite; }}
-    .gl-base {{ animation: glb 2.8s steps(1) infinite; }}
-    @keyframes glr {{ 0% {{ opacity:.75; transform:translate(-2px,0) }} 6% {{ transform:translate(-4px,1px) }} 9% {{ transform:translate(-1px,-1px) }}
-      12% {{ opacity:.55; transform:translate(-2px,0) }} 40% {{ opacity:.85; transform:translate(-6px,1px) }} 43% {{ transform:translate(3px,-1px) }}
-      46% {{ opacity:.55; transform:translate(-2px,0) }} 72% {{ opacity:.9; transform:translate(-5px,2px) }} 75% {{ transform:translate(-1px,0) }} 78% {{ opacity:.6; transform:translate(-2px,0) }} }}
-    @keyframes glc {{ 0% {{ opacity:.7; transform:translate(2px,0) }} 6% {{ transform:translate(4px,-1px) }} 9% {{ transform:translate(1px,1px) }}
-      12% {{ opacity:.5; transform:translate(2px,0) }} 40% {{ opacity:.85; transform:translate(6px,-1px) }} 43% {{ transform:translate(-3px,1px) }}
-      46% {{ opacity:.5; transform:translate(2px,0) }} 72% {{ opacity:.9; transform:translate(5px,-2px) }} 75% {{ transform:translate(1px,0) }} 78% {{ opacity:.55; transform:translate(2px,0) }} }}
-    @keyframes gls {{ 0%,39%,47%,71%,79%,100% {{ opacity:0; transform:none }} 40% {{ opacity:1; transform:translate(9px,0) }} 43% {{ opacity:1; transform:translate(-7px,0) }}
-      72% {{ opacity:1; transform:translate(-10px,0) }} 75% {{ opacity:1; transform:translate(6px,0) }} }}
-    @keyframes glb {{ 0%,100% {{ transform:none }} 40% {{ transform:translate(1px,0) }} 43% {{ transform:translate(-1px,0) }} 46% {{ transform:none }}
-      72% {{ transform:translate(-1px,1px) }} 75% {{ transform:none }} }}
-    {extra}
+{_GLITCH_CSS if glitch else ""}    {extra}
     @media (prefers-reduced-motion: reduce) {{ * {{ animation: none !important; }} }}
   </style>"""
 
 
+_LOGO_DEFS = """    <linearGradient id="logoL" gradientUnits="userSpaceOnUse" x1="512" y1="190" x2="512" y2="785"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#8395AD"/></linearGradient>
+    <linearGradient id="logoR" gradientUnits="userSpaceOnUse" x1="512" y1="190" x2="512" y2="785"><stop offset="0" stop-color="#E1E8F1"/><stop offset="1" stop-color="#455974"/></linearGradient>
+    <linearGradient id="logoB" gradientUnits="userSpaceOnUse" x1="512" y1="190" x2="512" y2="785"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#AABBD0"/></linearGradient>
+    <radialGradient id="logoGlow"><stop offset="0" stop-color="#6FA8D0" stop-opacity=".18"/><stop offset="1" stop-color="#6FA8D0" stop-opacity="0"/></radialGradient>
+"""
+
+
 def panel(w, h, body, label, extra_css="", haze=True):
     """The site 'frame': deep background, red/blue haze, dot grid, hairline border, radius 18, red→blue rule."""
+    logo_defs = _LOGO_DEFS if "url(#logo" in body else ""
     hz = f"""<rect width="{w}" height="{h}" fill="url(#hzR)"/><rect width="{w}" height="{h}" fill="url(#hzB)"/>""" if haze else ""
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" aria-label="{esc(label)}">
   <defs>
@@ -81,14 +93,9 @@ def panel(w, h, body, label, extra_css="", haze=True):
     <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#A8C2D2" fill-opacity="0.08"/></pattern>
     <linearGradient id="rule" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="{RED}" stop-opacity="0"/><stop offset="0.3" stop-color="#FF2448" stop-opacity="0.6"/><stop offset="0.7" stop-color="{BLUE2}" stop-opacity="0.55"/><stop offset="1" stop-color="{BLUE2}" stop-opacity="0"/></linearGradient>
     <linearGradient id="card" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0C1620"/><stop offset="1" stop-color="#070D14"/></linearGradient>
-    <linearGradient id="logoL" gradientUnits="userSpaceOnUse" x1="512" y1="190" x2="512" y2="785"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#8395AD"/></linearGradient>
-    <linearGradient id="logoR" gradientUnits="userSpaceOnUse" x1="512" y1="190" x2="512" y2="785"><stop offset="0" stop-color="#E1E8F1"/><stop offset="1" stop-color="#455974"/></linearGradient>
-    <linearGradient id="logoB" gradientUnits="userSpaceOnUse" x1="512" y1="190" x2="512" y2="785"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#AABBD0"/></linearGradient>
-    <radialGradient id="logoGlow"><stop offset="0" stop-color="#6FA8D0" stop-opacity=".18"/><stop offset="1" stop-color="#6FA8D0" stop-opacity="0"/></radialGradient>
-    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="{RED_TEXT}"/><stop offset="1" stop-color="{BLUE}"/></linearGradient>
-    <clipPath id="frame"><rect width="{w}" height="{h}" rx="18"/></clipPath>
+{logo_defs}    <clipPath id="frame"><rect width="{w}" height="{h}" rx="18"/></clipPath>
   </defs>
-  {_style(extra_css)}
+  {_style(extra_css, glitch='class="gl' in body)}
   <g clip-path="url(#frame)">
     <rect width="{w}" height="{h}" fill="url(#bg)"/>{hz}
     <rect width="{w}" height="{h}" fill="url(#dots)"/>
@@ -160,9 +167,9 @@ def logo(cx, cy, size=120):
 def mark(cx, cy, size=120):
     """Hero visual: the brand logo with slow red/blue orbit rings and a soft glow."""
     r1, r2 = size * 0.95, size * 1.22
-    return (f'<circle cx="{cx}" cy="{cy}" r="{size * 0.9}" fill="url(#logoGlow)"/>'
-            f'<circle class="spin" cx="{cx}" cy="{cy}" r="{r1}" fill="none" stroke="{RED_TEXT}" stroke-opacity=".35" stroke-dasharray="2 10"/>'
-            f'<circle class="spin r" cx="{cx}" cy="{cy}" r="{r2}" fill="none" stroke="{BLUE}" stroke-opacity=".25" stroke-dasharray="36 18"/>'
+    return (f'<circle cx="{cx}" cy="{cy}" r="{size * 0.9:.1f}" fill="url(#logoGlow)"/>'
+            f'<circle class="spin" cx="{cx}" cy="{cy}" r="{r1:.1f}" fill="none" stroke="{RED_TEXT}" stroke-opacity=".35" stroke-dasharray="2 10"/>'
+            f'<circle class="spin r" cx="{cx}" cy="{cy}" r="{r2:.1f}" fill="none" stroke="{BLUE}" stroke-opacity=".25" stroke-dasharray="36 18"/>'
             f'<g class="pulse">{logo(cx, cy, size * 1.25)}</g>')
 
 
@@ -288,7 +295,7 @@ def button(text, w=480, h=84, label=None, icon=True):
                  f'<path d="M{ix} {iy - 13} V{iy + 5} M{ix - 8} {iy - 3} L{ix} {iy + 5} L{ix + 8} {iy - 3} M{ix - 11} {iy + 13} H{ix + 11}"/></g>')
     body += glitch_text(tx, h / 2 + 10, text.upper(), 28, "#FFFFFF", weight=800, spacing=2, anchor="middle")
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" aria-label="{esc(label or text)}">
-  {_style()}
+  {_style(glitch=True)}
   {body}
 </svg>
 """

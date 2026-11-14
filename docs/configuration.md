@@ -77,6 +77,10 @@ routed to the editor; a runtime serves only when no editor is connected and none
   `[AiTool("name", Target = ToolTarget.Runtime)]`). An editor does not register them; the server routes their
   calls to the runtime and lists them while the editor is connected.
 - The role is read once, at `Build()`, so set it before building the plugin.
+- Connections from plugins before 8.14.0 keep the older newest-wins replacement: the roles apply only when both
+  connections are 8.14+ plugins. An old plugin's connection replaces the previous one at its version handshake
+  (milliseconds after connecting), not at connect. The handshake's `mcpPluginVersion` field is optional: a
+  server before 8.14.0 ignores it.
 
 ## Analytics webhooks
 
