@@ -44,12 +44,13 @@ AiToolAnnotationsValidator.ValidateTools(listedTools).ShouldBeEmpty(); // a RunL
 ### Throwing from a tool
 
 An `[AiTool]` method that throws is reported as the caller's fault (kind `BadRequest`, HTTP 422 on
-`POST /api/tools/{name}`) unless the exception is a fault type (`NullReferenceException`, `IndexOutOfRangeException`, `InvalidCastException`, `NotImplementedException`, `ObjectDisposedException`, `OutOfMemoryException`, `TypeLoadException`, `MissingMemberException`, `TypeInitializationException`, `FileLoadException`, `BadImageFormatException`, `InvalidProgramException`, `TimeoutException`, `OperationCanceledException`, subclasses included), which stays
+`POST /api/tools/{name}`) unless the exception is a fault type (`NullReferenceException`, `TimeoutException`, `OperationCanceledException` and
+the others listed in `docs/tool-errors.md`, subclasses included), which stays
 `Internal` / 500. So throw a plain or custom exception with an actionable message when the request cannot be done,
 and never let a fault type escape for bad input. When the host cannot serve the call right now (compiling, reloading,
 not initialized), throw `ToolUnavailableException` instead: `Unavailable` / 503; add `notExecuted: true` only if the
 tool changed nothing yet (an 8.14+ server then re-sends the call). The rule lives in `RunTool.IsFrameworkFault` and
-`RunTool.ExecutionFailed`; the full table is in the README ("Tool errors and HTTP status").
+`RunTool.ExecutionFailed`; the full table is in `docs/tool-errors.md`.
 
 ### Game-only (runtime) and editor-only tools
 

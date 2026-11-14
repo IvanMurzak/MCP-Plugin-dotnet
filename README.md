@@ -1,489 +1,189 @@
-# MCP Plugin for .NET
+![MCP Plugin for .NET: a running .NET app connects to McpPlugin.Server over SignalR, and AI agents reach it over MCP](https://raw.githubusercontent.com/IvanMurzak/MCP-Plugin-dotnet/main/docs/assets/hero.svg)
 
-[![NuGet](https://img.shields.io/nuget/v/com.IvanMurzak.McpPlugin?label=NuGet&labelColor=333A41)](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin/)
-[![netstandard2.1](https://img.shields.io/badge/.NET-netstandard2.1-blue?logoColor=white&labelColor=333A41)](https://github.com/IvanMurzak/MCP-Plugin-dotnet)
-[![Tests](https://github.com/IvanMurzak/MCP-Plugin-dotnet/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/IvanMurzak/MCP-Plugin-dotnet/actions/workflows/release.yml)
+[![NuGet](https://img.shields.io/nuget/v/com.IvanMurzak.McpPlugin?label=NuGet&color=2F6F9F&logo=nuget&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin/) [![Server](https://img.shields.io/nuget/v/com.IvanMurzak.McpPlugin.Server?label=Server&color=2F6F9F&logo=nuget&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin.Server/) [![release](https://img.shields.io/github/actions/workflow/status/IvanMurzak/MCP-Plugin-dotnet/release.yml?branch=main&label=release&color=15803D&style=for-the-badge&labelColor=0F172A&logo=github&logoColor=white)](https://github.com/IvanMurzak/MCP-Plugin-dotnet/actions/workflows/release.yml)
 
-[![Stars](https://img.shields.io/github/stars/IvanMurzak/MCP-Plugin-dotnet 'Stars')](https://github.com/IvanMurzak/MCP-Plugin-dotnet/stargazers)
-[![Discord](https://img.shields.io/badge/Discord-Join-7289da?logo=discord&logoColor=white&labelColor=333A41 'Join')](https://discord.gg/Cgs6nM8BPU)
-[![License](https://img.shields.io/github/license/IvanMurzak/MCP-Plugin-dotnet?label=License&labelColor=333A41)](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/LICENSE)
-[![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
+[![.NET](https://img.shields.io/badge/targets-netstandard2.1%20%7C%208%20%7C%209-0E7490?logo=dotnet&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://github.com/IvanMurzak/MCP-Plugin-dotnet#packages) [![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://discord.gg/Cgs6nM8BPU) [![License](https://img.shields.io/github/license/IvanMurzak/MCP-Plugin-dotnet?label=license&color=047857&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/LICENSE) [![Stand with Ukraine](https://raw.githubusercontent.com/IvanMurzak/IvanMurzak/main/images/ukraine/flag-badge.svg)](https://stand-with-ukraine.pp.ua)
 
-## Overview
+**MCP Plugin for .NET** lets a .NET application that is already running (a game editor, a game, a desktop or
+server app) expose its methods as [Model Context Protocol](https://modelcontextprotocol.io/) **tools**,
+**prompts** and **resources**. Usual MCP servers are started by the AI client as a subprocess; this one splits the
+work in two: a small library inside your app, and a bridge server that the AI client talks to. The app connects to
+the bridge over SignalR and keeps working on its own lifecycle. It powers [Unity-MCP](https://github.com/IvanMurzak/Unity-MCP).
 
-**MCP Plugin for .NET** is a comprehensive solution for integrating .NET applications with the [Model Context Protocol (MCP)](https://modelcontextprotocol.io/). It allows you to easily expose methods and data from your .NET applications as **Tools**, **Prompts**, and **Resources** to AI assistants (like Claude) and other MCP clients.
+![Architecture: .NET apps with McpPlugin connect to McpPlugin.Server over SignalR; AI agents and scripts reach the server over MCP (stdio or streamable HTTP) and REST](https://raw.githubusercontent.com/IvanMurzak/MCP-Plugin-dotnet/main/docs/assets/architecture.svg)
 
-### The Problem: Independent Lifecycles
+## Packages
 
-Standard MCP servers are typically designed to be launched as subprocesses by the client (e.g., Claude Desktop spawns a Python script). This works well for lightweight scripts but creates challenges for complex .NET applications like **Unity Engine**, **WPF Desktop Apps**, or **Game Servers**:
+All three share one version and are released together.
 
-1. **Heavy Startup**: These applications are often too heavy to be spawned repeatedly by an MCP client.
-2. **Independent Lifecycle**: They often need to run independently (e.g., you are already working in the Unity Editor).
-3. **Live Context**: You want to interact with the *currently running* instance (e.g., "Add a cube to the current scene"), not start a new, empty instance.
-
-### The Solution: The Bridge Pattern
-
-This project solves this by decoupling the MCP Server from your application using a **Bridge Architecture**:
-
-1. **McpPlugin (In-App)**: A lightweight library you add to your .NET application (e.g., Unity, WPF, Console). It connects to the bridge via **SignalR**.
-2. **McpPlugin.Server (Bridge)**: A high-performance gateway that the MCP Client (Claude) launches. It acts as a persistent mediator.
-
-**Why SignalR?**
-
-- **Resilience**: Built-in automatic reconnection logic. If the bridge restarts, your app reconnects instantly.
-- **Simplicity**: Operates over a single HTTP port (default `8080`). No complex firewall rules.
-- **Bidirectional**: The bridge can invoke tools in your app, and your app can push updates (logs, progress) back to the bridge.
-
-## Architecture
-
-The system uses a hub-and-spoke architecture where `McpPlugin.Server` acts as the central gateway.
-
-```mermaid
-graph LR
-    subgraph "Your .NET Apps (SignalR Clients)"
-        A[Unity Editor] -- SignalR --> S
-        B[WPF Desktop] -- SignalR --> S
-        E[Game Server] -- SignalR --> S
-    end
-
-    subgraph "MCP Infrastructure (Bridge)"
-        S[McpPlugin.Server]
-    end
-
-    subgraph "AI / MCP Clients"
-        C[Claude Desktop] -- StdIO/HTTP --> S
-        D[MCP Inspector] -- StdIO/HTTP --> S
-    end
-```
+| Package | Targets | Use it in |
+| --- | --- | --- |
+| [`com.IvanMurzak.McpPlugin`](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin/) | netstandard2.1, net8.0, net9.0 | Your app: declares tools, prompts and resources and connects to the server |
+| [`com.IvanMurzak.McpPlugin.Server`](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin.Server/) | net8.0, net9.0 | The bridge: an ASP.NET Core host for the SignalR hub and the MCP endpoints |
+| [`com.IvanMurzak.McpPlugin.Common`](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin.Common/) | netstandard2.1 | Shared models and settings; referenced by the other two |
 
 ## Features
 
-- **Attribute-Based Registration**: Easily expose tools, prompts, and resources using `[AiTool]`, `[AiPrompt]`, and `[AiResource]` attributes. (The legacy `[McpPluginTool]`, `[McpPluginPrompt]`, `[McpPluginResource]` names remain available as `[Obsolete]` aliases for backward compatibility.)
-- **Powered by ReflectorNet**:
-  - **Complex Type Support**: Seamlessly handle nested objects, collections, and custom types in tool parameters.
-  - **Fuzzy Matching**: AI can find and call methods even with partial names or slightly mismatched signatures.
-  - **Automatic Schema Generation**: Precise JSON schemas are generated for your C# types to help LLMs understand your code perfectly.
-- **Real-time Bidirectional Communication**: Uses SignalR for a persistent, low-latency link between your apps and the bridge.
-- **Flexible Transport**: The bridge supports both `stdio` (for local AI agents like Claude Desktop) and `streamableHttp` (for remote connections).
-- **Dependency Injection**: First-class support for `Microsoft.Extensions.DependencyInjection`.
-- **Assembly Scanning**: Automatically discover and register components from your entire project.
+✅ **Attributes** — `[AiTool]`, `[AiPrompt]`, `[AiResource]` on plain C# methods\
+✅ **Any .NET type** — ReflectorNet builds schemas and binds nested objects, lists, enums\
+✅ **Lives with your app** — SignalR link with auto-reconnect; catalog kept during reloads\
+✅ **Two MCP transports** — `stdio` or streamable HTTP on `/mcp`\
+✅ **REST** — `GET /api/tools` and `POST /api/tools/{name}` for scripts and tests\
+✅ **Editor and game** — editor and runtime connections side by side\
+✅ **Tool annotations** — title plus read-only, destructive, idempotent, open-world hints\
+✅ **Skill files** — a `SKILL.md` per tool in a `SKILLS/` folder\
+✅ **Auth and hooks** — `none` / `token` / `oauth` modes, analytics and auth webhooks
 
-## Communication Protocol (SignalR)
+## Install
 
-A key feature of this architecture is the use of **SignalR** for the connection between your application (`McpPlugin`) and the bridge (`McpPlugin.Server`).
+```bash
+dotnet add package com.IvanMurzak.McpPlugin          # in your app
+dotnet add package com.IvanMurzak.McpPlugin.Server   # in the bridge host (or run DemoWebApp)
+```
 
-- **Single Port**: All communication happens over a single, explicitly configured HTTP port (default: `8080`). No complex firewall rules or multiple socket connections are required.
-- **Bidirectional**: SignalR provides a persistent, real-time, bidirectional channel. The server can invoke tools on the client, and the client can send updates (like log messages or progress) to the server.
-- **Resilient**: The plugin includes built-in automatic reconnection logic. If the server restarts, your application will automatically re-establish the link.
+## Quick start
 
-**Default Connection:**
+**1. Declare tools, prompts and resources.** A class is scanned only when it carries the matching
+`[Ai*Type]` attribute. `[Description]` text is what the AI agent reads.
 
-- **Server**: Listens on `http://localhost:8080`
-- **Hub Endpoint**: `/hub/mcp-server`
-- **Client**: Connects to `http://localhost:8080/hub/mcp-server`
+```csharp
+using System.ComponentModel;
+using com.IvanMurzak.McpPlugin;
+using com.IvanMurzak.McpPlugin.Common.Model;
 
-## Getting Started
+[AiToolType]
+public static class GameTools
+{
+    [AiTool("add", "Add numbers", ReadOnlyHint = true)]   // name, title
+    [Description("Adds two numbers.")]
+    public static int Add(
+        [Description("First number.")] int a,
+        [Description("Second number.")] int b) => a + b;
+}
 
-### 1. The Server (`McpPlugin.Server`)
+[AiPromptType]
+public static class GamePrompts
+{
+    [AiPrompt(Name = "review-scene")]
+    [Description("Asks the agent to review the open scene.")]
+    public static string ReviewScene(string focus = "performance")
+        => $"Review the open scene. Focus on {focus}.";
+}
 
-The server acts as a hub. You can run the provided `DemoWebApp` or host it in your own ASP.NET Core application.
+[AiResourceType]
+public static class GameResources
+{
+    [AiResource(Route = "app://status", Name = "app-status", MimeType = "text/plain",
+        ListResources = nameof(ListStatus))]
+    [Description("Current application status.")]
+    public static ResponseResourceContent[] GetStatus(string uri)
+        => new[] { ResponseResourceContent.CreateText(uri, "Running", "text/plain") };
 
-**Running the Demo Server:**
+    public static ResponseListResource[] ListStatus()
+        => new[] { new ResponseListResource("app://status", "app-status") };
+}
+```
+
+**2. Build the plugin and connect it.**
+
+```csharp
+using System;
+using com.IvanMurzak.McpPlugin;
+using com.IvanMurzak.McpPlugin.Common;
+using com.IvanMurzak.ReflectorNet;
+using Version = com.IvanMurzak.McpPlugin.Common.Version;
+
+var version = new Version { Api = Consts.ApiVersion, Plugin = "1.0.0", Environment = "MyApp" };
+var assembly = typeof(GameTools).Assembly;
+
+var plugin = new McpPluginBuilder(version)
+    .WithConfig(config =>
+    {
+        config.Host = "http://localhost:8080";                  // the McpPlugin.Server address
+        config.ProjectRootPath = Environment.CurrentDirectory;  // where SKILLS/ is written
+    })
+    .WithToolsFromAssembly(assembly)
+    .WithPromptsFromAssembly(assembly)
+    .WithResourcesFromAssembly(assembly)
+    .Build(new Reflector());
+
+await plugin.Connect(); // reconnects on its own while KeepConnected is true (the default)
+```
+
+`Api` must match the server's API version, so pass `Consts.ApiVersion` from the package you reference.
+
+**3. Run the server.** Use the demo host from this repository:
 
 ```bash
 cd DemoWebApp
-dotnet run port=11111 client-transport=stdio
+dotnet run -- port=8080 client-transport=streamableHttp
 ```
 
-*Note: Use `client-transport=stdio` if connecting from Claude Desktop, or `client-transport=streamableHttp` for HTTP-based clients.*
-
-**Hosting in your own Web App:**
+or host it in your own ASP.NET Core app:
 
 ```csharp
-// Program.cs
-using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server;
+using Microsoft.AspNetCore.Builder;
+
+var dataArguments = new DataArguments(args); // port=, client-transport=, auth=, ...
 
 var builder = WebApplication.CreateBuilder(args);
-
-// 1. Prepare arguments (or load from config)
-var dataArguments = new DataArguments(args);
-
-// 2. Register MCP Server services
 builder.Services
-    .WithMcpServer(dataArguments) // Configures transport based on dataArguments.ClientTransport
+    .WithMcpServer(dataArguments)
     .WithMcpPluginServer(dataArguments);
-
-// 3. Configure Kestrel with separate IPv4/IPv6 bindings (avoids dual-stack issues on macOS)
-builder.WebHost.UseKestrelForMcpPlugin(dataArguments.Port);
+builder.WebHost.UseKestrelForMcpPlugin(dataArguments.Port, dataArguments.Bind);
 
 var app = builder.Build();
-
-// 4. Use MCP Server middleware
 app.UseMcpPluginServer(dataArguments);
-
 app.Run();
 ```
 
-### 2. The Client App (`McpPlugin`)
-
-Add the `com.IvanMurzak.McpPlugin` package to your .NET application.
-
-**Defining Tools, Prompts, and Resources:**
-
-```csharp
-using com.IvanMurzak.McpPlugin;
-using com.IvanMurzak.McpPlugin.Common.Model;
-using System.ComponentModel;
-
-[AiToolType]
-public static class MyMcpComponents
-{
-    // --- Tools ---
-    [AiTool("calculate-sum", "Adds two numbers")]
-    [Description("Adds two numbers")]
-    public static int Add(int a, int b) => a + b;
-
-    // --- Prompts ---
-    [AiPrompt(Name = "explain-code")]
-    public static string ExplainCode(string code) => $"The following code: {code} does X, Y, and Z.";
-
-    // --- Resources ---
-    [AiResource(Route = "logs://system", Name = "system-logs", Description = "Returns the latest system logs", ListResources = nameof(ListLogs))]
-    public static ResponseResourceContent[] GetLogs()
-        => new[] { ResponseResourceContent.CreateText("logs://system", "Log entry 1: System started...") };
-
-    public static ResponseListResource[] ListLogs()
-        => new[] { new ResponseListResource("logs://system", "system-logs") };
-}
-```
-
-**Connecting to the Server:**
-
-```csharp
-using com.IvanMurzak.McpPlugin;
-using com.IvanMurzak.ReflectorNet;
-
-// 1. Initialize Reflector (The core engine)
-var reflector = new Reflector();
-
-// 2. Configure and build the plugin
-var version = new com.IvanMurzak.McpPlugin.Common.Version
-{
-    Api = "1.0.0",
-    Plugin = "1.0.0"
-};
-var plugin = new McpPluginBuilder(version)
-    .WithConfig(config => {
-        config.Host = "http://localhost:11111"; // Match your server port
-    })
-    // Option A: Scan assemblies for [AiTool], [AiPrompt], [AiResource]
-    .WithToolsFromAssembly(typeof(MyMcpComponents).Assembly)
-    .WithPromptsFromAssembly(typeof(MyMcpComponents).Assembly)
-    .WithResourcesFromAssembly(typeof(MyMcpComponents).Assembly)
-    .Build(reflector);
-
-// 3. Connect to the MCP server
-await plugin.Connect();
-```
-
-## Advanced Features
-
-### 🧩 Complex Type Support (via ReflectorNet)
-
-Unlike standard MCP implementations that struggle with complex .NET types, this plugin handles them natively. You can pass nested objects or collections as tool parameters:
-
-```csharp
-public class UserProfile {
-    public string Name { get; set; }
-    public List<string> Roles { get; set; }
-}
-
-[AiTool("update-user")]
-public static void UpdateUser(UserProfile profile) {
-    // ReflectorNet automatically deserializes the JSON from the AI into this object
-}
-```
-
-### ⚠️ Tool errors and HTTP status
-
-How a failing `[AiTool]` method (a reflected `RunTool`) is reported on the server's direct HTTP endpoint
-(`POST /api/tools/{name}`). The MCP channel (`/mcp`) is not affected: every tool error there is an ordinary
-`tools/call` result with `isError: true` and the tool's message. (A hand-written `IRunTool` / `ProxyTool` that throws
-keeps the managers' own mapping: `ArgumentException` 400, `KeyNotFoundException` 404, `InvalidOperationException`
-409, `TimeoutException` 504, anything else 500.)
-
-| The tool... | Kind | HTTP |
-| --- | --- | --- |
-| returns `ResponseCallTool.Error(message)` (or `Unprocessable(message)`) | `BadRequest` | 400 (422) |
-| receives arguments that cannot be bound (ReflectorNet throws `ArgumentException`; `JsonException` on the named-argument path) | `BadRequest` | 400 |
-| **throws** a fault type: `NullReferenceException`, `IndexOutOfRangeException`, `InvalidCastException`, `NotImplementedException`, `ObjectDisposedException`, `OutOfMemoryException`, `TypeLoadException`, `MissingMemberException`, `TypeInitializationException`, `FileLoadException`, `BadImageFormatException`, `InvalidProgramException`, `TimeoutException`, `OperationCanceledException` (and subclasses) | `Internal` | 500 |
-| **throws** `ToolUnavailableException(message)`: the host cannot serve the call right now (starting, compiling, reloading) | `Unavailable` | 503 |
-| **throws** `ToolUnavailableException(message, notExecuted: true)`: the same, and the tool did nothing yet | `Unavailable` (`ResponseCallTool.NotExecuted`) | 503 |
-| **throws** anything else: `Exception`, `InvalidOperationException`, `NotSupportedException`, your own exception types | `BadRequest` | 422 |
-| succeeds, but its result cannot be serialized | `Internal` | 500 |
-
-The rule for tool authors: throwing means "I could not do what was asked" (invalid code to compile, an object that
-does not exist, an operation the target cannot do), which is the caller's problem, so it is 422. A 500 is kept for
-exception types that point at a bug in the tool or a broken plugin. If your tool rejects input, throw a plain or
-custom exception with a message the agent can act on, or return `ResponseCallTool.Error(message)`; do not let a
-`NullReferenceException` escape for missing input. The message is the same for 422 and 500:
-`Tool execution failed for '<tool>': <message>`, where `<message>` is the thrown exception's message (for an `async`
-tool whose exception carries an inner exception, the inner one's). Edge cases: an `ArgumentException` thrown directly by an `async` tool is reported like a binding
-failure (400); anything else thrown while the tool's instance is created or its arguments are converted (outside the
-binding row above) counts as thrown by the tool. The rule lives in `RunTool.IsFrameworkFault`.
-
-Since McpPlugin 8.15.0. The 422 travels as the existing `BadRequest` kind plus `HttpStatusCode = 422`, which every
-server since McpPlugin 7.0.0 honours, so a new plugin on an older server also gets 422. A plugin before 8.15.0 sends
-`Internal` for every thrown exception, which stays 500 on any server.
-
-`ToolUnavailableException` (since McpPlugin 8.16.0) is for a failure that is nobody's fault in the request: the
-editor is compiling, a service the tool needs is not built yet. Pass `notExecuted: true` only when the tool changed
-nothing before it threw, and only for a state a plugin reload ends (a pending script reload): a server with the call
-guard (McpPlugin.Server 8.14.0+, for plugins on 8.14.0+) then sends the call again, after the plugin reconnects or
-every couple of seconds while it stays connected, within its reconnect wait; when the window ends it answers 503 with
-a `[plugin_reloading]` error that ends with the tool's message. Without it the kind carries no status, so no server
-sends the call again (it may have done part of its work) and the tool's message comes back as is. Every server since
-McpPlugin 7.0.0 maps `Unavailable` to 503. Keep the phrase "this call was not run" out of the message: the call guard
-reads it as a reload-gate refusal. A hand-written `IRunTool` that throws it gets the same kind and status.
-
-### 🔍 Fuzzy Matching
-
-You can configure how strictly the AI must match your method names. This is useful when LLMs use slightly different terminology:
-
-```csharp
-var plugin = new McpPluginBuilder(version)
-    // ...
-    .Build(reflector);
-
-// Configure fuzzy matching level (1-6)
-// 6: Exact, 3: StartsWith (Case-Insensitive), 1: Contains (Case-Insensitive)
-plugin.MethodNameMatchLevel = 3;
-```
-
-## Configuration Reference
-
-### Server (`McpPlugin.Server`)
-
-Command-line arguments take priority over environment variables.
-
-| Argument | Env Var | Description | Default |
-| :--- | :--- | :--- | :--- |
-| `port` | `MCP_PLUGIN_PORT` | The port the SignalR hub listens on. | `8080` |
-| `client-transport` | `MCP_PLUGIN_CLIENT_TRANSPORT` | Transport method: `stdio` or `streamableHttp`. | `streamableHttp` |
-| `plugin-timeout` | `MCP_PLUGIN_CLIENT_TIMEOUT` | Timeout for ONE attempt of an idempotent plugin call (ms): listing tools / prompts / resources, getting a prompt, reading a resource. These calls are retried up to 10x with a 1s delay, so a connected-but-silent plugin can hold one of them for roughly 10x this value. Tool calls do NOT use it (see `tool-timeout`). The four catalog endpoints (`tools/list`, `resources/list`, `resources/templates/list`, `prompts/list`) are separately capped at 15s and degrade to an empty catalog instead of failing the call. Note that cap is FIXED: raising this above 15000 does not raise it, so a plugin slower than 15s will list an empty catalog. | `10000` |
-| `tool-timeout` | `MCP_PLUGIN_TOOL_TIMEOUT` | One deadline for a whole tool call (ms), MCP `tools/call` and REST alike: waiting for a reconnecting plugin, the call itself and a deferred (`Processing`) completion. When it passes, the call fails with `[tool_timeout]` (HTTP 504). A tool call is sent once; it is sent again only when the plugin answered `ResponseCallTool.NotExecuted` (it refused the call before running any of it). If the connection drops after sending, the server waits up to `plugin-reconnect-wait-seconds` and answers `[plugin_reconnected]` or `[plugin_disconnected]` (HTTP 502: the tool may have run). Arguments are checked against the tool's input schema first (`[invalid_params]`, HTTP 400), and a lone UTF-16 surrogate is refused (`[invalid_utf16]`). When unset: the default, or `plugin-timeout` if that is larger. | `300000` |
-| `plugin-reconnect-wait-seconds` | `MCP_PLUGIN_RECONNECT_WAIT_SECONDS` | The longest a request waits for a reconnecting plugin (an editor reload) before it fails; also how long after an editor leaves a runtime (game) connection is still not used in its place, and the window in which a tool call refused as not executed is sent again. | `60` |
-| `plugin-reconnect-grace-seconds` | `MCP_PLUGIN_RECONNECT_GRACE_SECONDS` | How long a disconnected plugin's tool / prompt / resource lists are remembered, so an agent listing during a reload keeps the full list. `0` disables it. | `300` |
-| `idle-timeout-seconds` | `MCP_PLUGIN_IDLE_TIMEOUT_SECONDS` | `streamableHttp` only: idle window before an MCP session is evicted from the in-memory tracker. Longer values reduce reconnect 404s / session-migration rehydrates at the cost of higher in-memory footprint (bounded by `max-idle-session-count`). Only sessions with no in-flight request and no open SSE stream are evicted, so this never interrupts a long-running call. The SDK's own default is `7200` (2 h). | `600` |
-| `max-idle-session-count` | `MCP_PLUGIN_MAX_IDLE_SESSION_COUNT` | `streamableHttp` only: hard ceiling on retained **idle** MCP sessions. When exceeded, the least-recently-active idle sessions are pruned (disposed, buffers returned to the pool) before the idle timeout elapses. Bounds worst-case per-session buffer memory under connection churn. Active sessions are never counted/pruned. The SDK's own default is `10000`. | `1000` |
-| `auth` | `MCP_AUTH` | Authorization mode: `none` (anonymous — offline / local dev / CI) or `oauth` (OAuth 2.1 resource server; validates ES256 JWT / opaque PAT against the authorization server). The legacy `authorization` / `MCP_AUTHORIZATION` alias still parses `none`; the retired `required` shared-token mode was removed and now fails closed. | `none` |
-| `auth-issuer` | `MCP_AUTH_ISSUER` | `auth=oauth` only (required): the authorization server URL (e.g. `https://ai-game.dev`). | *(none)* |
-| `public-url` | `MCP_PUBLIC_URL` | `auth=oauth` only (required): this server's canonical resource id / public URL (used as the token audience). | *(none)* |
-
-#### Editor and runtime plugin connections
-
-In the single-project modes (`none`, `token`) the server keeps one **editor** and one **runtime** (game) plugin connection side by side. A new connection replaces only an older connection of the same role, and agents are routed to the editor; a runtime serves only when no editor is connected and none left within `plugin-reconnect-wait-seconds` (a standalone game build). A plugin declares its role with `ConnectionConfig.ClientRole` (`Editor` by default, `Runtime` for a game build), sent as the hub query parameter `client_role=editor|runtime` (or the `X-Client-Role` header). A plugin that sends neither is a runtime when its handshake `environment` ends in `(runtime)`, otherwise an editor. Game-only tools are marked `[AiToolType(Target = ToolTarget.Runtime)]` (or per tool `[AiTool(..., Target = ...)]`): an editor does not register them, and the server routes their calls to the runtime and lists them while the editor is connected (see `docs/agents/patterns.md`).
-
-#### Analytics Webhooks
-
-`McpPlugin.Server` can emit fire-and-forget HTTP POST notifications to external endpoints for observability and analytics. Each event category has an independent URL, so you can route tool, prompt, resource, and connection events to different systems.
-
-| Argument | Env Var | Description | Default |
-| :--- | :--- | :--- | :--- |
-| `webhook-tool-url` | `MCP_PLUGIN_WEBHOOK_TOOL_URL` | Endpoint to receive tool call events. | *(none)* |
-| `webhook-prompt-url` | `MCP_PLUGIN_WEBHOOK_PROMPT_URL` | Endpoint to receive prompt retrieval events. | *(none)* |
-| `webhook-resource-url` | `MCP_PLUGIN_WEBHOOK_RESOURCE_URL` | Endpoint to receive resource access events. | *(none)* |
-| `webhook-connection-url` | `MCP_PLUGIN_WEBHOOK_CONNECTION_URL` | Endpoint to receive client connect/disconnect events. | *(none)* |
-| `webhook-token` | `MCP_PLUGIN_WEBHOOK_TOKEN` | Security token sent in each webhook request header. | *(none)* |
-| `webhook-header` | `MCP_PLUGIN_WEBHOOK_HEADER` | Header name for the security token. | `X-Webhook-Token` |
-| `webhook-timeout` | `MCP_PLUGIN_WEBHOOK_TIMEOUT` | HTTP delivery timeout in milliseconds. | `10000` |
-
-**Example — enable tool and connection analytics:**
+**4. Connect an AI agent.** Point an MCP client at `http://localhost:8080/mcp`, or let it launch the server
+with `client-transport=stdio`. Scripts can call a tool directly:
 
 ```bash
-dotnet run \
-  client-transport=stdio \
-  webhook-tool-url=https://analytics.example.com/hooks/tools \
-  webhook-connection-url=https://analytics.example.com/hooks/connections \
-  webhook-token=my-secret-token
+curl -X POST http://localhost:8080/api/tools/add -H "Content-Type: application/json" -d '{"a":2,"b":3}'
+# {"status":"success","structured":{"result":5}}
 ```
 
-**Event payload structure** (all events follow this envelope):
+## Writing good tools
 
-```json
-{
-  "schemaVersion": "1.0",
-  "eventType": "tool.call.completed",
-  "timestamp": "2026-03-01T12:34:56.789Z",
-  "data": {
-    "toolName": "add",
-    "requestSizeBytes": 42,
-    "responseSizeBytes": 18,
-    "status": "success",
-    "durationMs": 150
-  }
-}
-```
+- **Annotate.** Give each tool a `Title` and an explicit `ReadOnlyHint` or `DestructiveHint`; MCP tool
+  directories reject tools without them. `AiToolAnnotationsValidator.Validate(assembly)` lists the gaps in a unit test.
+- **Fail clearly.** Throw an exception with a message the agent can act on, or return
+  `ResponseCallTool.Error(message)`. Throw `ToolUnavailableException` while the host is busy (compiling,
+  reloading). How each case is reported: [docs/tool-errors.md](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/docs/tool-errors.md).
+- **Game-only tools.** Mark them `[AiToolType(Target = ToolTarget.Runtime)]` and set
+  `config.ClientRole = ClientRole.Runtime` in the game build, before `Build()`.
 
-**Supported event types:**
+## Documentation
 
-| Event Type | Trigger |
-| :--- | :--- |
-| `tool.call.completed` | Every MCP tool call (success or failure) |
-| `prompt.retrieved` | Every MCP prompt retrieval |
-| `resource.accessed` | Every MCP resource access |
-| `connection.ai-agent.connected` | AI agent (MCP client) connects |
-| `connection.ai-agent.disconnected` | AI agent (MCP client) disconnects |
-| `connection.plugin.connected` | McpPlugin (.NET client) connects via SignalR |
-| `connection.plugin.disconnected` | McpPlugin (.NET client) disconnects |
+| Page | What is in it |
+| --- | --- |
+| [Configuration](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/docs/configuration.md) | Server arguments and environment variables, plugin settings, webhooks, Docker |
+| [Tool errors](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/docs/tool-errors.md) | How tool failures map to MCP results and HTTP status, by version |
+| [Transport and auth](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/docs/architecture-transport-auth.md) | `stdio` / streamable HTTP and the `none` / `token` / `oauth` modes in depth |
+| [Migrating to 8.0.0](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/docs/migration-8.0.0.md) | The `CancellationToken` change in the prompt and resource hubs |
+| [NullEngine](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/McpPlugin.NullEngine/README.md) | An engine-free test host with a fixed tool set |
+| [Chain fixtures](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/docs/chain-fixtures.md) | Recording and replaying a plugin's catalog for downstream tests |
 
-**Notes:**
+The legacy `[McpPluginTool]`, `[McpPluginPrompt]`, `[McpPluginResource]` names still compile as `[Obsolete]`
+aliases of the `[Ai*]` attributes.
 
-- Webhooks are **fire-and-forget** — delivery failures are logged but never block MCP responses.
-- If no webhook URLs are configured, the entire subsystem is inactive with zero overhead.
-- Use HTTPS endpoints in production to protect the security token in transit.
-
-#### Authorization Webhooks
-
-`McpPlugin.Server` can be configured with a **synchronous authorization webhook** that gates connections from both MCP clients (AI agents via HTTP) and McpPlugin clients (.NET apps via SignalR). Unlike the fire-and-forget analytics webhooks above, authorization webhooks block the connection until your endpoint responds.
-
-| Argument | Env Var | Description | Default |
-| :--- | :--- | :--- | :--- |
-| `webhook-authorization-url` | `MCP_PLUGIN_WEBHOOK_AUTHORIZATION_URL` | Endpoint that authorizes/denies connections. | *(none)* |
-| `webhook-authorization-fail-open` | `MCP_PLUGIN_WEBHOOK_AUTHORIZATION_FAIL_OPEN` | When `true`, allow connections if webhook times out or errors. When `false`, deny on failure. | `false` |
-
-**Example — enable connection authorization with fail-closed behavior:**
+## Build from source
 
 ```bash
-dotnet run \
-  client-transport=stdio \
-  webhook-authorization-url=https://auth.example.com/authorize \
-  webhook-token=my-secret-token \
-  webhook-authorization-fail-open=false
+dotnet build McpPlugin.sln
+dotnet test
 ```
 
-**Request format** (POST from server to your webhook):
+Runnable samples: [`DemoWebApp`](https://github.com/IvanMurzak/MCP-Plugin-dotnet/tree/main/DemoWebApp) (server) and [`DemoConsoleApp`](https://github.com/IvanMurzak/MCP-Plugin-dotnet/tree/main/DemoConsoleApp) (plugin with one tool).
 
-For AI agent connections (`authorization.ai-agent`):
+## Community
 
-```json
-{
-  "schemaVersion": "1.0",
-  "eventType": "authorization.ai-agent",
-  "timestamp": "2025-03-04T22:45:30.1234567Z",
-  "connectionId": "trace-id-or-connection-id",
-  "clientType": "ai-agent",
-  "bearerToken": "<token-from-client>",
-  "remoteIpAddress": "192.168.1.100",
-  "userAgent": "claude-ai/1.0",
-  "requestPath": "/mcp",
-  "clientName": null,
-  "clientVersion": null,
-  "hmacSignature": "sha256=abc123..."
-}
-```
-
-For plugin connections (`authorization.plugin`):
-
-```json
-{
-  "schemaVersion": "1.0",
-  "eventType": "authorization.plugin",
-  "timestamp": "2025-03-04T22:45:30.1234567Z",
-  "connectionId": "trace-id-or-connection-id",
-  "clientType": "plugin",
-  "bearerToken": "<token-from-plugin>",
-  "remoteIpAddress": null,
-  "userAgent": null,
-  "requestPath": null,
-  "clientName": "my-unity-plugin",
-  "clientVersion": "1.2.0",
-  "hmacSignature": "sha256=def456..."
-}
-```
-
-> **Note:** The `hmacSignature` field is only present when `webhook-token` is configured. It contains an HMAC-SHA256 signature of the request body (before the signature field is added), computed using the webhook token as the secret key.
-
-**Expected response format** (from your webhook to server):
-
-```json
-{ "allowed": true }
-```
-
-or
-
-```json
-{ "allowed": false, "reason": "IP not in allowlist" }
-```
-
-**Behavior:**
-
-- **2xx response with `allowed: true`** → Connection proceeds
-- **2xx response with `allowed: false`** → Connection denied (reason logged as warning)
-- **Non-2xx response, timeout, or parse error** → Connection denied (unless `fail-open=true`)
-
-**Security:**
-
-- The server sends the configured security token in the header named by `webhook-header` (default: `X-Webhook-Token`)
-- Your webhook must validate this token to prevent unauthorized authorization requests
-- Use HTTPS endpoints in production
-
-**Notes:**
-
-- Authorization webhooks are **synchronous** — the server waits (default timeout 10 seconds) for your response
-- Keep webhook response times under 1 second for best performance
-- Authorization webhooks operate independently from the analytics webhooks above
-- If `webhook-authorization-url` is not configured, authorization is disabled (all connections allowed)
-
-### Plugin (`McpPlugin`)
-
-Command-line arguments and environment variables are parsed automatically via `ConnectionConfig.BuildFromArgsOrEnv()`. They can also be overridden programmatically via `McpPluginBuilder.WithConfig(...)`.
-
-| Argument | Env Var | Property | Description | Default |
-| :--- | :--- | :--- | :--- | :--- |
-| `mcp-server-endpoint` | `MCP_SERVER_ENDPOINT` | `Host` | The URL of the bridge server. | `http://localhost:8080` |
-| `mcp-server-timeout` | `MCP_SERVER_TIMEOUT` | `TimeoutMs` | Operation timeout (ms). | `10000` |
-| `mcp-plugin-token` | `MCP_PLUGIN_TOKEN` | `Token` | Bearer token sent to the server for authentication. | *(none)* |
-| `mcp-skills-folder` | `MCP_SKILLS_FOLDER` | `SkillsPath` | Path for generated skill markdown files. | `SKILLS` |
-
-**Programmatic-only properties** (set via `WithConfig(...)`):
-
-| Property | Description | Default |
-| :--- | :--- | :--- |
-| `KeepConnected` | Automatically reconnect if the connection is lost. | `true` |
-| `GenerateSkillFiles` | Auto-generate skill markdown files for each registered tool. | `true` |
-
-## Docker Support
-
-You can run the bridge server in a Docker container:
-
-```bash
-docker build -t mcp-bridge -f McpPlugin.Server/Dockerfile .
-docker run -p 8080:8080 mcp-bridge port=8080 client-transport=streamableHttp
-```
-
-## Project Structure
-
-- **`McpPlugin`**: The client library for .NET applications. Contains the core logic for managing tools, prompts, and resources.
-- **`McpPlugin.Server`**: The server implementation that bridges SignalR clients to the MCP protocol.
-- **`McpPlugin.Common`**: Shared data structures, interfaces, and protocol definitions.
-- **`DemoConsoleApp`**: A sample client application demonstrating how to expose tools.
-- **`DemoWebApp`**: A sample server application demonstrating how to host the MCP bridge.
-
-## Compatibility
-
-Tool-call argument checks (McpPlugin.Server 8.14.0+): a plugin on McpPlugin **8.14.0** or newer (it reports `mcpPluginVersion` in its handshake) gets server-side tool-argument validation (required arguments and types) and the 8.14 call guard (one whole-call deadline, reload/re-send handling); an older plugin, or one that reports no version, has its calls forwarded as server 9.2.x forwarded them: no argument validation, no whole-call deadline, no rewriting of its errors. Only a call carrying a lone UTF-16 surrogate, which cannot be delivered to any plugin, is refused with a clear error. Connections keep 9.2.x's newest-wins replacement too: the editor/runtime roles (the editor is kept when a game connects, game-only tools go to the game) apply only when both connections are 8.14+ plugins. One timing difference remains: an old plugin's connection replaces the previous one at its version handshake (milliseconds after connecting), not at connect. The field is optional on the wire: a server before 8.14.0 ignores it.
-
-## Migration guides
-
-- **[Migrating to 8.0.0](docs/migration-8.0.0.md)** — three methods on `IClientPromptHub` /
-  `IClientResourceHub` gained a `CancellationToken` parameter. Callers keep compiling but MUST be
-  recompiled (the change is binary-breaking); anyone supplying their own implementation of those
-  interfaces has a source change to make. All three packages share one version and must be pinned to
-  `8.0.0` together.
+Questions and ideas: [Discord](https://discord.gg/Cgs6nM8BPU) or [GitHub issues](https://github.com/IvanMurzak/MCP-Plugin-dotnet/issues).
 
 ## License
 
-This project is licensed under the Apache-2.0 License. Copyright - Ivan Murzak.
+[Apache-2.0](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/LICENSE) © Ivan Murzak
