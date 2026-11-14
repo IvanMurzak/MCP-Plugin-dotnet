@@ -113,7 +113,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
             HttpClient client,
             string clientName = "mcp-plugin-server-test",
             IReadOnlyDictionary<string, string>? initializeHeaders = null,
-            IReadOnlyDictionary<string, string>? initializedHeaders = null)
+            IReadOnlyDictionary<string, string>? initializedHeaders = null,
+            string path = "/mcp")
         {
             var (_, sessionId) = await PostAsync(client, null, new
             {
@@ -126,10 +127,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
                     capabilities = new { },
                     clientInfo = new { name = clientName, version = "1.0.0" }
                 }
-            }, initializeHeaders);
+            }, initializeHeaders, path);
 
             sessionId.ShouldNotBeNullOrEmpty("the server must mint an Mcp-Session-Id on initialize");
-            await PostAsync(client, sessionId, new { jsonrpc = "2.0", method = "notifications/initialized" }, initializedHeaders);
+            await PostAsync(client, sessionId, new { jsonrpc = "2.0", method = "notifications/initialized" }, initializedHeaders, path);
             return sessionId!;
         }
 
@@ -157,9 +158,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
             HttpClient client,
             string? sessionId,
             object payload,
-            IReadOnlyDictionary<string, string>? headers = null)
+            IReadOnlyDictionary<string, string>? headers = null,
+            string path = "/mcp")
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, _baseUrl + "/mcp");
+            using var request = new HttpRequestMessage(HttpMethod.Post, _baseUrl + path);
             request.Headers.Accept.ParseAdd("application/json");
             request.Headers.Accept.ParseAdd("text/event-stream");
             if (!string.IsNullOrEmpty(sessionId))

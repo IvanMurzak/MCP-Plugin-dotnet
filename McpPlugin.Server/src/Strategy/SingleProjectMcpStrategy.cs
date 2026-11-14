@@ -16,6 +16,7 @@ using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
 using com.IvanMurzak.McpPlugin.Server.Auth;
+using com.IvanMurzak.McpPlugin.Server.Tools;
 using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin.Server.Strategy
@@ -35,6 +36,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
     ///   disconnected within <see cref="EditorReconnectWindow"/> (a standalone game build), so calls made
     ///   during an editor reload wait for the editor instead of reaching the game. The exception is a call of
     ///   a tool only the runtime has (<see cref="PluginRoleRouting"/>): it goes to the runtime.</item>
+    ///   <item>A session pinned to a project (<see cref="McpSessionTokenContext.CurrentProjectPin"/>) is routed only to a
+    ///   connection of that project (<see cref="PluginConnectionRegistry.Serves"/>): never to another project's editor or
+    ///   game, so it gets "no editor for this project" instead (<see cref="PinnedNotConnectedMessage"/>). A plugin that
+    ///   named no project at connect is routed as before. An unpinned session is routed as before.</item>
     ///   <item>Only editors enter <see cref="ClientUtils"/>' plugin list, so the remembered lists of
     ///   <see cref="PluginCatalogCache"/> stay the editor's.</item>
     ///   <item>A plugin built before McpPlugin 8.14.0 (its handshake reports no <c>mcpPluginVersion</c> 8.14.0+)
@@ -156,24 +161,59 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         /// The editor (by token, else the best one); else, unless an editor left within <see cref="EditorReconnectWindow"/>, a runtime.
         /// A request routed to the runtime (<see cref="PluginRoleRouting.Preferred"/>) gets the runtime, or nothing while none
         /// is connected (it then waits for one like any call): never the editor, which does not run game-only tools.
+        /// A pinned session considers only the connections of its project.
         /// </summary>
         public string? ResolveConnectionId(string? token, int retryOffset)
         {
+            var pin = McpSessionTokenContext.CurrentProjectPin;
             if (PluginRoleRouting.Preferred == ClientRole.Runtime)
-            {
-                var preferred = Registry.WithRole(ClientRole.Runtime);
-                return preferred.Count > 0 ? preferred[Math.Abs(retryOffset) % preferred.Count] : null;
-            }
+                return Pick(Serving(Registry.WithRole(ClientRole.Runtime), pin), retryOffset);
 
-            var editor = ClientUtils.GetConnectionIdByToken(token) ?? ClientUtils.GetBestConnectionId(RoutedHubType, retryOffset);
+            var editor = ResolveEditor(token, pin, retryOffset);
             if (editor != null || Registry.EditorLeftWithin(EditorReconnectWindow))
                 return editor;
 
-            var runtimes = Registry.WithRole(ClientRole.Runtime);
-            if (runtimes.Count == 0)
-                return null;
-            Interlocked.Exchange(ref _runtimeServed, 1);
-            return runtimes[Math.Abs(retryOffset) % runtimes.Count];
+            var runtime = Pick(Serving(Registry.WithRole(ClientRole.Runtime), pin), retryOffset);
+            if (runtime != null)
+                Interlocked.Exchange(ref _runtimeServed, 1);
+            return runtime;
+        }
+
+        string? ResolveEditor(string? token, string? pin, int retryOffset)
+        {
+            var byToken = ClientUtils.GetConnectionIdByToken(token);
+            if (byToken != null && Registry.Serves(byToken, pin))
+                return byToken;
+            return string.IsNullOrEmpty(pin)
+                ? ClientUtils.GetBestConnectionId(RoutedHubType, retryOffset)
+                : Pick(Serving(ClientUtils.GetAllConnectionIds(RoutedHubType), pin), retryOffset);
+        }
+
+        IReadOnlyList<string> Serving(IEnumerable<string> connectionIds, string? pin)
+            => string.IsNullOrEmpty(pin) ? connectionIds.ToList() : connectionIds.Where(id => Registry.Serves(id, pin)).ToList();
+
+        static string? Pick(IReadOnlyList<string> connectionIds, int retryOffset)
+            => connectionIds.Count > 0 ? connectionIds[Math.Abs(retryOffset) % connectionIds.Count] : null;
+
+        /// <summary>
+        /// The agent-facing answer for a pinned session that <see cref="ResolveConnectionId"/> finds no connection for:
+        /// the text the App's probe reads as "no editor for this project" (as in <c>oauth</c> mode). Null when the
+        /// session is not pinned.
+        /// </summary>
+        public string? PinnedNotConnectedMessage()
+        {
+            var pin = McpSessionTokenContext.CurrentProjectPin;
+            return string.IsNullOrEmpty(pin) ? null : AgentActionableErrors.PinnedNoEditor(Registry.HasConnectionNotServing(pin));
+        }
+
+        /// <summary>
+        /// True when the current session is pinned to a project none of the connections serves while another project's
+        /// plugin is connected: a call then has nothing to wait for.
+        /// </summary>
+        public bool IsPinnedToAbsentProject(string? token)
+        {
+            var pin = McpSessionTokenContext.CurrentProjectPin;
+            return !string.IsNullOrEmpty(pin) && ResolveConnectionId(token, 0) == null && Registry.HasConnectionNotServing(pin);
         }
 
         public bool TakeRuntimeServed() => Interlocked.Exchange(ref _runtimeServed, 0) == 1;

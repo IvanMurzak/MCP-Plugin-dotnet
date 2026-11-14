@@ -29,6 +29,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         DateTimeOffset? _lastEditorDisconnect;
         /// <summary>The legacy connections the last replacement removed (see <see cref="ReplacedWasLegacy"/>).</summary>
         readonly HashSet<string> _lastReplacedLegacy = new HashSet<string>(StringComparer.Ordinal);
+        /// <summary>The project each connection named at connect (see <see cref="SetProject"/>); kept until it disconnects.</summary>
+        readonly Dictionary<string, PluginProject> _projects = new Dictionary<string, PluginProject>(StringComparer.Ordinal);
 
         public PluginConnectionRegistry(Func<DateTimeOffset>? clock = null)
         {
@@ -47,6 +49,40 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 _connections[connectionId] = new Entry(role, token, ++_sequence) { Legacy = role.HasValue ? false : (bool?)null };
                 return role.HasValue ? ReplaceLocked(connectionId, role.Value, legacy: false) : Array.Empty<string>();
             }
+        }
+
+        /// <summary>
+        /// Remembers the project a connection serves (null: it named none), before <see cref="Add"/>. Kept until
+        /// <see cref="Remove"/>, so a connection that is replaced or not classified yet still has it.
+        /// </summary>
+        public void SetProject(string connectionId, PluginProject? project)
+        {
+            lock (_gate)
+            {
+                if (project == null)
+                    _projects.Remove(connectionId);
+                else
+                    _projects[connectionId] = project;
+            }
+        }
+
+        /// <summary>The project the connection serves; null when it named none or is unknown.</summary>
+        public PluginProject? GetProject(string connectionId)
+        {
+            lock (_gate)
+                return _projects.TryGetValue(connectionId, out var project) ? project : null;
+        }
+
+        /// <summary>True when the connection may serve a session pinned to <paramref name="pin"/> (see <see cref="PluginProject.Serves"/>).</summary>
+        public bool Serves(string connectionId, string? pin)
+            => PluginProject.Serves(GetProject(connectionId), pin);
+
+        /// <summary>True when a connection with a role serves another project than <paramref name="pin"/>'s.</summary>
+        public bool HasConnectionNotServing(string? pin)
+        {
+            lock (_gate)
+                return _connections.Any(pair => pair.Value.Role.HasValue
+                    && !PluginProject.Serves(_projects.TryGetValue(pair.Key, out var project) ? project : null, pin));
         }
 
         /// <summary>The connection's role; null for an unknown connection or one not classified yet.</summary>
@@ -131,6 +167,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         {
             lock (_gate)
             {
+                _projects.Remove(connectionId);
                 if (!_connections.Remove(connectionId, out var entry))
                 {
                     role = null;

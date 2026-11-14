@@ -143,9 +143,9 @@ namespace com.IvanMurzak.McpPlugin.Server
                     : AgentActionableErrors.ForCurrentSession(resolution, account.Instances);
             }
 
-            return _strategy.ResolveConnectionId(McpSessionTokenContext.CurrentToken, 0) == null
-                ? ClientUtils.NoPluginConnectedMessage
-                : null;
+            if (_strategy.ResolveConnectionId(McpSessionTokenContext.CurrentToken, 0) != null)
+                return null;
+            return (_strategy as SingleProjectMcpStrategy)?.PinnedNotConnectedMessage() ?? ClientUtils.NoPluginConnectedMessage;
         }
 
         public async Task<ResponseData<ResponseListTool[]>> RunListSystemTool(RequestListTool request, CancellationToken cancellationToken = default)

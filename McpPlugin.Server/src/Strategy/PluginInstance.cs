@@ -119,16 +119,22 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         /// <see cref="ProjectPathHashLegacy"/> (old configs), so an old <c>.mcp.json</c> keeps routing
         /// to a new plugin. A dedup key ties an instance to its (path,engine,machine).
         /// </summary>
-        public bool MatchesPin(string? pin)
+        public bool MatchesPin(string? pin) => PinMatches(pin, ProjectPathHash, ProjectPathHashLegacy);
+
+        /// <summary>
+        /// The pin rule of <see cref="MatchesPin"/> for any pair of project-path hashes: a non-empty pin that is a
+        /// case-insensitive prefix of either non-empty hash (v2, or the v1 legacy one).
+        /// </summary>
+        internal static bool PinMatches(string? pin, string? projectPathHash, string? projectPathHashLegacy)
         {
             if (string.IsNullOrEmpty(pin))
                 return false;
             string prefix = pin; // narrowed to non-null/non-empty by the guard above
             // The pin matches when it prefixes EITHER hash (v2 for new configs, v1 legacy for old ones).
-            return IsPrefixedBy(ProjectPathHash) || IsPrefixedBy(ProjectPathHashLegacy);
+            return IsPrefixedBy(projectPathHash) || IsPrefixedBy(projectPathHashLegacy);
 
-            bool IsPrefixedBy(string hash) =>
-                !string.IsNullOrEmpty(hash) && hash.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+            bool IsPrefixedBy(string? hash) =>
+                !string.IsNullOrEmpty(hash) && hash!.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>The dedup key: same physical editor project re-launched (new InstanceId) collides on this.</summary>

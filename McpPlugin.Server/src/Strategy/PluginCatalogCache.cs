@@ -180,8 +180,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 if (instance != null)
                     DropReplacedBy(bucket, instance);
 
+                // Single-plugin mode: the project the plugin serves, so a pinned session gets only its project's lists.
+                var project = instance == null ? (_strategy as IPluginRoleStrategy)?.Registry.GetProject(connectionId) : null;
                 if (bucket.TryGetValue(key, out var entry))
                 {
+                    // Another project's plugin took the one slot while the previous one was offline: its remembered
+                    // lists are not this plugin's (DEV-42).
+                    if (instance == null && entry.ConnectionId == null && entry.Project != null && project != null && entry.Project != project)
+                        entry.ClearLists();
                     revived = entry.ConnectionId == null && entry.HasAnyList;
                     if (entry.ConnectionId != null && !string.Equals(entry.ConnectionId, connectionId, StringComparison.Ordinal))
                     {
@@ -203,6 +209,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
 
                 entry.ConnectionId = connectionId;
                 entry.Instance = instance;
+                entry.Project = project;
                 _byConnection[connectionId] = entry;
             }
 
@@ -600,8 +607,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 return null;
 
             var offline = bucket.Values.Where(e => e.ConnectionId == null && !IsExpired(e, now));
-            if (accountStrategy == null)
-                return offline.FirstOrDefault(); // at most one slot
+            if (accountStrategy == null) // at most one slot: a pinned session's only when it serves the pin
+                return offline.FirstOrDefault(e => PluginProject.Serves(e.Project, McpSessionTokenContext.CurrentProjectPin));
 
             var candidates = offline.Where(e => e.Instance != null).ToList();
             if (candidates.Count == 0)
@@ -671,6 +678,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             public string Account { get; }
             public string Key { get; }
             public PluginInstance? Instance { get; set; }
+            /// <summary>Single-plugin mode: the project the plugin named at connect (null: none, or account mode).</summary>
+            public PluginProject? Project { get; set; }
 
             /// <summary>The live connection; null while the plugin is disconnected.</summary>
             public string? ConnectionId { get; set; }
