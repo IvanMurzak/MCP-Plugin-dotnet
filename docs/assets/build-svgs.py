@@ -29,7 +29,7 @@ right = (
     + text(988, 254, "SignalR")
 )
 K.write(os.path.join(HERE, "hero.svg"), K.hero(
-    title="MCP Plugin for ", accent=".NET", eyebrow_text="Model Context Protocol",
+    title="MCP Plugin for ", accent=".NET", accent_fx="flow", eyebrow_text="Model Context Protocol",
     subtitle=["Expose tools, prompts and resources of a", "running .NET app to AI agents."],
     chip_items=["netstandard2.1", "net8.0", "net9.0", "SignalR"], right=right,
     label="MCP Plugin for .NET: a running .NET app connects to McpPlugin.Server over SignalR, "
