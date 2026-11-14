@@ -173,4 +173,12 @@ Set these with `McpPluginBuilder.WithConfig(config => ...)` before `Build()`.
 docker build -f Dockerfile.local -t mcp-server:local-dev .
 ```
 
-Inside a container, pass `bind=any` so the server listens beyond loopback.
+The bridge server alone builds from `McpPlugin.Server/Dockerfile`:
+
+```bash
+docker build -t mcp-bridge -f McpPlugin.Server/Dockerfile .
+docker run -p 8080:8080 mcp-bridge port=8080 client-transport=streamableHttp bind=any
+```
+
+Inside a container, pass `bind=any` so the server listens beyond loopback, and map the port given with `port=`
+(the `EXPOSE` lines are only hints).

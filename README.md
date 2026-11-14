@@ -1,14 +1,8 @@
-<div align="center">
-
-<img src="https://raw.githubusercontent.com/IvanMurzak/MCP-Plugin-dotnet/main/docs/assets/hero.svg" alt="MCP Plugin for .NET: a running .NET app connects to McpPlugin.Server over SignalR, and AI agents reach it over MCP" width="100%"/>
-
-<br/>
+![MCP Plugin for .NET: a running .NET app connects to McpPlugin.Server over SignalR, and AI agents reach it over MCP](https://raw.githubusercontent.com/IvanMurzak/MCP-Plugin-dotnet/main/docs/assets/hero.svg)
 
 [![NuGet](https://img.shields.io/nuget/v/com.IvanMurzak.McpPlugin?label=NuGet&color=2F6F9F&logo=nuget&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin/) [![Server](https://img.shields.io/nuget/v/com.IvanMurzak.McpPlugin.Server?label=Server&color=2F6F9F&logo=nuget&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin.Server/) [![release](https://img.shields.io/github/actions/workflow/status/IvanMurzak/MCP-Plugin-dotnet/release.yml?branch=main&label=release&color=15803D&style=for-the-badge&labelColor=0F172A&logo=github&logoColor=white)](https://github.com/IvanMurzak/MCP-Plugin-dotnet/actions/workflows/release.yml)
 
-[![.NET](https://img.shields.io/badge/targets-netstandard2.1%20%7C%208%20%7C%209-0E7490?logo=dotnet&style=for-the-badge&labelColor=0F172A&logoColor=white)](#packages) [![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://discord.gg/Cgs6nM8BPU) [![License](https://img.shields.io/github/license/IvanMurzak/MCP-Plugin-dotnet?label=license&color=047857&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/LICENSE) [![Stand with Ukraine](https://raw.githubusercontent.com/IvanMurzak/IvanMurzak/main/images/ukraine/flag-badge.svg)](https://stand-with-ukraine.pp.ua)
-
-</div>
+[![.NET](https://img.shields.io/badge/targets-netstandard2.1%20%7C%208%20%7C%209-0E7490?logo=dotnet&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://github.com/IvanMurzak/MCP-Plugin-dotnet#packages) [![Discord](https://img.shields.io/badge/Discord-join-5865F2?logo=discord&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://discord.gg/Cgs6nM8BPU) [![License](https://img.shields.io/github/license/IvanMurzak/MCP-Plugin-dotnet?label=license&color=047857&style=for-the-badge&labelColor=0F172A&logoColor=white)](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/LICENSE) [![Stand with Ukraine](https://raw.githubusercontent.com/IvanMurzak/IvanMurzak/main/images/ukraine/flag-badge.svg)](https://stand-with-ukraine.pp.ua)
 
 **MCP Plugin for .NET** lets a .NET application that is already running (a game editor, a game, a desktop or
 server app) expose its methods as [Model Context Protocol](https://modelcontextprotocol.io/) **tools**,
@@ -16,9 +10,7 @@ server app) expose its methods as [Model Context Protocol](https://modelcontextp
 work in two: a small library inside your app, and a bridge server that the AI client talks to. The app connects to
 the bridge over SignalR and keeps working on its own lifecycle. It powers [Unity-MCP](https://github.com/IvanMurzak/Unity-MCP).
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/IvanMurzak/MCP-Plugin-dotnet/main/docs/assets/architecture.svg" alt="Architecture: .NET apps with McpPlugin connect to McpPlugin.Server over SignalR; AI agents and scripts reach the server over MCP (stdio or streamable HTTP) and REST" width="100%"/>
-</p>
+![Architecture: .NET apps with McpPlugin connect to McpPlugin.Server over SignalR; AI agents and scripts reach the server over MCP (stdio or streamable HTTP) and REST](https://raw.githubusercontent.com/IvanMurzak/MCP-Plugin-dotnet/main/docs/assets/architecture.svg)
 
 ## Packages
 
@@ -32,14 +24,14 @@ All three share one version and are released together.
 
 ## Features
 
-✅ **Attributes** — `[AiTool]`, `[AiPrompt]`, `[AiResource]` on plain C# methods<br>
-✅ **Any .NET type** — ReflectorNet builds schemas and binds nested objects, lists, enums<br>
-✅ **Lives with your app** — SignalR link with auto-reconnect; catalog kept during reloads<br>
-✅ **Two MCP transports** — `stdio` or streamable HTTP on `/mcp`<br>
-✅ **REST** — `GET /api/tools` and `POST /api/tools/{name}` for scripts and tests<br>
-✅ **Editor and game** — editor and runtime connections side by side<br>
-✅ **Tool annotations** — title plus read-only, destructive, idempotent, open-world hints<br>
-✅ **Skill files** — a `SKILL.md` per tool in a `SKILLS/` folder<br>
+✅ **Attributes** — `[AiTool]`, `[AiPrompt]`, `[AiResource]` on plain C# methods\
+✅ **Any .NET type** — ReflectorNet builds schemas and binds nested objects, lists, enums\
+✅ **Lives with your app** — SignalR link with auto-reconnect; catalog kept during reloads\
+✅ **Two MCP transports** — `stdio` or streamable HTTP on `/mcp`\
+✅ **REST** — `GET /api/tools` and `POST /api/tools/{name}` for scripts and tests\
+✅ **Editor and game** — editor and runtime connections side by side\
+✅ **Tool annotations** — title plus read-only, destructive, idempotent, open-world hints\
+✅ **Skill files** — a `SKILL.md` per tool in a `SKILLS/` folder\
 ✅ **Auth and hooks** — `none` / `token` / `oauth` modes, analytics and auth webhooks
 
 ## Install
@@ -169,7 +161,7 @@ curl -X POST http://localhost:8080/api/tools/add -H "Content-Type: application/j
 
 | Page | What is in it |
 | --- | --- |
-| [Configuration](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/docs/configuration.md) | Every server argument and environment variable, plugin settings, webhooks, Docker |
+| [Configuration](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/docs/configuration.md) | Server arguments and environment variables, plugin settings, webhooks, Docker |
 | [Tool errors](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/docs/tool-errors.md) | How tool failures map to MCP results and HTTP status, by version |
 | [Transport and auth](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/docs/architecture-transport-auth.md) | `stdio` / streamable HTTP and the `none` / `token` / `oauth` modes in depth |
 | [Migrating to 8.0.0](https://github.com/IvanMurzak/MCP-Plugin-dotnet/blob/main/docs/migration-8.0.0.md) | The `CancellationToken` change in the prompt and resource hubs |

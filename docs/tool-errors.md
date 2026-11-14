@@ -20,8 +20,10 @@ tool's message. The table below only changes the HTTP status of the direct REST 
 | **throws** anything else: `Exception`, `InvalidOperationException`, `NotSupportedException`, your own exception types | `BadRequest` | 422 |
 | succeeds, but its result cannot be serialized | `Internal` | 500 |
 
-A hand-written `IRunTool` / `ProxyTool` that throws keeps the managers' own mapping: `ArgumentException` 400,
-`KeyNotFoundException` 404, `InvalidOperationException` 409, `TimeoutException` 504, anything else 500.
+A hand-written `IRunTool` / `ProxyTool` that throws keeps the managers' own mapping: `ArgumentException`,
+`FormatException`, `JsonException` 400; `FileNotFoundException`, `DirectoryNotFoundException`,
+`KeyNotFoundException` 404; `InvalidOperationException` 409; `TimeoutException` 504; `ToolUnavailableException`
+503; anything else 500.
 
 ## The rule for tool authors
 
@@ -30,8 +32,8 @@ A hand-written `IRunTool` / `ProxyTool` that throws keeps the managers' own mapp
 - **500 is kept for fault types** that point at a bug in the tool or a broken plugin. Never let a
   `NullReferenceException` escape for missing input: throw a plain or custom exception with a message the agent
   can act on, or return `ResponseCallTool.Error(message)`.
-- The message is the same for 422 and 500: `Tool execution failed for '<tool>': <message>`, where `<message>`
-  is the thrown exception's message (for an `async` tool whose exception carries an inner exception, the inner
+- The message is the same for 422 and 500: `Tool execution failed for '<title>': <message>`, where `<title>` is the
+  tool's title (`[AiTool(name, title)]`, else the method name) and `<message>` is the thrown exception's message (for an `async` tool whose exception carries an inner exception, the inner
   one's).
 - Edge cases: an `ArgumentException` thrown directly by an `async` tool is reported like a binding failure
   (400); anything else thrown while the tool's instance is created or its arguments are converted counts as
@@ -50,7 +52,7 @@ is not built yet.
   connected, within `plugin-reconnect-wait-seconds`. When that window ends it answers 503 with a
   `[plugin_reloading]` error that ends with the tool's message.
 - Without `notExecuted` the kind carries no status, so no server sends the call again (it may have done part of
-  its work) and the tool's message comes back as is.
+  its work) and the tool's message comes back in the usual `Tool execution failed for '<title>': ...` form.
 - Keep the phrase "this call was not run" out of the message: the call guard reads it as a reload-gate refusal.
 - A hand-written `IRunTool` that throws it gets the same kind and status.
 
@@ -63,6 +65,6 @@ is not built yet.
 - **8.14.0**: tool-call argument checks and the call guard. A plugin on McpPlugin 8.14.0 or newer (it reports
   `mcpPluginVersion` in its handshake) gets server-side tool-argument validation (required arguments and types)
   and the call guard (one whole-call deadline, reload and re-send handling). An older plugin, or one that
-  reports no version, has its calls forwarded as server 9.2.x forwarded them: no argument validation, no
+  reports no version, has its calls forwarded as servers before 8.14.0 forwarded them: no argument validation, no
   whole-call deadline, no rewriting of its errors. Only a call carrying a lone UTF-16 surrogate, which cannot be
   delivered to any plugin, is refused with a clear error.
