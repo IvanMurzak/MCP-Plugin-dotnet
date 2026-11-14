@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using com.IvanMurzak.McpPlugin.Common.Hub.Client;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Common.Utils;
+using com.IvanMurzak.McpPlugin.Server.Auth;
 using com.IvanMurzak.McpPlugin.Server.Strategy;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -59,6 +60,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                     return ResponseCallTool.Error(message, kind).Pack(request.RequestID);
                 }
             }
+
+            // A single-project server: a session pinned to a project whose editor is not here while another project's
+            // plugin is has nothing to wait for, and never reaches that plugin (DEV-42).
+            if (services.GetService<IMcpConnectionStrategy>() is SingleProjectMcpStrategy single
+                && single.IsPinnedToAbsentProject(McpSessionTokenContext.CurrentToken)
+                && services.GetService<PluginCatalogCache>()?.HasOfflineTargetForCurrentSession() != true)
+                return ResponseCallTool.Error(single.PinnedNotConnectedMessage()!, ResponseErrorKind.NotFound).Pack(request.RequestID);
 
             var toolHub = services.GetRequiredService<IClientToolHub>();
             return toolHub is ICancellableToolHub cancellable

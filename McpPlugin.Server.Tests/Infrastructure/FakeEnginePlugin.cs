@@ -42,6 +42,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
         readonly string? _declaredRole;
         readonly bool _roleInHeader;
         readonly string? _token;
+        readonly string? _projectPathHash;
         readonly Func<FakeEnginePlugin, RequestCallTool, Task<ResponseData<ResponseCallTool>>>? _onCall;
         readonly string _apiVersion;
         readonly CancellationTokenSource _disposed = new CancellationTokenSource();
@@ -49,9 +50,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
 
         public FakeEnginePlugin(string baseUrl, string name, string environment, string? declaredRole = null,
             Func<FakeEnginePlugin, RequestCallTool, Task<ResponseData<ResponseCallTool>>>? onCall = null,
-            string? apiVersion = null, bool roleInHeader = false, string? token = null)
+            string? apiVersion = null, bool roleInHeader = false, string? token = null, string? projectPathHash = null)
         {
             _baseUrl = baseUrl;
+            _projectPathHash = projectPathHash;
             Name = name;
             _environment = environment;
             _declaredRole = declaredRole;
@@ -85,6 +87,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
                 query.Add(Consts.MCP.Server.HubQuery.ClientRole + "=" + Uri.EscapeDataString(_declaredRole));
             if (_token != null)
                 query.Add("access_token=" + Uri.EscapeDataString(_token));
+            if (_projectPathHash != null)
+                query.Add(Consts.MCP.Server.HubQuery.ProjectPathHash + "=" + Uri.EscapeDataString(_projectPathHash));
             var url = _baseUrl + Consts.Hub.RemoteApp + (query.Count > 0 ? "?" + string.Join("&", query) : string.Empty);
 
             _connection = new HubConnectionBuilder()
@@ -154,12 +158,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
         string? _session;
         int _nextId = 10;
 
-        public ToolCallClient(NoneAuthMcpHost host) => _host = host;
+        readonly string _mcpPath;
+
+        /// <param name="pin">A project pin: the session is opened on <c>/mcp/p/&lt;pin&gt;</c>, as a pinned config does.</param>
+        public ToolCallClient(NoneAuthMcpHost host, string? pin = null)
+        {
+            _host = host;
+            _mcpPath = pin == null ? "/mcp" : "/mcp/p/" + pin;
+        }
 
         public FakeEnginePlugin Plugin(string name, string environment, string? declaredRole = null,
             Func<FakeEnginePlugin, RequestCallTool, Task<ResponseData<ResponseCallTool>>>? onCall = null,
-            string? apiVersion = null, bool roleInHeader = false, string? token = null)
-            => new FakeEnginePlugin(_host.BaseUrl, name, environment, declaredRole, onCall, apiVersion, roleInHeader, token);
+            string? apiVersion = null, bool roleInHeader = false, string? token = null, string? projectPathHash = null)
+            => new FakeEnginePlugin(_host.BaseUrl, name, environment, declaredRole, onCall, apiVersion, roleInHeader, token, projectPathHash);
 
         /// <summary>A <c>tools/call</c> over MCP: whether the result is an error, and its text.</summary>
         public async Task<(bool IsError, string Text)> CallAsync(string name, object arguments)
@@ -175,8 +186,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure
         /// <summary>Sends a JSON-RPC body written by the caller (so it can hold invalid escapes) and returns the response.</summary>
         public async Task<JsonNode> RawAsync(string body)
         {
-            _session ??= await _host.HandshakeAsync(_http);
-            using var request = new HttpRequestMessage(HttpMethod.Post, _host.BaseUrl + "/mcp")
+            _session ??= await _host.HandshakeAsync(_http, path: _mcpPath);
+            using var request = new HttpRequestMessage(HttpMethod.Post, _host.BaseUrl + _mcpPath)
             {
                 Content = new StringContent(body, Encoding.UTF8, "application/json")
             };

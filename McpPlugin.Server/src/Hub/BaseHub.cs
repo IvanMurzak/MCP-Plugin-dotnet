@@ -146,7 +146,11 @@ namespace com.IvanMurzak.McpPlugin.Server
                 client.ForceDisconnect(reason);
             };
             if (_strategy is IPluginRoleStrategy roles)
+            {
+                // The project it serves: a pinned session is routed only to its own project's plugin (DEV-42).
+                roles.Registry.SetProject(Context.ConnectionId, PluginProject.FromQuery(httpContext?.Request.Query));
                 roles.OnPluginConnected(GetType(), Context.ConnectionId, token, DeclaredRole(httpContext), _logger, disconnectClient);
+            }
             else
                 _strategy.OnPluginConnected(GetType(), Context.ConnectionId, token, _logger, disconnectClient);
 

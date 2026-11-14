@@ -51,6 +51,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
         }
 
         /// <summary>
+        /// The text for a session pinned to a project whose editor is not connected to a single-project server
+        /// (<c>none</c>, <c>token</c>); <paramref name="otherProjectConnected"/>: another project's plugin is. Starts like
+        /// <see cref="PinnedNoMatch"/>, which the App's probe reads as "no editor for this project".
+        /// </summary>
+        public static string PinnedNoEditor(bool otherProjectConnected)
+            => "The engine for this project is not connected — open the project in your editor." +
+               (otherProjectConnected ? " The plugin connected to this server serves another project, so nothing was sent to it." : string.Empty);
+
+        /// <summary>
         /// Maps an unresolved <see cref="InstanceResolution"/> to its agent-actionable text. A project-key session
         /// (<paramref name="boundProjectPin"/> set) never gets <see cref="AccountEmpty"/>: it cannot call
         /// <c>enroll_engine_plugin</c> (contract §4), so it is told to open its project instead.
