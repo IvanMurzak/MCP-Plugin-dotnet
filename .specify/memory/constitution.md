@@ -51,8 +51,8 @@ with these constraints, and the bridge pattern solves all three problems cleanly
 Every significant capability MUST be delivered as a self-contained, independently buildable and
 testable NuGet package. The three canonical packages are:
 
-- `McpPlugin` (netstandard2.1 / net8.0 / net9.0) — client library embedded in .NET apps.
-- `McpPlugin.Server` (net8.0 / net9.0) — bridge/gateway hosted via ASP.NET Core.
+- `McpPlugin` (netstandard2.1 / net8.0 / net9.0 / net10.0) — client library embedded in .NET apps.
+- `McpPlugin.Server` (net8.0 / net9.0 / net10.0) — bridge/gateway hosted via ASP.NET Core.
 - `McpPlugin.Common` (netstandard2.1) — shared DTOs, interfaces, and protocol definitions.
 
 Rules:
@@ -90,7 +90,7 @@ All new functionality MUST follow Red-Green-Refactor:
 1. Write tests → confirm they FAIL → implement → confirm they PASS → refactor.
 2. Tests MUST use xUnit + Shouldly + Moq.
 3. Tests requiring test isolation MUST use `[Collection("McpPlugin")]`.
-4. All tests MUST pass on both `net8.0` and `net9.0` before merging to `main`.
+4. All tests MUST pass on `net8.0`, `net9.0` and `net10.0` before merging to `main`.
 5. `async` tests MUST use `await using` for disposable resources to prevent
    `AsyncTestSyncContext` deadlocks under xUnit.
 6. `SubscribeAwait` from R3 MUST NOT be used in production code exercised by tests, as it
@@ -122,7 +122,7 @@ All `.cs` files MUST comply with the following non-negotiable rules:
 - **DI**: MUST use `Microsoft.Extensions.DependencyInjection`.
 - **CLI args**: MUST use `DataArguments`, not raw `IConfiguration`.
 
-**Rationale**: Consistency across Unity (netstandard2.1), server (.NET 8/9), and test projects
+**Rationale**: Consistency across Unity (netstandard2.1), server (.NET 8/9/10), and test projects
 is essential for long-term maintainability. R3 is Unity-safe — it does not capture
 SynchronizationContext by default, unlike `System.Reactive`.
 
@@ -132,8 +132,8 @@ SynchronizationContext by default, unlike `System.Reactive`.
 
 | Package | Target Frameworks |
 | --- | --- |
-| `McpPlugin` (client) | `netstandard2.1`, `net8.0`, `net9.0` |
-| `McpPlugin.Server` (bridge) | `net8.0`, `net9.0` |
+| `McpPlugin` (client) | `netstandard2.1`, `net8.0`, `net9.0`, `net10.0` |
+| `McpPlugin.Server` (bridge) | `net8.0`, `net9.0`, `net10.0` |
 | `McpPlugin.Common` (shared) | `netstandard2.1` |
 
 ### Required Dependencies
@@ -170,7 +170,7 @@ SynchronizationContext by default, unlike `System.Reactive`.
 Push to `main` triggers the automated pipeline in sequence:
 
 1. Version check — guard against unchanged versions.
-2. Test suite on `net8.0` AND `net9.0`.
+2. Test suite on `net8.0`, `net9.0` AND `net10.0`.
 3. GitHub Release creation.
 4. NuGet package deployment.
 

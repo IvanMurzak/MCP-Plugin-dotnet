@@ -18,8 +18,8 @@ All three share one version and are released together.
 
 | Package | Targets | Use it in |
 | --- | --- | --- |
-| [`com.IvanMurzak.McpPlugin`](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin/) | netstandard2.1, net8.0, net9.0 | Your app: declares tools, prompts and resources and connects to the server |
-| [`com.IvanMurzak.McpPlugin.Server`](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin.Server/) | net8.0, net9.0 | The bridge: an ASP.NET Core host for the SignalR hub and the MCP endpoints |
+| [`com.IvanMurzak.McpPlugin`](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin/) | netstandard2.1, net8.0, net9.0, net10.0 | Your app: declares tools, prompts and resources and connects to the server |
+| [`com.IvanMurzak.McpPlugin.Server`](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin.Server/) | net8.0, net9.0, net10.0 | The bridge: an ASP.NET Core host for the SignalR hub and the MCP endpoints |
 | [`com.IvanMurzak.McpPlugin.Common`](https://www.nuget.org/packages/com.IvanMurzak.McpPlugin.Common/) | netstandard2.1 | Shared models and settings; referenced by the other two |
 
 ## Features

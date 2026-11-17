@@ -7,6 +7,9 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.1;net8.0;net9.0</TargetFrameworks>
+    <!-- net10.0 only when the building SDK is .NET 10+: chain consumers still build this repo from
+         source with SDK 9, where the other TFMs must keep building exactly as before. -->
+    <TargetFrameworks Condition="$([MSBuild]::VersionGreaterThanOrEquals('$(NETCoreSdkVersion)', '10.0'))">$(TargetFrameworks);net10.0</TargetFrameworks>
     <RootNamespace>com.IvanMurzak.McpPlugin</RootNamespace>
     <LangVersion>9.0</LangVersion>
     <ImplicitUsings>disable</ImplicitUsings>

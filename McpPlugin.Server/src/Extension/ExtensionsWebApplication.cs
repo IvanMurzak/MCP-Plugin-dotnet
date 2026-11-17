@@ -38,7 +38,11 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
             };
+#if NET10_0_OR_GREATER
+            forwardedHeadersOptions.KnownIPNetworks.Clear();
+#else
             forwardedHeadersOptions.KnownNetworks.Clear();
+#endif
             forwardedHeadersOptions.KnownProxies.Clear();
             app.UseForwardedHeaders(forwardedHeadersOptions);
 

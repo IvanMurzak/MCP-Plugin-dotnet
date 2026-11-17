@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net9.0/DemoWebApp.dll",
+            "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net10.0/DemoWebApp.dll",
             "args": [
                 "port=59479",
                 "client-transport=streamableHttp",
@@ -24,7 +24,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net9.0/DemoWebApp.dll",
+            "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net10.0/DemoWebApp.dll",
             "args": [
                 "port=59479",
                 "client-transport=streamableHttp",
@@ -42,7 +42,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net9.0/DemoWebApp.dll",
+            "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net10.0/DemoWebApp.dll",
             "args": [
                 "port=59479",
                 "client-transport=streamableHttp",
@@ -66,7 +66,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net9.0/DemoWebApp.dll",
+            "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net10.0/DemoWebApp.dll",
             "args": [
                 "port=11111",
                 "client-transport=http"
@@ -83,7 +83,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net9.0/DemoWebApp.dll",
+            "program": "${workspaceFolder}/DemoWebApp/bin/Debug/net10.0/DemoWebApp.dll",
             "args": [
                 "port=11111",
                 "client-transport=stdio"
@@ -100,7 +100,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/DemoConsoleApp/bin/Debug/net9.0/DemoConsoleApp.dll",
+            "program": "${workspaceFolder}/DemoConsoleApp/bin/Debug/net10.0/DemoConsoleApp.dll",
             "args": [
                 "mcp-server-endpoint=http://localhost:11111",
                 "mcp-server-timeout=5000"

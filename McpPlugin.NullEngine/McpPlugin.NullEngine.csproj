@@ -9,11 +9,14 @@
        Test / fixture infrastructure only - never packed, never published (IsPackable=false, and it
        is absent from deploy.yml / release.yml on purpose).
 
-       Two TFMs, mirroring McpPlugin.Tests.LockHarness: McpPlugin.Server.Tests runs on net8.0 AND
-       net9.0, and each test leg locates the exe built for its OWN TFM. -->
+       Same TFMs as McpPlugin.Tests.LockHarness and McpPlugin.Server.Tests (net8.0, net9.0, and net10.0
+       on a .NET 10 SDK): each test leg locates the exe built for its OWN TFM. -->
 
   <PropertyGroup>
     <TargetFrameworks>net8.0;net9.0</TargetFrameworks>
+    <!-- net10.0 only when the building SDK is .NET 10+: chain consumers still build this repo from
+         source with SDK 9, where the other TFMs must keep building exactly as before. -->
+    <TargetFrameworks Condition="$([MSBuild]::VersionGreaterThanOrEquals('$(NETCoreSdkVersion)', '10.0'))">$(TargetFrameworks);net10.0</TargetFrameworks>
     <OutputType>Exe</OutputType>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>

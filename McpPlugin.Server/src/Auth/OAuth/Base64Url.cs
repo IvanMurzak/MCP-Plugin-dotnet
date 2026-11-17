@@ -16,7 +16,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Auth.OAuth
     /// <summary>
     /// Base64url (RFC 4648 §5, no padding) decode used for JWS/JWT and JWK material. Hand-rolled to
     /// keep the resource-server validation self-contained (no external identity-model dependency)
-    /// and portable across net8.0 / net9.0.
+    /// and portable across net8.0 / net9.0 / net10.0.
     /// </summary>
     public static class Base64Url
     {
