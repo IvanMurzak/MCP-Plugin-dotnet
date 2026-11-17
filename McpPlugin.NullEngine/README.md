@@ -30,7 +30,8 @@ dotnet build McpPlugin.sln -c Release
 ```
 
 Output: `McpPlugin.NullEngine/bin/<Configuration>/<tfm>/McpPlugin.NullEngine.dll`
-for `<tfm>` in `net8.0`, `net9.0`, `net10.0`.
+for `<tfm>` in `net8.0`, `net9.0`, and `net10.0` when built with a .NET 10 SDK (an SDK 9 build
+produces only `net8.0`/`net9.0`; use `net9.0` in the paths below there).
 
 ## CLI contract
 
