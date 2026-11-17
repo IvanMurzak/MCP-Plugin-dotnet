@@ -31,7 +31,7 @@ right = (
 K.write(os.path.join(HERE, "hero.svg"), K.hero(
     title="MCP Plugin for ", accent=".NET", accent_fx="flow", eyebrow_text="Model Context Protocol",
     subtitle=["Expose tools, prompts and resources of a", "running .NET app to AI agents."],
-    chip_items=["netstandard2.1", "net8.0", "net9.0", "SignalR"], right=right,
+    chip_items=["netstandard2.1", "net8.0", "net9.0", "net10.0", "SignalR"], right=right,
     label="MCP Plugin for .NET: a running .NET app connects to McpPlugin.Server over SignalR, "
           "and AI agents reach it over MCP"))
 
@@ -74,7 +74,7 @@ body += (f'<rect x="400" y="346" width="400" height="62" rx="12" fill="{K.SURF}"
          + text(418, 371, "/hub/mcp-server · /mcp · /api/tools", fill=K.BLUE, mono=True)
          + text(418, 396, "SignalR: apps · MCP: agents · REST: scripts"))
 
-body += text(W / 2, 488, "McpPlugin: netstandard2.1 · net8.0 · net9.0   ·   McpPlugin.Server: net8.0 · net9.0"
+body += text(W / 2, 488, "McpPlugin: netstandard2.1 · net8.0 · net9.0 · net10.0   ·   McpPlugin.Server: net8.0 · net9.0 · net10.0"
              "   ·   built on ReflectorNet", anchor="middle")
 
 K.write(os.path.join(HERE, "architecture.svg"), K.panel(

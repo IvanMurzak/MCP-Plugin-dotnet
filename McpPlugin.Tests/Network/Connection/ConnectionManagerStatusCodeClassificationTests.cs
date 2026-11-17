@@ -32,7 +32,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
     /// <list type="bullet">
     ///   <item>a server answering the SignalR negotiate with HTTP 401 must produce the
     ///   AuthRejected outcome, trip the 3-strike rejection cap, and fire
-    ///   <c>OnAuthorizationRejected</c> (this test project runs net8.0/net9.0 — TFMs where
+    ///   <c>OnAuthorizationRejected</c> (this test project runs net8.0/net9.0/net10.0 — TFMs where
     ///   <c>HttpRequestException.StatusCode</c> is observable);</item>
     ///   <item>a connection-refused failure (no listener; the classifier sees an
     ///   HttpRequestException with a NULL StatusCode) must take the ordinary failure branch —

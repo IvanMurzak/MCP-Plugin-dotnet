@@ -30,7 +30,7 @@ dotnet build McpPlugin.sln -c Release
 ```
 
 Output: `McpPlugin.NullEngine/bin/<Configuration>/<tfm>/McpPlugin.NullEngine.dll`
-for `<tfm>` in `net8.0`, `net9.0`.
+for `<tfm>` in `net8.0`, `net9.0`, `net10.0`.
 
 ## CLI contract
 
@@ -66,7 +66,7 @@ writes as a `fail:` line. This host always sets it — that is why a clean start
 line at all, and it is the property `NullEngineRealTransportTests` asserts.
 
 > `dotnet run --project McpPlugin.NullEngine` needs an explicit `-f`, because the project multi-targets
-> `net8.0;net9.0` (both are needed: `McpPlugin.Server.Tests` runs on both, and each leg locates the
+> `net8.0;net9.0;net10.0` (all are needed: `McpPlugin.Server.Tests` runs on each, and each leg locates the
 > engine built for its own TFM):
 >
 > ```bash

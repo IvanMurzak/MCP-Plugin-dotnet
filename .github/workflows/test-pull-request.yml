@@ -55,6 +55,7 @@ jobs:
           dotnet-version: |
             8.0.x
             9.0.x
+            10.0.x
 
       # The interpreter is resolved ONCE per job and invoked through the ${{ env.CHAIN_PY }}
       # expression. Each resolver RUNS a candidate and exports its own absolute, space-free
@@ -173,6 +174,7 @@ jobs:
           dotnet-version: |
             8.0.x
             9.0.x
+            10.0.x
 
       # Verbatim `print-fragment` resolvers (see the `test` job); the windows one skips on ubuntu.
       - name: chain python (posix)
