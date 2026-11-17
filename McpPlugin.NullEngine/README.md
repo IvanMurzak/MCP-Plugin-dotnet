@@ -70,7 +70,7 @@ line at all, and it is the property `NullEngineRealTransportTests` asserts.
 > engine built for its own TFM):
 >
 > ```bash
-> dotnet run --project McpPlugin.NullEngine -f net9.0 -c Release -- --help
+> dotnet run --project McpPlugin.NullEngine -f net10.0 -c Release -- --help
 > ```
 
 ### Ready line
@@ -163,11 +163,11 @@ dotnet build McpPlugin.sln -c Release
 
 # terminal 1 - the server. `auth=none` is load-bearing: DataArguments also reads the environment,
 # and a worktree's .worktree.env sets MCP_AUTHORIZATION=required.
-dotnet DemoWebApp/bin/Release/net9.0/DemoWebApp.dll \
+dotnet DemoWebApp/bin/Release/net10.0/DemoWebApp.dll \
   port=18099 client-transport=streamableHttp auth=none plugin-timeout=10000
 
 # terminal 2 - the engine, once GET http://127.0.0.1:18099/help answers 200
-dotnet McpPlugin.NullEngine/bin/Release/net9.0/McpPlugin.NullEngine.dll \
+dotnet McpPlugin.NullEngine/bin/Release/net10.0/McpPlugin.NullEngine.dll \
   --mcp-server-endpoint=http://127.0.0.1:18099 \
   --ready-file=/tmp/null-engine-ready.json
 ```

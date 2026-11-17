@@ -61,6 +61,24 @@ jobs:
         working-directory: ./McpPlugin.Server
         run: dotnet pack McpPlugin.Server.csproj --no-build --configuration Release --output ../nupkg
 
+      # net10.0 is built only on a .NET 10+ SDK (the csproj gate), so a lost 10.0.x setup would
+      # silently drop lib/net10.0 instead of failing: check every lib folder before any push.
+      - name: Verify package target frameworks
+        run: |
+          set -euo pipefail
+          version="${{ steps.version.outputs.version }}"
+          fail=0
+          check_libs() {
+            f="./nupkg/$1.$version.nupkg"; shift
+            for tfm in "$@"; do
+              if unzip -Z1 "$f" "lib/$tfm/*" >/dev/null 2>&1; then echo "OK  $f lib/$tfm"; else echo "::error::$f has no lib/$tfm"; fail=1; fi
+            done
+          }
+          check_libs com.IvanMurzak.McpPlugin.Common netstandard2.1
+          check_libs com.IvanMurzak.McpPlugin netstandard2.1 net8.0 net9.0 net10.0
+          check_libs com.IvanMurzak.McpPlugin.Server net8.0 net9.0 net10.0
+          exit $fail
+
       - name: Deploy McpPlugin.Common NuGet package
         run: |
           nupkg_file="./nupkg/com.IvanMurzak.McpPlugin.Common.${{ steps.version.outputs.version }}.nupkg"

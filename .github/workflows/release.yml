@@ -265,6 +265,18 @@ jobs:
             f="nupkg/$id.$VERSION.nupkg"
             if [ -f "$f" ]; then echo "OK  $f"; else echo "::error::Expected package not produced: $f"; fail=1; fi
           done
+          # net10.0 is built only on a .NET 10+ SDK (the csproj gate), so a lost 10.0.x setup would
+          # silently drop lib/net10.0 instead of failing: check every lib folder explicitly.
+          check_libs() {
+            f="nupkg/$1.$VERSION.nupkg"; shift
+            [ -f "$f" ] || return 0
+            for tfm in "$@"; do
+              if unzip -Z1 "$f" "lib/$tfm/*" >/dev/null 2>&1; then echo "OK  $f lib/$tfm"; else echo "::error::$f has no lib/$tfm"; fail=1; fi
+            done
+          }
+          check_libs com.IvanMurzak.McpPlugin.Common netstandard2.1
+          check_libs com.IvanMurzak.McpPlugin netstandard2.1 net8.0 net9.0 net10.0
+          check_libs com.IvanMurzak.McpPlugin.Server net8.0 net9.0 net10.0
           exit $fail
 
   deploy:
