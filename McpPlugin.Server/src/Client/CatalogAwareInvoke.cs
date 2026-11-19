@@ -106,7 +106,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             bool retryAfterDelivery,
             IMcpConnectionStrategy strategy,
             PluginCatalogCache? catalog,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            Action<string>? onSent = null)
             where TRequest : IRequestID
         {
             var token = McpSessionTokenContext.CurrentToken;
@@ -123,7 +124,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                 logger, hubContext, methodName, request, timeoutMs, retryAfterDelivery,
                 strategy, token, cancellationToken,
                 waitForClient: waitForClient,
-                noClientMessage: ReconnectingMessage);
+                noClientMessage: ReconnectingMessage,
+                onSent: onSent);
         }
     }
 }

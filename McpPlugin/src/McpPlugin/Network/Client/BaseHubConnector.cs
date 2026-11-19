@@ -304,7 +304,8 @@ namespace com.IvanMurzak.McpPlugin
                         ApiVersion = _apiVersion.Api,
                         PluginVersion = _apiVersion.Plugin,
                         Environment = _apiVersion.Environment,
-                        McpPluginVersion = Consts.PluginVersion
+                        McpPluginVersion = Consts.PluginVersion,
+                        Capabilities = Capabilities
                     },
                     cancellationToken: attemptCts.Token);
 
@@ -344,6 +345,12 @@ namespace com.IvanMurzak.McpPlugin
             => _connectionManager.HubConnection.CurrentValue?.State == HubConnectionState.Connected;
 
         protected virtual TimeSpan HandshakeAttemptTimeout => TimeSpan.FromSeconds(30);
+
+        /// <summary>
+        /// The <see cref="Common.Consts.MCP.Plugin.Capabilities"/> this connection handles, sent in the version
+        /// handshake; null for none.
+        /// </summary>
+        protected virtual string[]? Capabilities => null;
 
         protected virtual Task WaitBeforeHandshakeRetry(int failures, CancellationToken cancellationToken)
         {

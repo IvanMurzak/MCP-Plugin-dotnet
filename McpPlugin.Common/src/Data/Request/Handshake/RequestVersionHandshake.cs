@@ -33,5 +33,13 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         /// </summary>
         [JsonPropertyName("mcpPluginVersion")]
         public string? McpPluginVersion { get; set; }
+
+        /// <summary>
+        /// What the plugin supports beyond the base protocol (<see cref="Consts.MCP.Plugin.Capabilities"/>). Absent
+        /// from older plugins, so the server uses none of these features with them. Optional on the wire: an older
+        /// server ignores it.
+        /// </summary>
+        [JsonPropertyName("capabilities")]
+        public string[]? Capabilities { get; set; }
     }
 }

@@ -201,6 +201,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// </param>
         /// <param name="noClientMessage">The error text when <paramref name="waitForClient"/> gives up.</param>
         /// <param name="onAnswered">Called with the connection that answered and its answer.</param>
+        /// <param name="onSent">Called with the connection each attempt sends the request to, right before sending.</param>
         internal static async Task<ResponseData<TResponse>> InvokeCoreAsync<TRequest, TResponse, THub>(
             ILogger logger,
             IHubContext<THub> hubContext,
@@ -213,7 +214,8 @@ namespace com.IvanMurzak.McpPlugin.Server
             CancellationToken cancellationToken,
             Func<CancellationToken, Task<bool?>>? waitForClient = null,
             string? noClientMessage = null,
-            Action<string, ResponseData<TResponse>>? onAnswered = null)
+            Action<string, ResponseData<TResponse>>? onAnswered = null,
+            Action<string>? onSent = null)
             where TRequest : IRequestID
             where THub : Hub
         {
@@ -267,6 +269,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                     }
                     // Own token per attempt: cancelling it releases an invocation this method gave up on.
                     using var invokeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                    onSent?.Invoke(connectionId!);
                     var invokeTask = client.InvokeAsync<ResponseData<TResponse>>(methodName, request, invokeCts.Token);
                     var completed = await invokeTask.WaitWithTimeout(timeoutMs, cancellationToken);
                     if (completed)

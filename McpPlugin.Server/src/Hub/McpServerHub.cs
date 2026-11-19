@@ -220,6 +220,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 return Task.CompletedTask;
 
             PluginArgumentPolicy.Forget(Context.ConnectionId);
+            PluginCallCancellation.Forget(Context.ConnectionId);
             _webhookCollector.OnPluginDisconnected(Context.ConnectionId);
             // Every plugin-side close keeps the lists for the reconnect grace: the server cannot tell a
             // recompile from a closed project. See PluginCatalogCache for what drops them early.
@@ -355,6 +356,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                     // Which argument checks this plugin gets (McpPlugin 8.14.0+ reports its version); recorded before
                     // the classification, which makes the connection routable.
                     PluginArgumentPolicy.Record(Context.ConnectionId, request.McpPluginVersion);
+                    PluginCallCancellation.Record(Context.ConnectionId, request.Capabilities);
                     // Classified only after an accepted handshake: a refused plugin must not replace a working one.
                     ClassifyPlugin(request.Environment, request.McpPluginVersion);
 

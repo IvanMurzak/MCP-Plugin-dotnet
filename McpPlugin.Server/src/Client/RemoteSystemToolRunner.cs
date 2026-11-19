@@ -84,10 +84,27 @@ namespace com.IvanMurzak.McpPlugin.Server
                 return ResponseCallTool.Error(notConnected, ResponseErrorKind.Unavailable, NotConnectedStatusCode).Pack(request.RequestID);
             }
 
+            var callerToken = cancellationToken;
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
             cancellationToken = linkedCts.Token;
 
             var toolTimeoutMs = _dataArguments.GetToolTimeoutMs();
+            string? sentTo = null;
+            try
+            {
+                return await RunTrackedAsync(request, isLivenessProbe, toolTimeoutMs, connectionId => sentTo = connectionId, cancellationToken);
+            }
+            catch (OperationCanceledException) when (callerToken.IsCancellationRequested)
+            {
+                // The caller went away after the call was sent: ask the plugin to stop it (see PluginCallCancellation).
+                PluginCallCancellation.Send(_logger, _remoteAppContext, sentTo, request.RequestID);
+                throw;
+            }
+        }
+
+        async Task<ResponseData<ResponseCallTool>> RunTrackedAsync(RequestCallTool request, bool isLivenessProbe, int toolTimeoutMs,
+            Action<string> onSent, CancellationToken cancellationToken)
+        {
             var response = await _requestTrackingService.TrackRequestAsync(
                 request.RequestID,
                 async () =>
@@ -104,7 +121,8 @@ namespace com.IvanMurzak.McpPlugin.Server
                         strategy: _strategy,
                         token: McpSessionTokenContext.CurrentToken,
                         cancellationToken: cancellationToken,
-                        waitForClient: isLivenessProbe ? CatalogAwareInvoke.NeverWait : null);
+                        waitForClient: isLivenessProbe ? CatalogAwareInvoke.NeverWait : null,
+                        onSent: onSent);
 
                     if (responseData.Status == ResponseStatus.Error)
                     {
