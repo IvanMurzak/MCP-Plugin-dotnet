@@ -72,8 +72,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var started = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
             var systemTools = new Mock<ISystemToolManager>();
             systemTools.Setup(t => t.RunSystemTool(It.IsAny<RequestCallTool>(), It.IsAny<CancellationToken>()))
-                .Returns(async (RequestCallTool request, CancellationToken token) =>
+                .Returns(async (RequestCallTool request, CancellationToken _) =>
                 {
+                    var token = ToolCallCancellation.Token;
                     started.SetResult(token);
                     await Task.Delay(Timeout.Infinite, token).ContinueWith(_ => { });
                     return ResponseData<ResponseCallTool>.Error(request.RequestID, "cancelled", ResponseErrorKind.Internal);
@@ -86,14 +87,43 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
 
             cancellation.CancelCall(new RequestCancelCall("another-id"));
             cancellation.CancelCall(new RequestCancelCall(""));
+            await Task.Delay(200);
             token.IsCancellationRequested.ShouldBeFalse();
 
             cancellation.CancelCall(new RequestCancelCall("sys-1"));
-            token.IsCancellationRequested.ShouldBeTrue();
             await call.WaitAsync(Wait);
+            token.IsCancellationRequested.ShouldBeTrue();
             manager.CallCancellations.Count.ShouldBe(0);
 
             cancellation.CancelCall(new RequestCancelCall("sys-1")); // finished: ignored
+        }
+
+        /// <summary>
+        /// A synchronous tool that blocks (as one waiting for an engine's main thread does) must not hold the hub
+        /// caller's thread: the SignalR client processes the CancelCall only once the call's handler returns a task.
+        /// </summary>
+        [Fact]
+        public async Task BlockingSyncTool_DoesNotHoldTheCaller_AndIsCancelled()
+        {
+            var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var tool = new ProxyTool("blocking", null, "Blocks until cancelled.", null, null, null, null, null, null, null, null,
+                (requestId, arguments, cancellationToken) =>
+                {
+                    started.SetResult(true);
+                    var cancelled = ToolCallCancellation.Token.WaitHandle.WaitOne(Wait);
+                    return Task.FromResult(ResponseCallTool.Success(cancelled ? "cancelled" : "not cancelled"));
+                });
+            var manager = (McpManager)new McpPluginBuilder(new Version()).AddTool("blocking", tool).Build(new Reflector()).McpManager;
+
+            var stopwatch = Stopwatch.StartNew();
+            var call = manager.ToolHub!.RunCallTool(Call("request-1", "blocking"));
+            stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(2), "the call returned its task without running the tool inline");
+            await started.Task.WaitAsync(Wait);
+
+            ((IClientCallCancellation)manager.ToolHub).CancelCall(new RequestCancelCall("request-1"));
+
+            var answer = await call.WaitAsync(Wait);
+            answer.Value!.GetMessage().ShouldBe("cancelled");
         }
 
         [Fact]
@@ -102,16 +132,18 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var registry = new CallCancellationRegistry();
             CancellationToken captured = default;
 
-            var answer = await registry.Run("p-1", default, token =>
+            var answer = await registry.Run("p-1", default, () =>
             {
-                captured = token;
+                captured = ToolCallCancellation.Token;
                 return Task.FromResult(ResponseData<ResponseCallTool>.Processing("p-1"));
             });
 
             answer.Status.ShouldBe(ResponseStatus.Processing);
             registry.Count.ShouldBe(1, "the tool keeps running after its Processing answer");
+            var fired = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            captured.Register(() => fired.TrySetResult(true));
             registry.Cancel("p-1");
-            captured.IsCancellationRequested.ShouldBeTrue();
+            (await fired.Task.WaitAsync(Wait)).ShouldBeTrue();
 
             registry.Complete("p-1");
             registry.Count.ShouldBe(0);
@@ -122,11 +154,11 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         {
             long now = 1;
             var registry = new CallCancellationRegistry(clock: () => now);
-            await registry.Run("p-1", default, _ => Task.FromResult(ResponseData<ResponseCallTool>.Processing("p-1")));
+            await registry.Run("p-1", default, () => Task.FromResult(ResponseData<ResponseCallTool>.Processing("p-1")));
             registry.Count.ShouldBe(1);
 
             now += (long)(CallCancellationRegistry.ProcessingRetention.TotalSeconds * Stopwatch.Frequency) + 1;
-            await registry.Run("p-2", default, _ => Task.FromResult(ResponseData<ResponseCallTool>.Success("p-2")));
+            await registry.Run("p-2", default, () => Task.FromResult(ResponseData<ResponseCallTool>.Success("p-2")));
 
             registry.Count.ShouldBe(0);
         }
@@ -138,7 +170,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             using var caller = new CancellationTokenSource();
             CancellationToken seen = default;
 
-            await registry.Run(null, caller.Token, token =>
+            await registry.Run(null, caller.Token, () =>
             {
                 seen = ToolCallCancellation.Token;
                 return Task.FromResult(ResponseData<ResponseCallTool>.Success(string.Empty));

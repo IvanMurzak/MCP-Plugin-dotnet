@@ -186,8 +186,10 @@ namespace com.IvanMurzak.McpPlugin
         /// <summary>
         /// Dispatches the call to the supplied async handler. The raw <paramref name="namedParameters"/> are
         /// forwarded unmodified — the handler owns argument interpretation against the external schema.
+        /// Without a <paramref name="cancellationToken"/> the handler gets the call's
+        /// <see cref="ToolCallCancellation.Token"/>, which fires when the server cancels the call.
         /// </summary>
         public Task<ResponseCallTool> Run(string requestId, IReadOnlyDictionary<string, JsonElement>? namedParameters, CancellationToken cancellationToken = default)
-            => _handler(requestId, namedParameters, cancellationToken);
+            => _handler(requestId, namedParameters, cancellationToken.CanBeCanceled ? cancellationToken : ToolCallCancellation.Token);
     }
 }

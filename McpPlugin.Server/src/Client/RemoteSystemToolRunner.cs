@@ -135,7 +135,10 @@ namespace com.IvanMurzak.McpPlugin.Server
             catch (OperationCanceledException) when (callerToken.IsCancellationRequested)
             {
                 // The caller went away after the call was sent: ask the plugin to stop it (see PluginCallCancellation).
-                PluginCallCancellation.Send(_logger, _remoteAppContext, sentTo, request.RequestID);
+                // Not a liveness probe: the App abandons one every few seconds while the editor is busy, and it
+                // has nothing to stop.
+                if (!isLivenessProbe)
+                    PluginCallCancellation.Send(_logger, _remoteAppContext, sentTo, request.RequestID);
                 throw;
             }
 

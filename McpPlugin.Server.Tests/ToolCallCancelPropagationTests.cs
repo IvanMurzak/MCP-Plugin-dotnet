@@ -119,14 +119,19 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         [Fact]
         public async Task ServerTimeout_DoesNotCancelTheTool()
         {
-            await using var host = await NoneAuthMcpHost.StartAsync(null, "tool-timeout=1000");
+            await using var host = await NoneAuthMcpHost.StartAsync(null, "tool-timeout=2000");
             var projectRoot = NewProjectRoot();
             var waiting = new WaitingTool();
-            using var plugin = await ConnectPluginAsync(host, projectRoot, "slow", waiting.Create("slow", TimeSpan.FromSeconds(3)));
+            using var plugin = await ConnectPluginAsync(host, projectRoot, "slow", waiting.Create("slow", TimeSpan.FromSeconds(5)));
             try
             {
                 using var http = new HttpClient();
+                // List first, so the call's schema check does not spend the short tool timeout fetching the list.
+                using (var listed = await http.GetAsync($"{host.BaseUrl}/api/tools").WaitAsync(Wait))
+                    listed.IsSuccessStatusCode.ShouldBeTrue();
+
                 using var response = await http.SendAsync(ToolCall(host, "slow")).WaitAsync(Wait);
+                await waiting.Started.Task.WaitAsync(Wait);
                 response.IsSuccessStatusCode.ShouldBeFalse("the server gave up after its tool timeout");
 
                 (await waiting.Ended.Task.WaitAsync(Wait)).ShouldBeFalse("only a caller that went away cancels the tool");

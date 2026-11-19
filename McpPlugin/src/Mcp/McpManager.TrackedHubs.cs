@@ -23,8 +23,9 @@ namespace com.IvanMurzak.McpPlugin
         /// system tool call whose request id is already running or just finished is not run again
         /// (see <see cref="DuplicateRequestGuard{T}"/>), unless it answered that it did not run
         /// (<see cref="ResponseCallTool.NotExecuted"/>): the server's re-send of that id runs. Each tool and system
-        /// tool call gets its own cancellation token, which the server's <see cref="CancelCall"/> fires
-        /// (see <see cref="CallCancellationRegistry"/>).
+        /// tool call gets its own <see cref="ToolCallCancellation.Token"/>, which the server's <see cref="CancelCall"/>
+        /// fires (see <see cref="CallCancellationRegistry"/>). The token is not passed as the managers' cancellation
+        /// token: <see cref="RunTool"/> would stop awaiting the tool and answer while it still runs.
         /// </summary>
         sealed class TrackedHubs : IClientToolHub, IClientPromptHub, IClientResourceHub, IClientSystemToolHub, IClientCallCancellation
         {
@@ -44,9 +45,7 @@ namespace com.IvanMurzak.McpPlugin
 
             public Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request)
                 => _toolCalls.Run(request?.RequestID, () => Activity.Track(() => Cancellations.Run(request?.RequestID, default,
-                    token => _owner._tools is McpToolManager tools
-                        ? tools.RunCallTool(request!, token)
-                        : _owner._tools!.RunCallTool(request!))));
+                    () => _owner._tools!.RunCallTool(request!))));
 
             public Task<ResponseData<ResponseListTool[]>> RunListTool(RequestListTool request, CancellationToken cancellationToken = default)
                 => _owner._tools!.RunListTool(request, cancellationToken);
@@ -68,7 +67,7 @@ namespace com.IvanMurzak.McpPlugin
 
             public Task<ResponseData<ResponseCallTool>> RunSystemTool(RequestCallTool request, CancellationToken cancellationToken = default)
                 => _systemToolCalls.Run(request?.RequestID, () => Activity.Track(() => Cancellations.Run(request?.RequestID, cancellationToken,
-                    token => _owner._systemTools!.RunSystemTool(request!, token))));
+                    () => _owner._systemTools!.RunSystemTool(request!, cancellationToken))));
 
             public Task<ResponseData<ResponseListTool[]>> RunListSystemTool(RequestListTool request, CancellationToken cancellationToken = default)
                 => _owner._systemTools!.RunListSystemTool(request, cancellationToken);

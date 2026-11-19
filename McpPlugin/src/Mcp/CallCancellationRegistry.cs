@@ -22,7 +22,8 @@ namespace com.IvanMurzak.McpPlugin
 {
     /// <summary>
     /// One cancellation token per running tool or system tool call, by request id, so the server's
-    /// <c>CancelCall</c> can stop it. The token is passed to the call and set as <see cref="ToolCallCancellation.Token"/>.
+    /// <c>CancelCall</c> can stop it. The call sees it as <see cref="ToolCallCancellation.Token"/> and decides itself
+    /// where it is safe to stop: nothing here abandons or aborts a running tool.
     /// A call that answered <see cref="ResponseStatus.Processing"/> keeps running after its answer, so its token stays
     /// cancellable until <see cref="Complete"/> (the plugin reported the result) or <see cref="ProcessingRetention"/>.
     /// </summary>
@@ -48,14 +49,21 @@ namespace com.IvanMurzak.McpPlugin
         internal int Count => _entries.Count;
 
         /// <summary>
-        /// Runs a call with its own token, linked to <paramref name="callerToken"/>. A call without a request id
-        /// cannot be cancelled by id and runs with <paramref name="callerToken"/> only.
+        /// Runs a call with <see cref="ToolCallCancellation.Token"/> set to its own token, linked to
+        /// <paramref name="callerToken"/>. A call without a request id cannot be cancelled by id and sees
+        /// <paramref name="callerToken"/> only.
+        /// <para>
+        /// The call starts on a thread-pool thread, not on the caller's: the SignalR client runs a handler on its
+        /// invocation loop until the handler's first await, so a synchronous tool (one that blocks waiting for the
+        /// engine's main thread) would otherwise hold the loop, and the <c>CancelCall</c> queued behind it would
+        /// arrive only after the tool had finished.
+        /// </para>
         /// </summary>
         public async Task<ResponseData<ResponseCallTool>> Run(string? requestId, CancellationToken callerToken,
-            Func<CancellationToken, Task<ResponseData<ResponseCallTool>>> run)
+            Func<Task<ResponseData<ResponseCallTool>>> run)
         {
             if (string.IsNullOrEmpty(requestId))
-                return await ToolCallCancellation.Run(callerToken, () => run(callerToken)).ConfigureAwait(false);
+                return await ToolCallCancellation.Run(callerToken, run).ConfigureAwait(false);
 
             RemoveExpired();
             var entry = new Entry(callerToken);
@@ -65,7 +73,7 @@ namespace com.IvanMurzak.McpPlugin
             try
             {
                 var token = entry.Source.Token;
-                var result = await ToolCallCancellation.Run(token, () => run(token)).ConfigureAwait(false);
+                var result = await Task.Run(() => ToolCallCancellation.Run(token, run)).ConfigureAwait(false);
                 if (result?.Status == ResponseStatus.Processing && !token.IsCancellationRequested)
                 {
                     Volatile.Write(ref entry.ProcessingSince, _clock());
@@ -80,7 +88,10 @@ namespace com.IvanMurzak.McpPlugin
             }
         }
 
-        /// <summary>Cancels the call with this request id. An unknown or finished id is ignored.</summary>
+        /// <summary>
+        /// Cancels the call with this request id; an unknown or finished id is ignored. The token's callbacks run on
+        /// a thread-pool thread, never on the caller's (the SignalR invocation loop).
+        /// </summary>
         public void Cancel(string? requestId)
         {
             if (string.IsNullOrEmpty(requestId) || !_entries.TryGetValue(requestId!, out var entry))
@@ -89,26 +100,36 @@ namespace com.IvanMurzak.McpPlugin
                 return;
             }
             _logger?.LogInformation("Request '{requestId}': the caller went away; cancelling the call.", requestId);
-            try
+            ThreadPool.QueueUserWorkItem(_ =>
             {
-                entry.Source.Cancel();
-            }
-            catch (Exception ex)
-            {
-                // A callback registered by the tool threw. The token is cancelled anyway.
-                _logger?.LogWarning(ex, "Request '{requestId}': a cancellation callback failed.", requestId);
-            }
+                try
+                {
+                    entry.Source.Cancel();
+                }
+                catch (ObjectDisposedException)
+                {
+                    // The call finished meanwhile.
+                }
+                catch (Exception ex)
+                {
+                    // A callback registered by the tool threw. The token is cancelled anyway.
+                    _logger?.LogWarning(ex, "Request '{requestId}': a cancellation callback failed.", requestId);
+                }
+            });
         }
 
         /// <summary>A call that answered Processing reported its result: it can no longer be cancelled.</summary>
         public void Complete(string? requestId)
         {
-            if (!string.IsNullOrEmpty(requestId))
-                _entries.TryRemove(requestId!, out _);
+            if (!string.IsNullOrEmpty(requestId) && _entries.TryRemove(requestId!, out var entry))
+                entry.Dispose();
         }
 
         void Remove(string requestId, Entry entry)
-            => ((ICollection<KeyValuePair<string, Entry>>)_entries).Remove(new KeyValuePair<string, Entry>(requestId, entry));
+        {
+            if (((ICollection<KeyValuePair<string, Entry>>)_entries).Remove(new KeyValuePair<string, Entry>(requestId, entry)))
+                entry.Dispose();
+        }
 
         void RemoveExpired()
         {
@@ -121,17 +142,29 @@ namespace com.IvanMurzak.McpPlugin
             }
         }
 
-        sealed class Entry
+        sealed class Entry : IDisposable
         {
             public readonly CancellationTokenSource Source;
+            readonly bool _linked;
             /// <summary>When the call answered Processing; 0 while its handler runs.</summary>
             public long ProcessingSince;
 
             public Entry(CancellationToken callerToken)
             {
-                Source = callerToken.CanBeCanceled
+                _linked = callerToken.CanBeCanceled;
+                Source = _linked
                     ? CancellationTokenSource.CreateLinkedTokenSource(callerToken)
                     : new CancellationTokenSource();
+            }
+
+            /// <summary>
+            /// Unregisters a linked source from the caller's token. A plain source holds nothing and is left alone,
+            /// so a tool that still holds its token after its call ended can keep reading it.
+            /// </summary>
+            public void Dispose()
+            {
+                if (_linked)
+                    Source.Dispose();
             }
         }
     }
