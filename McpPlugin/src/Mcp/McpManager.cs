@@ -46,6 +46,9 @@ namespace com.IvanMurzak.McpPlugin
         /// <inheritdoc cref="IMcpManager.RequestActivity"/>
         public McpRequestActivity RequestActivity { get; } = new();
 
+        /// <summary>The running calls the server can cancel (see <see cref="IClientCallCancellation"/>).</summary>
+        internal CallCancellationRegistry CallCancellations { get; }
+
         // What the MCP server calls: the managers wrapped so each request is counted in RequestActivity.
         public IClientToolHub? ToolHub { get; }
         public IClientPromptHub? PromptHub { get; }
@@ -75,6 +78,7 @@ namespace com.IvanMurzak.McpPlugin
             _prompts = prompts;
             _resources = resources;
             _systemTools = systemTools;
+            CallCancellations = new CallCancellationRegistry(_logger);
 
             var hubs = new TrackedHubs(this);
             ToolHub = tools == null ? null : hubs;

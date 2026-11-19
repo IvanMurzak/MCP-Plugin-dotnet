@@ -67,15 +67,25 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         /// <summary>
         /// Validates the arguments, then sends the call (see <see cref="ToolCallGuard"/>): under one
-        /// deadline, and again only when the plugin answered that it did not execute it.
+        /// deadline, and again only when the plugin answered that it did not execute it. When the caller cancels
+        /// after the call was sent, the plugin is asked to stop it (see <see cref="PluginCallCancellation"/>).
         /// </summary>
         public async Task<ResponseData<ResponseCallTool>> RunCallTool(RequestCallTool request, CancellationToken cancellationToken = default)
         {
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cancellationTokenSource.Token, cancellationToken);
-            return await _guard.CallAsync(request, ct => SendCallAsync(request, ct), linkedCts.Token);
+            string? sentTo = null;
+            try
+            {
+                return await _guard.CallAsync(request, ct => SendCallAsync(request, connectionId => sentTo = connectionId, ct), linkedCts.Token);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                PluginCallCancellation.Send(_logger, _remoteAppContext, sentTo, request.RequestID);
+                throw;
+            }
         }
 
-        async Task<ResponseData<ResponseCallTool>> SendCallAsync(RequestCallTool request, CancellationToken cancellationToken)
+        async Task<ResponseData<ResponseCallTool>> SendCallAsync(RequestCallTool request, Action<string> onSent, CancellationToken cancellationToken)
         {
             var toolTimeoutMs = _dataArguments.GetToolTimeoutMs();
             var response = await _requestTrackingService.TrackRequestAsync(
@@ -86,7 +96,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                     // reconnecting plugin happens BEFORE sending, so it cannot cause a second run.
                     var responseData = await CatalogAwareInvoke.SendAsync<RequestCallTool, ResponseCallTool>(
                         _logger, _remoteAppContext, nameof(IClientToolHub.RunCallTool), request, toolTimeoutMs,
-                        retryAfterDelivery: false, _strategy, _catalog, cancellationToken);
+                        retryAfterDelivery: false, _strategy, _catalog, cancellationToken, onSent);
 
                     if (responseData.Status == ResponseStatus.Error)
                     {

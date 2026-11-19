@@ -212,7 +212,28 @@ namespace com.IvanMurzak.McpPlugin
                     })
                     .AddTo(_serverEventsDisposables);
             }
+
+            // Call cancellation ------------------------------------------------------
+
+            // A one-way message: SignalR runs it while tool calls (client results) are still running.
+            if (CallCancellation is { } cancellation)
+            {
+                hubConnection.On<RequestCancelCall>(nameof(IClientCallCancellation.CancelCall), request =>
+                    {
+                        _logger.LogDebug("{class}.{method} {request}", nameof(IClientCallCancellation), nameof(IClientCallCancellation.CancelCall), request);
+                        cancellation.CancelCall(request);
+                    })
+                    .AddTo(_serverEventsDisposables);
+            }
         }
+
+        /// <summary>What stops a running call when the server cancels it; null when the manager cannot.</summary>
+        IClientCallCancellation? CallCancellation
+            => _mcpManager.ToolHub as IClientCallCancellation ?? _mcpManager.SystemToolHub as IClientCallCancellation;
+
+        /// <inheritdoc/>
+        protected override string[]? Capabilities
+            => CallCancellation == null ? null : new[] { Consts.MCP.Plugin.Capabilities.CancelCall };
 
         #endregion
 
@@ -251,6 +272,8 @@ namespace com.IvanMurzak.McpPlugin
                     request.ToPrettyJson()
                 );
             }
+            // The call that answered Processing has finished: it can no longer be cancelled.
+            (_mcpManager as McpManager)?.CallCancellations.Complete(request.RequestId);
             return _connectionManager.InvokeAsync<RequestToolCompletedData, ResponseData>(nameof(IServerMcpManager.NotifyToolRequestCompleted), request, cancellationToken);
         }
 

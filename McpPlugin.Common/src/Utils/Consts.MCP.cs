@@ -30,6 +30,17 @@ namespace com.IvanMurzak.McpPlugin.Common
             {
                 public const int LinesLimit = 1000;
 
+                /// <summary>
+                /// What a plugin supports beyond the base protocol, listed in its version handshake
+                /// (<c>RequestVersionHandshake.Capabilities</c>). The server uses a feature only with a plugin that
+                /// listed it, so an older plugin keeps its previous behaviour.
+                /// </summary>
+                public static class Capabilities
+                {
+                    /// <summary>The plugin handles <c>IClientCallCancellation.CancelCall</c>.</summary>
+                    public const string CancelCall = "cancel-call";
+                }
+
                 public static partial class Args
                 {
                     public const string McpServerEndpoint = "mcp-server-endpoint";
