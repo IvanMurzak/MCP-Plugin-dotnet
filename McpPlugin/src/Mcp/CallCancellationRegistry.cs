@@ -63,7 +63,7 @@ namespace com.IvanMurzak.McpPlugin
             Func<Task<ResponseData<ResponseCallTool>>> run)
         {
             if (string.IsNullOrEmpty(requestId))
-                return await ToolCallCancellation.Run(callerToken, run).ConfigureAwait(false);
+                return await ToolCallCancellation.RunWith(callerToken, run).ConfigureAwait(false);
 
             RemoveExpired();
             var entry = new Entry(callerToken);
@@ -73,7 +73,7 @@ namespace com.IvanMurzak.McpPlugin
             try
             {
                 var token = entry.Source.Token;
-                var result = await Task.Run(() => ToolCallCancellation.Run(token, run)).ConfigureAwait(false);
+                var result = await Task.Run(() => ToolCallCancellation.RunWith(token, run)).ConfigureAwait(false);
                 if (result?.Status == ResponseStatus.Processing && !token.IsCancellationRequested)
                 {
                     Volatile.Write(ref entry.ProcessingSince, _clock());

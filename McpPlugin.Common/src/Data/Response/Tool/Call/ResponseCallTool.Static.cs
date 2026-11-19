@@ -75,6 +75,27 @@ namespace com.IvanMurzak.McpPlugin.Common.Model
         public static ResponseCallTool Unprocessable(string message)
             => Error(message, ResponseErrorKind.BadRequest, UnprocessableStatusCode);
 
+        /// <summary>
+        /// HTTP status (499 Client Closed Request) that, with <see cref="ResponseErrorKind.BadRequest"/>, says the
+        /// call stopped because its caller went away (see <see cref="Cancelled"/>).
+        /// </summary>
+        public const int CancelledStatusCode = 499;
+
+        /// <summary>
+        /// A tool call that stopped because its caller cancelled it (the HTTP request was aborted, the MCP client sent
+        /// <c>notifications/cancelled</c>): not a fault of the plugin nor of the request. Nobody normally reads it, the
+        /// server has already dropped the call; the kind stays <see cref="ResponseErrorKind.BadRequest"/>, an existing
+        /// member, so servers of any version deserialize it and none counts it as its own failure.
+        /// </summary>
+        public static ResponseCallTool Cancelled(string message)
+            => Error(message, ResponseErrorKind.BadRequest, CancelledStatusCode);
+
+        /// <summary>True for a <see cref="Cancelled"/> answer.</summary>
+        public static bool IsCancelled(ResponseCallTool? response)
+            => response != null
+                && response.Status == ResponseStatus.Error
+                && response.HttpStatusCode == CancelledStatusCode;
+
         public static ResponseCallTool Success(string? message = null)
         {
             return new ResponseCallTool(

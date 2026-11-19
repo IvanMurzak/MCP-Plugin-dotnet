@@ -10,7 +10,9 @@
 
 #nullable enable
 using System;
+using System.Collections.Concurrent;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
@@ -19,6 +21,8 @@ using com.IvanMurzak.McpPlugin.Common;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using com.IvanMurzak.McpPlugin.Server.Tests.Infrastructure;
 using com.IvanMurzak.ReflectorNet;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
 using Version = com.IvanMurzak.McpPlugin.Common.Version;
@@ -62,9 +66,13 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                     });
         }
 
-        static async Task<IMcpPlugin> ConnectPluginAsync(NoneAuthMcpHost host, string projectRoot, string name, ProxyTool tool)
+        static async Task<IMcpPlugin> ConnectPluginAsync(NoneAuthMcpHost host, string projectRoot, string name, ProxyTool tool,
+            ILoggerProvider? logs = null)
         {
-            var plugin = new McpPluginBuilder(new Version { Api = Consts.ApiVersion, Plugin = "0.0.0-test", Environment = "test-engine" })
+            var builder = new McpPluginBuilder(new Version { Api = Consts.ApiVersion, Plugin = "0.0.0-test", Environment = "test-engine" });
+            if (logs != null)
+                builder.AddLogging(logging => logging.AddProvider(logs));
+            var plugin = builder
                 .WithConfig(config =>
                 {
                     config.Host = host.BaseUrl;
@@ -108,6 +116,51 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 await Should.ThrowAsync<OperationCanceledException>(() => call);
 
                 (await waiting.Ended.Task.WaitAsync(Wait)).ShouldBeTrue("the tool's token and ToolCallCancellation.Token fire");
+            }
+            finally
+            {
+                await plugin.Disconnect();
+                try { Directory.Delete(projectRoot, recursive: true); } catch (IOException) { }
+            }
+        }
+
+        /// <summary>
+        /// DEV-138: a call cancelled by its caller is not a fault. The tool throws <see cref="OperationCanceledException"/>
+        /// on its token; the plugin answers a cancelled result (not an internal error) and neither the plugin nor the
+        /// server logs a warning or an error for it, including for the plugin's late answer to a call the server dropped.
+        /// </summary>
+        [Fact]
+        public async Task AbortedHttpCall_IsNotLoggedAsAFault()
+        {
+            var serverLogs = new ListLoggerProvider();
+            var pluginLogs = new ListLoggerProvider();
+            await using var host = await NoneAuthMcpHost.StartAsync(services => services.AddSingleton<ILoggerProvider>(serverLogs));
+            var projectRoot = NewProjectRoot();
+            var waiting = new WaitingTool();
+            using var plugin = await ConnectPluginAsync(host, projectRoot, "slow", waiting.Create("slow", TimeSpan.FromMinutes(2)), pluginLogs);
+            try
+            {
+                using var http = new HttpClient();
+                using var abort = new CancellationTokenSource();
+                var call = http.SendAsync(ToolCall(host, "slow"), abort.Token);
+                await waiting.Started.Task.WaitAsync(Wait);
+                var serverBefore = serverLogs.Count;
+                var pluginBefore = pluginLogs.Count;
+
+                abort.Cancel();
+                await Should.ThrowAsync<OperationCanceledException>(() => call);
+                (await waiting.Ended.Task.WaitAsync(Wait)).ShouldBeTrue();
+
+                var until = DateTime.UtcNow + Wait;
+                while (!pluginLogs.Since(pluginBefore, LogLevel.Information).Any(m => m.Contains("its caller cancelled the call")) && DateTime.UtcNow < until)
+                    await Task.Delay(50);
+                pluginLogs.Since(pluginBefore, LogLevel.Information).ShouldContain(m => m.Contains("its caller cancelled the call"),
+                    "the plugin answers the cancelled call as cancelled");
+                await Task.Delay(500); // the late answer reaches the server
+
+                serverBefore.ShouldBeGreaterThan(0, "the sink sees the server's logs");
+                pluginLogs.Since(pluginBefore, LogLevel.Warning).ShouldBeEmpty();
+                serverLogs.Since(serverBefore, LogLevel.Warning).ShouldBeEmpty();
             }
             finally
             {
@@ -167,6 +220,32 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
                 PluginCallCancellation.Forget("conn-new");
                 PluginCallCancellation.Forget("conn-old");
                 PluginCallCancellation.Forget("conn-none");
+            }
+        }
+
+        /// <summary>An in-memory log sink (the test host clears every provider).</summary>
+        sealed class ListLoggerProvider : ILoggerProvider
+        {
+            readonly ConcurrentQueue<(LogLevel Level, string Text)> _records = new ConcurrentQueue<(LogLevel, string)>();
+
+            public int Count => _records.Count;
+
+            /// <summary>Records at <paramref name="level"/> or above, after the first <paramref name="skip"/> records.</summary>
+            public string[] Since(int skip, LogLevel level)
+                => _records.Skip(skip).Where(r => r.Level >= level).Select(r => $"[{r.Level}] {r.Text}").ToArray();
+
+            public ILogger CreateLogger(string categoryName) => new Logger(this, categoryName);
+            public void Dispose() { }
+
+            sealed class Logger : ILogger
+            {
+                readonly ListLoggerProvider _owner;
+                readonly string _category;
+                public Logger(ListLoggerProvider owner, string category) { _owner = owner; _category = category; }
+                public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+                public bool IsEnabled(LogLevel logLevel) => true;
+                public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+                    => _owner._records.Enqueue((logLevel, $"{_category}: {formatter(state, exception)}"));
             }
         }
     }

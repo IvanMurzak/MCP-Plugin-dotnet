@@ -63,6 +63,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             var answer = await call.WaitAsync(Wait);
             ambient.IsCancellationRequested.ShouldBeTrue();
             answer.Status.ShouldBe(ResponseStatus.Error, "a cancelled call answers an error nobody waits for");
+            answer.HttpStatusCode.ShouldBe(ResponseCallTool.CancelledStatusCode, "cancelled by its caller, not a fault");
             manager.CallCancellations.Count.ShouldBe(0);
         }
 

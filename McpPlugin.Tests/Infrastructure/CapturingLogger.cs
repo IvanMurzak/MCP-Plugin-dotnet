@@ -27,6 +27,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Infrastructure
             get { lock (_entries) return _entries.Where(e => e.Level == LogLevel.Warning).Select(e => e.Message).ToList(); }
         }
 
+        /// <summary>Every message logged at <paramref name="level"/> or above so far, in order.</summary>
+        public IReadOnlyList<string> AtOrAbove(LogLevel level)
+        {
+            lock (_entries) return _entries.Where(e => e.Level >= level).Select(e => e.Message).ToList();
+        }
+
         public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
         public bool IsEnabled(LogLevel logLevel) => true;
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)

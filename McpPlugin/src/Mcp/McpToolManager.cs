@@ -196,6 +196,10 @@ namespace com.IvanMurzak.McpPlugin
 
                 return result.Pack(data.RequestID);
             }
+            catch (Exception ex) when (ToolCallCancellation.IsCallCancelled(ex))
+            {
+                return ToolCallCancellation.Cancelled(_logger, data.Name).Pack(data.RequestID);
+            }
             catch (Exception ex)
             {
                 return ResponseData<ResponseCallTool>.Error(data.RequestID, $"Failed to run tool '{data.Name}'. Exception: {ex.Message}",
