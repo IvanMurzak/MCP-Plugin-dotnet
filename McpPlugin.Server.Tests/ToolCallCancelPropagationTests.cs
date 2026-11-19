@@ -126,8 +126,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
 
         /// <summary>
         /// DEV-138: a call cancelled by its caller is not a fault. The tool throws <see cref="OperationCanceledException"/>
-        /// on its token; the plugin answers a cancelled result (not an internal error) and neither the plugin nor the
-        /// server logs a warning or an error for it, including for the plugin's late answer to a call the server dropped.
+        /// on its token; the plugin answers a cancelled result (not an internal error) and logs no warning or error for it.
+        /// The server part is a guard, not the fix: the server dropped the call when its caller went away, and the
+        /// plugin's late answer must not make it log a warning or an error either.
         /// </summary>
         [Fact]
         public async Task AbortedHttpCall_IsNotLoggedAsAFault()

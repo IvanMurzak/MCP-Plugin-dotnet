@@ -10,6 +10,7 @@
 
 #nullable enable
 using System;
+using System.Linq;
 using System.Threading;
 using com.IvanMurzak.McpPlugin.Common.Model;
 using Microsoft.Extensions.Logging;
@@ -76,11 +77,18 @@ namespace com.IvanMurzak.McpPlugin
 
         /// <summary>
         /// True when <paramref name="exception"/> is the current call stopping because its caller went away: an
-        /// <see cref="OperationCanceledException"/> (reflection and single-exception aggregate wrappers looked through)
-        /// while <see cref="Token"/> has fired. Such a call is not a fault.
+        /// <see cref="OperationCanceledException"/> (reflection wrappers looked through; an aggregate counts when every
+        /// exception in it is one, as from a wait on several cancelled tasks) while <see cref="Token"/> has fired.
+        /// Such a call is not a fault.
         /// </summary>
         internal static bool IsCallCancelled(Exception exception)
-            => Token.IsCancellationRequested && RunTool.Unwrap(exception) is OperationCanceledException;
+            => Token.IsCancellationRequested && IsCancellation(RunTool.Unwrap(exception));
+
+        static bool IsCancellation(Exception exception)
+            => exception is OperationCanceledException
+                || exception is AggregateException aggregate
+                    && aggregate.InnerExceptions.Count > 0
+                    && aggregate.InnerExceptions.All(inner => IsCancellation(RunTool.Unwrap(inner)));
 
         /// <summary>The answer of a call that <see cref="IsCallCancelled">stopped because its caller went away</see>; logged as information.</summary>
         internal static ResponseCallTool Cancelled(ILogger? logger, string? tool)

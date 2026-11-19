@@ -50,6 +50,12 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
                 return "ran";
             }
 
+            public static string WaitAll()
+            {
+                Task.WaitAll(Task.Delay(Timeout.Infinite, ToolCallCancellation.Token), Task.Delay(Timeout.Infinite, ToolCallCancellation.Token));
+                return "ran";
+            }
+
             public static string ThrowOwnCancel() => throw new OperationCanceledException("the tool's own timeout");
         }
 
@@ -69,6 +75,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         [Theory]
         [InlineData(nameof(CancellableTool.Run))]
         [InlineData(nameof(CancellableTool.RunAsync))]
+        [InlineData(nameof(CancellableTool.WaitAll))]
         public async Task RunTool_CancelledByItsCaller_AnswersCancelled_AndLogsNoError(string method)
         {
             var logger = new CapturingLogger();
