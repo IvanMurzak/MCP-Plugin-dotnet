@@ -10,8 +10,10 @@
 
 #nullable enable
 using System;
+using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
+using com.IvanMurzak.McpPlugin.Common.Model;
+using Microsoft.Extensions.Logging;
 
 namespace com.IvanMurzak.McpPlugin
 {
@@ -33,13 +35,66 @@ namespace com.IvanMurzak.McpPlugin
         public static CancellationToken Token => _token.Value;
 
         /// <summary>
-        /// Runs <paramref name="body"/> with <paramref name="token"/> as <see cref="Token"/>. An async method, so the
-        /// value is visible to the body and everything it awaits, and never leaks back to the caller's flow.
+        /// Runs <paramref name="body"/> as the body of a tool call whose token is <paramref name="token"/>: it, and every
+        /// task it starts or awaits, reads <paramref name="token"/> as <see cref="Token"/>. The previous value comes back
+        /// when the body returns (for an async body: when it returns its task), so the token never leaks into the
+        /// caller's flow. The plugin runs every tool call this way; engine plugins and their tests use it to run code
+        /// as if inside a call, e.g. to check that a main-thread dispatcher skips work whose call was cancelled.
         /// </summary>
-        internal static async Task<T> Run<T>(CancellationToken token, Func<Task<T>> body)
+        /// <example><code>
+        /// using var cts = new CancellationTokenSource();
+        /// cts.Cancel();
+        /// var work = ToolCallCancellation.RunWith(cts.Token, () => MainThread.Instance.RunAsync(() => 1));
+        /// // work.IsCanceled: the dispatcher saw the call's token fired and never ran the item
+        /// </code></example>
+        public static T RunWith<T>(CancellationToken token, Func<T> body)
         {
+            if (body == null)
+                throw new ArgumentNullException(nameof(body));
+            var previous = _token.Value;
             _token.Value = token;
-            return await body().ConfigureAwait(false);
+            try
+            {
+                return body();
+            }
+            finally
+            {
+                _token.Value = previous;
+            }
+        }
+
+        /// <inheritdoc cref="RunWith{T}(CancellationToken, Func{T})"/>
+        public static void RunWith(CancellationToken token, Action body)
+        {
+            if (body == null)
+                throw new ArgumentNullException(nameof(body));
+            RunWith(token, () =>
+            {
+                body();
+                return true;
+            });
+        }
+
+        /// <summary>
+        /// True when <paramref name="exception"/> is the current call stopping because its caller went away: an
+        /// <see cref="OperationCanceledException"/> (reflection wrappers looked through; an aggregate counts when every
+        /// exception in it is one, as from a wait on several cancelled tasks) while <see cref="Token"/> has fired.
+        /// Such a call is not a fault.
+        /// </summary>
+        internal static bool IsCallCancelled(Exception exception)
+            => Token.IsCancellationRequested && IsCancellation(RunTool.Unwrap(exception));
+
+        static bool IsCancellation(Exception exception)
+            => exception is OperationCanceledException
+                || exception is AggregateException aggregate
+                    && aggregate.InnerExceptions.Count > 0
+                    && aggregate.InnerExceptions.All(inner => IsCancellation(RunTool.Unwrap(inner)));
+
+        /// <summary>The answer of a call that <see cref="IsCallCancelled">stopped because its caller went away</see>; logged as information.</summary>
+        internal static ResponseCallTool Cancelled(ILogger? logger, string? tool)
+        {
+            logger?.LogInformation("Tool '{tool}' stopped: its caller cancelled the call.", tool);
+            return ResponseCallTool.Cancelled($"Tool '{tool}' was cancelled: the caller went away.");
         }
     }
 }

@@ -341,9 +341,13 @@ namespace com.IvanMurzak.McpPlugin
         /// <see cref="ResponseCallTool.NotExecuted"/> when it says so), anything else is
         /// <see cref="ResponseCallTool.Unprocessable"/> (HTTP 422). Same message either way.
         /// <paramref name="fault"/> forces 500 (a failure after the tool succeeded).
+        /// A call that stopped because its caller cancelled it is none of these: it answers
+        /// <see cref="ResponseCallTool.Cancelled"/> and logs no error (see <see cref="ToolCallCancellation.IsCallCancelled"/>).
         /// </summary>
         private ResponseCallTool ExecutionFailed(string requestId, Exception ex, bool fault = false)
         {
+            if (!fault && ToolCallCancellation.IsCallCancelled(ex))
+                return ToolCallCancellation.Cancelled(_logger, Title ?? Method?.Name).SetRequestID(requestId);
             var thrown = Unwrap(ex);
             // A ToolUnavailableException keeps its own message whatever wraps it (an AggregateException from a blocking wait).
             var reported = thrown is ToolUnavailableException ? thrown : ex.InnerException ?? ex;
@@ -401,7 +405,7 @@ namespace com.IvanMurzak.McpPlugin
                 or OperationCanceledException;
 
         /// <summary>The exception the tool threw: reflection and single-exception aggregate wrappers are looked through.</summary>
-        static Exception Unwrap(Exception exception)
+        internal static Exception Unwrap(Exception exception)
         {
             var ex = exception;
             while (true)

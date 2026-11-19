@@ -87,6 +87,10 @@ namespace com.IvanMurzak.McpPlugin
 
                 return result.Pack(request.RequestID);
             }
+            catch (Exception ex) when (ToolCallCancellation.IsCallCancelled(ex))
+            {
+                return ToolCallCancellation.Cancelled(_logger, name).Pack(request.RequestID);
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "System tool '{name}' failed.", name);
