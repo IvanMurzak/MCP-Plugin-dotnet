@@ -272,7 +272,7 @@ namespace com.IvanMurzak.McpPlugin
                     request.ToPrettyJson()
                 );
             }
-            // The call that answered Processing is over: a late cancel must not reach a later use of its token.
+            // The call that answered Processing has finished: it can no longer be cancelled.
             (_mcpManager as McpManager)?.CallCancellations.Complete(request.RequestId);
             return _connectionManager.InvokeAsync<RequestToolCompletedData, ResponseData>(nameof(IServerMcpManager.NotifyToolRequestCompleted), request, cancellationToken);
         }

@@ -90,9 +90,47 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             var toolTimeoutMs = _dataArguments.GetToolTimeoutMs();
             string? sentTo = null;
+            ResponseCallTool response;
             try
             {
-                return await RunTrackedAsync(request, isLivenessProbe, toolTimeoutMs, connectionId => sentTo = connectionId, cancellationToken);
+                response = await _requestTrackingService.TrackRequestAsync(
+                    request.RequestID,
+                    async () =>
+                    {
+                        // Sent once, never retried: a retry would run the tool a second time.
+                        // A probe whose plugin dropped since the check above still never waits for it.
+                        var responseData = await ClientUtils.InvokeCoreAsync<RequestCallTool, ResponseCallTool, McpServerHub>(
+                            logger: _logger,
+                            hubContext: _remoteAppContext,
+                            methodName: nameof(IClientSystemToolHub.RunSystemTool),
+                            request: request,
+                            timeoutMs: toolTimeoutMs,
+                            retryAfterDelivery: false,
+                            strategy: _strategy,
+                            token: McpSessionTokenContext.CurrentToken,
+                            cancellationToken: cancellationToken,
+                            waitForClient: isLivenessProbe ? CatalogAwareInvoke.NeverWait : null,
+                            onSent: connectionId => sentTo = connectionId);
+
+                        if (responseData.Status == ResponseStatus.Error)
+                        {
+                            // A probe whose plugin dropped mid-send gets the same wording as the check above, and the
+                            // same status when it was never delivered (one that may have run keeps its 502).
+                            if (isLivenessProbe && responseData.ErrorKind == ResponseErrorKind.Unavailable
+                                && NotConnectedMessage() is { } droppedMessage)
+                                return ResponseCallTool.Error(droppedMessage, ResponseErrorKind.Unavailable,
+                                    responseData.HttpStatusCode ?? NotConnectedStatusCode);
+
+                            var errorKind = responseData.ErrorKind == ResponseErrorKind.None
+                                ? ResponseErrorKind.Internal
+                                : responseData.ErrorKind;
+                            return ResponseCallTool.Error(responseData.Message ?? "System tool invocation failed", errorKind, responseData.HttpStatusCode);
+                        }
+
+                        return responseData.Value ?? ResponseCallTool.Error("Response data is null", ResponseErrorKind.Internal);
+                    },
+                    TimeSpan.FromMilliseconds(toolTimeoutMs),
+                    cancellationToken);
             }
             catch (OperationCanceledException) when (callerToken.IsCancellationRequested)
             {
@@ -100,49 +138,6 @@ namespace com.IvanMurzak.McpPlugin.Server
                 PluginCallCancellation.Send(_logger, _remoteAppContext, sentTo, request.RequestID);
                 throw;
             }
-        }
-
-        async Task<ResponseData<ResponseCallTool>> RunTrackedAsync(RequestCallTool request, bool isLivenessProbe, int toolTimeoutMs,
-            Action<string> onSent, CancellationToken cancellationToken)
-        {
-            var response = await _requestTrackingService.TrackRequestAsync(
-                request.RequestID,
-                async () =>
-                {
-                    // Sent once, never retried: a retry would run the tool a second time.
-                    // A probe whose plugin dropped since the check above still never waits for it.
-                    var responseData = await ClientUtils.InvokeCoreAsync<RequestCallTool, ResponseCallTool, McpServerHub>(
-                        logger: _logger,
-                        hubContext: _remoteAppContext,
-                        methodName: nameof(IClientSystemToolHub.RunSystemTool),
-                        request: request,
-                        timeoutMs: toolTimeoutMs,
-                        retryAfterDelivery: false,
-                        strategy: _strategy,
-                        token: McpSessionTokenContext.CurrentToken,
-                        cancellationToken: cancellationToken,
-                        waitForClient: isLivenessProbe ? CatalogAwareInvoke.NeverWait : null,
-                        onSent: onSent);
-
-                    if (responseData.Status == ResponseStatus.Error)
-                    {
-                        // A probe whose plugin dropped mid-send gets the same wording as the check above, and the
-                        // same status when it was never delivered (one that may have run keeps its 502).
-                        if (isLivenessProbe && responseData.ErrorKind == ResponseErrorKind.Unavailable
-                            && NotConnectedMessage() is { } droppedMessage)
-                            return ResponseCallTool.Error(droppedMessage, ResponseErrorKind.Unavailable,
-                                responseData.HttpStatusCode ?? NotConnectedStatusCode);
-
-                        var errorKind = responseData.ErrorKind == ResponseErrorKind.None
-                            ? ResponseErrorKind.Internal
-                            : responseData.ErrorKind;
-                        return ResponseCallTool.Error(responseData.Message ?? "System tool invocation failed", errorKind, responseData.HttpStatusCode);
-                    }
-
-                    return responseData.Value ?? ResponseCallTool.Error("Response data is null", ResponseErrorKind.Internal);
-                },
-                TimeSpan.FromMilliseconds(toolTimeoutMs),
-                cancellationToken);
 
             return response.Pack(request.RequestID);
         }
