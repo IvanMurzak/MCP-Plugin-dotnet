@@ -271,7 +271,18 @@ namespace com.IvanMurzak.McpPlugin.Server
                     using var invokeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                     onSent?.Invoke(connectionId!);
                     var invokeTask = client.InvokeAsync<ResponseData<TResponse>>(methodName, request, invokeCts.Token);
-                    var completed = await invokeTask.WaitWithTimeout(timeoutMs, cancellationToken);
+                    bool completed;
+                    try
+                    {
+                        completed = await invokeTask.WaitWithTimeout(timeoutMs, cancellationToken);
+                    }
+                    catch
+                    {
+                        // The caller went away: its token also cancels invokeCts, so SignalR faults the pending
+                        // call ("Invocation canceled by the server."), which must not surface as unobserved.
+                        ObserveFault(invokeTask);
+                        throw;
+                    }
                     if (completed)
                     {
                         try

@@ -191,6 +191,64 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             VerifySent(client, Times.Once());
         }
 
+        [Fact]
+        public async Task ToolCall_CallerCancelledWhilePending_LeavesNoUnobservedFault()
+        {
+            // SignalR faults a pending invocation whose token is cancelled with
+            // HubException("Invocation canceled by the server."); nothing may leave that fault unobserved.
+            var marker = "unobserved-invoke-" + Guid.NewGuid().ToString("N");
+            var unobserved = 0;
+            void OnUnobserved(object? sender, UnobservedTaskExceptionEventArgs e)
+            {
+                if (e.Exception.ToString().Contains(marker, StringComparison.Ordinal))
+                    Interlocked.Increment(ref unobserved);
+            }
+
+            var connectionId = NewConnectionId();
+            var faulted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var client = new Mock<ISingleClientProxy>();
+            client.Setup(c => c.InvokeCoreAsync<ResponseData<ResponseCallTool>>(
+                    It.IsAny<string>(), It.IsAny<object?[]>(), It.IsAny<CancellationToken>()))
+                .Returns((string _, object?[] _, CancellationToken ct) => FaultWhenCancelled(ct, marker, faulted));
+            var (hub, strategy) = Route(client.Object, connectionId);
+
+            TaskScheduler.UnobservedTaskException += OnUnobserved;
+            try
+            {
+                using (var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200)))
+                {
+                    await Should.ThrowAsync<OperationCanceledException>(() =>
+                        ClientUtils.InvokeOnceAsync<RequestCallTool, ResponseCallTool, McpServerHub>(
+                                NullLogger.Instance, hub, "RunCallTool",
+                                new RequestCallTool("tool", new Dictionary<string, JsonElement>()), 10_000, strategy, cancellationToken: cts.Token)
+                            .WaitAsync(TimeSpan.FromSeconds(10)));
+                }
+                await faulted.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                client.Invocations.Clear(); // Moq keeps returned tasks alive; drop them so GC can finalize
+
+                for (var i = 0; i < 5; i++)
+                {
+                    await Task.Delay(50);
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                }
+            }
+            finally
+            {
+                TaskScheduler.UnobservedTaskException -= OnUnobserved;
+            }
+
+            unobserved.ShouldBe(0);
+        }
+
+        static async Task<ResponseData<ResponseCallTool>> FaultWhenCancelled(CancellationToken ct, string marker, TaskCompletionSource faulted)
+        {
+            try { await Task.Delay(Timeout.Infinite, ct); }
+            catch (OperationCanceledException) { }
+            faulted.TrySetResult();
+            throw new HubException($"Invocation canceled by the server. {marker}");
+        }
+
         // ───────────────────────────── helpers ─────────────────────────────
 
         static string NewConnectionId() => "tool-call-delivery-" + Guid.NewGuid().ToString("N");
