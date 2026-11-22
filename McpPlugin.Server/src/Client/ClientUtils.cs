@@ -271,19 +271,10 @@ namespace com.IvanMurzak.McpPlugin.Server
                     using var invokeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                     onSent?.Invoke(connectionId!);
                     var invokeTask = client.InvokeAsync<ResponseData<TResponse>>(methodName, request, invokeCts.Token);
-                    bool completed;
-                    try
-                    {
-                        completed = await invokeTask.WaitWithTimeout(timeoutMs, cancellationToken);
-                    }
-                    catch
-                    {
-                        // The caller went away: its token also cancels invokeCts, so SignalR faults the pending
-                        // call ("Invocation canceled by the server."), which must not surface as unobserved.
-                        ObserveFault(invokeTask);
-                        throw;
-                    }
-                    if (completed)
+                    // Abandoned on a timeout or a caller cancel (which also cancels invokeCts, so SignalR faults it
+                    // with "Invocation canceled by the server."): that late fault must not surface as unobserved.
+                    ObserveFault(invokeTask);
+                    if (await invokeTask.WaitWithTimeout(timeoutMs, cancellationToken))
                     {
                         try
                         {
@@ -334,7 +325,6 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                     // Timeout occurred
                     invokeCts.Cancel();
-                    ObserveFault(invokeTask); // abandoned: a late connection failure must not surface as unobserved
                     if (!retryAfterDelivery)
                     {
                         return ResponseData<TResponse>.Error(request.RequestID,
