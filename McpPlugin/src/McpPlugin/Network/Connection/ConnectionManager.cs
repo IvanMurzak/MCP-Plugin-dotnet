@@ -36,7 +36,8 @@ namespace com.IvanMurzak.McpPlugin
         protected readonly CancellationTokenSource _cancellationTokenSource;
 
         private readonly SemaphoreSlim _gate = new(1, 1);
-        private readonly SemaphoreSlim _ongoingConnectionGate = new(1, 1);
+        // Test seam (InternalsVisibleTo: McpPlugin.Tests).
+        internal readonly SemaphoreSlim _ongoingConnectionGate = new(1, 1);
         private readonly ThreadSafeBool _isDisposed = new(false);
         private readonly SerialDisposable _hubStateSubscription = new();
         private readonly SerialDisposable _hubObservableReconnectSubscription = new();
