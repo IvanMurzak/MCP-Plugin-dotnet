@@ -163,7 +163,7 @@ namespace com.IvanMurzak.McpPlugin
             try
             {
                 var response = await _connectionManager.InvokeAsync<RequestVersionHandshake, VersionHandshakeResponse>(
-                    nameof(IServerMcpManager.PerformVersionHandshake), request, cancellationToken);
+                    nameof(IServerMcpManager.PerformVersionHandshake), request, cancellationToken).ConfigureAwait(false);
 
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -263,7 +263,7 @@ namespace com.IvanMurzak.McpPlugin
                 do
                 {
                     Interlocked.Exchange(ref _handshakePending, 0);
-                    await OnConnectionEstablishedCore();
+                    await OnConnectionEstablishedCore().ConfigureAwait(false);
                 }
                 while (!_isDisposed.Value && Volatile.Read(ref _handshakePending) != 0);
             }
@@ -307,7 +307,7 @@ namespace com.IvanMurzak.McpPlugin
                         McpPluginVersion = Consts.PluginVersion,
                         Capabilities = Capabilities
                     },
-                    cancellationToken: attemptCts.Token);
+                    cancellationToken: attemptCts.Token).ConfigureAwait(false);
 
                 if (cancellationToken.IsCancellationRequested)
                     return;
@@ -320,7 +320,7 @@ namespace com.IvanMurzak.McpPlugin
                         GetType().Name, handshakeResponse?.Message ?? "No response from server");
                     if (!IsTransportConnected)
                         return; // a later transport-connected event owns the next handshake
-                    await WaitBeforeHandshakeRetry(failures++, cancellationToken);
+                    await WaitBeforeHandshakeRetry(failures++, cancellationToken).ConfigureAwait(false);
                     if (!IsTransportConnected)
                         return;
                     continue;
@@ -336,7 +336,7 @@ namespace com.IvanMurzak.McpPlugin
                 }
 
                 _connectionManager.SetConnected();
-                await OnConnectedAsync(cancellationToken);
+                await OnConnectedAsync(cancellationToken).ConfigureAwait(false);
                 return;
             }
         }

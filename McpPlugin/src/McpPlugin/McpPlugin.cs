@@ -87,7 +87,7 @@ namespace com.IvanMurzak.McpPlugin
 
                     var tasks = Enumerable.Empty<Task>();
 
-                    await _mcpManagerHub.NotifyAboutUpdatedTools(new Common.Model.RequestToolsUpdated());
+                    await _mcpManagerHub.NotifyAboutUpdatedTools(new Common.Model.RequestToolsUpdated()).ConfigureAwait(false);
 
                     _logger.LogDebug("{method}, initial notifications sent.",
                         nameof(ConnectionState));
@@ -136,7 +136,7 @@ namespace com.IvanMurzak.McpPlugin
                     if (!CanNotifyServer())
                         return;
 
-                    await _mcpManagerHub.NotifyAboutUpdatedTools(new Common.Model.RequestToolsUpdated());
+                    await _mcpManagerHub.NotifyAboutUpdatedTools(new Common.Model.RequestToolsUpdated()).ConfigureAwait(false);
                 })
                 .AddTo(_disposables);
 
@@ -173,7 +173,7 @@ namespace com.IvanMurzak.McpPlugin
                     if (!CanNotifyServer())
                         return;
 
-                    await _mcpManagerHub.NotifyAboutUpdatedPrompts(new Common.Model.RequestPromptsUpdated());
+                    await _mcpManagerHub.NotifyAboutUpdatedPrompts(new Common.Model.RequestPromptsUpdated()).ConfigureAwait(false);
                 })
                 .AddTo(_disposables);
 
@@ -197,7 +197,7 @@ namespace com.IvanMurzak.McpPlugin
                     if (!CanNotifyServer())
                         return;
 
-                    await _mcpManagerHub.NotifyAboutUpdatedResources(new Common.Model.RequestResourcesUpdated());
+                    await _mcpManagerHub.NotifyAboutUpdatedResources(new Common.Model.RequestResourcesUpdated()).ConfigureAwait(false);
                 })
                 .AddTo(_disposables);
         }

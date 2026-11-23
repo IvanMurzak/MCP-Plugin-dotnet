@@ -58,7 +58,9 @@ namespace com.IvanMurzak.McpPlugin
         /// <returns>The result of the method execution, or null if the method is void.</returns>
         public async Task<ResponseListResource[]> Run(params object?[] parameters)
         {
-            var result = await Invoke(parameters);
+            // ConfigureAwait(true): keeps the previous behaviour for a host that calls this directly from its (engine) main thread,
+            // where the result processing after host code may need that thread. Hub calls arrive without a context.
+            var result = await Invoke(parameters).ConfigureAwait(true);
             return result as ResponseListResource[] ?? throw new InvalidOperationException($"The method did not return a valid {nameof(ResponseListResource)}[]. Instead returned {result?.GetType().GetTypeShortName()}.");
         }
 
@@ -70,7 +72,9 @@ namespace com.IvanMurzak.McpPlugin
         /// <returns>The result of the method execution, or null if the method is void.</returns>
         public async Task<ResponseListResource[]> Run(IDictionary<string, object?>? namedParameters)
         {
-            var result = await InvokeDict((IReadOnlyDictionary<string, object?>?)namedParameters);
+            // ConfigureAwait(true): keeps the previous behaviour for a host that calls this directly from its (engine) main thread,
+            // where the result processing after host code may need that thread. Hub calls arrive without a context.
+            var result = await InvokeDict((IReadOnlyDictionary<string, object?>?)namedParameters).ConfigureAwait(true);
             return result as ResponseListResource[] ?? throw new InvalidOperationException($"The method did not return a valid {nameof(ResponseListResource)}[]. Instead returned {result?.GetType().GetTypeShortName()}.");
         }
     }

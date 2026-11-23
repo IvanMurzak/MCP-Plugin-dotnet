@@ -47,7 +47,7 @@ namespace com.IvanMurzak.McpPlugin
                 _logger.LogDebug("{class}[{guid}] {method} acquiring gate.",
                     nameof(ConnectionManager), _guid, nameof(Disconnect));
 
-                await _gate.WaitAsync(cancellationToken);
+                await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
                 _logger.LogDebug("{class}[{guid}] {method} acquired gate.",
                     nameof(ConnectionManager), _guid, nameof(Disconnect));
@@ -61,7 +61,7 @@ namespace com.IvanMurzak.McpPlugin
 
             try
             {
-                await DisconnectInternal(cancellationToken);
+                await DisconnectInternal(cancellationToken).ConfigureAwait(false);
             }
             finally
             {
@@ -214,7 +214,7 @@ namespace com.IvanMurzak.McpPlugin
                 return;
 
             // For graceful disconnect, use proper async cleanup
-            await DisconnectGracefulAsync(tempHubConnection, cancellationToken);
+            await DisconnectGracefulAsync(tempHubConnection, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>

@@ -187,7 +187,9 @@ namespace com.IvanMurzak.McpPlugin
                     _logger.LogInformation(message);
                 }
 
-                var result = await runner.Run(data.RequestID, data.Arguments, cancellationToken);
+                // ConfigureAwait(true): keeps the previous behaviour for a host that calls this directly from its (engine) main thread,
+                // where the result processing after host code may need that thread. Hub calls arrive without a context.
+                var result = await runner.Run(data.RequestID, data.Arguments, cancellationToken).ConfigureAwait(true);
                 if (result == null)
                     return ResponseData<ResponseCallTool>.Error(data.RequestID, $"Tool '{data.Name}' returned null result.", ResponseErrorKind.Internal)
                         .Log(_logger);

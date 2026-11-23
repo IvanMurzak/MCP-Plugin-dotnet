@@ -81,7 +81,9 @@ namespace com.IvanMurzak.McpPlugin
             try
             {
                 _logger.LogDebug("Executing system tool '{name}'.", name);
-                var result = await tool.Run(request.RequestID, request.Arguments, cancellationToken);
+                // ConfigureAwait(true): keeps the previous behaviour for a host that calls this directly from its (engine) main thread,
+                // where the result processing after host code may need that thread. Hub calls arrive without a context.
+                var result = await tool.Run(request.RequestID, request.Arguments, cancellationToken).ConfigureAwait(true);
                 if (result == null)
                     return ResponseData<ResponseCallTool>.Error(request.RequestID, $"System tool '{name}' returned null result.", ResponseErrorKind.Internal);
 

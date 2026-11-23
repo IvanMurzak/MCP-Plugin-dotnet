@@ -1,0 +1,9 @@
+root = false
+
+# Library code must never capture the caller's SynchronizationContext / TaskScheduler (DEV-240):
+# hosts (Unity, Godot, Unreal editors) call Connect/Disconnect from their main thread, and a
+# continuation queued there can deadlock against a domain/assembly reload. Every await states
+# ConfigureAwait explicitly; ConfigureAwait(true) is allowed only where a comment says why.
+[*.cs]
+dotnet_diagnostic.CA2007.severity = error
+dotnet_diagnostic.CA2008.severity = error

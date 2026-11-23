@@ -63,7 +63,7 @@ namespace com.IvanMurzak.McpPlugin
             Task<bool>? ongoingFirstOutcome;
             TaskCompletionSource<bool>? connectionAttempt = null;
             TaskCompletionSource<bool>? firstOutcome = null;
-            await _ongoingConnectionGate.WaitAsync(cancellationToken);
+            await _ongoingConnectionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 ongoingTask = _ongoingConnectionTask;
@@ -88,9 +88,9 @@ namespace com.IvanMurzak.McpPlugin
                 // already-failed first outcome would silently lose a fast token refresh.
                 if (firstOutcomeOnly && !_continueToReconnect.CurrentValue)
                 {
-                    await WaitForConnectionCompletion(ongoingTask, cancellationToken);
+                    await WaitForConnectionCompletion(ongoingTask, cancellationToken).ConfigureAwait(false);
                     cancellationToken.ThrowIfCancellationRequested();
-                    return await ConnectAsync(cancellationToken, firstOutcomeOnly: true);
+                    return await ConnectAsync(cancellationToken, firstOutcomeOnly: true).ConfigureAwait(false);
                 }
                 // A joiner that cannot cancel must attach to the FIRST DECIDED OUTCOME, never to
                 // the full attempt: with the default (unlimited) reconnect cap the leader's loop
@@ -100,7 +100,7 @@ namespace com.IvanMurzak.McpPlugin
                 var joinTarget = (firstOutcomeOnly || !cancellationToken.CanBeCanceled) && ongoingFirstOutcome != null
                     ? ongoingFirstOutcome
                     : ongoingTask;
-                return await WaitForConnectionCompletion(joinTarget, cancellationToken);
+                return await WaitForConnectionCompletion(joinTarget, cancellationToken).ConfigureAwait(false);
             }
 
             // The leader's full attempt: the connection cycle plus the (possibly unbounded)
@@ -110,7 +110,7 @@ namespace com.IvanMurzak.McpPlugin
                 var result = false;
                 try
                 {
-                    result = await ConnectCore(cancellationToken, firstOutcome);
+                    result = await ConnectCore(cancellationToken, firstOutcome).ConfigureAwait(false);
                     return result;
                 }
                 finally
@@ -119,7 +119,7 @@ namespace com.IvanMurzak.McpPlugin
                     {
                         // Use CancellationToken.None: cleanup must run even when cancellationToken
                         // has already been cancelled by DisconnectImmediate.
-                        await _ongoingConnectionGate.WaitAsync(CancellationToken.None);
+                        await _ongoingConnectionGate.WaitAsync(CancellationToken.None).ConfigureAwait(false);
                         // DisconnectImmediate may have detached this attempt (nulled the field) and a
                         // successor Connect may already have installed itself — never clobber it.
                         if (ReferenceEquals(_ongoingConnectionTask, connectionAttempt!.Task))
@@ -164,11 +164,11 @@ namespace com.IvanMurzak.McpPlugin
             {
                 var background = RunAttemptAsync();
                 // Fire-and-forget: observe faults so an unobserved exception can never escape.
-                _ = background.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
-                return await WaitForConnectionCompletion(firstOutcome!.Task, cancellationToken);
+                _ = background.ContinueWith(static t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+                return await WaitForConnectionCompletion(firstOutcome!.Task, cancellationToken).ConfigureAwait(false);
             }
 
-            return await RunAttemptAsync();
+            return await RunAttemptAsync().ConfigureAwait(false);
         }
 
         /// <summary>
@@ -183,7 +183,7 @@ namespace com.IvanMurzak.McpPlugin
                 _logger.LogDebug("{class}[{guid}] {method} acquiring gate.",
                     nameof(ConnectionManager), _guid, nameof(Connect));
 
-                await _gate.WaitAsync(cancellationToken);
+                await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
 
                 _logger.LogDebug("{class}[{guid}] {method} acquired gate.",
                     nameof(ConnectionManager), _guid, nameof(Connect));
@@ -226,7 +226,7 @@ namespace com.IvanMurzak.McpPlugin
 
                 _continueToReconnect.Value = true;
 
-                return await InternalConnect(cancellationToken, firstOutcome);
+                return await InternalConnect(cancellationToken, firstOutcome).ConfigureAwait(false);
             }
             finally
             {
@@ -242,14 +242,14 @@ namespace com.IvanMurzak.McpPlugin
                 nameof(ConnectionManager), _guid, nameof(WaitForConnectionCompletion));
             try
             {
-                var completedTask = await Task.WhenAny(ongoingTask, Task.Delay(Timeout.Infinite, cancellationToken));
+                var completedTask = await Task.WhenAny(ongoingTask, Task.Delay(Timeout.Infinite, cancellationToken)).ConfigureAwait(false);
                 if (completedTask != ongoingTask)
                 {
                     _logger.LogDebug("{class}[{guid}] {method} Waiting for ongoing connection was canceled for endpoint: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(WaitForConnectionCompletion), Endpoint);
                     return false;
                 }
-                return await ongoingTask;
+                return await ongoingTask.ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -283,7 +283,7 @@ namespace com.IvanMurzak.McpPlugin
                 _logger.LogDebug("{class}[{guid}] {method} called.",
                     nameof(ConnectionManager), _guid, nameof(InternalConnect));
 
-                if (!await CreateHubConnectionIfNeeded(cancellationToken))
+                if (!await CreateHubConnectionIfNeeded(cancellationToken).ConfigureAwait(false))
                     return false;
 
                 if (cancellationToken.IsCancellationRequested)
@@ -296,7 +296,7 @@ namespace com.IvanMurzak.McpPlugin
                 // Small stabilization delay after HubConnection creation before the first StartAsync call.
                 // SignalR's internal DI/setup may not be fully ready immediately after CreateConnectionAsync returns.
                 // TODO: remove this delay if integration tests confirm it is no longer needed.
-                await Task.Delay(TakeFirstAttemptDelay(), cancellationToken);
+                await Task.Delay(TakeFirstAttemptDelay(), cancellationToken).ConfigureAwait(false);
 
                 if (cancellationToken.IsCancellationRequested)
                 {
@@ -305,7 +305,7 @@ namespace com.IvanMurzak.McpPlugin
                     return false;
                 }
 
-                return await StartConnectionLoop(cancellationToken, firstOutcome);
+                return await StartConnectionLoop(cancellationToken, firstOutcome).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -349,7 +349,7 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{class}[{guid}] {method} Connection is not established. Attempting to connect to: {endpoint}",
                 nameof(ConnectionManager), _guid, nameof(EnsureConnection), Endpoint);
 
-            await Connect(cancellationToken);
+            await Connect(cancellationToken).ConfigureAwait(false);
 
             if (_hubConnection.CurrentValue?.State is not HubConnectionState.Connected)
             {
@@ -380,7 +380,7 @@ namespace com.IvanMurzak.McpPlugin
             {
                 _logger.LogDebug("{class}[{guid}] {method} Disposing existing Disconnected HubConnection for endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(CreateHubConnectionIfNeeded), Endpoint);
-                try { await existing.DisposeAsync(); }
+                try { await existing.DisposeAsync().ConfigureAwait(false); }
                 catch (Exception ex) { _logger.LogDebug(ex, "{class}[{guid}] {method} DisposeAsync of stale HubConnection failed", nameof(ConnectionManager), _guid, nameof(CreateHubConnectionIfNeeded)); }
                 _hubConnection.Value = null;
             }
@@ -388,7 +388,7 @@ namespace com.IvanMurzak.McpPlugin
             _logger.LogDebug("{class}[{guid}] {method} Creating new HubConnection instance for endpoint: {endpoint}",
                 nameof(ConnectionManager), _guid, nameof(CreateHubConnectionIfNeeded), Endpoint);
 
-            var hubConnection = await _hubConnectionBuilder.CreateConnectionAsync(Endpoint);
+            var hubConnection = await _hubConnectionBuilder.CreateConnectionAsync(Endpoint).ConfigureAwait(false);
             if (hubConnection == null)
             {
                 _logger.LogError("{class}[{guid}] {method} Failed to create HubConnection instance. Check connection configuration for endpoint: {endpoint}",
@@ -403,7 +403,7 @@ namespace com.IvanMurzak.McpPlugin
 
                 try
                 {
-                    await hubConnection.DisposeAsync();
+                    await hubConnection.DisposeAsync().ConfigureAwait(false);
                 }
                 catch
                 {
@@ -481,7 +481,7 @@ namespace com.IvanMurzak.McpPlugin
             }
             // Fire-and-forget: Connect() handles sequential execution via its internal gate.
             var reconnectTask = Connect(_cancellationTokenSource.Token);
-            _ = reconnectTask.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
+            _ = reconnectTask.ContinueWith(static t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         }
 
         /// <summary>
@@ -539,7 +539,7 @@ namespace com.IvanMurzak.McpPlugin
             while (!cancellationToken.IsCancellationRequested && _continueToReconnect.CurrentValue)
             {
                 Interlocked.Exchange(ref _serverForceDisconnected, 0); // per attempt — see NoteServerForceDisconnect
-                var attempt = await AttemptConnection(cancellationToken);
+                var attempt = await AttemptConnection(cancellationToken).ConfigureAwait(false);
                 bool rejected;
                 if (attempt == ConnectionAttemptResult.Connected)
                 {
@@ -548,7 +548,7 @@ namespace com.IvanMurzak.McpPlugin
                     // milliseconds of the handshake completing.
                     try
                     {
-                        await Task.Delay(RejectionThreshold, cancellationToken);
+                        await Task.Delay(RejectionThreshold, cancellationToken).ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)
                     {
@@ -645,7 +645,7 @@ namespace com.IvanMurzak.McpPlugin
                 // later iterations are no-ops and the very first decided outcome is the one served.
                 firstOutcome?.TrySetResult(false);
 
-                await WaitBeforeRetry(cancellationToken);
+                await WaitBeforeRetry(cancellationToken).ConfigureAwait(false);
             }
 
             _logger.LogDebug("{class}[{guid}] {method} Connection loop terminated for endpoint: {endpoint}",
@@ -748,14 +748,14 @@ namespace com.IvanMurzak.McpPlugin
             {
                 var connectionTask = connection.StartAsync(cancellationToken);
                 var timeoutTask = Task.Delay(TimeSpan.FromSeconds(30), cancellationToken);
-                var completedTask = await Task.WhenAny(connectionTask, timeoutTask);
+                var completedTask = await Task.WhenAny(connectionTask, timeoutTask).ConfigureAwait(false);
 
                 // WhenAny does not throw: a cancellation we asked for would read as a timeout or a failure.
                 if (cancellationToken.IsCancellationRequested && !connectionTask.IsCompletedSuccessfully)
                 {
                     _logger.LogDebug("{class}[{guid}] {method} Connection attempt canceled for endpoint: {endpoint}",
                         nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint);
-                    _ = connectionTask.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
+                    _ = connectionTask.ContinueWith(static t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
                     return ConnectionAttemptResult.Failed;
                 }
 
@@ -765,7 +765,7 @@ namespace com.IvanMurzak.McpPlugin
                         nameof(ConnectionManager), _guid, nameof(AttemptConnection), Endpoint);
                     // Observe the task to prevent UnobservedTaskException; the exception
                     // (typically OperationCanceledException) is expected and can be ignored.
-                    _ = connectionTask.ContinueWith(static t => _ = t.Exception, TaskContinuationOptions.ExecuteSynchronously);
+                    _ = connectionTask.ContinueWith(static t => _ = t.Exception, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
                     return ConnectionAttemptResult.Failed;
                 }
 
@@ -875,7 +875,7 @@ namespace com.IvanMurzak.McpPlugin
                 nameof(ConnectionManager), _guid, nameof(WaitBeforeRetry), Endpoint);
             try
             {
-                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {

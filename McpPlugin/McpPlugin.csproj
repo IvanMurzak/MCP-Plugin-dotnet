@@ -15,6 +15,8 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <OutputType>Library</OutputType>
+    <!-- netstandard2.1 does not run the SDK analyzers by default; .editorconfig enforces CA2007/CA2008 (DEV-240). -->
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
 
     <!-- NuGet Package Information -->
     <IsPackable>true</IsPackable>
