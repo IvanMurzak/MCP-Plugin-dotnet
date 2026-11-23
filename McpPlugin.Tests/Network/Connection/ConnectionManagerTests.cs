@@ -1031,6 +1031,27 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             }
         }
 
+        [Fact]
+        public async Task DisconnectImmediate_WhileOngoingConnectionGateIsHeld_DoesNotWarn()
+        {
+            var logger = new CapturingLogger();
+            await using var connectionManager = new ConnectionManager(
+                logger, _testVersion, _testEndpoint, _mockHubConnectionProvider.Object);
+            var gate = connectionManager._ongoingConnectionGate;
+
+            gate.Wait();
+            try
+            {
+                connectionManager.DisconnectImmediate();
+            }
+            finally
+            {
+                gate.Release();
+            }
+
+            logger.Warnings.ShouldBeEmpty();
+        }
+
         #endregion
 
         #region InvokeAsync Tests
