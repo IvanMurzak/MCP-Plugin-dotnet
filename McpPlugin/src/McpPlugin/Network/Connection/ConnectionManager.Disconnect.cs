@@ -146,7 +146,9 @@ namespace com.IvanMurzak.McpPlugin
             }
             else
             {
-                _logger.LogWarning("{class}[{guid}] {method} Could not acquire ongoingConnectionGate (held by another thread). " +
+                // Expected, not a fault: the cancellation above wakes Connect, whose finally takes
+                // this gate for a moment to clear the field.
+                _logger.LogDebug("{class}[{guid}] {method} Could not acquire ongoingConnectionGate (held by another thread). " +
                     "Connect's finally block will clear _ongoingConnectionTask after cancellation propagates.",
                     nameof(ConnectionManager), _guid, nameof(DisconnectImmediateCore));
             }
