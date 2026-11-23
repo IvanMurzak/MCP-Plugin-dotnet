@@ -58,7 +58,9 @@ namespace com.IvanMurzak.McpPlugin
         /// <returns>The result of the method execution, or null if the method is void.</returns>
         public async Task<ResponseResourceContent[]> Run(params object?[] parameters)
         {
-            var result = await Invoke(parameters);
+            // ConfigureAwait(true) on purpose: this awaits host tool/prompt/resource code, and what follows
+            // (result processing/serialization) may touch engine objects bound to the caller's thread.
+            var result = await Invoke(parameters).ConfigureAwait(true);
 
             if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
                 _logger.LogTrace("Result: {result}", result.ToJson(_reflector));
@@ -74,7 +76,9 @@ namespace com.IvanMurzak.McpPlugin
         /// <returns>The result of the method execution, or null if the method is void.</returns>
         public async Task<ResponseResourceContent[]> Run(IDictionary<string, object?>? namedParameters)
         {
-            var result = await InvokeDict((IReadOnlyDictionary<string, object?>?)namedParameters);
+            // ConfigureAwait(true) on purpose: this awaits host tool/prompt/resource code, and what follows
+            // (result processing/serialization) may touch engine objects bound to the caller's thread.
+            var result = await InvokeDict((IReadOnlyDictionary<string, object?>?)namedParameters).ConfigureAwait(true);
 
             if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
                 _logger.LogTrace("Result: {result}", result.ToJson(_reflector));

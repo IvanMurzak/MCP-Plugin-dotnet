@@ -150,11 +150,11 @@ namespace com.IvanMurzak.McpPlugin
                 return; // already disposed
             }
 
-            if (!await EnsureConnection(cancellationToken))
+            if (!await EnsureConnection(cancellationToken).ConfigureAwait(false))
                 return;
 
             await ExecuteHubMethodAsync(methodName, hubConnection =>
-                hubConnection.InvokeAsync(methodName, input, cancellationToken));
+                hubConnection.InvokeAsync(methodName, input, cancellationToken)).ConfigureAwait(false);
         }
 
         public async Task<TResult> InvokeAsync<TInput, TResult>(string methodName, TInput input, CancellationToken cancellationToken = default)
@@ -166,11 +166,11 @@ namespace com.IvanMurzak.McpPlugin
                 return default!; // already disposed
             }
 
-            if (!await EnsureConnection(cancellationToken))
+            if (!await EnsureConnection(cancellationToken).ConfigureAwait(false))
                 return default!;
 
             return await ExecuteHubMethodAsync(methodName, hubConnection =>
-                hubConnection.InvokeAsync<TResult>(methodName, input, cancellationToken));
+                hubConnection.InvokeAsync<TResult>(methodName, input, cancellationToken)).ConfigureAwait(false);
         }
 
         public async Task<TResult> InvokeAsync<TResult>(string methodName, CancellationToken cancellationToken = default)
@@ -182,11 +182,11 @@ namespace com.IvanMurzak.McpPlugin
                 return default!; // already disposed
             }
 
-            if (!await EnsureConnection(cancellationToken))
+            if (!await EnsureConnection(cancellationToken).ConfigureAwait(false))
                 return default!;
 
             return await ExecuteHubMethodAsync(methodName, hubConnection =>
-                hubConnection.InvokeAsync<TResult>(methodName, cancellationToken));
+                hubConnection.InvokeAsync<TResult>(methodName, cancellationToken)).ConfigureAwait(false);
         }
 
         public void Dispose()
@@ -248,7 +248,7 @@ namespace com.IvanMurzak.McpPlugin
 
             DisposeCommonSync();
 
-            var isGateAcquired = await _gate.WaitAsync(TimeSpan.FromSeconds(5));
+            var isGateAcquired = await _gate.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
             try
             {
                 if (_hubConnection.CurrentValue != null)
@@ -256,8 +256,8 @@ namespace com.IvanMurzak.McpPlugin
                     try
                     {
                         // Gracefully stop the connection
-                        await _hubConnection.CurrentValue.StopAsync();
-                        await _hubConnection.CurrentValue.DisposeAsync();
+                        await _hubConnection.CurrentValue.StopAsync().ConfigureAwait(false);
+                        await _hubConnection.CurrentValue.DisposeAsync().ConfigureAwait(false);
 
                         // Clear the hub connection reference
                         if (!_hubConnection.IsDisposed)
@@ -335,7 +335,7 @@ namespace com.IvanMurzak.McpPlugin
 
             try
             {
-                await hubMethod(connection);
+                await hubMethod(connection).ConfigureAwait(false);
                 _logger.LogDebug("{class}[{guid}] {method} Successfully invoked method '{methodName}' on endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint);
             }
@@ -377,7 +377,7 @@ namespace com.IvanMurzak.McpPlugin
 
             try
             {
-                var result = await hubMethod(connection);
+                var result = await hubMethod(connection).ConfigureAwait(false);
                 _logger.LogDebug("{class}[{guid}] {method} Successfully invoked method '{methodName}' on endpoint: {endpoint}",
                     nameof(ConnectionManager), _guid, nameof(ExecuteHubMethodAsync), methodName, Endpoint);
                 return result;

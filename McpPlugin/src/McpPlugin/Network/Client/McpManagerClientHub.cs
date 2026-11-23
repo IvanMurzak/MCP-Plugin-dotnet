@@ -118,8 +118,8 @@ namespace com.IvanMurzak.McpPlugin
                     (reason.Contains("Authorization", StringComparison.OrdinalIgnoreCase) ||
                      reason.Contains("Token", StringComparison.OrdinalIgnoreCase));
 
-                await _mcpManager.ForceDisconnect();
-                await _connectionManager.Disconnect();
+                await _mcpManager.ForceDisconnect().ConfigureAwait(false);
+                await _connectionManager.Disconnect().ConfigureAwait(false);
 
                 if (isAuthFailure)
                 {
