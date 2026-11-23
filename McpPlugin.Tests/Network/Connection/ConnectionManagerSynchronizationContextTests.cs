@@ -103,8 +103,8 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var connectionManager = new ConnectionManager(_logger, _version, Endpoint, _provider.Object);
             using var mainThread = new BlockedMainThread();
 
+            // Start returns once Connect yields inside the provider, i.e. while the connect flow holds _gate.
             var connectTask = mainThread.Start(() => connectionManager.Connect());
-            await Task.Delay(20);
             var disposeTask = mainThread.Start(() => connectionManager.DisposeAsync().AsTask());
 
             await WaitOrFail(disposeTask, "DisposeAsync");
@@ -123,8 +123,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             var connectionManager = new ConnectionManager(logger, _version, Endpoint, _provider.Object);
             using var mainThread = new BlockedMainThread();
 
-            var connectTask = mainThread.Start(() => connectionManager.Connect());
-            await Task.Delay(200); // inside the connect flow, which holds _gate (first-attempt delay)
+            var connectTask = mainThread.Start(() => connectionManager.Connect()); // returns while the connect flow holds _gate
             await WaitOrFail(mainThread.Start(() => { connectionManager.Dispose(); return Task.CompletedTask; }), "Dispose");
             await WaitOrFail(connectTask, "Connect");
 
