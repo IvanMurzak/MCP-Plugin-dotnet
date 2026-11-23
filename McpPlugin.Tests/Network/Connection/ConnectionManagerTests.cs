@@ -1034,14 +1034,10 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
         [Fact]
         public async Task DisconnectImmediate_WhileOngoingConnectionGateIsHeld_DoesNotWarn()
         {
-            // The cancellation DisconnectImmediate signals wakes Connect, whose cleanup holds this
-            // gate for a moment; meeting it held is the normal race, not a fault.
             var logger = new CapturingLogger();
             await using var connectionManager = new ConnectionManager(
                 logger, _testVersion, _testEndpoint, _mockHubConnectionProvider.Object);
-            var gate = (SemaphoreSlim)typeof(ConnectionManager)
-                .GetField("_ongoingConnectionGate", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-                .GetValue(connectionManager)!;
+            var gate = connectionManager._ongoingConnectionGate;
 
             gate.Wait();
             try

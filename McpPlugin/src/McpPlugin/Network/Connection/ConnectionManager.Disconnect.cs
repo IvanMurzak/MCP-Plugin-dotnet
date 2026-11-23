@@ -137,6 +137,7 @@ namespace com.IvanMurzak.McpPlugin
             // runs with CancellationToken.None and will clear _ongoingConnectionTask itself once
             // the cancellation (signalled above by CancelInternalToken) causes it to complete.
             // Writing the field outside the gate would be an unprotected race.
+            // Meeting the gate held is the normal race, not a fault: hence Debug, not Warning.
             var acquiredOngoingGate = _ongoingConnectionGate.Wait(TimeSpan.Zero);
             if (acquiredOngoingGate)
             {
@@ -146,8 +147,6 @@ namespace com.IvanMurzak.McpPlugin
             }
             else
             {
-                // Expected, not a fault: the cancellation above wakes Connect, whose finally takes
-                // this gate for a moment to clear the field.
                 _logger.LogDebug("{class}[{guid}] {method} Could not acquire ongoingConnectionGate (held by another thread). " +
                     "Connect's finally block will clear _ongoingConnectionTask after cancellation propagates.",
                     nameof(ConnectionManager), _guid, nameof(DisconnectImmediateCore));
