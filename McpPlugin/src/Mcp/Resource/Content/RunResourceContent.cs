@@ -58,7 +58,8 @@ namespace com.IvanMurzak.McpPlugin
         /// <returns>The result of the method execution, or null if the method is void.</returns>
         public async Task<ResponseResourceContent[]> Run(params object?[] parameters)
         {
-            // ConfigureAwait(true): awaits host code; the result processing after it may need the caller's (engine) thread.
+            // ConfigureAwait(true): keeps the previous behaviour for a host that calls this directly from its (engine) main thread,
+            // where the result processing after host code may need that thread. Hub calls arrive without a context.
             var result = await Invoke(parameters).ConfigureAwait(true);
 
             if (_logger?.IsEnabled(LogLevel.Trace) ?? false)
@@ -75,7 +76,8 @@ namespace com.IvanMurzak.McpPlugin
         /// <returns>The result of the method execution, or null if the method is void.</returns>
         public async Task<ResponseResourceContent[]> Run(IDictionary<string, object?>? namedParameters)
         {
-            // ConfigureAwait(true): awaits host code; the result processing after it may need the caller's (engine) thread.
+            // ConfigureAwait(true): keeps the previous behaviour for a host that calls this directly from its (engine) main thread,
+            // where the result processing after host code may need that thread. Hub calls arrive without a context.
             var result = await InvokeDict((IReadOnlyDictionary<string, object?>?)namedParameters).ConfigureAwait(true);
 
             if (_logger?.IsEnabled(LogLevel.Trace) ?? false)

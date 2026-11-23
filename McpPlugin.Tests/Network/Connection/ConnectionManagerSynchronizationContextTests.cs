@@ -40,6 +40,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
         readonly Common.Version _version = new Common.Version { Api = "1.0.0", Plugin = "1.0.0", Environment = "test" };
         const string Endpoint = "http://localhost:5000/hub";
 
+        /// <summary>Completes when the connect flow, already holding _gate, calls the provider.</summary>
+        readonly TaskCompletionSource<bool> _providerCalled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public ConnectionManagerSynchronizationContextTests(ITestOutputHelper output)
         {
             _logger = TestLoggerFactory.Create(output, LogLevel.Debug).CreateLogger<ConnectionManagerSynchronizationContextTests>();
@@ -50,6 +53,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
                 .Setup(x => x.CreateConnectionAsync(Endpoint))
                 .Returns(async () =>
                 {
+                    _providerCalled.TrySetResult(true);
                     await Task.Delay(50).ConfigureAwait(false);
                     return CreateUnreachableHubConnection();
                 });
@@ -82,7 +86,7 @@ namespace com.IvanMurzak.McpPlugin.Tests.Network.Connection
             using var mainThread = new BlockedMainThread();
 
             var connectTask = Task.Run(() => connectionManager.Connect());
-            await Task.Delay(20); // let the connect flow take _gate
+            await WaitOrFail(_providerCalled.Task, "Connect reaching the provider"); // the connect flow now holds _gate
 
             var disconnectTask = mainThread.Start(() => connectionManager.Disconnect());
 

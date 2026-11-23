@@ -118,7 +118,8 @@ namespace com.IvanMurzak.McpPlugin
                     .Log(_logger);
             }
 
-            // ConfigureAwait(true): awaits host code; the result processing after it may need the caller's (engine) thread.
+            // ConfigureAwait(true): keeps the previous behaviour for a host that calls this directly from its (engine) main thread,
+            // where the result processing after host code may need that thread. Hub calls arrive without a context.
             var result = await runner.Run(request.RequestID, request.Arguments, cancellationToken).ConfigureAwait(true);
 
             result.Log(_logger);

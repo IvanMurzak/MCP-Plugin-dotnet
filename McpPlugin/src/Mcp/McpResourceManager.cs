@@ -128,7 +128,8 @@ namespace com.IvanMurzak.McpPlugin
             PrintParameters(parameters);
 
             // Execute the resource with the parameters from Uri
-            // ConfigureAwait(true): awaits host code; the result processing after it may need the caller's (engine) thread.
+            // ConfigureAwait(true): keeps the previous behaviour for a host that calls this directly from its (engine) main thread,
+            // where the result processing after host code may need that thread. Hub calls arrive without a context.
             var result = await runner.Run(parameters).ConfigureAwait(true);
             return result.Pack(data.RequestID);
         }
@@ -140,7 +141,8 @@ namespace com.IvanMurzak.McpPlugin
                 .Where(resource => resource.Enabled)
                 .Select(resource => resource.RunListContext.Run());
 
-            // ConfigureAwait(true): awaits host code; the result processing after it may need the caller's (engine) thread.
+            // ConfigureAwait(true): keeps the previous behaviour for a host that calls this directly from its (engine) main thread,
+            // where the result processing after host code may need that thread. Hub calls arrive without a context.
             await Task.WhenAll(tasks).ConfigureAwait(true);
 
             return tasks
