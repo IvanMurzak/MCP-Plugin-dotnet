@@ -81,8 +81,7 @@ namespace com.IvanMurzak.McpPlugin
             try
             {
                 _logger.LogDebug("Executing system tool '{name}'.", name);
-                // ConfigureAwait(true) on purpose: this awaits host tool/prompt/resource code, and what follows
-                // (result processing/serialization) may touch engine objects bound to the caller's thread.
+                // ConfigureAwait(true): awaits host code; the result processing after it may need the caller's (engine) thread.
                 var result = await tool.Run(request.RequestID, request.Arguments, cancellationToken).ConfigureAwait(true);
                 if (result == null)
                     return ResponseData<ResponseCallTool>.Error(request.RequestID, $"System tool '{name}' returned null result.", ResponseErrorKind.Internal);

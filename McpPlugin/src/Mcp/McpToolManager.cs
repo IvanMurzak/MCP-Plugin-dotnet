@@ -187,8 +187,7 @@ namespace com.IvanMurzak.McpPlugin
                     _logger.LogInformation(message);
                 }
 
-                // ConfigureAwait(true) on purpose: this awaits host tool/prompt/resource code, and what follows
-                // (result processing/serialization) may touch engine objects bound to the caller's thread.
+                // ConfigureAwait(true): awaits host code; the result processing after it may need the caller's (engine) thread.
                 var result = await runner.Run(data.RequestID, data.Arguments, cancellationToken).ConfigureAwait(true);
                 if (result == null)
                     return ResponseData<ResponseCallTool>.Error(data.RequestID, $"Tool '{data.Name}' returned null result.", ResponseErrorKind.Internal)

@@ -128,8 +128,7 @@ namespace com.IvanMurzak.McpPlugin
             PrintParameters(parameters);
 
             // Execute the resource with the parameters from Uri
-            // ConfigureAwait(true) on purpose: this awaits host tool/prompt/resource code, and what follows
-            // (result processing/serialization) may touch engine objects bound to the caller's thread.
+            // ConfigureAwait(true): awaits host code; the result processing after it may need the caller's (engine) thread.
             var result = await runner.Run(parameters).ConfigureAwait(true);
             return result.Pack(data.RequestID);
         }
@@ -141,8 +140,7 @@ namespace com.IvanMurzak.McpPlugin
                 .Where(resource => resource.Enabled)
                 .Select(resource => resource.RunListContext.Run());
 
-            // ConfigureAwait(true) on purpose: this awaits host tool/prompt/resource code, and what follows
-            // (result processing/serialization) may touch engine objects bound to the caller's thread.
+            // ConfigureAwait(true): awaits host code; the result processing after it may need the caller's (engine) thread.
             await Task.WhenAll(tasks).ConfigureAwait(true);
 
             return tasks

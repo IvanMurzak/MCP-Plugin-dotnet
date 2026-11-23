@@ -262,8 +262,7 @@ namespace com.IvanMurzak.McpPlugin
             try
             {
                 // Invoke the method (static or instance)
-                // ConfigureAwait(true) on purpose: this awaits host tool/prompt/resource code, and what follows
-                // (result processing/serialization) may touch engine objects bound to the caller's thread.
+                // ConfigureAwait(true): awaits host code; the result processing after it may need the caller's (engine) thread.
                 result = await Invoke(cancellationToken, parameters).ConfigureAwait(true);
             }
             catch (ArgumentException ex)
@@ -311,8 +310,7 @@ namespace com.IvanMurzak.McpPlugin
                 var finalParameters = ConvertNamedParameters(namedParameters);
 
                 // Invoke the method (static or instance)
-                // ConfigureAwait(true) on purpose: this awaits host tool/prompt/resource code, and what follows
-                // (result processing/serialization) may touch engine objects bound to the caller's thread.
+                // ConfigureAwait(true): awaits host code; the result processing after it may need the caller's (engine) thread.
                 result = await InvokeDict(finalParameters, cancellationToken).ConfigureAwait(true);
             }
             catch (ArgumentException ex)

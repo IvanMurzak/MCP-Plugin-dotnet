@@ -158,8 +158,7 @@ namespace com.IvanMurzak.McpPlugin
                 var description = Method.GetCustomAttribute<DescriptionAttribute>()?.Description;
 
                 // Invoke the method (static or instance)
-                // ConfigureAwait(true) on purpose: this awaits host tool/prompt/resource code, and what follows
-                // (result processing/serialization) may touch engine objects bound to the caller's thread.
+                // ConfigureAwait(true): awaits host code; the result processing after it may need the caller's (engine) thread.
                 var result = await Invoke(cancellationToken, parameters).ConfigureAwait(true);
                 if (result == null)
                     return ResponseGetPrompt.Error($"[Error] No result returned").SetRequestID(requestId);
@@ -213,8 +212,7 @@ namespace com.IvanMurzak.McpPlugin
                 var description = Method.GetCustomAttribute<DescriptionAttribute>()?.Description;
 
                 // Invoke the method (static or instance)
-                // ConfigureAwait(true) on purpose: this awaits host tool/prompt/resource code, and what follows
-                // (result processing/serialization) may touch engine objects bound to the caller's thread.
+                // ConfigureAwait(true): awaits host code; the result processing after it may need the caller's (engine) thread.
                 var result = await InvokeDict(finalParameters, cancellationToken).ConfigureAwait(true);
                 if (result == null)
                     return ResponseGetPrompt.Error($"[Error] No result returned").SetRequestID(requestId);
