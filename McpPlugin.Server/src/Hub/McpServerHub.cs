@@ -184,7 +184,7 @@ namespace com.IvanMurzak.McpPlugin.Server
         {
             var catalog = ResolveCatalog();
             var items = Context?.Items;
-            if (items != null)
+            if (items != null && catalog != null)
                 items[CatalogItemKey] = catalog;
             return catalog;
         }
@@ -258,12 +258,12 @@ namespace com.IvanMurzak.McpPlugin.Server
             try
             {
                 wasRuntime = _strategy is IPluginRoleStrategy roles && roles.Registry.GetRole(Context.ConnectionId) == ClientRole.Runtime;
-                PluginArgumentPolicy.Forget(Context.ConnectionId);
-                PluginCallCancellation.Forget(Context.ConnectionId);
-                _webhookCollector.OnPluginDisconnected(Context.ConnectionId);
                 // Every plugin-side close keeps the lists for the reconnect grace: the server cannot tell a
                 // recompile from a closed project. See PluginCatalogCache for what drops them early.
                 Catalog?.OnPluginDisconnected(Context.ConnectionId);
+                PluginArgumentPolicy.Forget(Context.ConnectionId);
+                PluginCallCancellation.Forget(Context.ConnectionId);
+                _webhookCollector.OnPluginDisconnected(Context.ConnectionId);
             }
             catch (Exception ex)
             {
