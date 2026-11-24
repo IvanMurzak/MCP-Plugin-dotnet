@@ -150,6 +150,10 @@ jobs:
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
+        # On the self-hosted Mac the SDKs go to this job's temp dir, not the shared ~/.dotnet, so
+        # concurrent jobs do not race on one install and no SDK outlives the job. Empty = default.
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.environment == 'self-hosted' && format('{0}/dotnet', runner.temp) || '' }}
         with:
           dotnet-version: |
             8.0.x
