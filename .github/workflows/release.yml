@@ -136,10 +136,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-    # The macOS leg runs on the owner's own Mac (runner-manager places `[self-hosted, macOS, ARM64]`,
-    # as in AI-Game-Dev-App): hosted macOS capacity left jobs queued until cancelled. The matrix
-    # value stays `macos-latest` so the job name `test (macos-latest)` (a required status check)
-    # and the `test-results-macos-latest` artifact name do not change.
+    # macOS leg on the owner's self-hosted Mac, as in test-pull-request.yml (reason there).
     runs-on: ${{ matrix.os == 'macos-latest' && fromJSON('["self-hosted", "macOS", "ARM64"]') || matrix.os }}
     timeout-minutes: 20
     needs: check-version-tag
