@@ -81,7 +81,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             // A reconnecting plugin takes its remembered lists back (or a replaced instance's are dropped).
             // A plugin whose role is decided at its handshake does this in PerformVersionHandshake.
-            var catalog = Catalog;
+            var catalog = CaptureCatalog();
             if (_strategy is IPluginRoleStrategy roles && roles.Registry.GetRole(Context.ConnectionId) == ClientRole.Editor)
                 OnEditorRouted(roles, catalog);
             else
@@ -160,12 +160,47 @@ namespace com.IvanMurzak.McpPlugin.Server
         }
 
         /// <summary>
-        /// The host's <see cref="PluginCatalogCache"/>, read from the connection's request services so the
-        /// public constructor stays unchanged. Null outside a real hub connection. Not cached: SignalR
-        /// creates a hub instance per invocation, so each instance reads it about once.
+        /// The host's <see cref="PluginCatalogCache"/>, so the public constructor stays unchanged. It is
+        /// resolved once per connection, in <see cref="OnConnectedAsync"/>, and kept in the connection's
+        /// <see cref="HubCallerContext.Items"/>: SignalR creates a hub instance per invocation, and the
+        /// request services it was read from may already be disposed when a later invocation or the
+        /// disconnect runs (GlitchTip 1578). Null outside a real hub connection.
         /// </summary>
         PluginCatalogCache? Catalog
-            => Context?.GetHttpContext()?.RequestServices?.GetService(typeof(PluginCatalogCache)) as PluginCatalogCache;
+        {
+            get
+            {
+                var items = Context?.Items;
+                if (items != null && items.TryGetValue(CatalogItemKey, out var captured))
+                    return captured as PluginCatalogCache;
+                return ResolveCatalog();
+            }
+        }
+
+        static readonly object CatalogItemKey = new();
+
+        /// <summary>Resolves the catalog while the connection's request is alive and remembers it for the connection.</summary>
+        PluginCatalogCache? CaptureCatalog()
+        {
+            var catalog = ResolveCatalog();
+            var items = Context?.Items;
+            if (items != null)
+                items[CatalogItemKey] = catalog;
+            return catalog;
+        }
+
+        PluginCatalogCache? ResolveCatalog()
+        {
+            try
+            {
+                return Context?.GetHttpContext()?.RequestServices?.GetService(typeof(PluginCatalogCache)) as PluginCatalogCache;
+            }
+            catch (ObjectDisposedException)
+            {
+                // The request that carried this connection has ended and its services are gone.
+                return null;
+            }
+        }
 
         /// <summary>
         /// This connection is now the editor agents are routed to: its remembered lists come back. When a
@@ -188,7 +223,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 var clients = Clients;
                 if (roles.OnPluginHandshake(GetType(), Context.ConnectionId, environment, mcpPluginVersion, _logger,
-                        (id, reason) => _ = clients.Client(id).ForceDisconnect(reason)))
+                        (id, reason) => ClientUtils.ObserveFault(clients.Client(id).ForceDisconnect(reason))))
                     OnEditorRouted(roles, Catalog);
             }
             catch (Exception ex)
@@ -219,13 +254,24 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (_connectionRejected)
                 return Task.CompletedTask;
 
-            PluginArgumentPolicy.Forget(Context.ConnectionId);
-            PluginCallCancellation.Forget(Context.ConnectionId);
-            _webhookCollector.OnPluginDisconnected(Context.ConnectionId);
-            // Every plugin-side close keeps the lists for the reconnect grace: the server cannot tell a
-            // recompile from a closed project. See PluginCatalogCache for what drops them early.
-            Catalog?.OnPluginDisconnected(Context.ConnectionId);
-            var wasRuntime = _strategy is IPluginRoleStrategy roles && roles.Registry.GetRole(Context.ConnectionId) == ClientRole.Runtime;
+            var wasRuntime = false;
+            try
+            {
+                wasRuntime = _strategy is IPluginRoleStrategy roles && roles.Registry.GetRole(Context.ConnectionId) == ClientRole.Runtime;
+                PluginArgumentPolicy.Forget(Context.ConnectionId);
+                PluginCallCancellation.Forget(Context.ConnectionId);
+                _webhookCollector.OnPluginDisconnected(Context.ConnectionId);
+                // Every plugin-side close keeps the lists for the reconnect grace: the server cannot tell a
+                // recompile from a closed project. See PluginCatalogCache for what drops them early.
+                Catalog?.OnPluginDisconnected(Context.ConnectionId);
+            }
+            catch (Exception ex)
+            {
+                // SignalR may run the disconnect late, from a connection disposal nobody awaits: a throw here
+                // would skip the strategy cleanup below (leaving a stale plugin registration) and surface
+                // only as an unobserved task exception.
+                _logger.LogWarning(ex, "{guid} Plugin disconnect cleanup failed. ConnectionId: {connectionId}.", _guid, Context.ConnectionId);
+            }
             var disconnected = base.OnDisconnectedAsync(exception);
             // The game's own tools were part of tools/list (see RemoteToolRunner): agents list again without them.
             if (wasRuntime)

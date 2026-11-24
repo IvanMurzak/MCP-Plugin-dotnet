@@ -143,7 +143,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                     _logger.LogWarning("{guid} ForceDisconnect skipped: no SignalR connection found for ConnectionId: {connectionId}. Client may have already disconnected.", _guid, id);
                     return;
                 }
-                client.ForceDisconnect(reason);
+                ClientUtils.ObserveFault(client.ForceDisconnect(reason));
             };
             if (_strategy is IPluginRoleStrategy roles)
             {
