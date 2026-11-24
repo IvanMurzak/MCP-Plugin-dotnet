@@ -69,14 +69,14 @@ namespace com.IvanMurzak.McpPlugin.Server
         public override async Task OnConnectedAsync()
         {
             await base.OnConnectedAsync();
-            if (_connectionRejected)
+            if (ConnectionRejected)
                 return;
 
             // mcp-authorize b3: in oauth mode a plugin connection is validated (its `sub` is the
             // account) and its instance metadata registered into the account+instance pairing plane
             // BEFORE we compute the account-scoped initial client data below.
             await TryRegisterOAuthInstanceAsync();
-            if (_connectionRejected)
+            if (ConnectionRejected)
                 return;
 
             // A reconnecting plugin takes its remembered lists back (or a replaced instance's are dropped).
@@ -133,7 +133,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 // Close the unregistered hub so it cannot remain silently unroutable after recovery.
                 _logger.LogWarning(ex, "{guid} oauth plugin validation unavailable; closing for retry. ConnectionId: {connectionId}.", _guid, Context.ConnectionId);
                 _strategy.OnPluginDisconnected(GetType(), Context.ConnectionId, _logger);
-                _connectionRejected = true;
+                RejectConnection();
                 Context.Abort();
                 return;
             }
@@ -251,7 +251,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public override Task OnDisconnectedAsync(Exception? exception)
         {
-            if (_connectionRejected)
+            if (ConnectionRejected)
                 return Task.CompletedTask;
 
             var wasRuntime = false;

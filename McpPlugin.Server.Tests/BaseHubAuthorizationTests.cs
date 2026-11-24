@@ -203,6 +203,59 @@ namespace McpPlugin.Server.Tests
             hub.ConnectionRejectedFlag.ShouldBeTrue();
         }
 
+        /// <summary>
+        /// SignalR creates a hub instance per call, so the disconnect runs on a fresh instance: the
+        /// rejection must be remembered per connection, or the disconnect cleans up a connection that was
+        /// never registered.
+        /// </summary>
+        [Fact]
+        public async Task OnDisconnectedAsync_OnAFreshHubInstance_SkipsCleanupForARejectedConnection()
+        {
+            // ConnectionAborted already cancelled: the denied hub aborts without the flush delay.
+            using var closed = new CancellationTokenSource();
+            closed.Cancel();
+            var context = CreateMockHubCallerContext("denied-token");
+            context.Setup(c => c.ConnectionAborted).Returns(closed.Token);
+            context.Setup(c => c.Items).Returns(new System.Collections.Generic.Dictionary<object, object?>());
+            var strategy = new Mock<IMcpConnectionStrategy>();
+            var hub = CreateTestHub(context, DenyingWebhook(), strategy);
+            await hub.OnConnectedAsync();
+            hub.ConnectionRejectedFlag.ShouldBeTrue();
+
+            var disconnectHub = CreateTestHub(context, strategy: strategy);
+            await disconnectHub.OnDisconnectedAsync(null);
+
+            strategy.Verify(s => s.OnPluginDisconnected(It.IsAny<Type>(), It.IsAny<string>(), It.IsAny<ILogger>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task OnDisconnectedAsync_OnAFreshHubInstance_CleansUpAnAcceptedConnection()
+        {
+            var context = CreateMockHubCallerContext();
+            context.Setup(c => c.Items).Returns(new System.Collections.Generic.Dictionary<object, object?>());
+            var webhook = new Mock<IAuthorizationWebhookService>();
+            webhook.Setup(x => x.AuthorizePluginAsync(
+                    It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
+                .ReturnsAsync(true);
+            var strategy = new Mock<IMcpConnectionStrategy>();
+            await CreateTestHub(context, webhook, strategy).OnConnectedAsync();
+
+            await CreateTestHub(context, strategy: strategy).OnDisconnectedAsync(null);
+
+            strategy.Verify(s => s.OnPluginDisconnected(It.IsAny<Type>(), context.Object.ConnectionId, It.IsAny<ILogger>()), Times.Once);
+        }
+
+        static Mock<IAuthorizationWebhookService> DenyingWebhook()
+        {
+            var webhook = new Mock<IAuthorizationWebhookService>();
+            webhook.Setup(x => x.AuthorizePluginAsync(
+                    It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                    It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
+                .ReturnsAsync(false);
+            return webhook;
+        }
+
         static (TestHub Hub, Mock<HubCallerContext> Context, Mock<IClientDisconnectable> Caller) DeniedHub(CancellationToken connectionAborted)
         {
             var webhook = new Mock<IAuthorizationWebhookService>();
