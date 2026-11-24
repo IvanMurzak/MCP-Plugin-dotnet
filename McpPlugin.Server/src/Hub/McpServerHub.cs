@@ -247,29 +247,32 @@ namespace com.IvanMurzak.McpPlugin.Server
             if (ConnectionRejected)
                 return Task.CompletedTask;
 
+            // SignalR may run the disconnect late, from a connection disposal nobody awaits: a throw here
+            // would skip the strategy cleanup below (leaving a stale plugin registration) and surface only
+            // as an unobserved task exception. Each step is guarded so one failure skips no other.
+            var connectionId = Context.ConnectionId;
             var wasRuntime = false;
-            try
-            {
-                wasRuntime = _strategy is IPluginRoleStrategy roles && roles.Registry.GetRole(Context.ConnectionId) == ClientRole.Runtime;
-                // Every plugin-side close keeps the lists for the reconnect grace: the server cannot tell a
-                // recompile from a closed project. See PluginCatalogCache for what drops them early.
-                Catalog?.OnPluginDisconnected(Context.ConnectionId);
-                PluginArgumentPolicy.Forget(Context.ConnectionId);
-                PluginCallCancellation.Forget(Context.ConnectionId);
-                _webhookCollector.OnPluginDisconnected(Context.ConnectionId);
-            }
-            catch (Exception ex)
-            {
-                // SignalR may run the disconnect late, from a connection disposal nobody awaits: a throw here
-                // would skip the strategy cleanup below (leaving a stale plugin registration) and surface
-                // only as an unobserved task exception.
-                _logger.LogWarning(ex, "{guid} Plugin disconnect cleanup failed. ConnectionId: {connectionId}.", _guid, Context.ConnectionId);
-            }
+            Cleanup(() => wasRuntime = _strategy is IPluginRoleStrategy roles && roles.Registry.GetRole(connectionId) == ClientRole.Runtime);
+            // Every plugin-side close keeps the lists for the reconnect grace: the server cannot tell a
+            // recompile from a closed project. See PluginCatalogCache for what drops them early.
+            Cleanup(() => Catalog?.OnPluginDisconnected(connectionId));
+            Cleanup(() => PluginArgumentPolicy.Forget(connectionId));
+            Cleanup(() => PluginCallCancellation.Forget(connectionId));
+            Cleanup(() => _webhookCollector.OnPluginDisconnected(connectionId));
             var disconnected = base.OnDisconnectedAsync(exception);
             // The game's own tools were part of tools/list (see RemoteToolRunner): agents list again without them.
             if (wasRuntime)
                 _eventAppToolsChange.OnNext(new HubEventToolsChange.EventData { ConnectionId = Context.ConnectionId, Request = new RequestToolsUpdated() });
             return disconnected;
+        }
+
+        void Cleanup(Action step)
+        {
+            try { step(); }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "{guid} Plugin disconnect cleanup failed. ConnectionId: {connectionId}.", _guid, Context.ConnectionId);
+            }
         }
 
         public Task<ResponseData> NotifyAboutUpdatedTools(RequestToolsUpdated request) => NotifyAboutUpdatedTools(request, default);
