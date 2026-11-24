@@ -258,11 +258,7 @@ namespace McpPlugin.Server.Tests
 
         static (TestHub Hub, Mock<HubCallerContext> Context, Mock<IClientDisconnectable> Caller) DeniedHub(CancellationToken connectionAborted)
         {
-            var webhook = new Mock<IAuthorizationWebhookService>();
-            webhook.Setup(x => x.AuthorizePluginAsync(
-                    It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
-                    It.IsAny<CancellationToken>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>()))
-                .ReturnsAsync(false);
+            var webhook = DenyingWebhook();
             var caller = new Mock<IClientDisconnectable>();
             var clients = new Mock<IHubCallerClients<IClientDisconnectable>>();
             clients.Setup(x => x.Caller).Returns(caller.Object);
