@@ -178,9 +178,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             var revived = false;
             lock (_gate)
             {
+                // Dropped first: dropping a bucket's last entry removes the bucket, which must not then receive this one.
+                if (instance != null && _byAccount.TryGetValue(account, out var previous))
+                    DropReplacedBy(previous, instance);
                 var bucket = GetOrAddBucket(account);
-                if (instance != null)
-                    DropReplacedBy(bucket, instance);
 
                 // Single-plugin mode: the project the plugin serves, so a pinned session gets only its project's lists.
                 var project = instance == null ? (_strategy as IPluginRoleStrategy)?.Registry.GetProject(connectionId) : null;

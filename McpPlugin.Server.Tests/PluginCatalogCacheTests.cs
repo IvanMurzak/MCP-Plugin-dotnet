@@ -199,11 +199,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             Disconnect(cache, "c1");
 
             Connect(cache, "acc-1", "i-new", "c2", HashA); // same project/engine/machine, new InstanceId
-            Disconnect(cache, "c2");                       // the new one never listed: not kept either
+            Disconnect(cache, "c2");                       // the new one never listed: awaited, with no lists
 
-            cache.OfflineCount.ShouldBe(0);
+            cache.OfflineCount.ShouldBe(1, "only the new instance is awaited");
             using (PluginReconnect.Session("acc-1"))
-                cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeNull();
+            {
+                cache.HasOfflineTargetForCurrentSession().ShouldBeTrue("the new instance is reconnecting");
+                cache.GetOfflineList<ResponseListTool[]>(PluginCatalogKind.Tools).ShouldBeNull("the old instance's tools are gone");
+            }
         }
 
         [Fact]
