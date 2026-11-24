@@ -219,7 +219,13 @@ namespace McpPlugin.Server.Tests
             context.Setup(c => c.Items).Returns(new System.Collections.Generic.Dictionary<object, object?>());
             var strategy = new Mock<IMcpConnectionStrategy>();
             var hub = CreateTestHub(context, DenyingWebhook(), strategy);
+            var caller = new Mock<IClientDisconnectable>();
+            caller.Setup(x => x.ForceDisconnect(It.IsAny<string?>())).Returns(Task.CompletedTask);
+            var clients = new Mock<IHubCallerClients<IClientDisconnectable>>();
+            clients.Setup(x => x.Caller).Returns(caller.Object);
+            hub.Clients = clients.Object;
             await hub.OnConnectedAsync();
+            context.Verify(c => c.Abort(), Times.Once);
             hub.ConnectionRejectedFlag.ShouldBeTrue();
 
             var disconnectHub = CreateTestHub(context, strategy: strategy);

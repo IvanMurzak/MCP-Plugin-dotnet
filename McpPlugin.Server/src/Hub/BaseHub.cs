@@ -36,6 +36,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// Marked volatile to ensure visibility across threads. It lives on this hub instance only:
         /// SignalR creates a hub per call, so a later call (the disconnect) reads
         /// <see cref="ConnectionRejected"/>, which <see cref="RejectConnection"/> keeps per connection.
+        /// A hub subclass outside this assembly sees only this field: it is reliable within
+        /// <c>OnConnectedAsync</c>, not in <c>OnDisconnectedAsync</c>.
         /// </summary>
         protected volatile bool _connectionRejected = false;
 
