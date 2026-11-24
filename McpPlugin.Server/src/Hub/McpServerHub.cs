@@ -69,14 +69,14 @@ namespace com.IvanMurzak.McpPlugin.Server
         public override async Task OnConnectedAsync()
         {
             await base.OnConnectedAsync();
-            if (_connectionRejected)
+            if (ConnectionRejected)
                 return;
 
             // mcp-authorize b3: in oauth mode a plugin connection is validated (its `sub` is the
             // account) and its instance metadata registered into the account+instance pairing plane
             // BEFORE we compute the account-scoped initial client data below.
             await TryRegisterOAuthInstanceAsync();
-            if (_connectionRejected)
+            if (ConnectionRejected)
                 return;
 
             // A reconnecting plugin takes its remembered lists back (or a replaced instance's are dropped).
@@ -133,7 +133,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                 // Close the unregistered hub so it cannot remain silently unroutable after recovery.
                 _logger.LogWarning(ex, "{guid} oauth plugin validation unavailable; closing for retry. ConnectionId: {connectionId}.", _guid, Context.ConnectionId);
                 _strategy.OnPluginDisconnected(GetType(), Context.ConnectionId, _logger);
-                _connectionRejected = true;
+                RejectConnection();
                 Context.Abort();
                 return;
             }
@@ -160,12 +160,40 @@ namespace com.IvanMurzak.McpPlugin.Server
         }
 
         /// <summary>
-        /// The host's <see cref="PluginCatalogCache"/>, read from the connection's request services so the
-        /// public constructor stays unchanged. Null outside a real hub connection. Not cached: SignalR
-        /// creates a hub instance per invocation, so each instance reads it about once.
+        /// The host's <see cref="PluginCatalogCache"/>, so the public constructor stays unchanged. It is
+        /// resolved on first use (<see cref="OnConnectedAsync"/>, while the request is alive) and kept in the connection's
+        /// <see cref="HubCallerContext.Items"/>: SignalR creates a hub instance per invocation, and the
+        /// request services it was read from may already be disposed when a later invocation or the
+        /// disconnect runs (GlitchTip 1578). Null outside a real hub connection.
         /// </summary>
         PluginCatalogCache? Catalog
-            => Context?.GetHttpContext()?.RequestServices?.GetService(typeof(PluginCatalogCache)) as PluginCatalogCache;
+        {
+            get
+            {
+                var items = Context?.Items;
+                if (items != null && items.TryGetValue(CatalogItemKey, out var captured))
+                    return captured as PluginCatalogCache;
+                var catalog = ResolveCatalog();
+                if (items != null && catalog != null)
+                    items[CatalogItemKey] = catalog;
+                return catalog;
+            }
+        }
+
+        static readonly object CatalogItemKey = new();
+
+        PluginCatalogCache? ResolveCatalog()
+        {
+            try
+            {
+                return Context?.GetHttpContext()?.RequestServices?.GetService(typeof(PluginCatalogCache)) as PluginCatalogCache;
+            }
+            catch (ObjectDisposedException)
+            {
+                // The request that carried this connection has ended and its services are gone.
+                return null;
+            }
+        }
 
         /// <summary>
         /// This connection is now the editor agents are routed to: its remembered lists come back. When a
@@ -188,7 +216,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             {
                 var clients = Clients;
                 if (roles.OnPluginHandshake(GetType(), Context.ConnectionId, environment, mcpPluginVersion, _logger,
-                        (id, reason) => _ = clients.Client(id).ForceDisconnect(reason)))
+                        (id, reason) => ClientUtils.ObserveFault(clients.Client(id).ForceDisconnect(reason))))
                     OnEditorRouted(roles, Catalog);
             }
             catch (Exception ex)
@@ -216,21 +244,35 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public override Task OnDisconnectedAsync(Exception? exception)
         {
-            if (_connectionRejected)
+            if (ConnectionRejected)
                 return Task.CompletedTask;
 
-            PluginArgumentPolicy.Forget(Context.ConnectionId);
-            PluginCallCancellation.Forget(Context.ConnectionId);
-            _webhookCollector.OnPluginDisconnected(Context.ConnectionId);
+            // SignalR may run the disconnect late, from a connection disposal nobody awaits: a throw here
+            // would skip the strategy cleanup below (leaving a stale plugin registration) and surface only
+            // as an unobserved task exception. Each step is guarded so one failure skips no other.
+            var connectionId = Context.ConnectionId;
+            var wasRuntime = false;
+            Cleanup(() => wasRuntime = _strategy is IPluginRoleStrategy roles && roles.Registry.GetRole(connectionId) == ClientRole.Runtime);
             // Every plugin-side close keeps the lists for the reconnect grace: the server cannot tell a
             // recompile from a closed project. See PluginCatalogCache for what drops them early.
-            Catalog?.OnPluginDisconnected(Context.ConnectionId);
-            var wasRuntime = _strategy is IPluginRoleStrategy roles && roles.Registry.GetRole(Context.ConnectionId) == ClientRole.Runtime;
+            Cleanup(() => Catalog?.OnPluginDisconnected(connectionId));
+            Cleanup(() => PluginArgumentPolicy.Forget(connectionId));
+            Cleanup(() => PluginCallCancellation.Forget(connectionId));
+            Cleanup(() => _webhookCollector.OnPluginDisconnected(connectionId));
             var disconnected = base.OnDisconnectedAsync(exception);
             // The game's own tools were part of tools/list (see RemoteToolRunner): agents list again without them.
             if (wasRuntime)
                 _eventAppToolsChange.OnNext(new HubEventToolsChange.EventData { ConnectionId = Context.ConnectionId, Request = new RequestToolsUpdated() });
             return disconnected;
+        }
+
+        void Cleanup(Action step)
+        {
+            try { step(); }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "{guid} Plugin disconnect cleanup failed. ConnectionId: {connectionId}.", _guid, Context.ConnectionId);
+            }
         }
 
         public Task<ResponseData> NotifyAboutUpdatedTools(RequestToolsUpdated request) => NotifyAboutUpdatedTools(request, default);
