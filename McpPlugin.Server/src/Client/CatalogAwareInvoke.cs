@@ -29,7 +29,8 @@ namespace com.IvanMurzak.McpPlugin.Server
     ///   reconnecting plugin, or fail at once so the router returns the server's own tools.</item>
     ///   <item><b>Other requests</b> (tool call, prompt get, resource read) wait for a reconnecting
     ///   plugin up to <see cref="PluginCatalogCache.ReconnectWait"/>, then fail with
-    ///   <see cref="ReconnectingMessage"/>. With nothing remembered they keep the fixed retry ladder.</item>
+    ///   <see cref="ReconnectingMessage"/>, whether or not any of its lists is remembered. With no
+    ///   plugin to wait for (none ever connected, or gone past the grace) they keep the fixed retry ladder.</item>
     /// </list>
     /// A tool call is still sent at most once: the wait happens before sending.
     /// </summary>

@@ -144,6 +144,36 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
         }
 
         /// <summary>
+        /// A plugin nobody listed (a REST or CLI caller only calls tools) still reconnects after a reload: a call
+        /// made while it is away waits for it like for any other, and if it does not return in time the error
+        /// says it is reconnecting (retry), not the fixed ladder's "open the project in its engine editor".
+        /// </summary>
+        [Fact]
+        public async Task ToolCall_PluginNeverListed_WaitsForTheReconnect_AndSaysReconnecting()
+        {
+            var catalog = Catalog(TimeSpan.FromMilliseconds(500));
+            using var runner = Runner(catalog);
+            var oldPlugin = PluginAnsweringCalls("c1");
+            Register("i1", "c1", catalog); // connected, never listed
+            Unregister("c1", catalog);
+
+            ResponseData<ResponseCallTool> result;
+            var watch = Stopwatch.StartNew();
+            using (PluginReconnect.Session(Account))
+            {
+                using var request = new RequestCallTool("engine_tool", new Dictionary<string, JsonElement>());
+                result = await runner.RunCallTool(request).WaitAsync(TimeSpan.FromSeconds(30));
+            }
+
+            watch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(5), "the reconnect wait, not the ~10 s retry ladder");
+            result.Status.ShouldBe(ResponseStatus.Error);
+            result.Value!.ErrorKind.ShouldBe(ResponseErrorKind.Unavailable);
+            result.Message.ShouldNotBeNull().ShouldContain("reconnecting");
+            result.Message.ShouldNotContain("No engine plugin is connected");
+            VerifyCalls(oldPlugin, Times.Never());
+        }
+
+        /// <summary>
         /// Past the grace nothing is remembered, so the fixed retry ladder runs. When it ends with no
         /// plugin on any attempt, every runner reports that with a text the agent can act on, under the
         /// same error kind.

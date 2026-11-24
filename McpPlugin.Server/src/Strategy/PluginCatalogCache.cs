@@ -58,7 +58,9 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
     /// never gets one.</para>
     ///
     /// <para><b>When an entry is kept.</b> Only an unexpected loss of the connection keeps an entry, for
-    /// <see cref="Grace"/>. The server cannot tell a recompile from a closed project (the plugin closes
+    /// <see cref="Grace"/>, whether or not it remembers any list: a plugin nobody listed (a REST or CLI
+    /// caller only calls tools) is still a reconnecting plugin that requests wait for
+    /// (<see cref="WaitForReconnectAsync"/>). The server cannot tell a recompile from a closed project (the plugin closes
     /// the connection the same way for both), so every plugin-side close counts as unexpected and is
     /// bounded by the grace period. An entry is dropped at once when the server knows the instance is
     /// gone: another instance of the same project/engine/machine registered (an editor restart,
@@ -176,9 +178,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             var revived = false;
             lock (_gate)
             {
+                // Dropped first: dropping a bucket's last entry removes the bucket, which must not then receive this one.
+                if (instance != null && _byAccount.TryGetValue(account, out var previous))
+                    DropReplacedBy(previous, instance);
                 var bucket = GetOrAddBucket(account);
-                if (instance != null)
-                    DropReplacedBy(bucket, instance);
 
                 // Single-plugin mode: the project the plugin serves, so a pinned session gets only its project's lists.
                 var project = instance == null ? (_strategy as IPluginRoleStrategy)?.Registry.GetProject(connectionId) : null;
@@ -218,8 +221,8 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
         }
 
         /// <summary>
-        /// A plugin connection closed. Keeps its lists for <see cref="Grace"/> when there are any;
-        /// otherwise forgets it. A close for a connection already superseded by a newer one is a no-op.
+        /// A plugin connection closed. Keeps its entry (and lists, if any) for <see cref="Grace"/>, so
+        /// requests wait for it to return. A close for a connection already superseded by a newer one is a no-op.
         /// </summary>
         public void OnPluginDisconnected(string connectionId)
         {
@@ -234,7 +237,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 _byConnection.Remove(connectionId);
                 entry.ConnectionId = null;
 
-                if (Enabled && entry.HasAnyList)
+                if (Enabled)
                 {
                     entry.DisconnectedAt = _clock();
                     kept = true;
@@ -249,7 +252,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
             }
 
             if (kept)
-                _logger?.LogDebug("PluginCatalogCache: plugin on {connectionId} disconnected; keeping its lists for {grace}.", connectionId, Grace);
+                _logger?.LogDebug("PluginCatalogCache: plugin on {connectionId} disconnected; waiting for it (and keeping its lists) for {grace}.", connectionId, Grace);
         }
 
         /// <summary>
@@ -465,10 +468,12 @@ namespace com.IvanMurzak.McpPlugin.Server.Strategy
                 var now = _clock();
                 foreach (var entry in _byAccount.Values.SelectMany(bucket => bucket.Values).Where(e => e.ConnectionId == null && IsExpired(e, now)).ToList())
                 {
+                    RemoveEntry(entry);
                     var kinds = entry.RememberedKinds();
+                    if (kinds.Length == 0)
+                        continue; // no list was served from it, so no list changes
                     _announcedGone[TargetOf(entry)] = kinds;
                     expired.Add(new PluginCatalogExpiry(entry.Account, kinds));
-                    RemoveEntry(entry);
                 }
                 ArmExpiryTimerLocked(now);
             }
