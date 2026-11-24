@@ -81,7 +81,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             // A reconnecting plugin takes its remembered lists back (or a replaced instance's are dropped).
             // A plugin whose role is decided at its handshake does this in PerformVersionHandshake.
-            var catalog = CaptureCatalog();
+            var catalog = Catalog;
             if (_strategy is IPluginRoleStrategy roles && roles.Registry.GetRole(Context.ConnectionId) == ClientRole.Editor)
                 OnEditorRouted(roles, catalog);
             else
@@ -161,7 +161,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         /// <summary>
         /// The host's <see cref="PluginCatalogCache"/>, so the public constructor stays unchanged. It is
-        /// resolved once per connection, in <see cref="OnConnectedAsync"/>, and kept in the connection's
+        /// resolved on first use (<see cref="OnConnectedAsync"/>, while the request is alive) and kept in the connection's
         /// <see cref="HubCallerContext.Items"/>: SignalR creates a hub instance per invocation, and the
         /// request services it was read from may already be disposed when a later invocation or the
         /// disconnect runs (GlitchTip 1578). Null outside a real hub connection.
@@ -173,21 +173,14 @@ namespace com.IvanMurzak.McpPlugin.Server
                 var items = Context?.Items;
                 if (items != null && items.TryGetValue(CatalogItemKey, out var captured))
                     return captured as PluginCatalogCache;
-                return ResolveCatalog();
+                var catalog = ResolveCatalog();
+                if (items != null && catalog != null)
+                    items[CatalogItemKey] = catalog;
+                return catalog;
             }
         }
 
         static readonly object CatalogItemKey = new();
-
-        /// <summary>Resolves the catalog while the connection's request is alive and remembers it for the connection.</summary>
-        PluginCatalogCache? CaptureCatalog()
-        {
-            var catalog = ResolveCatalog();
-            var items = Context?.Items;
-            if (items != null && catalog != null)
-                items[CatalogItemKey] = catalog;
-            return catalog;
-        }
 
         PluginCatalogCache? ResolveCatalog()
         {

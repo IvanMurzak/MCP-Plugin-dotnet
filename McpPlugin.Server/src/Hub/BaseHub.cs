@@ -146,8 +146,8 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                 // Context.Abort() signals SignalR to tear down the connection.
                 // However, the rest of OnConnectedAsync (and overrides in derived classes)
-                // may still execute before SignalR processes the abort. The _connectionRejected
-                // flag acts as a guard so derived hubs can skip their post-connection logic.
+                // may still execute before SignalR processes the abort. ConnectionRejected
+                // acts as a guard so derived hubs can skip their post-connection logic.
                 // SignalR will eventually invoke OnDisconnectedAsync — derived classes should
                 // also check ConnectionRejected there to skip cleanup for never-established connections.
                 Context.Abort();
