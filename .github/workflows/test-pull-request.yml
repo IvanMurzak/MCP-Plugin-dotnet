@@ -39,7 +39,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    # The macOS leg runs on the owner's own Mac (runner-manager places `[self-hosted, macOS, ARM64]`,
+    # as in AI-Game-Dev-App): hosted macOS capacity left jobs queued until cancelled. The matrix
+    # value stays `macos-latest` so the job name `test (macos-latest)` (a required status check)
+    # and the `test-results-macos-latest` artifact name do not change.
+    # A fork PR's macOS leg stays on hosted macos-latest, off the owner's machine (defence in depth:
+    # a fork can edit this file, so approving outside contributors' runs remains the boundary).
+    runs-on: ${{ matrix.os == 'macos-latest' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && fromJSON('["self-hosted", "macOS", "ARM64"]') || matrix.os }}
     timeout-minutes: 20
     permissions:
       checks: write
@@ -51,6 +57,10 @@ jobs:
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
+        # On the self-hosted Mac the SDKs go to this job's temp dir, not the shared ~/.dotnet, so
+        # concurrent jobs do not race on one install and no SDK outlives the job. Empty = default.
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.environment == 'self-hosted' && format('{0}/dotnet', runner.temp) || '' }}
         with:
           dotnet-version: |
             8.0.x
