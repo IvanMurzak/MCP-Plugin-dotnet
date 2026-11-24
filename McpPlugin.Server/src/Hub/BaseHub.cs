@@ -33,9 +33,28 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// <summary>
         /// Set to true if the connection is rejected by the authorization webhook.
         /// This flag prevents subsequent connection setup from executing after Context.Abort() is called.
-        /// Marked volatile to ensure visibility across threads.
+        /// Marked volatile to ensure visibility across threads. It lives on this hub instance only:
+        /// SignalR creates a hub per call, so a later call (the disconnect) reads
+        /// <see cref="ConnectionRejected"/>, which <see cref="RejectConnection"/> keeps per connection.
+        /// A hub subclass outside this assembly sees only this field: it is reliable within
+        /// <c>OnConnectedAsync</c>, not in <c>OnDisconnectedAsync</c>.
         /// </summary>
         protected volatile bool _connectionRejected = false;
+
+        static readonly object ConnectionRejectedItemKey = new();
+
+        /// <summary>Marks this connection rejected, for this hub instance and every later call on the connection.</summary>
+        private protected void RejectConnection()
+        {
+            _connectionRejected = true;
+            var items = Context?.Items;
+            if (items != null)
+                items[ConnectionRejectedItemKey] = true;
+        }
+
+        /// <summary>Whether this connection was rejected, by this hub instance or an earlier call on the connection.</summary>
+        private protected bool ConnectionRejected
+            => _connectionRejected || (Context?.Items?.ContainsKey(ConnectionRejectedItemKey) ?? false);
 
         /// <summary>
         /// How long a denied connection stays open after <c>ForceDisconnect</c> is sent, so the frame
@@ -88,7 +107,7 @@ namespace com.IvanMurzak.McpPlugin.Server
             }
             catch (AuthorizationUnavailableException ex)
             {
-                _connectionRejected = true;
+                RejectConnection();
                 _logger.LogWarning(ex, "Authorization temporarily unavailable. Closing connection for retry. ConnectionId: {connectionId}.", Context.ConnectionId);
                 // Do not send ForceDisconnect: older clients interpret that as permanent rejection.
                 Context.Abort();
@@ -97,7 +116,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
             if (!allowed)
             {
-                _connectionRejected = true;
+                RejectConnection();
                 _logger.LogDebug("{guid} MCP Plugin connection rejected by authorization webhook. ConnectionId: {connectionId}, RemoteIp: {remoteIpAddress}, UserAgent: {userAgent}, RequestPath: {requestPath}.",
                     _guid, Context.ConnectionId, remoteIpAddress, userAgent, requestPath);
 
@@ -127,10 +146,10 @@ namespace com.IvanMurzak.McpPlugin.Server
 
                 // Context.Abort() signals SignalR to tear down the connection.
                 // However, the rest of OnConnectedAsync (and overrides in derived classes)
-                // may still execute before SignalR processes the abort. The _connectionRejected
-                // flag acts as a guard so derived hubs can skip their post-connection logic.
+                // may still execute before SignalR processes the abort. ConnectionRejected
+                // acts as a guard so derived hubs can skip their post-connection logic.
                 // SignalR will eventually invoke OnDisconnectedAsync — derived classes should
-                // also check _connectionRejected there to skip cleanup for never-established connections.
+                // also check ConnectionRejected there to skip cleanup for never-established connections.
                 Context.Abort();
                 return;
             }
@@ -143,7 +162,7 @@ namespace com.IvanMurzak.McpPlugin.Server
                     _logger.LogWarning("{guid} ForceDisconnect skipped: no SignalR connection found for ConnectionId: {connectionId}. Client may have already disconnected.", _guid, id);
                     return;
                 }
-                client.ForceDisconnect(reason);
+                ClientUtils.ObserveFault(client.ForceDisconnect(reason));
             };
             if (_strategy is IPluginRoleStrategy roles)
             {
@@ -161,7 +180,7 @@ namespace com.IvanMurzak.McpPlugin.Server
 
         public override Task OnDisconnectedAsync(Exception? exception)
         {
-            if (_connectionRejected)
+            if (ConnectionRejected)
             {
                 _logger.LogDebug("{guid} MCP Plugin disconnected (rejected connection, skipping cleanup). ConnectionId: {connectionId}.", _guid, Context.ConnectionId);
                 return Task.CompletedTask;

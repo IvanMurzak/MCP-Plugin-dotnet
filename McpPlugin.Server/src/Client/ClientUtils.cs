@@ -379,7 +379,8 @@ namespace com.IvanMurzak.McpPlugin.Server
         /// <summary>HTTP status the server gives its own tool-call timeouts (no answer, no deferred completion).</summary>
         internal const int ServerTimeoutStatusCode = 504;
 
-        static void ObserveFault(Task task)
+        /// <summary>Marks a fire-and-forget task's fault as observed, so it never surfaces as an unobserved task exception.</summary>
+        internal static void ObserveFault(Task task)
             => task.ContinueWith(static t => _ = t.Exception, CancellationToken.None,
                 TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }
