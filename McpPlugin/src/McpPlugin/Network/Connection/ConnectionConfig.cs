@@ -107,12 +107,31 @@ namespace com.IvanMurzak.McpPlugin
         public virtual bool GenerateSkillFiles { get; set; } = true;
 
         /// <summary>
-        /// Global SKILL.md metadata for both tool documentation and standalone skills.
+        /// Global SKILL.md metadata for both tool documentation and standalone skills
+        /// (per-kind overlays: <see cref="ToolSkillMetadata"/>, <see cref="StandaloneSkillMetadata"/>).
         /// Configure before building the plugin; entries override the generator's defaults,
         /// including <c>generated-by</c>. Runtime-only host policy, not connection settings.
         /// </summary>
         [JsonIgnore]
         public virtual Dictionary<string, string> SkillMetadata { get; set; } = new();
+
+        /// <summary>
+        /// SKILL.md metadata overlay for tool pages only (standard and system tools), applied on
+        /// top of <see cref="SkillMetadata"/>; an entry here replaces a shared entry with the same key.
+        /// Empty by default, so a host that sets only <see cref="SkillMetadata"/> is unaffected.
+        /// Configure before building the plugin. Runtime-only host policy, not connection settings.
+        /// </summary>
+        [JsonIgnore]
+        public virtual Dictionary<string, string> ToolSkillMetadata { get; set; } = new();
+
+        /// <summary>
+        /// SKILL.md metadata overlay for standalone <c>[AiSkill]</c> documents only, applied on top
+        /// of <see cref="SkillMetadata"/>; an entry here replaces a shared entry with the same key.
+        /// Empty by default, so a host that sets only <see cref="SkillMetadata"/> is unaffected.
+        /// Configure before building the plugin. Runtime-only host policy, not connection settings.
+        /// </summary>
+        [JsonIgnore]
+        public virtual Dictionary<string, string> StandaloneSkillMetadata { get; set; } = new();
 
         /// <summary>
         /// Path for generated skill markdown files. Can be absolute or relative.

@@ -156,6 +156,8 @@ Set these with `McpPluginBuilder.WithConfig(config => ...)` before `Build()`.
 | `SkillsPath` | `SKILLS` | Folder for the generated skill files |
 | `ProjectRootPath` | `null` | Absolute folder a relative `SkillsPath` is resolved against |
 | `SkillMetadata` | empty | Metadata written into every skill file |
+| `ToolSkillMetadata` | empty | Overlay on `SkillMetadata` for tool skill files only (standard and system tools) |
+| `StandaloneSkillMetadata` | empty | Overlay on `SkillMetadata` for standalone `[AiSkill]` files only |
 | `MaxConsecutiveConnectionFailures` | `0` | Stop reconnecting after this many failures (`0`: never) |
 
 - `WithConfigFromArgsOrEnv(args)` fills `Host` from `mcp-server-endpoint` / `MCP_SERVER_ENDPOINT` and `TimeoutMs`
@@ -163,7 +165,8 @@ Set these with `McpPluginBuilder.WithConfig(config => ...)` before `Build()`.
 - `ConnectionConfig.GetSkillsFolderFromArgsOrEnv(args)` reads `mcp-skills-folder` / `MCP_SKILLS_FOLDER`.
 - `CredentialProvider` is a `Func<Task<string?>>`; `null` connects anonymously.
 - Without `ProjectRootPath`, skill generation for a relative `SkillsPath` fails.
-- `SkillMetadata` entries override the default `generated-by` value.
+- `SkillMetadata` entries override the default `generated-by` value; a per-kind overlay entry overrides a
+  `SkillMetadata` entry with the same key. With empty overlays every skill file gets `SkillMetadata` unchanged.
 
 ## Docker
 

@@ -74,10 +74,56 @@ namespace com.IvanMurzak.McpPlugin.Skills
         public const string ProvenanceValue = "mcp-plugin-dotnet";
 
         /// <summary>
-        /// Host-supplied global metadata. The plugin snapshots ConnectionConfig.SkillMetadata here
-        /// before initial generation. Subclasses retaining the standard document builders inherit it.
+        /// Host-supplied metadata shared by both kinds of generated SKILL.md (tool pages and
+        /// standalone skills). The plugin snapshots ConnectionConfig.SkillMetadata here before
+        /// initial generation. Subclasses retaining the standard document builders inherit it.
         /// </summary>
         public IReadOnlyDictionary<string, string> Metadata { get; set; } = new Dictionary<string, string>();
+
+        /// <summary>
+        /// Host-supplied overlay applied on top of <see cref="Metadata"/> for tool pages only
+        /// (standard and system tools). Overlay entries win over shared entries with the same key.
+        /// The plugin snapshots ConnectionConfig.ToolSkillMetadata here before initial generation.
+        /// </summary>
+        public IReadOnlyDictionary<string, string> ToolSkillMetadata { get; set; } = new Dictionary<string, string>();
+
+        /// <summary>
+        /// Host-supplied overlay applied on top of <see cref="Metadata"/> for standalone
+        /// <c>[AiSkill]</c> documents only. Overlay entries win over shared entries with the same key.
+        /// The plugin snapshots ConnectionConfig.StandaloneSkillMetadata here before initial generation.
+        /// </summary>
+        public IReadOnlyDictionary<string, string> StandaloneSkillMetadata { get; set; } = new Dictionary<string, string>();
+
+        /// <summary>
+        /// The mapping written into a tool page: <see cref="Metadata"/> merged with
+        /// <see cref="ToolSkillMetadata"/>. Pass it to <see cref="AppendMetadata"/> from a
+        /// <see cref="BuildMarkdown"/> override that rebuilds the front matter.
+        /// </summary>
+        public IReadOnlyDictionary<string, string> EffectiveToolSkillMetadata => MergeMetadata(Metadata, ToolSkillMetadata);
+
+        /// <summary>
+        /// The mapping written into a standalone skill: <see cref="Metadata"/> merged with
+        /// <see cref="StandaloneSkillMetadata"/>. Pass it to <see cref="AppendMetadata"/> from a
+        /// <see cref="BuildSkillContentMarkdown"/> override that rebuilds the front matter.
+        /// </summary>
+        public IReadOnlyDictionary<string, string> EffectiveStandaloneSkillMetadata => MergeMetadata(Metadata, StandaloneSkillMetadata);
+
+        /// <summary>
+        /// Returns <paramref name="shared"/> with every entry of <paramref name="overlay"/> written
+        /// over it (an overlay key replaces the shared value). Either argument may be null.
+        /// Shared with engine-specific writers that resolve per-kind metadata themselves.
+        /// </summary>
+        public static IReadOnlyDictionary<string, string> MergeMetadata(
+            IReadOnlyDictionary<string, string>? shared,
+            IReadOnlyDictionary<string, string>? overlay)
+        {
+            var merged = new Dictionary<string, string>();
+            if (shared != null)
+                foreach (var entry in shared) merged[entry.Key] = entry.Value;
+            if (overlay != null)
+                foreach (var entry in overlay) merged[entry.Key] = entry.Value;
+            return merged;
+        }
 
         /// <summary>
         /// Appends the provenance marker as raw YAML lines. Callers must invoke it INSIDE the
@@ -95,7 +141,8 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// scalar and would collapse the nested mapping into a quoted string.
         /// <para>
         /// Retained for existing subclasses. New document builders should call
-        /// <see cref="AppendMetadata"/> with <see cref="Metadata"/> to include host overrides.
+        /// <see cref="AppendMetadata"/> with <see cref="EffectiveToolSkillMetadata"/> or
+        /// <see cref="EffectiveStandaloneSkillMetadata"/> to include host overrides.
         /// </para>
         /// </summary>
         /// <param name="sb">The <see cref="StringBuilder"/> that accumulates the skill file content.</param>
@@ -418,7 +465,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// Contains YAML frontmatter (name, description, and the
         /// <see cref="AppendMetadata"/> mapping) followed by the verbatim content body.
         /// An override that rebuilds the front matter must still call
-        /// <see cref="AppendMetadata"/> with <see cref="Metadata"/> before the closing <c>---</c>.
+        /// <see cref="AppendMetadata"/> with <see cref="EffectiveStandaloneSkillMetadata"/> before the closing <c>---</c>.
         /// </summary>
         protected virtual string BuildSkillContentMarkdown(ISkillContent skill, string skillName)
         {
@@ -430,7 +477,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine("---");
             sb.AppendLine($"name: {EscapeYaml(skillName)}");
             sb.AppendLine($"description: {EscapeYaml(yamlDescription)}");
-            AppendMetadata(sb, Metadata);
+            AppendMetadata(sb, EffectiveStandaloneSkillMetadata);
             sb.AppendLine("---");
 
             // Verbatim content body
@@ -553,7 +600,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
         /// For targeted changes, prefer overriding individual section helpers or the
         /// customization properties/methods instead.
         /// An override that rebuilds the front matter must still call
-        /// <see cref="AppendMetadata"/> with <see cref="Metadata"/> before the closing <c>---</c>.
+        /// <see cref="AppendMetadata"/> with <see cref="EffectiveToolSkillMetadata"/> before the closing <c>---</c>.
         /// </summary>
         protected virtual string BuildMarkdown(IRunTool tool, string skillName, string host)
         {
@@ -568,7 +615,7 @@ namespace com.IvanMurzak.McpPlugin.Skills
             sb.AppendLine("---");
             sb.AppendLine($"name: {EscapeYaml(skillName)}");
             sb.AppendLine($"description: {EscapeYaml(yamlDescription)}");
-            AppendMetadata(sb, Metadata);
+            AppendMetadata(sb, EffectiveToolSkillMetadata);
             sb.AppendLine("---");
             sb.AppendLine();
             BuildFrontMatterNotes(sb);
