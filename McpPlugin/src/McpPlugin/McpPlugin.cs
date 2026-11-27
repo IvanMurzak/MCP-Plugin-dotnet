@@ -75,7 +75,11 @@ namespace com.IvanMurzak.McpPlugin
             // Also covers explicitly supplied generator instances and engine-specific subclasses.
             // Configure before constructor-time generation can write the first SKILL.md.
             if (_skillFileGenerator is SkillFileGenerator generator)
+            {
                 generator.Metadata = new Dictionary<string, string>(_connectionConfig.SkillMetadata);
+                generator.ToolSkillMetadata = new Dictionary<string, string>(_connectionConfig.ToolSkillMetadata);
+                generator.StandaloneSkillMetadata = new Dictionary<string, string>(_connectionConfig.StandaloneSkillMetadata);
+            }
             _skillContentCollection = skillContentCollection ?? throw new ArgumentNullException(nameof(skillContentCollection));
             _mcpManagerHub.ConnectionState
                 .Where(state => state == HubConnectionState.Connected)

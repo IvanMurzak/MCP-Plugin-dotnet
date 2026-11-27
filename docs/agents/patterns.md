@@ -97,5 +97,26 @@ to every generated tool page and standalone `[AiSkill]` document, including init
 Entries override the default `generated-by: mcp-plugin-dotnet`; unconfigured callers keep the
 existing format. `SkillMetadata` is runtime-only and is not written to connection settings.
 Metadata has no filtering semantics in this library: consumers interpret their own keys.
-Independent generators can reuse `SkillFileGenerator.AppendMetadata` with the same mapping.
-Custom document-builder overrides should call it with the generator's `Metadata` property.
+
+### Per-kind skill metadata
+
+A tool page (an `[AiTool]` method, standard or system) and a standalone skill (an `[AiSkill]`
+property on an `[AiSkillType]` class) can carry different metadata. Two overlays sit on top of
+`SkillMetadata`; an overlay entry replaces a shared entry with the same key:
+
+```csharp
+builder.WithConfig(config =>
+{
+    config.SkillMetadata["generated-by"] = "my-plugin";          // both kinds
+    config.ToolSkillMetadata["my-client"] = "exclude";           // tool pages only
+    config.StandaloneSkillMetadata["my-client"] = "include";     // standalone skills only
+});
+```
+
+Both overlays are empty by default, so a host that sets only `SkillMetadata` gets the same files as
+before. The generator exposes the merged mappings as `EffectiveToolSkillMetadata` and
+`EffectiveStandaloneSkillMetadata`; independent generators can merge with
+`SkillFileGenerator.MergeMetadata(shared, overlay)` and write the result with
+`SkillFileGenerator.AppendMetadata`. Custom document-builder overrides that rebuild the front matter
+should pass the matching `Effective*SkillMetadata` property (`BuildMarkdown`: tool,
+`BuildSkillContentMarkdown`: standalone).
