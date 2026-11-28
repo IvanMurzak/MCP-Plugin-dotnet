@@ -25,7 +25,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
     /// inside an argument's value: only the top-level arguments are checked.
     /// <para>
     /// An explicit JSON <c>null</c> for an argument that is not <c>required</c> counts as left out, whatever its
-    /// schema's <c>type</c>. Input schemas never list <c>"null"</c> in a <c>type</c> (a type array breaks some
+    /// schema's <c>type</c>. ReflectorNet input schemas do not list <c>"null"</c> in a <c>type</c> (a type array breaks some
     /// clients), so a nullable parameter (<c>string?</c>, <c>int?</c>) without a default is simply not required,
     /// and an agent may either leave it out or send <c>null</c>; the plugin binds both to null.
     /// </para>
@@ -65,8 +65,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             foreach (var name in required)
             {
                 // A required argument whose schema is not stated plainly ($ref, untyped, not listed) is left to the
-                // plugin, missing or null: plugins on ReflectorNet before 5.5.1 list a nullable parameter without a
-                // default (an int? is a $ref to its underlying type) as required, and bind it missing or null to null.
+                // plugin, missing or null: ReflectorNet before 5.5.1 listed a nullable parameter without a default
+                // (an int? is a $ref to its underlying type) as required, and the plugin binds it missing or null to
+                // null. A plainly typed one (string?) listed as required is still checked here, which is why only
+                // plugins on McpPlugin 8.14.0+ (ReflectorNet 5.5.1+) are validated (PluginArgumentPolicy).
                 if (!properties.HasValue || !TryGetProperty(properties.Value, name, out var propSchema) || !(AllowedTypes(propSchema) is { } allowed))
                     continue;
                 var present = TryGetArgument(arguments, name, out var value) && value.ValueKind != JsonValueKind.Undefined;

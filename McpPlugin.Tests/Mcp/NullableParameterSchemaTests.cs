@@ -76,8 +76,9 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
         }
 
         [Fact]
-        public async Task NullableParameters_SchemaTypes_NeverListNull()
+        public async Task NullableParameters_InputSchema_NeverMentionsNull()
         {
+            // Stricter than "no type lists null": the whole listed schema (properties, $defs) has no "null" string.
             using var plugin = Build();
             var listed = (await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool())).Value!.Single(t => t.Name == "nullable-params");
             listed.InputSchema.GetRawText().ShouldNotContain("\"null\"");
