@@ -33,12 +33,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             """;
 
         static string? Validate(string argumentsJson, StringComparer? comparer = null)
+            => Validate("rql-query", Schema, argumentsJson, comparer);
+
+        static string? Validate(string toolName, string schemaJson, string argumentsJson, StringComparer? comparer = null)
         {
-            var schema = JsonDocument.Parse(Schema).RootElement;
+            var schema = JsonDocument.Parse(schemaJson).RootElement;
             var arguments = new Dictionary<string, JsonElement>(comparer ?? StringComparer.Ordinal);
             foreach (var property in JsonDocument.Parse(argumentsJson).RootElement.EnumerateObject())
                 arguments[property.Name] = property.Value.Clone();
-            return ToolArgumentValidator.Validate("rql-query", schema, arguments);
+            return ToolArgumentValidator.Validate(toolName, schema, arguments);
         }
 
         [Theory]
@@ -142,14 +145,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             },"required":["query"]}
             """;
 
-        static string? ValidateNullable(string argumentsJson)
-        {
-            var schema = JsonDocument.Parse(NullableSchema).RootElement;
-            var arguments = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
-            foreach (var property in JsonDocument.Parse(argumentsJson).RootElement.EnumerateObject())
-                arguments[property.Name] = property.Value.Clone();
-            return ToolArgumentValidator.Validate("t", schema, arguments);
-        }
+        static string? ValidateNullable(string argumentsJson) => Validate("t", NullableSchema, argumentsJson);
 
         [Theory]
         [InlineData("{\"query\":\"q\"}")] // optional arguments left out
