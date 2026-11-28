@@ -33,12 +33,15 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             """;
 
         static string? Validate(string argumentsJson, StringComparer? comparer = null)
+            => Validate("rql-query", Schema, argumentsJson, comparer);
+
+        static string? Validate(string toolName, string schemaJson, string argumentsJson, StringComparer? comparer = null)
         {
-            var schema = JsonDocument.Parse(Schema).RootElement;
+            var schema = JsonDocument.Parse(schemaJson).RootElement;
             var arguments = new Dictionary<string, JsonElement>(comparer ?? StringComparer.Ordinal);
             foreach (var property in JsonDocument.Parse(argumentsJson).RootElement.EnumerateObject())
                 arguments[property.Name] = property.Value.Clone();
-            return ToolArgumentValidator.Validate("rql-query", schema, arguments);
+            return ToolArgumentValidator.Validate(toolName, schema, arguments);
         }
 
         [Theory]
@@ -126,6 +129,54 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             var arguments = new Dictionary<string, JsonElement> { ["note"] = JsonDocument.Parse("null").RootElement };
             Assert.Null(ToolArgumentValidator.Validate("t", schema, arguments));
         }
+
+        // The shape ReflectorNet 5.5.1+ lists (`string? filter`, `int? limit`, `Payload? payload`, ...): nullable
+        // parameters without a default are not required, and no type names "null".
+        const string NullableSchema = """
+            {"type":"object","properties":{
+              "query":{"type":"string"},
+              "filter":{"type":"string"},
+              "limit":{"$ref":"#/$defs/System.Int32"},
+              "count":{"type":"integer"},
+              "choice":{"anyOf":[{"type":"string"},{"type":"integer"}]},
+              "options":{"type":"object","properties":{"name":{"type":"string"}},"required":["name"]},
+              "payload":{"$ref":"#/$defs/Payload"}
+            },"$defs":{
+              "System.Int32":{"type":"integer"},
+              "Payload":{"type":"object","properties":{"name":{"type":"string"},"inner":{"$ref":"#/$defs/Payload"}},"required":["name"]}
+            },"required":["query"]}
+            """;
+
+        static string? ValidateNullable(string argumentsJson) => Validate("t", NullableSchema, argumentsJson);
+
+        [Theory]
+        [InlineData("{\"query\":\"q\"}")] // optional arguments left out
+        [InlineData("{\"query\":\"q\",\"filter\":null}")] // "type":"string", not required: null means left out
+        [InlineData("{\"query\":\"q\",\"count\":null}")] // "type":"integer"
+        [InlineData("{\"query\":\"q\",\"choice\":null}")] // anyOf without a null alternative
+        [InlineData("{\"query\":\"q\",\"options\":null}")] // "type":"object"
+        [InlineData("{\"query\":\"q\",\"limit\":null}")] // $ref to an integer (int?)
+        [InlineData("{\"query\":\"q\",\"payload\":null}")] // $ref to an object
+        [InlineData("{\"query\":\"q\",\"filter\":null,\"count\":null,\"choice\":null,\"options\":null,\"limit\":null,\"payload\":null}")]
+        public void NullForAnOptionalArgument_PassesLikeLeftOut(string arguments)
+            => Assert.Null(ValidateNullable(arguments));
+
+        [Theory]
+        [InlineData("{\"query\":\"q\",\"options\":{\"name\":null}}")] // nested members are not checked, null or not
+        [InlineData("{\"query\":\"q\",\"options\":{\"name\":5}}")]
+        [InlineData("{\"query\":\"q\",\"options\":{}}")]
+        [InlineData("{\"query\":\"q\",\"payload\":{\"name\":\"n\",\"inner\":null}}")] // via $defs
+        public void ValuesInsideAnArgument_AreLeftToThePlugin(string arguments)
+            => Assert.Null(ValidateNullable(arguments));
+
+        [Fact]
+        public void NullForARequiredPlainlyTypedArgument_IsStillRejected()
+            => Assert.Equal("[invalid_params] Invalid params for tool 't': argument 'query' must be a string, got null.",
+                ValidateNullable("{\"query\":null,\"filter\":null}"));
+
+        [Fact]
+        public void OptionalArgumentOfTheWrongType_IsStillRejected()
+            => Assert.Contains("argument 'count' must be an integer, got a string", ValidateNullable("{\"query\":\"q\",\"count\":\"abc\"}"));
 
         [Fact]
         public void SchemaWithoutProperties_PassesAnything()

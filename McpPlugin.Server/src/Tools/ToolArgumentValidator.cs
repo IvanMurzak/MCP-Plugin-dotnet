@@ -21,7 +21,14 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
     /// engine: every plainly typed <c>required</c> argument is present (and not null unless its schema allows
     /// null), and every argument whose schema
     /// names a JSON <c>type</c> has that type. Anything the schema does not state plainly
-    /// (<c>$ref</c>, untyped, unknown keywords, extra arguments) is left to the plugin.
+    /// (<c>$ref</c>, untyped, unknown keywords, extra arguments) is left to the plugin, and so is everything
+    /// inside an argument's value: only the top-level arguments are checked.
+    /// <para>
+    /// An explicit JSON <c>null</c> for an argument that is not <c>required</c> counts as left out, whatever its
+    /// schema's <c>type</c>. ReflectorNet input schemas do not list <c>"null"</c> in a <c>type</c> (a type array breaks some
+    /// clients), so a nullable parameter (<c>string?</c>, <c>int?</c>) without a default is simply not required,
+    /// and an agent may either leave it out or send <c>null</c>; the plugin binds both to null.
+    /// </para>
     /// <para>
     /// Lenient where the plugin's deserializer (ReflectorNet) is: a numeric string passes for
     /// <c>integer</c>/<c>number</c>, a number or <c>"true"</c>/<c>"false"</c> for <c>boolean</c>, an object or
@@ -58,8 +65,10 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
             foreach (var name in required)
             {
                 // A required argument whose schema is not stated plainly ($ref, untyped, not listed) is left to the
-                // plugin: ReflectorNet before 5.5.1 listed a nullable parameter without a default (an int? is a $ref)
-                // as required, and the plugin accepts it missing.
+                // plugin, missing or null: ReflectorNet before 5.5.1 listed a nullable parameter without a default
+                // (an int? is a $ref to its underlying type) as required, and the plugin binds it missing or null to
+                // null. A plainly typed one (string?) listed as required is still checked here, which is why only
+                // plugins on McpPlugin 8.14.0+ (ReflectorNet 5.5.1+) are validated (PluginArgumentPolicy).
                 if (!properties.HasValue || !TryGetProperty(properties.Value, name, out var propSchema) || !(AllowedTypes(propSchema) is { } allowed))
                     continue;
                 var present = TryGetArgument(arguments, name, out var value) && value.ValueKind != JsonValueKind.Undefined;
@@ -79,7 +88,7 @@ namespace com.IvanMurzak.McpPlugin.Server.Tools
                         continue;
                     var value = argument.Value;
                     if (value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
-                        continue; // a null required argument is reported above; a null optional one means "not given"
+                        continue; // a null required argument is reported above; a null optional one means "not given", whatever its type
                     var allowed = AllowedTypes(propSchema);
                     if (allowed == null || allowed.Any(type => Matches(value, type, propSchema)))
                         continue;

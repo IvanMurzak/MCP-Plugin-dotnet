@@ -58,5 +58,30 @@ namespace com.IvanMurzak.McpPlugin.Tests.Mcp
             response.Status.ShouldBe(ResponseStatus.Success, response.Message);
             JsonNode.Parse(response.Value!.Content!.First().Text!)!["result"]!.GetValue<string>().ShouldBe("q|-|-");
         }
+
+        [Fact]
+        public async Task NullableParameters_ExplicitNull_AreNull()
+        {
+            // The schema never lists "null" in a type, so an agent may send an explicit null instead of leaving it out.
+            using var plugin = Build();
+            var response = await plugin.McpManager.ToolManager!.RunCallTool(new RequestCallTool("r1", "nullable-params",
+                new Dictionary<string, JsonElement>
+                {
+                    ["query"] = JsonDocument.Parse("\"q\"").RootElement,
+                    ["filter"] = JsonDocument.Parse("null").RootElement,
+                    ["limit"] = JsonDocument.Parse("null").RootElement,
+                }));
+            response.Status.ShouldBe(ResponseStatus.Success, response.Message);
+            JsonNode.Parse(response.Value!.Content!.First().Text!)!["result"]!.GetValue<string>().ShouldBe("q|-|-");
+        }
+
+        [Fact]
+        public async Task NullableParameters_InputSchema_NeverMentionsNull()
+        {
+            // Stricter than "no type lists null": the whole listed schema (properties, $defs) has no "null" string.
+            using var plugin = Build();
+            var listed = (await plugin.McpManager.ToolManager!.RunListTool(new RequestListTool())).Value!.Single(t => t.Name == "nullable-params");
+            listed.InputSchema.GetRawText().ShouldNotContain("\"null\"");
+        }
     }
 }
