@@ -127,6 +127,51 @@ namespace com.IvanMurzak.McpPlugin.Server.Tests
             Assert.Null(ToolArgumentValidator.Validate("t", schema, arguments));
         }
 
+        // The shape ReflectorNet 5.5.1+ lists for `Run(string query, string? filter, int? limit, Payload? payload)`:
+        // nullable parameters without a default are not required, and no type names "null".
+        const string NullableSchema = """
+            {"type":"object","properties":{
+              "query":{"type":"string"},
+              "filter":{"type":"string"},
+              "limit":{"$ref":"#/$defs/System.Int32"},
+              "count":{"type":"integer"},
+              "payload":{"$ref":"#/$defs/Payload"}
+            },"$defs":{
+              "System.Int32":{"type":"integer"},
+              "Payload":{"type":"object","properties":{"name":{"type":"string"},"inner":{"$ref":"#/$defs/Payload"}},"required":["name"]}
+            },"required":["query"]}
+            """;
+
+        static string? ValidateNullable(string argumentsJson)
+        {
+            var schema = JsonDocument.Parse(NullableSchema).RootElement;
+            var arguments = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+            foreach (var property in JsonDocument.Parse(argumentsJson).RootElement.EnumerateObject())
+                arguments[property.Name] = property.Value.Clone();
+            return ToolArgumentValidator.Validate("t", schema, arguments);
+        }
+
+        [Theory]
+        [InlineData("{\"query\":\"q\"}")] // optional arguments left out
+        [InlineData("{\"query\":\"q\",\"filter\":null}")] // "type":"string", not required: null means left out
+        [InlineData("{\"query\":\"q\",\"count\":null}")] // "type":"integer"
+        [InlineData("{\"query\":\"q\",\"limit\":null}")] // $ref to an integer (int?)
+        [InlineData("{\"query\":\"q\",\"payload\":null}")] // $ref to an object
+        [InlineData("{\"query\":\"q\",\"filter\":null,\"count\":null,\"limit\":null,\"payload\":null}")]
+        [InlineData("{\"query\":\"q\",\"payload\":{\"name\":\"n\",\"inner\":null}}")] // an optional nested member via $defs
+        [InlineData("{\"query\":\"q\",\"payload\":{\"name\":\"n\",\"inner\":{\"name\":\"m\",\"inner\":null}}}")]
+        public void NullForAnOptionalArgument_PassesLikeLeftOut(string arguments)
+            => Assert.Null(ValidateNullable(arguments));
+
+        [Fact]
+        public void NullForARequiredPlainlyTypedArgument_IsStillRejected()
+            => Assert.Equal("[invalid_params] Invalid params for tool 't': argument 'query' must be a string, got null.",
+                ValidateNullable("{\"query\":null,\"filter\":null}"));
+
+        [Fact]
+        public void OptionalArgumentOfTheWrongType_IsStillRejected()
+            => Assert.Contains("argument 'count' must be an integer, got a string", ValidateNullable("{\"query\":\"q\",\"count\":\"abc\"}"));
+
         [Fact]
         public void SchemaWithoutProperties_PassesAnything()
         {
